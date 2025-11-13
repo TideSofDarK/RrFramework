@@ -189,7 +189,7 @@ typedef enum
 } Rr_UIInputFieldFlagsBits;
 typedef uint32_t Rr_UIInputFieldFlags;
 
-typedef bool (*Rr_UIInputFieldFilterFunc)(size_t Length, const char *);
+typedef bool (*Rr_UIInputFieldFilterFunc)(size_t Length, char const *);
 
 extern Rr_UIStyle *Rr_UIGetStyle(void);
 
@@ -234,7 +234,7 @@ extern Rr_Vec2 Rr_UIGetCursor(void);
 
 extern void Rr_UIAdvance(Rr_Vec2 Size);
 
-extern void Rr_UIPushID(const char *IDString);
+extern void Rr_UIPushID(char const *IDString);
 
 extern void Rr_UIPopID(void);
 
@@ -259,15 +259,15 @@ extern void Rr_UISetNextWindowExtent(Rr_Vec2 Extent);
 extern void Rr_UISetNextWindowCreateCollapsed(bool Collapsed);
 
 extern bool Rr_UIBeginWindow(
-    const char *Title,
+    char const *Title,
     bool *Open,
     Rr_UIWindowFlags Flags);
 
 extern void Rr_UIEndWindow(void);
 
-extern bool Rr_UIBeginChildEx(const char *Title, Rr_UIWindowFlags Flags);
+extern bool Rr_UIBeginChildEx(char const *Title, Rr_UIWindowFlags Flags);
 
-extern bool Rr_UIBeginChild(const char *Title);
+extern bool Rr_UIBeginChild(char const *Title);
 
 extern void Rr_UIEndChild(void);
 
@@ -275,7 +275,7 @@ extern void Rr_UISetNextTreeExpanded(void);
 
 extern void Rr_UISetNextTreeCollapsed(void);
 
-extern bool Rr_UIBeginTree(const char *Title);
+extern bool Rr_UIBeginTree(char const *Title);
 
 extern void Rr_UIEndTree(void);
 
@@ -285,124 +285,124 @@ extern void Rr_UIPopWidgetExtent(void);
 
 extern void Rr_UISeparator(void);
 
-extern void Rr_UITextEx(const char *Text, Rr_UITextFlags Flags);
+extern void Rr_UITextEx(char const *Text, Rr_UITextFlags Flags);
 
-extern void Rr_UIText(const char *Text);
+extern void Rr_UIText(char const *Text);
 
-extern void Rr_UITextF(const char *Format, ...);
+extern void Rr_UITextF(char const *Format, ...);
 
-extern void Rr_UILabelText(const char *Title, const char *Text);
+extern void Rr_UILabelText(char const *Title, char const *Text);
 
-extern bool Rr_UIButton(const char *Title);
+extern bool Rr_UIButton(char const *Title);
 
 extern bool Rr_UIRadioButton(
-    const char *Title,
+    char const *Title,
     int32_t *SelectedOption,
     int32_t ThisOption);
 
-extern bool Rr_UICheckbox(const char *Title, bool *Checked);
+extern bool Rr_UICheckbox(char const *Title, bool *Checked);
 
 extern bool Rr_UIInputField(
-    const char *Title,
+    char const *Title,
     size_t BufferCapacity,
     char *Buffer,
-    const char *Placeholder,
+    char const *Placeholder,
     Rr_UIInputFieldFilterFunc FilterFunc,
     Rr_UIInputFieldFlags Flags);
 
 extern bool Rr_UIInputText(
-    const char *Title,
+    char const *Title,
     size_t BufferCapacity,
     char *Buffer);
 
-extern bool Rr_UIInputFloat(const char *Title, float *Value);
+extern bool Rr_UIInputFloat(char const *Title, float *Value);
 extern bool Rr_UIInputFloatRange(
-    const char *Title,
+    char const *Title,
     float *Value,
     float Min,
     float Max);
-extern bool Rr_UIInputFloatZO(const char *Title, float *Value);
-extern bool Rr_UIInputFloatNO(const char *Title, float *Value);
+extern bool Rr_UIInputFloatZO(char const *Title, float *Value);
+extern bool Rr_UIInputFloatNO(char const *Title, float *Value);
 
-extern bool Rr_UIInputFloat2(const char *Title, float *Values);
+extern bool Rr_UIInputFloat2(char const *Title, float *Values);
 extern bool Rr_UIInputFloat2Range(
-    const char *Title,
+    char const *Title,
     float *Values,
     float const *MinValues,
     float const *MaxValues);
-extern bool Rr_UIInputFloat2ZO(const char *Title, float *Values);
-extern bool Rr_UIInputFloat2NO(const char *Title, float *Values);
+extern bool Rr_UIInputFloat2ZO(char const *Title, float *Values);
+extern bool Rr_UIInputFloat2NO(char const *Title, float *Values);
 
-extern bool Rr_UIInputFloat3(const char *Title, float *Values);
+extern bool Rr_UIInputFloat3(char const *Title, float *Values);
 extern bool Rr_UIInputFloat3Range(
-    const char *Title,
+    char const *Title,
     float *Values,
     float const *MinValues,
     float const *MaxValues);
-extern bool Rr_UIInputFloat3ZO(const char *Title, float *Values);
-extern bool Rr_UIInputFloat3NO(const char *Title, float *Values);
+extern bool Rr_UIInputFloat3ZO(char const *Title, float *Values);
+extern bool Rr_UIInputFloat3NO(char const *Title, float *Values);
 
-extern bool Rr_UIInputFloat4(const char *Title, float *Values);
+extern bool Rr_UIInputFloat4(char const *Title, float *Values);
 extern bool Rr_UIInputFloat4Range(
-    const char *Title,
+    char const *Title,
     float *Values,
     float const *MinValues,
     float const *MaxValues);
-extern bool Rr_UIInputFloat4ZO(const char *Title, float *Values);
-extern bool Rr_UIInputFloat4NO(const char *Title, float *Values);
+extern bool Rr_UIInputFloat4ZO(char const *Title, float *Values);
+extern bool Rr_UIInputFloat4NO(char const *Title, float *Values);
 
-extern bool Rr_UIInputFloat2x2(const char *Title, float *Values);
+extern bool Rr_UIInputFloat2x2(char const *Title, float *Values);
 
-extern bool Rr_UIInputFloat3x3(const char *Title, float *Values);
+extern bool Rr_UIInputFloat3x3(char const *Title, float *Values);
 
-extern bool Rr_UIInputFloat4x4(const char *Title, float *Values);
+extern bool Rr_UIInputFloat4x4(char const *Title, float *Values);
 
-extern bool Rr_UIInputInt(const char *Title, int32_t *Value);
+extern bool Rr_UIInputInt(char const *Title, int32_t *Value);
 
 extern bool Rr_UIInputIntRange(
-    const char *Title,
+    char const *Title,
     int32_t *Value,
     int32_t Min,
     int32_t Max);
 
-extern bool Rr_UIInputInt2(const char *Title, int32_t *Values);
+extern bool Rr_UIInputInt2(char const *Title, int32_t *Values);
 
-extern bool Rr_UIInputInt3(const char *Title, int32_t *Values);
+extern bool Rr_UIInputInt3(char const *Title, int32_t *Values);
 
-extern bool Rr_UIInputInt4(const char *Title, int32_t *Values);
+extern bool Rr_UIInputInt4(char const *Title, int32_t *Values);
 
-extern bool Rr_UIInputUnsignedInt(const char *Title, uint32_t *Value);
+extern bool Rr_UIInputUnsignedInt(char const *Title, uint32_t *Value);
 
 extern bool Rr_UIInputUnsignedIntRange(
-    const char *Title,
+    char const *Title,
     uint32_t *Value,
     uint32_t Min,
     uint32_t Max);
 
-extern bool Rr_UIInputColor3(const char *Title, float *Channels);
+extern bool Rr_UIInputColor3(char const *Title, float *Channels);
 
-extern bool Rr_UIInputColor4(const char *Title, float *Channels);
+extern bool Rr_UIInputColor4(char const *Title, float *Channels);
 
 extern bool Rr_UICombobox(
-    const char *Title,
+    char const *Title,
     uint32_t OptionCount,
-    const char *const *Options,
+    char const *const *Options,
     uint32_t *SelectedIndex);
 
 extern bool Rr_UISliderInt(
-    const char *Title,
+    char const *Title,
     int32_t *Value,
     int32_t Min,
     int32_t Max);
 
 extern bool Rr_UISliderUnsignedInt(
-    const char *Title,
+    char const *Title,
     uint32_t *Value,
     uint32_t Min,
     uint32_t Max);
 
 extern bool Rr_UISliderFloat(
-    const char *Title,
+    char const *Title,
     float *Value,
     float Min,
     float Max);
@@ -411,9 +411,9 @@ extern void Rr_UIBeginHorizontal(void);
 
 extern void Rr_UIEndHorizontal(void);
 
-extern void Rr_UIBeginTabs(const char *Title);
+extern void Rr_UIBeginTabs(char const *Title);
 
-extern bool Rr_UITab(const char *Title);
+extern bool Rr_UITab(char const *Title);
 
 extern void Rr_UIEndTabs(void);
 

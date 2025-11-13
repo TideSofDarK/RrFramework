@@ -316,7 +316,7 @@ static void Rr_GLFWCharCallback(GLFWwindow *Window, uint32_t Codepoint)
 
     Rr_Event *Event = Rr_AddEvent();
     Event->Type = RR_EVENT_TYPE_TEXT_INPUT;
-    Event->Text.Text = Buffer;
+    Event->Text.CString = Buffer;
 }
 
 static void Rr_GLFWWindowCloseCallback(GLFWwindow *Window)

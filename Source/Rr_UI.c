@@ -56,12 +56,12 @@
 
 #define RR_UI_SCALAR_BUFFER_SIZE 32
 
-static const Rr_Vec4 RR_UI_VEC4_NEG = { -1.0f, -1.0f, -1.0f, -1.0f };
-static const Rr_Vec4 RR_UI_VEC4_ZERO = { 0.0f, 0.0f, 0.0f, 0.0f };
-static const Rr_Vec4 RR_UI_VEC4_ONE = { 1.0f, 1.0f, 1.0f, 1.0f };
+static Rr_Vec4 const RR_UI_VEC4_NEG = { -1.0f, -1.0f, -1.0f, -1.0f };
+static Rr_Vec4 const RR_UI_VEC4_ZERO = { 0.0f, 0.0f, 0.0f, 0.0f };
+static Rr_Vec4 const RR_UI_VEC4_ONE = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-static const Rr_Vec3 RR_UI_VEC3_ZERO = { 0.0f, 0.0f, 0.0f };
-static const Rr_Vec3 RR_UI_VEC3_ONE = { 1.0f, 1.0f, 1.0f };
+static Rr_Vec3 const RR_UI_VEC3_ZERO = { 0.0f, 0.0f, 0.0f };
+static Rr_Vec3 const RR_UI_VEC3_ONE = { 1.0f, 1.0f, 1.0f };
 
 #define RR_UI_ROUND(Value) (ceilf((Value) / 2.0f) * 2.0f)
 #define RR_UI_ROUND_V2(Value) \
@@ -87,7 +87,7 @@ typedef RR_ARRAY(Rr_UIClipRect) Rr_UIClipRectArray;
 typedef struct Rr_UIWindow Rr_UIWindow;
 struct Rr_UIWindow
 {
-    const char *Title;
+    char const *Title;
     Rr_UIWindowFlags Flags;
     Rr_Rect Rect;
     Rr_Rect ContentsRect;
@@ -268,8 +268,8 @@ struct Rr_UIContext
     size_t TextInputCursorEnd;
     size_t TextInputCursorCodepointMaxCol;
     uint64_t TextInputCursorBlinkTime;
-    uint32_t TextInputClickId;
-    RR_ARRAY(const char *) TextInputEvents;
+    uint32_t TextInputClickID;
+    RR_ARRAY(char const *) TextInputEvents;
     RR_ARRAY(char) TextInputBuffer;
     bool DeferTextInputBufferCopy;
 
@@ -367,7 +367,7 @@ static inline Rr_UIStorage *Rr_UIGetStorage(
     return Storage;
 }
 
-static const Rr_UIRange RR_UI_DEFAULT_RANGES[] = {
+static Rr_UIRange const RR_UI_DEFAULT_RANGES[] = {
     { .First = 0x0020, .Last = 0x007F }, /* Basic Latin */
     { .First = 0x00A0, .Last = 0x00FF }, /* Latin-1 Supplement */
     { .First = 0x0100, .Last = 0x017F }, /* Latin Extended-A */
@@ -444,8 +444,8 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     static int FontIndex = -1;
     FontIndex++;
 
-    const int32_t ATLAS_SIZE = 2048;
-    const Rr_IntVec2 ATLAS_EXTENT = { ATLAS_SIZE, ATLAS_SIZE };
+    int32_t const ATLAS_SIZE = 2048;
+    Rr_IntVec2 const ATLAS_EXTENT = { ATLAS_SIZE, ATLAS_SIZE };
 
     unsigned char *GrayscaleBuffer =
         RR_ALLOC_NO_ZERO(Scratch.Arena, (size_t)(ATLAS_SIZE * ATLAS_SIZE));
@@ -504,7 +504,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     size_t AllocationSize = GlyphsOffset;
     for (size_t Index = 0; Index < CodepointRangeCount; ++Index)
     {
-        const Rr_UIRange *CodepointRange = &CodepointRanges[Index];
+        Rr_UIRange const *CodepointRange = &CodepointRanges[Index];
         size_t GlyphCount =
             (size_t)(CodepointRange->Last - CodepointRange->First);
         AllocationSize += GlyphCount * sizeof(Rr_UIGlyph);
@@ -538,7 +538,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     size_t TotalCharCount = 0;
     for (size_t Index = 0; Index < CodepointRangeCount; ++Index)
     {
-        const Rr_UIRange *CodepointRange = &CodepointRanges[Index];
+        Rr_UIRange const *CodepointRange = &CodepointRanges[Index];
         Rr_UIFontRange *FontRange = &Font->Ranges[Index];
 
         int32_t NumChars = CodepointRange->Last - CodepointRange->First;
@@ -758,19 +758,19 @@ static inline Rr_UIHash Rr_UICurrentHash(void)
 
 static inline Rr_UIHash Rr_UIGetHash(
     size_t Size,
-    const void *Data,
+    void const *Data,
     Rr_UIHash Seed)
 {
     return XXH3_64bits_withSeed(Data, Size, ~Seed);
 }
 
 static inline Rr_UIHash Rr_UIGetTitleHash(
-    const char *CString,
+    char const *CString,
     size_t *OutLength)
 {
     Rr_UIHash Hash;
     size_t FullLength = strlen(CString);
-    const char *ExplicitID = strstr(CString, "###");
+    char const *ExplicitID = strstr(CString, "###");
     if (ExplicitID)
     {
         ExplicitID += 3;
@@ -805,7 +805,7 @@ static inline void Rr_UIPushIDHash(Rr_UIHash Hash)
     *RR_PUSH_INTO_ARRAY(&gUIContext->HashStack, gUIContext->FrameArena) = Hash;
 }
 
-void Rr_UIPushID(const char *IDString)
+void Rr_UIPushID(char const *IDString)
 {
     Rr_UIHash Hash =
         Rr_UIGetHash(strlen(IDString), IDString, Rr_UICurrentHash());
@@ -976,7 +976,7 @@ static inline Rr_UIPrimitive Rr_UIReserveQuads(size_t Count)
 {
     Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(Count * 4, Count * 6);
 
-    static const Rr_UIIndex QUAD_INDICES[] = { 0, 1, 2, 3, 0, 2 };
+    static Rr_UIIndex const QUAD_INDICES[] = { 0, 1, 2, 3, 0, 2 };
 
     Rr_UIIndex Base = Primitive.BaseVertex;
     for (Rr_UIIndex QuadIndex = 0; QuadIndex < Count; ++QuadIndex)
@@ -1186,7 +1186,7 @@ void Rr_UIDrawCircle(
     float Thickness,
     Rr_Vec4 const *Color)
 {
-    static const int SEGMENTS = 20;
+    static int const SEGMENTS = 20;
 
     Rr_UIPrimitive Primitive =
         Rr_UIReservePrimitive((size_t)SEGMENTS * 2, (size_t)SEGMENTS * 6);
@@ -1236,12 +1236,12 @@ void Rr_UIDrawCircle(
 
 void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 const *Color)
 {
-    static const size_t SEGMENTS = 20;
+    static size_t const SEGMENTS = 20;
 
     Rr_UIPrimitive Primitive =
         Rr_UIReservePrimitive((size_t)SEGMENTS, (size_t)(SEGMENTS - 2) * 3);
 
-    const float Step = 2.0f * RR_PI32 / (float)SEGMENTS;
+    float const Step = 2.0f * RR_PI32 / (float)SEGMENTS;
 
     for (size_t Index = 0; Index < SEGMENTS; ++Index)
     {
@@ -1275,7 +1275,7 @@ void Rr_UIDrawQuadVertices(Rr_UIVertex const *Vertices)
 static inline void Rr_UISolidQuad(
     Rr_UIVertex *Vertices,
     Rr_Rect *Rect,
-    const Rr_Vec4 *Color)
+    Rr_Vec4 const *Color)
 {
     memcpy(
         Vertices,
@@ -1415,7 +1415,7 @@ static inline void Rr_UIVerticalGradientQuad(
         sizeof(Rr_UIVertex) * 4);
 }
 
-static inline void Rr_UIDrawSolidQuad(Rr_Rect *Rect, const Rr_Vec4 *Color)
+static inline void Rr_UIDrawSolidQuad(Rr_Rect *Rect, Rr_Vec4 const *Color)
 {
     Rr_UIPrimitive Primitive = Rr_UIReserveQuad();
     Rr_UISolidQuad(Primitive.Vertices, Rect, Color);
@@ -1554,8 +1554,8 @@ static inline void Rr_UIDrawTexturedQuad(
 
 static inline void Rr_UIDrawCheckerQuad(Rr_Rect *Rect, float Size)
 {
-    static const Rr_Vec4 WHITE = { 1.0f, 1.0f, 1.0f, 1.0f };
-    static const Rr_Vec4 GRAY = { 0.15f, 0.15f, 0.15f, 1.0f };
+    static Rr_Vec4 const WHITE = { 1.0f, 1.0f, 1.0f, 1.0f };
+    static Rr_Vec4 const GRAY = { 0.15f, 0.15f, 0.15f, 1.0f };
 
     Rr_Rect CurrectRect = {
         .Offset = Rect->Offset,
@@ -1607,8 +1607,8 @@ static inline void Rr_UIDrawCheckmark(
     float Size,
     Rr_Vec4 *Color)
 {
-    const Rr_Vec2 NE = { -cosf(RR_PI32 * 0.25f), sinf(RR_PI32 * 0.25f) };
-    const Rr_Vec2 NW = { cosf(RR_PI32 * 0.25f), sinf(RR_PI32 * 0.25f) };
+    Rr_Vec2 const NE = { -cosf(RR_PI32 * 0.25f), sinf(RR_PI32 * 0.25f) };
+    Rr_Vec2 const NW = { cosf(RR_PI32 * 0.25f), sinf(RR_PI32 * 0.25f) };
 
     float ShortX = Size * gUIContext->Style.CheckmarkRatios.X;
     float LongX = Size - ShortX;
@@ -1752,7 +1752,7 @@ static inline void Rr_UIBevelFrame(
         .Color = *ColorDark,
     };
 
-    static const Rr_UIIndex BEVEL_FRAME_INDICES[] = {
+    static Rr_UIIndex const BEVEL_FRAME_INDICES[] = {
         0, 1, 2, 1, 3, 2, 0,  2,  4, 2,  5, 4,
         6, 7, 8, 7, 9, 8, 10, 11, 9, 11, 8, 9,
     };
@@ -1928,7 +1928,7 @@ static inline void Rr_UIBevelEx(
         .Color = Colors[3],
     };
 
-    static const Rr_UIIndex BEVEL_INDICES[] = {
+    static Rr_UIIndex const BEVEL_INDICES[] = {
         0, 1, 2, 1,  3,  2, 0,  2, 4, 2,  5,  4,  6,  7,  8,
         7, 9, 8, 10, 11, 9, 11, 8, 9, 12, 13, 14, 13, 15, 14,
     };
@@ -2002,7 +2002,7 @@ static inline void Rr_UIDrawInteractiveTextCursor(
 }
 
 static inline Rr_Vec2 Rr_UIDrawInputText(
-    const char *CString,
+    char const *CString,
     bool Active,
     Rr_Vec2 Position,
     size_t CursorBegin,
@@ -2130,7 +2130,7 @@ static inline Rr_Vec2 Rr_UIDrawText(
     bool CalculateOnly,
     Rr_Vec2 Position,
     size_t UTF8StringLength,
-    const char *UTF8String,
+    char const *UTF8String,
     float AvailableWidth,
     Rr_Vec4 *Color,
     Rr_UITextFlags Flags)
@@ -2318,7 +2318,7 @@ static inline Rr_Vec2 Rr_UIDrawText(
 
 static inline Rr_Vec2 Rr_UICalculateTextSize(
     size_t UTF8StringLength,
-    const char *UTF8String,
+    char const *UTF8String,
     float AvailableWidth,
     Rr_UITextFlags Flags)
 {
@@ -3312,9 +3312,9 @@ void Rr_UIPopFormatFloatDecimalPlaces(void)
     RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->FormatFloatDecimalPlacesStack));
 }
 
-static inline const char *Rr_UICurrentFloatFormatString(void)
+static inline char const *Rr_UICurrentFloatFormatString(void)
 {
-    static const char *DEFAULT_STRING = "%.2f";
+    static char const *DEFAULT_STRING = "%.2f";
 
     if (gUIContext->FormatFloatDecimalPlacesStack.Count > 0)
     {
@@ -3663,7 +3663,7 @@ static bool Rr_UIPopupWindowActive(void)
 
 static inline Rr_UIWindow *Rr_UICreateWindow(
     size_t TitleLength,
-    const char *Title,
+    char const *Title,
     uint64_t TitleHash,
     Rr_UIWindowFlags Flags)
 {
@@ -3682,7 +3682,7 @@ static inline Rr_UIWindow *Rr_UICreateWindow(
     return Window;
 }
 
-bool Rr_UIBeginWindow(const char *Title, bool *Open, Rr_UIWindowFlags Flags)
+bool Rr_UIBeginWindow(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
 {
     Rr_UIAssertNoWindow();
 
@@ -4091,7 +4091,7 @@ void Rr_UIEndWindow(void)
     }
 }
 
-bool Rr_UIBeginChildEx(const char *Title, Rr_UIWindowFlags Flags)
+bool Rr_UIBeginChildEx(char const *Title, Rr_UIWindowFlags Flags)
 {
     Rr_UIAssertWindow();
 
@@ -4133,7 +4133,7 @@ bool Rr_UIBeginChildEx(const char *Title, Rr_UIWindowFlags Flags)
     return Rr_UIBeginWindowEx(Window, TitleHash, NULL);
 }
 
-bool Rr_UIBeginChild(const char *Title)
+bool Rr_UIBeginChild(char const *Title)
 {
     return Rr_UIBeginChildEx(Title, 0);
 }
@@ -4176,7 +4176,7 @@ static inline float Rr_UIGetOffsetForTreeDepth(int32_t Depth)
 static inline float Rr_UISetupFlexibleWidget(
     Rr_UILayout *Layout,
     size_t TitleLength,
-    const char *Title,
+    char const *Title,
     float DesiredWidgetWidth)
 {
     float TitleWidth = Rr_UICalculateTextSize(TitleLength, Title, 0.0f, 0).X;
@@ -4207,7 +4207,7 @@ static inline float Rr_UISetupFlexibleWidget(
     return DesiredWidgetWidth;
 }
 
-void Rr_UIBeginTabs(const char *Title)
+void Rr_UIBeginTabs(char const *Title)
 {
     Rr_UIAssertWindow();
     assert(!Rr_UIIsHorizontal() && "Tabs can't be aligned horizontally!");
@@ -4243,7 +4243,7 @@ void Rr_UIBeginTabs(const char *Title)
     Rr_UIAdvance(Rr_V2(0.0f, Font->LineHeight));
 }
 
-bool Rr_UITab(const char *Title)
+bool Rr_UITab(char const *Title)
 {
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     assert(Layout->SelectedTabHash && "Did you forget to call Rr_BeginTabs()?");
@@ -4360,7 +4360,7 @@ void Rr_UISetNextTreeCollapsed(void)
     Layout->TreeExpandCollapseDepth = INT32_MIN + 1;
 }
 
-bool Rr_UIBeginTree(const char *Title)
+bool Rr_UIBeginTree(char const *Title)
 {
     Rr_UIAssertWindow();
     assert(
@@ -4611,7 +4611,7 @@ void Rr_UISeparator(void)
     Rr_UIAdvance(Rr_V2(AvailableWidth, gUIContext->SeparatorLineHeight));
 }
 
-void Rr_UITextEx(const char *Text, Rr_UITextFlags Flags)
+void Rr_UITextEx(char const *Text, Rr_UITextFlags Flags)
 {
     Rr_UIAssertWindow();
 
@@ -4630,7 +4630,7 @@ void Rr_UITextEx(const char *Text, Rr_UITextFlags Flags)
     Rr_UIAdvance(TextSize);
 }
 
-void Rr_UIText(const char *Text)
+void Rr_UIText(char const *Text)
 {
     Rr_UIAssertWindow();
 
@@ -4649,7 +4649,7 @@ void Rr_UIText(const char *Text)
     Rr_UIAdvance(TextSize);
 }
 
-void Rr_UITextF(const char *Format, ...)
+void Rr_UITextF(char const *Format, ...)
 {
     int BufferSize;
     va_list Args;
@@ -4671,7 +4671,7 @@ void Rr_UITextF(const char *Format, ...)
     Rr_DestroyScratch(Scratch);
 }
 
-void Rr_UILabelText(const char *Title, const char *Text)
+void Rr_UILabelText(char const *Title, char const *Text)
 {
     Rr_UIAssertWindow();
 
@@ -4714,7 +4714,7 @@ void Rr_UILabelText(const char *Title, const char *Text)
     Rr_UIAdvance(TotalExtent);
 }
 
-bool Rr_UIButton(const char *Text)
+bool Rr_UIButton(char const *Text)
 {
     Rr_UIAssertWindow();
 
@@ -4777,7 +4777,7 @@ bool Rr_UIButton(const char *Text)
 }
 
 bool Rr_UIRadioButton(
-    const char *Title,
+    char const *Title,
     int32_t *SelectedOption,
     int32_t ThisOption)
 {
@@ -4854,7 +4854,7 @@ bool Rr_UIRadioButton(
     return ClickResult.ClickCount;
 }
 
-bool Rr_UICheckbox(const char *Title, bool *Checked)
+bool Rr_UICheckbox(char const *Title, bool *Checked)
 {
     Rr_UIAssertWindow();
     assert(Checked != NULL);
@@ -4921,7 +4921,7 @@ bool Rr_UICheckbox(const char *Title, bool *Checked)
 
 static inline bool Rr_UIConsumeTextInput(
     size_t UTF8StringLength,
-    const char *UTF8String,
+    char const *UTF8String,
     size_t *BufferLength,
     size_t BufferCapacity,
     char *Buffer,
@@ -5015,7 +5015,7 @@ static inline size_t Rr_UINextLine(char *Buffer, size_t Cursor)
     assert(false);
 }
 
-static inline size_t Rr_UILineStart(const char *Buffer, size_t Cursor)
+static inline size_t Rr_UILineStart(char const *Buffer, size_t Cursor)
 {
     if (Buffer[Cursor] == '\n' && Cursor > 0)
     {
@@ -5029,7 +5029,7 @@ static inline size_t Rr_UILineStart(const char *Buffer, size_t Cursor)
     return LineStart;
 }
 
-static inline size_t Rr_UILineEnd(const char *Buffer, size_t Cursor)
+static inline size_t Rr_UILineEnd(char const *Buffer, size_t Cursor)
 {
     return Rr_NextUTF8LFOffset(Buffer, Cursor);
 }
@@ -5166,7 +5166,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         }
         if (Event->Scancode == RR_SCANCODE_V && Event->Keymod == DEFAULT_MOD)
         {
-            const char *ClipboardBuffer = Rr_GetClipboardText();
+            char const *ClipboardBuffer = Rr_GetClipboardText();
             if (ClipboardBuffer != NULL)
             {
                 size_t ClipboardLength = strlen(ClipboardBuffer);
@@ -5495,7 +5495,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         /* CursorMin = RR_MIN(NewCursorBegin, NewCursorEnd); */
         /* CursorMax = RR_MAX(NewCursorBegin, NewCursorEnd); */
 
-        const char *CString = gUIContext->TextInputEvents.Data[Index];
+        char const *CString = gUIContext->TextInputEvents.Data[Index];
         size_t Length = strlen(CString);
 
         if (Rr_UIConsumeTextInput(
@@ -5526,7 +5526,7 @@ static inline void Rr_UIApplyInputFieldPlaceholder(
     Rr_Vec2 Offset,
     float FixedWidth,
     bool Focused,
-    const char *PlaceholderString,
+    char const *PlaceholderString,
     bool AutoCenter,
     Rr_Vec2 *BufferPosition,
     Rr_Vec2 *BufferSize)
@@ -5580,7 +5580,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
     Rr_Vec2 Offset,
     size_t BufferCapacity,
     char *Buffer,
-    const char *PlaceholderString,
+    char const *PlaceholderString,
     Rr_UIInputFieldFilterFunc FilterFunc,
     Rr_UIInputFieldFlags Flags,
     float FixedWidth)
@@ -5696,7 +5696,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
 
                 gUIContext->TextInputCursorBegin = 0;
                 gUIContext->TextInputCursorEnd = BufferLength;
-                gUIContext->TextInputClickId =
+                gUIContext->TextInputClickID =
                     gUIContext->LeftMouseButton.ClickID;
             }
 
@@ -5743,7 +5743,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         }
 
         size_t NewCursorEnd = gUIContext->TextInputCursorEnd;
-        const char *BufferString =
+        char const *BufferString =
             UsePersistentBuffer && (Focused || WasFocused)
                 ? gUIContext->TextInputBuffer.Data
                 : Buffer;
@@ -5801,7 +5801,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
 
                 gUIContext->TextInputCursorBegin = 0;
                 gUIContext->TextInputCursorEnd = BufferLength;
-                gUIContext->TextInputClickId =
+                gUIContext->TextInputClickID =
                     gUIContext->LeftMouseButton.ClickID;
             }
             else
@@ -5853,7 +5853,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         else if (Focused && ClickResult.Moved)
         {
             if (!AutoSelect || gUIContext->LeftMouseButton.ClickID >
-                                   gUIContext->TextInputClickId)
+                                   gUIContext->TextInputClickID)
             {
                 gUIContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
                 gUIContext->TextInputCursorEnd = NewCursorEnd;
@@ -5924,7 +5924,7 @@ typedef enum
     RR_UI_SCALAR_TYPE_DOUBLE,
 } Rr_UIScalarType;
 
-static inline bool Rr_UIHexFilter(size_t Length, const char *UTF8String)
+static inline bool Rr_UIHexFilter(size_t Length, char const *UTF8String)
 {
     for (size_t Index = 0; Index < Length; ++Index)
     {
@@ -5940,7 +5940,7 @@ static inline bool Rr_UIHexFilter(size_t Length, const char *UTF8String)
     return true;
 }
 
-static inline bool Rr_UIIntegerFilter(size_t Length, const char *UTF8String)
+static inline bool Rr_UIIntegerFilter(size_t Length, char const *UTF8String)
 {
     for (size_t Index = 0; Index < Length; ++Index)
     {
@@ -5957,7 +5957,7 @@ static inline bool Rr_UIIntegerFilter(size_t Length, const char *UTF8String)
 
 static inline bool Rr_UIUnsignedIntegerFilter(
     size_t Length,
-    const char *UTF8String)
+    char const *UTF8String)
 {
     for (size_t Index = 0; Index < Length; ++Index)
     {
@@ -5971,7 +5971,7 @@ static inline bool Rr_UIUnsignedIntegerFilter(
     return true;
 }
 
-static inline bool Rr_UIFloatFilter(size_t Length, const char *UTF8String)
+static inline bool Rr_UIFloatFilter(size_t Length, char const *UTF8String)
 {
     for (size_t Index = 0; Index < Length; ++Index)
     {
@@ -6376,7 +6376,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
                            (float)Cols;
     }
 
-    const char *COMPONENT_TITLES[] = {
+    char const *COMPONENT_TITLES[] = {
         "X0", "Y0", "Z0", "W0", //
         "X1", "Y1", "Z1", "W1", //
         "X2", "Y2", "Z2", "W2", //
@@ -6490,7 +6490,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
 }
 
 static inline bool Rr_UIInputScalarMulti(
-    const char *Title,
+    char const *Title,
     void *Data,
     void const *DataMin,
     void const *DataMax,
@@ -6552,10 +6552,10 @@ static inline bool Rr_UIInputScalarMulti(
 }
 
 bool Rr_UIInputField(
-    const char *Title,
+    char const *Title,
     size_t BufferCapacity,
     char *Buffer,
-    const char *Placeholder,
+    char const *Placeholder,
     Rr_UIInputFieldFilterFunc FilterFunc,
     Rr_UIInputFieldFlags Flags)
 {
@@ -6619,7 +6619,7 @@ bool Rr_UIInputField(
     return Result.Edited;
 }
 
-bool Rr_UIInputText(const char *Title, size_t BufferCapacity, char *Buffer)
+bool Rr_UIInputText(char const *Title, size_t BufferCapacity, char *Buffer)
 {
     return Rr_UIInputField(
         Title,
@@ -6630,7 +6630,7 @@ bool Rr_UIInputText(const char *Title, size_t BufferCapacity, char *Buffer)
         RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT);
 }
 
-bool Rr_UIInputFloat(const char *Title, float *Value)
+bool Rr_UIInputFloat(char const *Title, float *Value)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6642,7 +6642,7 @@ bool Rr_UIInputFloat(const char *Title, float *Value)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloatRange(const char *Title, float *Value, float Min, float Max)
+bool Rr_UIInputFloatRange(char const *Title, float *Value, float Min, float Max)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6654,7 +6654,7 @@ bool Rr_UIInputFloatRange(const char *Title, float *Value, float Min, float Max)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloatZO(const char *Title, float *Value)
+bool Rr_UIInputFloatZO(char const *Title, float *Value)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6666,7 +6666,7 @@ bool Rr_UIInputFloatZO(const char *Title, float *Value)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloatNO(const char *Title, float *Value)
+bool Rr_UIInputFloatNO(char const *Title, float *Value)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6678,7 +6678,7 @@ bool Rr_UIInputFloatNO(const char *Title, float *Value)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloat2(const char *Title, float *Values)
+bool Rr_UIInputFloat2(char const *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6691,7 +6691,7 @@ bool Rr_UIInputFloat2(const char *Title, float *Values)
 }
 
 bool Rr_UIInputFloat2Range(
-    const char *Title,
+    char const *Title,
     float *Values,
     float const *ValuesMin,
     float const *ValuesMax)
@@ -6706,7 +6706,7 @@ bool Rr_UIInputFloat2Range(
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloat2ZO(const char *Title, float *Values)
+bool Rr_UIInputFloat2ZO(char const *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6718,7 +6718,7 @@ bool Rr_UIInputFloat2ZO(const char *Title, float *Values)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloat2NO(const char *Title, float *Values)
+bool Rr_UIInputFloat2NO(char const *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6730,7 +6730,7 @@ bool Rr_UIInputFloat2NO(const char *Title, float *Values)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloat3(const char *Title, float *Values)
+bool Rr_UIInputFloat3(char const *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6743,7 +6743,7 @@ bool Rr_UIInputFloat3(const char *Title, float *Values)
 }
 
 bool Rr_UIInputFloat3Range(
-    const char *Title,
+    char const *Title,
     float *Values,
     float const *MinValues,
     float const *MaxValues)
@@ -6758,7 +6758,7 @@ bool Rr_UIInputFloat3Range(
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloat3ZO(const char *Title, float *Values)
+bool Rr_UIInputFloat3ZO(char const *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6770,7 +6770,7 @@ bool Rr_UIInputFloat3ZO(const char *Title, float *Values)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloat3NO(const char *Title, float *Values)
+bool Rr_UIInputFloat3NO(char const *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6782,7 +6782,7 @@ bool Rr_UIInputFloat3NO(const char *Title, float *Values)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloat4(const char *Title, float *Values)
+bool Rr_UIInputFloat4(char const *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6795,7 +6795,7 @@ bool Rr_UIInputFloat4(const char *Title, float *Values)
 }
 
 bool Rr_UIInputFloat4Range(
-    const char *Title,
+    char const *Title,
     float *Values,
     float const *MinValues,
     float const *MaxValues)
@@ -6810,7 +6810,7 @@ bool Rr_UIInputFloat4Range(
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloat4ZO(const char *Title, float *Values)
+bool Rr_UIInputFloat4ZO(char const *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6822,7 +6822,7 @@ bool Rr_UIInputFloat4ZO(const char *Title, float *Values)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloat4NO(const char *Title, float *Values)
+bool Rr_UIInputFloat4NO(char const *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6834,7 +6834,7 @@ bool Rr_UIInputFloat4NO(const char *Title, float *Values)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloat2x2(const char *Title, float *Values)
+bool Rr_UIInputFloat2x2(char const *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6846,7 +6846,7 @@ bool Rr_UIInputFloat2x2(const char *Title, float *Values)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloat3x3(const char *Title, float *Values)
+bool Rr_UIInputFloat3x3(char const *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6858,7 +6858,7 @@ bool Rr_UIInputFloat3x3(const char *Title, float *Values)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputFloat4x4(const char *Title, float *Values)
+bool Rr_UIInputFloat4x4(char const *Title, float *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6870,7 +6870,7 @@ bool Rr_UIInputFloat4x4(const char *Title, float *Values)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
-bool Rr_UIInputInt(const char *Title, int32_t *Value)
+bool Rr_UIInputInt(char const *Title, int32_t *Value)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6883,7 +6883,7 @@ bool Rr_UIInputInt(const char *Title, int32_t *Value)
 }
 
 bool Rr_UIInputIntRange(
-    const char *Title,
+    char const *Title,
     int32_t *Value,
     int32_t Min,
     int32_t Max)
@@ -6898,7 +6898,7 @@ bool Rr_UIInputIntRange(
         RR_UI_SCALAR_TYPE_INT);
 }
 
-bool Rr_UIInputInt2(const char *Title, int32_t *Values)
+bool Rr_UIInputInt2(char const *Title, int32_t *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6910,7 +6910,7 @@ bool Rr_UIInputInt2(const char *Title, int32_t *Values)
         RR_UI_SCALAR_TYPE_INT);
 }
 
-bool Rr_UIInputInt3(const char *Title, int32_t *Values)
+bool Rr_UIInputInt3(char const *Title, int32_t *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6922,7 +6922,7 @@ bool Rr_UIInputInt3(const char *Title, int32_t *Values)
         RR_UI_SCALAR_TYPE_INT);
 }
 
-bool Rr_UIInputInt4(const char *Title, int32_t *Values)
+bool Rr_UIInputInt4(char const *Title, int32_t *Values)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6934,7 +6934,7 @@ bool Rr_UIInputInt4(const char *Title, int32_t *Values)
         RR_UI_SCALAR_TYPE_INT);
 }
 
-bool Rr_UIInputUnsignedInt(const char *Title, uint32_t *Value)
+bool Rr_UIInputUnsignedInt(char const *Title, uint32_t *Value)
 {
     return Rr_UIInputScalarMulti(
         Title,
@@ -6947,7 +6947,7 @@ bool Rr_UIInputUnsignedInt(const char *Title, uint32_t *Value)
 }
 
 bool Rr_UIInputUnsignedIntRange(
-    const char *Title,
+    char const *Title,
     uint32_t *Value,
     uint32_t Min,
     uint32_t Max)
@@ -7326,7 +7326,7 @@ static inline void Rr_UIColorPickerPopup(
 }
 
 static inline bool Rr_UIInputColorEx(
-    const char *Title,
+    char const *Title,
     int ChannelCount,
     float *Channels)
 {
@@ -7443,20 +7443,20 @@ static inline bool Rr_UIInputColorEx(
     return ColorChanged;
 }
 
-bool Rr_UIInputColor3(const char *Title, float *Channels)
+bool Rr_UIInputColor3(char const *Title, float *Channels)
 {
     return Rr_UIInputColorEx(Title, 3, Channels);
 }
 
-bool Rr_UIInputColor4(const char *Title, float *Channels)
+bool Rr_UIInputColor4(char const *Title, float *Channels)
 {
     return Rr_UIInputColorEx(Title, 4, Channels);
 }
 
 bool Rr_UICombobox(
-    const char *Title,
+    char const *Title,
     uint32_t OptionCount,
-    const char *const *Options,
+    char const *const *Options,
     uint32_t *SelectedIndex)
 {
     Rr_UIAssertWindow();
@@ -7521,7 +7521,7 @@ bool Rr_UICombobox(
 
     if (ShouldShowPopupWindow)
     {
-        const Rr_UIWindowFlags POPUP_WINDOW_FLAGS =
+        Rr_UIWindowFlags const POPUP_WINDOW_FLAGS =
             RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT |
             RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
             RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT |
@@ -7656,9 +7656,9 @@ bool Rr_UICombobox(
 }
 
 static inline float Rr_UISlider(
-    const char *Title,
+    char const *Title,
     float Normalized,
-    const char *ValueCString,
+    char const *ValueCString,
     size_t ValueCStringLength,
     float HandleSizeRatio)
 {
@@ -7792,7 +7792,7 @@ static inline float Rr_UISlider(
     return Normalized;
 }
 
-bool Rr_UISliderInt(const char *Title, int32_t *Value, int32_t Min, int32_t Max)
+bool Rr_UISliderInt(char const *Title, int32_t *Value, int32_t Min, int32_t Max)
 {
     assert(Value != NULL);
     assert(Max > Min);
@@ -7818,7 +7818,7 @@ bool Rr_UISliderInt(const char *Title, int32_t *Value, int32_t Min, int32_t Max)
 }
 
 bool Rr_UISliderUnsignedInt(
-    const char *Title,
+    char const *Title,
     uint32_t *Value,
     uint32_t Min,
     uint32_t Max)
@@ -7846,7 +7846,7 @@ bool Rr_UISliderUnsignedInt(
     return In != Out;
 }
 
-bool Rr_UISliderFloat(const char *Title, float *Value, float Min, float Max)
+bool Rr_UISliderFloat(char const *Title, float *Value, float Min, float Max)
 {
     assert(Value != NULL);
     assert(Max > Min);
@@ -8075,11 +8075,11 @@ void Rr_InitUI(void)
         .VertexInputBindings = &VertexInputBinding,
     };
 
-    const uint32_t DONT_CONVERT_TO_SRGB = 0;
+    uint32_t const DONT_CONVERT_TO_SRGB = 0;
     Specializations[0].Data = &DONT_CONVERT_TO_SRGB;
     gUIContext->LinearPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
-    const uint32_t CONVERT_TO_SRGB = 1;
+    uint32_t const CONVERT_TO_SRGB = 1;
     Specializations[0].Data = &CONVERT_TO_SRGB;
     gUIContext->SRGBPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
@@ -8149,9 +8149,9 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
         break;
         case RR_EVENT_TYPE_TEXT_INPUT:
         {
-            size_t Length = strlen(Event->Text.Text);
+            size_t Length = strlen(Event->Text.CString);
             char *Text = RR_ALLOC_NO_ZERO(gUIContext->FrameArena, Length + 1);
-            memcpy(Text, Event->Text.Text, Length + 1);
+            memcpy(Text, Event->Text.CString, Length + 1);
             *RR_PUSH_INTO_ARRAY(
                 &gUIContext->TextInputEvents,
                 gUIContext->FrameArena) = Text;
@@ -8279,10 +8279,10 @@ void Rr_BeginUI(void)
     Rr_UIRecalculateStyle();
 }
 
-static inline int Rr_UIWindowSort(const void *A, const void *B)
+static inline int Rr_UIWindowSort(void const *A, void const *B)
 {
-    const Rr_UILayout *LayoutA = *(Rr_UILayout **)A;
-    const Rr_UILayout *LayoutB = *(Rr_UILayout **)B;
+    Rr_UILayout const *LayoutA = *(Rr_UILayout **)A;
+    Rr_UILayout const *LayoutB = *(Rr_UILayout **)B;
 
     return LayoutA->Window->Z - LayoutB->Window->Z;
 }
@@ -8473,7 +8473,7 @@ float Rr_UICurrentLineHeight(void)
     return Rr_UICurrentFont()->LineHeight;
 }
 
-static inline void Rr_UIDebugOverlayArena(Rr_Arena *Arena, const char *Comment)
+static inline void Rr_UIDebugOverlayArena(Rr_Arena *Arena, char const *Comment)
 {
     Rr_UITextF(
         "%s: commited %d bytes, position %p",
@@ -8511,9 +8511,9 @@ void Rr_UIDebugOverlay(void)
             uint32_t PresentModeCount;
             Rr_PresentMode *PresentModes =
                 Rr_GetAvailablePresentModes(&PresentModeCount);
-            const char **PresentModeStrings = RR_ALLOC(
+            char const **PresentModeStrings = RR_ALLOC(
                 Scratch.Arena,
-                PresentModeCount * sizeof(const char *));
+                PresentModeCount * sizeof(char const *));
             uint32_t CurrentPresentModeIndex;
             for (uint32_t Index = 0; Index < PresentModeCount; ++Index)
             {

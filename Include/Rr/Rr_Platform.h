@@ -259,7 +259,7 @@ struct Rr_MouseWheelEvent
 typedef struct Rr_TextInputEvent Rr_TextInputEvent;
 struct Rr_TextInputEvent
 {
-    const char *Text;
+    const char *CString;
 };
 
 typedef struct Rr_DropFileEvent Rr_DropFileEvent;
