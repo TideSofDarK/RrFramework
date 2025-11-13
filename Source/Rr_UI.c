@@ -996,12 +996,6 @@ static inline Rr_UIPrimitive Rr_UIReserveQuad(void)
     return Rr_UIReserveQuads(1);
 }
 
-static inline Rr_Vec2 Rr_UICalculateEdgeNormal(Rr_Vec2 A, Rr_Vec2 B)
-{
-    Rr_Vec2 C = Rr_NormV2(Rr_SubV2(B, A));
-    return Rr_V2(C.Y, -C.X);
-}
-
 static inline void Rr_UIFeatherConvexPrimitive(
     Rr_UIPrimitive *SourcePrimitive,
     int VertexCount,
@@ -1022,12 +1016,18 @@ static inline void Rr_UIFeatherConvexPrimitive(
         Rr_UIVertex Current = Vertices[Index];
         Rr_UIVertex Next = Vertices[NextIndex];
 
-        Rr_Vec2 N0 =
-            Rr_UICalculateEdgeNormal(Previous.Position, Current.Position);
-        Rr_Vec2 N1 = Rr_UICalculateEdgeNormal(Current.Position, Next.Position);
-        Rr_Vec2 Norm = Rr_NormV2(Rr_AddV2(N0, N1));
-        Rr_Vec2 N = Rr_MulV2F(Norm, Amount);
-        Rr_Vec2 Position = Rr_AddV2(Current.Position, N);
+        Rr_Vec2 Normal0 = Rr_SubV2(Previous.Position, Current.Position);
+        Rr_Vec2 Normal1 = Rr_SubV2(Next.Position, Current.Position);
+        float Normal0Length = Rr_LenV2(Normal0);
+        float Normal1Length = Rr_LenV2(Normal1);
+        Rr_Vec2 Offset = Rr_MulV2F(
+            Rr_DivV2F(
+                Rr_AddV2(
+                    Rr_MulV2F(Normal0, Normal1Length),
+                    Rr_MulV2F(Normal1, Normal0Length)),
+                (Normal0.X * Normal1.Y - Normal0.Y * Normal1.X)),
+            Amount);
+        Rr_Vec2 Position = Rr_AddV2(Current.Position, Offset);
 
         Primitive.Vertices[Index] = (Rr_UIVertex){
             .Position = Position,
@@ -1064,7 +1064,7 @@ void Rr_UIDrawTriangleVertices(Rr_UIVertex const *Vertices)
     Primitive.Indices[1] = Primitive.BaseVertex + 1;
     Primitive.Indices[2] = Primitive.BaseVertex + 2;
 
-    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 2.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 1.5f);
 }
 
 void Rr_UIDrawTriangleFilled(Rr_Vec2 const *Positions, Rr_Vec4 const *Color)
@@ -1088,7 +1088,7 @@ void Rr_UIDrawTriangleFilled(Rr_Vec2 const *Positions, Rr_Vec4 const *Color)
     Primitive.Indices[1] = Primitive.BaseVertex + 1;
     Primitive.Indices[2] = Primitive.BaseVertex + 2;
 
-    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 2.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 1.5f);
 }
 
 void Rr_UIDrawFitTriangleFilled(
@@ -1129,7 +1129,7 @@ void Rr_UIDrawFitTriangleFilled(
     Primitive.Indices[1] = Primitive.BaseVertex + 1;
     Primitive.Indices[2] = Primitive.BaseVertex + 2;
 
-    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 2.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 1.5f);
 }
 
 void Rr_UIDrawEquilateralTriangleFilled(
@@ -1177,7 +1177,7 @@ void Rr_UIDrawEquilateralTriangleFilled(
     Primitive.Indices[1] = Primitive.BaseVertex + 1;
     Primitive.Indices[2] = Primitive.BaseVertex + 2;
 
-    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 2.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, 1.5f);
 }
 
 void Rr_UIDrawCircle(
@@ -1227,11 +1227,11 @@ void Rr_UIDrawCircle(
             (Rr_UIIndex)(Primitive.BaseVertex + InnerIndex);
     }
 
-    Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, 1.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, 1.5f);
     /* NOTE: A hack to feather inner part of the circle. */
     Primitive.BaseVertex += (Rr_UIIndex)SEGMENTS;
     Primitive.Vertices += SEGMENTS;
-    Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, -1.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, SEGMENTS, -1.5f);
 }
 
 void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 const *Color)
@@ -1263,7 +1263,7 @@ void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 const *Color)
             (Rr_UIIndex)(Primitive.BaseVertex + Index + 2);
     }
 
-    Rr_UIFeatherConvexPrimitive(&Primitive, (int)SEGMENTS, 1.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, (int)SEGMENTS, 1.5f);
 }
 
 void Rr_UIDrawQuadVertices(Rr_UIVertex const *Vertices)
@@ -1428,7 +1428,7 @@ static inline void Rr_UIDrawRotatedQuad(
 {
     Rr_UIPrimitive Primitive = Rr_UIReserveQuad();
     Rr_UIRotatedQuad(Primitive.Vertices, Rect, Angle, Color);
-    Rr_UIFeatherConvexPrimitive(&Primitive, 4, 2.0f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, 4, 1.5f);
 }
 
 static inline void Rr_UIDrawHorizontalGradientQuad(
@@ -1646,7 +1646,7 @@ static inline void Rr_UIDrawCheckmark(
         Indices[4] = Primitive.BaseVertex + 0;
         Indices[5] = Primitive.BaseVertex + 2;
 
-        Rr_UIFeatherConvexPrimitive(&Primitive, 4, 2.0f);
+        Rr_UIFeatherConvexPrimitive(&Primitive, 4, 1.5f);
     }
 
     {
@@ -1673,7 +1673,7 @@ static inline void Rr_UIDrawCheckmark(
         Indices[4] = Primitive.BaseVertex + 0;
         Indices[5] = Primitive.BaseVertex + 2;
 
-        Rr_UIFeatherConvexPrimitive(&Primitive, 4, 2.0f);
+        Rr_UIFeatherConvexPrimitive(&Primitive, 4, 1.5f);
     }
 }
 
