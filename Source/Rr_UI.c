@@ -1628,7 +1628,7 @@ static inline void Rr_UIDrawCheckmark(
         Rr_UIIndex *Indices = Primitive.Indices;
 
         Vertices[1].Position = MiddleTop;
-        Vertices[2].Position = MiddleBottom;
+        Vertices[2].Position = Rr_AddV2(MiddleTop, Rr_MulV2F(NE, Thickness));
         Vertices[3].Position = Rr_AddV2(Offset, Rr_V2(0.0f, Size - ShortX));
         Vertices[0].Position =
             Rr_AddV2(Vertices[3].Position, Rr_MulV2F(NE, -Thickness));
@@ -1654,7 +1654,7 @@ static inline void Rr_UIDrawCheckmark(
         Rr_UIVertex *Vertices = Primitive.Vertices;
         Rr_UIIndex *Indices = Primitive.Indices;
 
-        Vertices[0].Position = MiddleTop;
+        Vertices[0].Position = Rr_AddV2(MiddleTop, Rr_MulV2F(NE, Thickness));
         Vertices[2].Position = Rr_AddV2(Offset, Rr_V2(Size, Size - LongX));
         Vertices[1].Position =
             Rr_AddV2(Vertices[2].Position, Rr_MulV2F(NW, -Thickness));
