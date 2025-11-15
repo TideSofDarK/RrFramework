@@ -2760,7 +2760,7 @@ static inline Rr_Vec3 Rr_RotateV3AxisAngle_RH(
  * Rect Functions
  */
 
-static inline bool Rr_RectContains(Rr_Rect *Rect, Rr_Vec2 Point)
+static inline bool Rr_RectContains(Rr_Rect const *Rect, Rr_Vec2 Point)
 {
     return Point.X >= Rect->Offset.X &&
            Point.X <= Rect->Offset.X + Rect->Extent.X &&

@@ -107,6 +107,7 @@ struct Rr_UIColors
     Rr_Vec4 TitleForeground;
     Rr_Vec4 TitleBackground;
     Rr_Vec4 TitleBackground2;
+    Rr_Vec4 TitleBackgroundInactive;
     Rr_Vec4 TitleCloseButtonBackground;
     Rr_Vec4 TitleCollapseButtonBackground;
 
@@ -166,7 +167,6 @@ typedef enum
     RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT = (1 << 0),
     /* Cannot be collapsed. */
     RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT = (1 << 1),
-    RR_UI_WINDOW_FLAGS_NO_MINIMIZE_BIT = (1 << 2),
     RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT = (1 << 3),
     RR_UI_WINDOW_FLAGS_NO_MOVE_BIT = (1 << 4),
     RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT = (1 << 5),
@@ -270,6 +270,10 @@ extern bool Rr_UIBeginChildEx(char const *Title, Rr_UIWindowFlags Flags);
 extern bool Rr_UIBeginChild(char const *Title);
 
 extern void Rr_UIEndChild(void);
+
+extern bool Rr_UIBeginTabs(char const *Title);
+
+extern void Rr_UIEndTabs(void);
 
 extern void Rr_UISetNextTreeExpanded(void);
 
@@ -410,12 +414,6 @@ extern bool Rr_UISliderFloat(
 extern void Rr_UIBeginHorizontal(void);
 
 extern void Rr_UIEndHorizontal(void);
-
-extern void Rr_UIBeginTabs(char const *Title);
-
-extern bool Rr_UITab(char const *Title);
-
-extern void Rr_UIEndTabs(void);
 
 extern bool Rr_UIWantMouseCapture(void);
 

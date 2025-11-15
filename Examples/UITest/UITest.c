@@ -128,6 +128,7 @@ static void PrintTheme(void)
     PrintColor("TitleForeground", &Colors->TitleForeground);
     PrintColor("TitleBackground", &Colors->TitleBackground);
     PrintColor("TitleBackground2", &Colors->TitleBackground2);
+    PrintColor("TitleBackgroundInactive", &Colors->TitleBackgroundInactive);
     PrintColor(
         "TitleCloseButtonBackground",
         &Colors->TitleCloseButtonBackground);
@@ -227,6 +228,9 @@ static void ThemeEditorWindow()
         Rr_UIInputColor4(
             "Title Background 2",
             Colors->TitleBackground2.Elements);
+        Rr_UIInputColor4(
+            "Title Background Inactive",
+            Colors->TitleBackgroundInactive.Elements);
         Rr_UIInputColor4(
             "Title Close Button",
             Colors->TitleCloseButtonBackground.Elements);
@@ -511,6 +515,7 @@ static void Iterate(void)
     static bool NoResize = false;
     static bool NoScrollbar = false;
     static bool NoTitleBar = false;
+    static bool NoBorders = false;
     static bool AutoResize = true;
 
     Rr_UIWindowFlags Flags = 0;
@@ -529,6 +534,10 @@ static void Iterate(void)
     if (NoTitleBar)
     {
         Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
+    }
+    if (NoBorders)
+    {
+        Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
     }
     if (AutoResize)
     {
@@ -570,31 +579,6 @@ static void Iterate(void)
         }
 
         Rr_UISetNextWindowCreateCollapsed(false);
-        if (Rr_UIBeginChild("Child Windows"))
-        {
-            Rr_UIText(
-                "This is an example of a child window.\nUse child windows to "
-                "group your widgets.");
-
-            if (Rr_UIBeginChildEx("Dockable Child Window", 0))
-            {
-                Rr_UIText("This window can be docked/undocked (WIP).");
-
-                Rr_UIEndChild();
-            }
-
-            if (Rr_UIBeginChildEx(
-                    "Custom Child Window",
-                    RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT))
-            {
-                Rr_UIText("This child window has no title bar.");
-
-                Rr_UIEndChild();
-            }
-
-            Rr_UIEndChild();
-        }
-
         if (Rr_UIBeginChild("Fonts"))
         {
             Rr_UIText(
@@ -636,31 +620,67 @@ static void Iterate(void)
             Rr_UIEndChild();
         }
 
+        if (Rr_UIBeginChild("Child Windows"))
+        {
+            Rr_UIText(
+                "This is an example of a child window.\nUse child windows to "
+                "group your widgets.");
+
+            if (Rr_UIBeginChildEx("Dockable Child Window", 0))
+            {
+                Rr_UIText("This window can be docked/undocked (WIP).");
+
+                Rr_UIEndChild();
+            }
+
+            if (Rr_UIBeginChildEx(
+                    "Custom Child Window",
+                    RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT))
+            {
+                Rr_UIText("This child window has no title bar.");
+
+                Rr_UIEndChild();
+            }
+
+            Rr_UIEndChild();
+        }
+
         if (Rr_UIBeginChild("Tabs"))
         {
-            Rr_UIBeginTabs("DebugOverlayTabs");
-            if (Rr_UITab("Text"))
+            if (Rr_UIBeginTabs("Example Tabs"))
             {
-                Rr_UIText("Some text...");
-                Rr_UIText("Some text...");
-                Rr_UIText("Some text...");
+                if (Rr_UIBeginChild("Text"))
+                {
+                    Rr_UIText("Some text...");
+                    Rr_UIText("Some text...");
+                    Rr_UIText("Some text...");
+
+                    Rr_UIEndChild();
+                }
+
+                if (Rr_UIBeginChild("Buttons"))
+                {
+                    Rr_UIButton("Button A");
+                    Rr_UIButton("Button B");
+                    Rr_UIButton("Button C");
+
+                    Rr_UIEndChild();
+                }
+
+                if (Rr_UIBeginChild("Input Fields"))
+                {
+                    static Rr_Vec2 TestVec2 = { -0.5f, 0.5f };
+                    Rr_UIInputFloat2NO("Float2 Input", TestVec2.Elements);
+                    static Rr_Vec3 TestVec3 = { -0.5f, 0.5f };
+                    Rr_UIInputFloat3NO("Float3 Input", TestVec3.Elements);
+                    static Rr_Vec4 TestVec4 = { -0.5f, 0.5f };
+                    Rr_UIInputFloat4NO("Float4 Input", TestVec4.Elements);
+
+                    Rr_UIEndChild();
+                }
+
+                Rr_UIEndTabs();
             }
-            if (Rr_UITab("Buttons"))
-            {
-                Rr_UIButton("Button A");
-                Rr_UIButton("Button B");
-                Rr_UIButton("Button C");
-            }
-            if (Rr_UITab("Input Fields"))
-            {
-                static Rr_Vec2 TestVec2 = { -0.5f, 0.5f };
-                Rr_UIInputFloat2NO("Float2 Input", TestVec2.Elements);
-                static Rr_Vec3 TestVec3 = { -0.5f, 0.5f };
-                Rr_UIInputFloat3NO("Float3 Input", TestVec3.Elements);
-                static Rr_Vec4 TestVec4 = { -0.5f, 0.5f };
-                Rr_UIInputFloat4NO("Float4 Input", TestVec4.Elements);
-            }
-            Rr_UIEndTabs();
 
             Rr_UIEndChild();
         }
@@ -879,6 +899,7 @@ static void Iterate(void)
             Rr_UICheckbox("Auto Resize", &AutoResize);
             Rr_UICheckbox("No Scrollbar", &NoScrollbar);
             Rr_UICheckbox("No Title Bar", &NoTitleBar);
+            Rr_UICheckbox("No Borders", &NoBorders);
             Rr_UIEndChild();
         }
 
