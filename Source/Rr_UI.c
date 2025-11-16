@@ -1011,7 +1011,7 @@ static inline Rr_UIPrimitive Rr_UIReserveQuad(void)
 
 static inline void Rr_UIFeatherConvexPrimitive(
     Rr_UIPrimitive *SourcePrimitive,
-    int VertexCount,
+    int32_t VertexCount,
     float Amount)
 {
 #ifndef RR_UI_NO_FEATHERING
@@ -1254,14 +1254,14 @@ void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 const *Color)
     Rr_UIPrimitive Primitive =
         Rr_UIReservePrimitive((size_t)SEGMENTS, (size_t)(SEGMENTS - 2) * 3);
 
-    float const Step = 2.0f * RR_PI32 / (float)SEGMENTS;
+    float const STEP = 2.0f * RR_PI32 / (float)SEGMENTS;
 
     for (size_t Index = 0; Index < SEGMENTS; ++Index)
     {
         Primitive.Vertices[Index].Position = Rr_AddV2(
             Offset,
             Rr_MulV2F(
-                Rr_V2(cosf((float)Index * Step), sinf((float)Index * Step)),
+                Rr_V2(cosf((float)Index * STEP), sinf((float)Index * STEP)),
                 Radius));
         Primitive.Vertices[Index].UV = Rr_V2F(0.0f);
         Primitive.Vertices[Index].Color = *Color;
@@ -1276,7 +1276,7 @@ void Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 const *Color)
             (Rr_UIIndex)(Primitive.BaseVertex + Index + 2);
     }
 
-    Rr_UIFeatherConvexPrimitive(&Primitive, (int)SEGMENTS, 1.5f);
+    Rr_UIFeatherConvexPrimitive(&Primitive, (int32_t)SEGMENTS, 1.5f);
 }
 
 void Rr_UIDrawQuadVertices(Rr_UIVertex const *Vertices)
@@ -8008,7 +8008,7 @@ void Rr_UISetDefaultTheme(void)
     Colors->TitleBackground2 =
         Rr_V4(0.034855f, 0.159902f, 0.243268f, 1.000000f);
     Colors->TitleBackgroundInactive =
-        Rr_V4(0.034855f, 0.059902f, 0.043268f, 1.000000f);
+        Rr_V4(0.182623f, 0.277109f, 0.338889f, 1.000000f);
     Colors->TitleCloseButtonBackground =
         Rr_V4(0.839551f, 0.250613f, 0.313724f, 1.000000f);
     Colors->TitleCollapseButtonBackground =

@@ -444,6 +444,8 @@ static void SetPinkTheme()
     Colors->TitleBackground = Rr_V4(0.472738f, 0.325686f, 0.538689f, 1.000000f);
     Colors->TitleBackground2 =
         Rr_V4(0.203582f, 0.122154f, 0.240995f, 1.000000f);
+    Colors->TitleBackgroundInactive =
+        Rr_V4(0.334322f, 0.277384f, 0.413703f, 1.000000f);
     Colors->TitleCloseButtonBackground =
         Rr_V4(0.890921f, 0.129675f, 0.182090f, 1.000000f);
     Colors->TitleCollapseButtonBackground =
