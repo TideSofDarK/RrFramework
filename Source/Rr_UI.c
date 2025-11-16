@@ -7598,8 +7598,9 @@ bool Rr_UICombobox(
 
         Rr_Vec2 PopupPosition = ButtonPosition;
         PopupPosition.Y += ButtonExtent.Height + gUIContext->FrameThickness;
-        PopupPosition.X += gUIContext->FrameThickness;
-        Rr_UIPushWindowPadding(Rr_V2(gUIContext->InputFieldPadding.X, 0.0f));
+        Rr_UIPushWindowPadding(Rr_V2(
+            gUIContext->InputFieldPadding.X - gUIContext->DoubleBevelThickness,
+            0.0f));
         Rr_UIPushContentsMargin(Rr_V2F(0.0f));
         Rr_UISetNextWindowOffset(PopupPosition);
         Rr_UIBeginPopupWindow(TitleHash, POPUP_WINDOW_FLAGS);
