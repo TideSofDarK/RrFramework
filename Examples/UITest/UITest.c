@@ -14,7 +14,7 @@ static Rr_UIFont *MozillaHeadlineFont = NULL;
 
 static void TextInputWindow()
 {
-    if (Rr_UIBeginWindow(
+    if (Rr_UIBeginWindowEx(
             "Text Input Window",
             &TextInputWindowOpen,
             RR_UI_WINDOW_FLAGS_CLOSE_BIT))
@@ -44,7 +44,7 @@ static void FixedSizeWindow()
 {
     const Rr_Vec2 WINDOW_SIZE = Rr_V2(450.0f, 200.0f);
     Rr_UISetNextWindowExtent(WINDOW_SIZE);
-    if (Rr_UIBeginWindow(
+    if (Rr_UIBeginWindowEx(
             "Fixed Size Window",
             &FixedSizeWindowOpen,
             RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT))
@@ -167,7 +167,7 @@ static void PrintTheme(void)
 
 static void ThemeEditorWindow()
 {
-    if (Rr_UIBeginWindow(
+    if (Rr_UIBeginWindowEx(
             "Theme Editor",
             &ThemeEditorWindowOpen,
             RR_UI_WINDOW_FLAGS_CLOSE_BIT))
@@ -550,10 +550,10 @@ static void Iterate(void)
     ThemeEditorWindow();
     TextInputWindow();
 
-    if (Rr_UIBeginWindow("Rr_UI.h - General", NULL, 0))
+    if (Rr_UIBeginWindow("Rr_UI.h - General"))
     {
         Rr_UISetNextWindowCreateCollapsed(false);
-        if (Rr_UIBeginChild("Style and Colors"))
+        if (Rr_UIBeginWindow("Style and Colors"))
         {
             Rr_UIText("Colors set in Theme Editor can be printed to stdout.");
 
@@ -577,11 +577,11 @@ static void Iterate(void)
                 SetPinkTheme();
             }
 
-            Rr_UIEndChild();
+            Rr_UIEndWindow();
         }
 
         Rr_UISetNextWindowCreateCollapsed(false);
-        if (Rr_UIBeginChild("Fonts"))
+        if (Rr_UIBeginWindow("Fonts"))
         {
             Rr_UIText(
                 "Fonts can be dynamically pushed onto the stack. All paddings\n"
@@ -623,57 +623,58 @@ static void Iterate(void)
 
             Rr_UIPopFont();
 
-            Rr_UIEndChild();
+            Rr_UIEndWindow();
         }
 
-        if (Rr_UIBeginChild("Child Windows"))
+        if (Rr_UIBeginWindow("Child Windows"))
         {
             Rr_UIText(
                 "This is an example of a child window.\nUse child windows to "
                 "group your widgets.");
 
-            if (Rr_UIBeginChildEx("Dockable Child Window", 0))
+            if (Rr_UIBeginWindowEx("Dockable Child Window", NULL, 0))
             {
                 Rr_UIText("This window can be docked/undocked (WIP).");
 
-                Rr_UIEndChild();
+                Rr_UIEndWindow();
             }
 
-            if (Rr_UIBeginChildEx(
+            if (Rr_UIBeginWindowEx(
                     "Custom Child Window",
+                    NULL,
                     RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT))
             {
                 Rr_UIText("This child window has no title bar.");
 
-                Rr_UIEndChild();
+                Rr_UIEndWindow();
             }
 
-            Rr_UIEndChild();
+            Rr_UIEndWindow();
         }
 
-        if (Rr_UIBeginChild("Tabs"))
+        if (Rr_UIBeginWindow("Tabs"))
         {
             if (Rr_UIBeginTabs("Example Tabs"))
             {
-                if (Rr_UIBeginChild("Text"))
+                if (Rr_UIBeginWindow("Text"))
                 {
                     Rr_UIText("Some text...");
                     Rr_UIText("Some text...");
                     Rr_UIText("Some text...");
 
-                    Rr_UIEndChild();
+                    Rr_UIEndWindow();
                 }
 
-                if (Rr_UIBeginChild("Buttons"))
+                if (Rr_UIBeginWindow("Buttons"))
                 {
                     Rr_UIButton("Button A");
                     Rr_UIButton("Button B");
                     Rr_UIButton("Button C");
 
-                    Rr_UIEndChild();
+                    Rr_UIEndWindow();
                 }
 
-                if (Rr_UIBeginChild("Input Fields"))
+                if (Rr_UIBeginWindow("Input Fields"))
                 {
                     static Rr_Vec2 TestVec2 = { -0.5f, 0.5f };
                     Rr_UIInputFloat2NO("Float2 Input", TestVec2.Elements);
@@ -682,16 +683,16 @@ static void Iterate(void)
                     static Rr_Vec4 TestVec4 = { -0.5f, 0.5f };
                     Rr_UIInputFloat4NO("Float4 Input", TestVec4.Elements);
 
-                    Rr_UIEndChild();
+                    Rr_UIEndWindow();
                 }
 
                 Rr_UIEndTabs();
             }
 
-            Rr_UIEndChild();
+            Rr_UIEndWindow();
         }
 
-        if (Rr_UIBeginChild("Trees"))
+        if (Rr_UIBeginWindow("Trees"))
         {
             Rr_UIBeginHorizontal();
             if (Rr_UIButton("Expand All"))
@@ -745,10 +746,10 @@ static void Iterate(void)
                 Rr_UIEndTree();
             }
 
-            Rr_UIEndChild();
+            Rr_UIEndWindow();
         }
 
-        if (Rr_UIBeginChild("Custom Draw"))
+        if (Rr_UIBeginWindow("Custom Draw"))
         {
             Rr_Vec2 Cursor = Rr_UIGetCursor();
 
@@ -812,16 +813,16 @@ static void Iterate(void)
 
             Rr_UIAdvance(AREA, Rr_V2F(0.0f));
 
-            Rr_UIEndChild();
+            Rr_UIEndWindow();
         }
 
         Rr_UIEndWindow();
     }
 
-    if (Rr_UIBeginWindow("Rr_UI.h - Widgets", &Open, Flags))
+    if (Rr_UIBeginWindowEx("Rr_UI.h - Widgets", &Open, Flags))
     {
         Rr_UISetNextWindowCreateCollapsed(false);
-        if (Rr_UIBeginChild("Text"))
+        if (Rr_UIBeginWindow("Text"))
         {
             Rr_UIText("Simple Text");
             Rr_UIText(
@@ -836,11 +837,11 @@ static void Iterate(void)
                 "laboris nisi ut aliquip ex ea commodo consequat.",
                 RR_UI_TEXT_FLAGS_WRAPPED_BIT);
 
-            Rr_UIEndChild();
+            Rr_UIEndWindow();
         }
 
         Rr_UISetNextWindowCreateCollapsed(false);
-        if (Rr_UIBeginChild("Buttons"))
+        if (Rr_UIBeginWindow("Buttons"))
         {
             if (Rr_UIButton("Show Fixed Size Window"))
             {
@@ -874,10 +875,10 @@ static void Iterate(void)
             Rr_UIRadioButton("Radio C", &SelectedRadioButton, 2);
             Rr_UIEndHorizontal();
 
-            Rr_UIEndChild();
+            Rr_UIEndWindow();
         }
 
-        if (Rr_UIBeginChild("Comboboxes"))
+        if (Rr_UIBeginWindow("Comboboxes"))
         {
             const char *ComboboxOptions[5] = {
                 "Option A", "Option B",        "Option C",
@@ -895,10 +896,10 @@ static void Iterate(void)
                     "New option selected: %s\n",
                     ComboboxOptions[SelectedComboboxOption]);
             }
-            Rr_UIEndChild();
+            Rr_UIEndWindow();
         }
 
-        if (Rr_UIBeginChild("Checkboxes"))
+        if (Rr_UIBeginWindow("Checkboxes"))
         {
             Rr_UICheckbox("Close Button", &CloseButton);
             Rr_UICheckbox("No Resize", &NoResize);
@@ -906,10 +907,10 @@ static void Iterate(void)
             Rr_UICheckbox("No Scrollbar", &NoScrollbar);
             Rr_UICheckbox("No Title Bar", &NoTitleBar);
             Rr_UICheckbox("No Borders", &NoBorders);
-            Rr_UIEndChild();
+            Rr_UIEndWindow();
         }
 
-        if (Rr_UIBeginChild("Sliders"))
+        if (Rr_UIBeginWindow("Sliders"))
         {
             static float FloatA = 0.45f;
             Rr_UISliderFloat("Float 0 to 1", &FloatA, 0.0f, 1.0f);
@@ -920,20 +921,20 @@ static void Iterate(void)
             static uint32_t UnsignedInt = 0;
             Rr_UISliderUnsignedInt("Unsigned 2 to 8", &UnsignedInt, 2, 8);
 
-            Rr_UIEndChild();
+            Rr_UIEndWindow();
         }
 
-        if (Rr_UIBeginChild("Colors"))
+        if (Rr_UIBeginWindow("Colors"))
         {
             static Rr_Vec3 ColorRGB = { 0.2f, 0.3f, 0.4f };
             Rr_UIInputColor3("Color RGB", ColorRGB.Elements);
             static Rr_Vec4 ColorRGBA = { 0.9f, 0.2345f, 0.2f, 0.5f };
             Rr_UIInputColor4("Color RGBA", ColorRGBA.Elements);
 
-            Rr_UIEndChild();
+            Rr_UIEndWindow();
         }
 
-        if (Rr_UIBeginChild("Input Fields"))
+        if (Rr_UIBeginWindow("Input Fields"))
         {
             static char StringBuffer[16] = "Hello, World!";
             Rr_UIInputText("String (16 bytes)", 16, StringBuffer);
@@ -968,7 +969,7 @@ static void Iterate(void)
                 0.0f,
                 1.0f);
 
-            if (Rr_UIBeginChild("Vectors and Matrices"))
+            if (Rr_UIBeginWindow("Vectors and Matrices"))
             {
                 static Rr_Vec2 TestVec2 = { 1.0f, 0.0f };
                 Rr_UIInputFloat2("Float2 Input", TestVec2.Elements);
@@ -1003,10 +1004,10 @@ static void Iterate(void)
                     "Float4x4 Input",
                     (float *)TestMat4.Elements);
 
-                Rr_UIEndChild();
+                Rr_UIEndWindow();
             }
 
-            Rr_UIEndChild();
+            Rr_UIEndWindow();
         }
 
         Rr_UIEndWindow();

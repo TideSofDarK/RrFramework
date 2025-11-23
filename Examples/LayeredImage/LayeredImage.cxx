@@ -199,7 +199,7 @@ struct SLayeredImageApp
 
     void Iterate()
     {
-        Rr_UIBeginWindow(
+        Rr_UIBeginWindowEx(
             "LayeredImage.cxx",
             NULL,
             RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);

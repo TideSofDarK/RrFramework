@@ -1767,7 +1767,7 @@ struct SModernRenderingApp
 
     void UI()
     {
-        if (Rr_UIBeginWindow("ModernRendering.cxx", NULL, 0))
+        if (Rr_UIBeginWindowEx("ModernRendering.cxx", NULL, 0))
         {
             if (Rr_UIBeginTree("General"))
             {

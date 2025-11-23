@@ -141,7 +141,7 @@ struct SBrushFadeApp
     void Iterate()
     {
         static SGPUUniform Uniform = { 0.3f, 0.0f, 0.01f };
-        Rr_UIBeginWindow("BrushFade", NULL, 0);
+        Rr_UIBeginWindowEx("BrushFade", NULL, 0);
         Rr_UISliderFloat("Mix", &Uniform.Mix, 0.0f, 1.0f);
         Rr_UISliderFloat("Time", &Uniform.Time, 0.0f, 1.0f);
         Rr_UISliderFloat("Smoothstep", &Uniform.Smoothstep, 0.0f, 1.0f);

@@ -295,7 +295,7 @@ struct STransferThreadApp
     void Iterate()
     {
         Rr_UIDebugOverlay();
-        Rr_UIBeginWindow(
+        Rr_UIBeginWindowEx(
             "TransferThread.cxx",
             nullptr,
             RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);

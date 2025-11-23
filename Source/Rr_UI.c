@@ -2990,7 +2990,7 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
         &gUIContext->Colors.TitleForeground);
 }
 
-static inline Rr_Vec2 Rr_UICalculateTitleSize(Rr_UILayout *Layout)
+static inline Rr_Vec2 Rr_UICalculateTitleBarSize(Rr_UILayout *Layout)
 {
     Rr_UIWindow *Window = Layout->Window;
 
@@ -3507,7 +3507,7 @@ static inline void Rr_UIPutWindowOnTop(Rr_UIWindow *Window)
     }
 }
 
-static inline bool Rr_UIBeginWindowEx(
+static inline bool Rr_UIBeginWindowImpl(
     Rr_UIWindow *Window,
     Rr_UIHash Hash,
     bool *Open)
@@ -3634,14 +3634,7 @@ static inline bool Rr_UIBeginWindowEx(
             return true;
         }
 
-        if (Window->Child)
-        {
-            Rr_UIEndChild();
-        }
-        else
-        {
-            Rr_UIEndWindow();
-        }
+        Rr_UIEndWindow();
 
         return false;
     }
@@ -3722,7 +3715,7 @@ static inline void Rr_UIBeginPopupWindow(Rr_UIHash Hash, Rr_UIWindowFlags Flags)
     Rr_UIWindow *Window = &gUIContext->PopupWindow;
     Window->Flags = Flags;
     Window->TopLevelParent = Window;
-    if (Rr_UIBeginWindowEx(Window, Hash, NULL))
+    if (Rr_UIBeginWindowImpl(Window, Hash, NULL))
     {
         Rr_UICurrentLayout()->DeferredClampOffsetToScreen = true;
     }
@@ -3764,35 +3757,163 @@ static inline Rr_UIWindow *Rr_UICreateWindow(
     return Window;
 }
 
-bool Rr_UIBeginWindow(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
+static inline bool Rr_UIGenericButton(
+    Rr_UILayout *Layout,
+    char const *Text,
+    Rr_Rect const *Rect,
+    Rr_Vec4 const *ColorText,
+    Rr_Vec4 const *ColorNormal,
+    Rr_Vec4 const *ColorHeld)
 {
-    Rr_UIAssertNoWindow();
-
     size_t TitleLength;
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Text, &TitleLength);
 
-    Rr_UIWindow **WindowRef =
-        RR_GET_MAP_VALUE(&gUIContext->WindowMap, TitleHash, gUIContext->Arena);
-    Rr_UIWindow *Window = *WindowRef;
+    Rr_Vec2 TitleSize = Rr_UICalculateTextSize(TitleLength, Text, 0.0f, 0);
 
-    if (Window == NULL)
+    Rr_UIPrimitive Primitive = Rr_UIReserveBevel();
+
+    Rr_Vec2 TitlePosition = Rr_AddV2(
+        Rect->Offset,
+        Rr_SubV2(Rr_MulV2F(Rect->Extent, 0.5f), Rr_MulV2F(TitleSize, 0.5f)));
+    Rr_UIDrawText(false, TitlePosition, TitleLength, Text, 0.0f, ColorText, 0);
+
+    Rr_UIClickResult ClickResult = Rr_UIClickSimple(Layout, Rect, TitleHash);
+
+    Rr_UIBevel(
+        Primitive,
+        Rect,
+        ClickResult.Held ? ColorHeld : ColorNormal,
+        ClickResult.Held);
+
+    return ClickResult.ClickCount;
+}
+
+bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
+{
+    Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
+
+    Rr_UIWindow *Window;
+    Rr_UIHash TitleHash;
+
+    if (ParentLayout)
     {
-        Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
-        Window->Z = gUIContext->TotalWindowCount++;
-        Window->Rect.Offset =
-            Rr_FloorV2(Rr_V2F(gUIContext->DefaultFont->LineHeight));
-        *WindowRef = Window;
+        Rr_UIWindow *ParentWindow = ParentLayout->Window;
+
+        /* Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT; */
+        Flags |= RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT;
+        Flags |= RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
+        Flags |= RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
+
+        size_t TitleLength;
+        TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
+
+        Rr_UIWindow **WindowRef = RR_GET_MAP_VALUE(
+            &ParentWindow->ChildWindowMap,
+            TitleHash,
+            gUIContext->Arena);
+        Window = *WindowRef;
+
+        if (Window == NULL)
+        {
+            Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
+            Window->Child = true;
+            *WindowRef = Window;
+        }
+        else
+        {
+            Window->Flags = Flags;
+        }
+
+        if (ParentWindow->Tabs)
+        {
+            if (!ParentWindow->SelectedTab)
+            {
+                ParentWindow->SelectedTab = Window;
+            }
+
+            /* Switch clip rect to add tab button. */
+
+            bool Selected = ParentWindow->SelectedTab == Window;
+
+            Rr_Vec2 TitleSize =
+                Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0, 0);
+            Rr_Rect ButtonRect = {
+                .Offset = ParentLayout->TabsCursor,
+                .Extent = Rr_AddV2(
+                    TitleSize,
+                    Rr_MulV2F(gUIContext->TitleBarPadding, 2.0f)),
+            };
+            if (Rr_UIGenericButton(
+                    ParentLayout,
+                    Window->Title,
+                    &ButtonRect,
+                    &gUIContext->Colors.TitleForeground,
+                    Selected ? &gUIContext->Colors.TitleBackground
+                             : &gUIContext->Colors.TitleBackgroundInactive,
+                    Selected ? &gUIContext->Colors.TitleBackground
+                             : &gUIContext->Colors.ButtonHeld) &&
+                !Selected)
+            {
+                ParentLayout->DeferredSelectedTab = Window;
+            }
+
+            ParentLayout->TabsCursor.X += ButtonRect.Extent.X;
+
+            if (!Selected || ParentLayout->WasCollapsed)
+            {
+                return false;
+            }
+
+            Window->Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
+            Window->Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
+            Window->Tab = true;
+        }
+
+        Window->Rect.Offset = ParentLayout->Cursor;
+        Window->Z = ParentWindow->Z + 1;
+        Window->TopLevelParent = ParentWindow->TopLevelParent;
+
+        assert(
+            Window->Added == false &&
+            "There already is a window with this title!");
     }
     else
     {
-        Window->Flags = Flags;
+        size_t TitleLength;
+        TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
+
+        Rr_UIWindow **WindowRef = RR_GET_MAP_VALUE(
+            &gUIContext->WindowMap,
+            TitleHash,
+            gUIContext->Arena);
+        Window = *WindowRef;
+
+        if (Window == NULL)
+        {
+            Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
+            Window->Z = gUIContext->TotalWindowCount++;
+            Window->Rect.Offset =
+                Rr_FloorV2(Rr_V2F(gUIContext->DefaultFont->LineHeight));
+            *WindowRef = Window;
+        }
+        else
+        {
+            Window->Flags = Flags;
+        }
+
+        Window->TopLevelParent = Window;
+
+        assert(
+            Window->Added == false &&
+            "There already is a window with this title!");
     }
 
-    Window->TopLevelParent = Window;
+    return Rr_UIBeginWindowImpl(Window, TitleHash, Open);
+}
 
-    assert(
-        Window->Added == false && "There already is a window with this title!");
-    return Rr_UIBeginWindowEx(Window, TitleHash, Open);
+bool Rr_UIBeginWindow(char const *Title)
+{
+    return Rr_UIBeginWindowEx(Title, NULL, 0);
 }
 
 static inline bool Rr_UIShouldHightlightWindow(Rr_UIWindow *Window)
@@ -3968,7 +4089,7 @@ void Rr_UIEndWindow(void)
             /* NOTE: Select between widths occupied by rigid widgets such as
              * buttons and flexible widgets such as input fields. */
 
-            Rr_Vec2 TitleSize = Rr_UICalculateTitleSize(Layout);
+            Rr_Vec2 TitleSize = Rr_UICalculateTitleBarSize(Layout);
 
             Window->Rect.Extent.X = RR_MAX(
                 Layout->DeferredMaxFlexibleWidgetTitleWidth +
@@ -4011,7 +4132,7 @@ void Rr_UIEndWindow(void)
                  * will be the baseline width (e.g. when window only has wrapped
                  * text). */
 
-                Rr_Vec2 TitleSize = Rr_UICalculateTitleSize(Layout);
+                Rr_Vec2 TitleSize = Rr_UICalculateTitleBarSize(Layout);
                 Extent.X = RR_MAX(Extent.X, TitleSize.X);
             }
 
@@ -4135,7 +4256,7 @@ void Rr_UIEndWindow(void)
 
         if (Window->Child)
         {
-            Rr_Vec2 TitleSize = Rr_UICalculateTitleSize(Layout);
+            Rr_Vec2 TitleSize = Rr_UICalculateTitleBarSize(Layout);
             if (!Rr_UIWindowNoBorders(Window))
             {
                 TitleSize = Rr_AddV2F(
@@ -4175,138 +4296,6 @@ void Rr_UIEndWindow(void)
 
         Rr_UIBeginClipRect(ParentLayout, &ParentLayout->CurrentClipRect->Rect);
     }
-}
-
-static inline bool Rr_UIGenericButton(
-    Rr_UILayout *Layout,
-    char const *Text,
-    Rr_Rect const *Rect,
-    Rr_Vec4 const *ColorText,
-    Rr_Vec4 const *ColorNormal,
-    Rr_Vec4 const *ColorHeld)
-{
-    size_t TitleLength;
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Text, &TitleLength);
-
-    Rr_Vec2 TitleSize = Rr_UICalculateTextSize(TitleLength, Text, 0.0f, 0);
-
-    Rr_UIPrimitive Primitive = Rr_UIReserveBevel();
-
-    Rr_Vec2 TitlePosition = Rr_AddV2(
-        Rect->Offset,
-        Rr_SubV2(Rr_MulV2F(Rect->Extent, 0.5f), Rr_MulV2F(TitleSize, 0.5f)));
-    Rr_UIDrawText(false, TitlePosition, TitleLength, Text, 0.0f, ColorText, 0);
-
-    Rr_UIClickResult ClickResult = Rr_UIClickSimple(Layout, Rect, TitleHash);
-
-    Rr_UIBevel(
-        Primitive,
-        Rect,
-        ClickResult.Held ? ColorHeld : ColorNormal,
-        ClickResult.Held);
-
-    return ClickResult.ClickCount;
-}
-
-bool Rr_UIBeginChildEx(char const *Title, Rr_UIWindowFlags Flags)
-{
-    Rr_UIAssertWindow();
-
-    /* Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT; */
-    Flags |= RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT;
-    Flags |= RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
-    Flags |= RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
-
-    Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
-    Rr_UIWindow *ParentWindow = ParentLayout->Window;
-
-    size_t TitleLength;
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
-
-    Rr_UIWindow **WindowRef = RR_GET_MAP_VALUE(
-        &ParentWindow->ChildWindowMap,
-        TitleHash,
-        gUIContext->Arena);
-    Rr_UIWindow *Window = *WindowRef;
-
-    if (Window == NULL)
-    {
-        Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
-        Window->Child = true;
-        *WindowRef = Window;
-    }
-    else
-    {
-        Window->Flags = Flags;
-    }
-
-    if (ParentWindow->Tabs)
-    {
-        if (!ParentWindow->SelectedTab)
-        {
-            ParentWindow->SelectedTab = Window;
-        }
-
-        /* Switch clip rect to add tab button. */
-
-        bool Selected = ParentWindow->SelectedTab == Window;
-
-        Rr_Vec2 TitleSize =
-            Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0, 0);
-        Rr_Rect ButtonRect = {
-            .Offset = ParentLayout->TabsCursor,
-            .Extent = Rr_AddV2(
-                TitleSize,
-                Rr_MulV2F(gUIContext->TitleBarPadding, 2.0f)),
-        };
-        if (Rr_UIGenericButton(
-                ParentLayout,
-                Window->Title,
-                &ButtonRect,
-                &gUIContext->Colors.TitleForeground,
-                Selected ? &gUIContext->Colors.TitleBackground
-                         : &gUIContext->Colors.TitleBackgroundInactive,
-                Selected ? &gUIContext->Colors.TitleBackground
-                         : &gUIContext->Colors.ButtonHeld) &&
-            !Selected)
-        {
-            ParentLayout->DeferredSelectedTab = Window;
-        }
-
-        ParentLayout->TabsCursor.X += ButtonRect.Extent.X;
-
-        if (!Selected || ParentLayout->WasCollapsed)
-        {
-            return false;
-        }
-
-        Window->Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
-        Window->Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
-        Window->Tab = true;
-    }
-
-    Window->Rect.Offset = ParentLayout->Cursor;
-    Window->Z = ParentWindow->Z + 1;
-    Window->TopLevelParent = ParentWindow->TopLevelParent;
-
-    assert(
-        Window->Added == false && "There already is a window with this title!");
-    return Rr_UIBeginWindowEx(Window, TitleHash, NULL);
-}
-
-bool Rr_UIBeginChild(char const *Title)
-{
-    return Rr_UIBeginChildEx(Title, 0);
-}
-
-void Rr_UIEndChild(void)
-{
-    Rr_UIAssertWindow();
-
-    Rr_UIWindow *Window = Rr_UICurrentWindow();
-    assert(Window->Child);
-
-    Rr_UIEndWindow();
 }
 
 void Rr_UIBeginHorizontal(void)
@@ -4406,7 +4395,7 @@ bool Rr_UIBeginTabs(char const *Title)
 
     assert(
         Window->Added == false && "There already is a window with this title!");
-    return Rr_UIBeginWindowEx(Window, TitleHash, NULL);
+    return Rr_UIBeginWindowImpl(Window, TitleHash, NULL);
 }
 
 void Rr_UIEndTabs(void)
@@ -4416,7 +4405,7 @@ void Rr_UIEndTabs(void)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     assert(Layout->Window->Tabs && "Did you forget to call Rr_UIBeginTabs()?");
 
-    Rr_UIEndChild();
+    Rr_UIEndWindow();
 }
 
 void Rr_UISetNextTreeExpanded(void)
@@ -8587,7 +8576,7 @@ void Rr_UIDebugOverlay(void)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    if (Rr_UIBeginWindow(
+    if (Rr_UIBeginWindowEx(
             "Rr.DebugOverlay",
             NULL,
             RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT |
@@ -8596,7 +8585,7 @@ void Rr_UIDebugOverlay(void)
     {
         if (Rr_UIBeginTabs("DebugOverlayTabs"))
         {
-            if (Rr_UIBeginChild("General"))
+            if (Rr_UIBeginWindow("General"))
             {
                 Rr_Vec2 MousePosition = Rr_GetMousePosition();
                 Rr_Vec2 MouseDelta = Rr_GetMousePositionDelta();
@@ -8683,10 +8672,10 @@ void Rr_UIDebugOverlay(void)
                     Rr_ToggleWindowFullscreen();
                 }
 
-                Rr_UIEndChild();
+                Rr_UIEndWindow();
             }
 
-            if (Rr_UIBeginChild("UI"))
+            if (Rr_UIBeginWindow("UI"))
             {
                 Rr_UITextF(
                     "Vertices Capacity: %zu\n"
@@ -8734,10 +8723,10 @@ void Rr_UIDebugOverlay(void)
                     "Visualize Advances",
                     &gUIContext->VisualizeAdvances);
 
-                Rr_UIEndChild();
+                Rr_UIEndWindow();
             }
 
-            if (Rr_UIBeginChild("Memory"))
+            if (Rr_UIBeginWindow("Memory"))
             {
                 Rr_UIDebugOverlayArena(
                     Rr_GetThreadContext()->Arena,
@@ -8753,10 +8742,10 @@ void Rr_UIDebugOverlay(void)
                 Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
                 Rr_UIDebugOverlayArena(gPlatform->Arena, "Window");
 
-                Rr_UIEndChild();
+                Rr_UIEndWindow();
             }
 
-            if (Rr_UIBeginChild("Renderer"))
+            if (Rr_UIBeginWindow("Renderer"))
             {
                 Rr_UITextF("Frame: %zu", gRenderer->FrameNumber);
                 Rr_UITextF(
@@ -8806,7 +8795,7 @@ void Rr_UIDebugOverlay(void)
                     gRenderer->SyncStateStorage.Hive.Count,
                     gRenderer->SyncStateStorage.Hive.Capacity);
 
-                Rr_UIEndChild();
+                Rr_UIEndWindow();
             }
 
             Rr_UIEndTabs();

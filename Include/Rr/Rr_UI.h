@@ -258,18 +258,14 @@ extern void Rr_UISetNextWindowExtent(Rr_Vec2 Extent);
 
 extern void Rr_UISetNextWindowCreateCollapsed(bool Collapsed);
 
-extern bool Rr_UIBeginWindow(
+extern bool Rr_UIBeginWindowEx(
     char const *Title,
     bool *Open,
     Rr_UIWindowFlags Flags);
 
+extern bool Rr_UIBeginWindow(char const *Title);
+
 extern void Rr_UIEndWindow(void);
-
-extern bool Rr_UIBeginChildEx(char const *Title, Rr_UIWindowFlags Flags);
-
-extern bool Rr_UIBeginChild(char const *Title);
-
-extern void Rr_UIEndChild(void);
 
 extern bool Rr_UIBeginTabs(char const *Title);
 

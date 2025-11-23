@@ -962,7 +962,7 @@ struct SQuadTreeApp
     {
         Rr_UIDebugOverlay();
 
-        if (Rr_UIBeginWindow(
+        if (Rr_UIBeginWindowEx(
                 "QuadTree",
                 NULL,
                 RR_UI_WINDOW_FLAGS_CLOSE_BIT |
