@@ -635,7 +635,7 @@ static void Iterate(void)
             if (Rr_UIBeginWindowEx(
                     "Dockable Child Window",
                     NULL,
-                    RR_UI_WINDOW_FLAGS_DOCKABLE_BIT))
+                    RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
             {
                 Rr_UIText("This window can be docked/undocked (WIP).");
 

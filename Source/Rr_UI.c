@@ -702,6 +702,16 @@ static inline Rr_UIFont *Rr_UICurrentFont(void)
     return gUIContext->DefaultFont;
 }
 
+static inline void Rr_UIConsumeMouseAndKeyboardInput(void)
+{
+    RR_CLEAR_ARRAY(&gUIContext->KeyboardInputEvents);
+    RR_ZERO(gUIContext->LeftMouseButton);
+    gUIContext->CtrlHeld = false;
+    gUIContext->ShiftHeld = false;
+    gUIContext->AltHeld = false;
+    gUIContext->SuperHeld = false;
+}
+
 static inline bool Rr_UIWindowNoTitleBar(Rr_UIWindow *Window)
 {
     return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT);
@@ -749,9 +759,9 @@ static inline bool Rr_UIWindowEscapeCloses(Rr_UIWindow *Window)
     return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT);
 }
 
-static inline bool Rr_UIWindowDockable(Rr_UIWindow *Window)
+static inline bool Rr_UIWindowUndockable(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_DOCKABLE_BIT);
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
 }
 
 static inline bool Rr_UIWindowCollapsed(Rr_UIWindow *Window)
@@ -919,6 +929,7 @@ static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
     if (Window->Tabs)
     {
         Layout->WindowPadding = Rr_V2F(0.0f);
+        Layout->DeferredSelectedTab = Window->SelectedTab;
     }
     else
     {
@@ -2642,7 +2653,7 @@ static inline Rr_UIClickResult Rr_UIClickSimple(
         Rr_V2F(0.0f));
 }
 
-static inline Rr_UIClickResult Rr_UIClickDouble(
+static inline Rr_UIClickResult Rr_UIClickMulti(
     Rr_UILayout *Layout,
     Rr_Rect *Rect,
     Rr_UIHash Hash)
@@ -3120,21 +3131,21 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
             "Rr.CollapseTitle",
             Rr_UICurrentHash());
         Rr_UIClickResult ClickResult =
-            Rr_UIClickDouble(Layout, &TitleBarRect, Hash);
-        if (ClickResult.ClickCount == 2)
+            Rr_UIClickMulti(Layout, &TitleBarRect, Hash);
+        if (ClickResult.ClickCount == 1 && Rr_UIWindowUndockable(Window) &&
+            gUIContext->CtrlHeld)
         {
-            if (Rr_UIWindowDockable(Window) && gUIContext->CtrlHeld)
+            Window->Undocked = !Window->Undocked;
+            if (Window->Undocked)
             {
-                Window->Undocked = !Window->Undocked;
-                if (Window->Undocked)
-                {
-                    Window->Collapsed = false;
-                }
+                Window->Collapsed = false;
             }
-            else
-            {
-                Window->Collapsed = !Window->Collapsed;
-            }
+            Rr_UIResetClickAndDrag();
+            Rr_UIConsumeMouseAndKeyboardInput();
+        }
+        else if (ClickResult.ClickCount == 2)
+        {
+            Window->Collapsed = !Window->Collapsed;
         }
     }
 
@@ -3851,10 +3862,16 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
             Window->Flags = Flags;
         }
 
+        Window->Child = true;
+        Window->Rect.Offset = ParentLayout->Cursor;
+        Window->Z = ParentWindow->Z + 1;
+        Window->TopLevelParent = ParentWindow->TopLevelParent;
+
         if (ParentWindow->Tabs)
         {
             if (!ParentWindow->SelectedTab)
             {
+                ParentLayout->DeferredSelectedTab = Window;
                 ParentWindow->SelectedTab = Window;
             }
 
@@ -3880,14 +3897,18 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
                     Selected ? &gUIContext->Colors.TitleBackground
                              : &gUIContext->Colors.ButtonHeld))
             {
-                if (!Selected)
-                {
-                    ParentLayout->DeferredSelectedTab = Window;
-                }
-                else if (gUIContext->CtrlHeld)
+                if (Rr_UIWindowUndockable(Window) && gUIContext->CtrlHeld)
                 {
                     Window->Undocked = true;
                     Window->Collapsed = false;
+                    if (Selected)
+                    {
+                        ParentLayout->DeferredSelectedTab = NULL;
+                    }
+                }
+                else if (!Selected)
+                {
+                    ParentLayout->DeferredSelectedTab = Window;
                 }
             }
 
@@ -3902,11 +3923,6 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
             Window->Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
             Window->Tab = true;
         }
-
-        Window->Child = true;
-        Window->Rect.Offset = ParentLayout->Cursor;
-        Window->Z = ParentWindow->Z + 1;
-        Window->TopLevelParent = ParentWindow->TopLevelParent;
 
         assert(!Window->Added && "There already is a window with this title!");
     }
@@ -3980,10 +3996,7 @@ void Rr_UIEndWindow(void)
     Window->MaxFlexibleWidgetWidth = Layout->DeferredMaxFlexibleWidgetWidth;
     Window->MaxRigidWidth = Layout->DeferredMaxRigidWidth;
     Window->ContentsRect = Layout->DeferredContentsRect;
-    if (Layout->DeferredSelectedTab)
-    {
-        Window->SelectedTab = Layout->DeferredSelectedTab;
-    }
+    Window->SelectedTab = Layout->DeferredSelectedTab;
 
     if (!Collapsed)
     {
@@ -8250,15 +8263,6 @@ void Rr_CleanupUI(void)
     gUIContext = NULL;
 }
 
-static inline void Rr_UIResetHeldKeysAndButtons(void)
-{
-    gUIContext->LeftMouseButton.Held = false;
-    gUIContext->CtrlHeld = false;
-    gUIContext->ShiftHeld = false;
-    gUIContext->AltHeld = false;
-    gUIContext->SuperHeld = false;
-}
-
 void Rr_ProcessUIEvent(Rr_Event *Event)
 {
     if (gUIContext == NULL)
@@ -8272,9 +8276,9 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
     {
         case RR_EVENT_TYPE_FOCUS:
         {
-            if(!Event->Focus.Focused)
+            if (!Event->Focus.Focused)
             {
-                Rr_UIResetHeldKeysAndButtons();
+                Rr_UIConsumeMouseAndKeyboardInput();
             }
         }
         break;
@@ -8657,7 +8661,10 @@ void Rr_UIDebugOverlay(void)
     {
         if (Rr_UIBeginTabs("DebugOverlayTabs"))
         {
-            if (Rr_UIBeginWindow("General"))
+            if (Rr_UIBeginWindowEx(
+                    "General",
+                    0,
+                    RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
             {
                 Rr_Vec2 MousePosition = Rr_GetMousePosition();
                 Rr_Vec2 MouseDelta = Rr_GetMousePositionDelta();
@@ -8747,7 +8754,7 @@ void Rr_UIDebugOverlay(void)
                 Rr_UIEndWindow();
             }
 
-            if (Rr_UIBeginWindow("UI"))
+            if (Rr_UIBeginWindowEx("UI", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
             {
                 Rr_UITextF(
                     "Vertices Capacity: %zu\n"
@@ -8798,7 +8805,10 @@ void Rr_UIDebugOverlay(void)
                 Rr_UIEndWindow();
             }
 
-            if (Rr_UIBeginWindow("Memory"))
+            if (Rr_UIBeginWindowEx(
+                    "Memory",
+                    0,
+                    RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
             {
                 Rr_UIDebugOverlayArena(
                     Rr_GetThreadContext()->Arena,
@@ -8817,7 +8827,10 @@ void Rr_UIDebugOverlay(void)
                 Rr_UIEndWindow();
             }
 
-            if (Rr_UIBeginWindow("Renderer"))
+            if (Rr_UIBeginWindowEx(
+                    "Renderer",
+                    0,
+                    RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
             {
                 Rr_UITextF("Frame: %zu", gRenderer->FrameNumber);
                 Rr_UITextF(

@@ -174,7 +174,7 @@ typedef enum
     RR_UI_WINDOW_FLAGS_NO_CLOSE_BIT = (1 << 7),
     RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT = (1 << 8),
     RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT = (1 << 9),
-    RR_UI_WINDOW_FLAGS_DOCKABLE_BIT = (1 << 10),
+    RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT = (1 << 10),
 } Rr_UIWindowFlagsBits;
 typedef uint32_t Rr_UIWindowFlags;
 
