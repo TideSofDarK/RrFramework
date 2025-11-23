@@ -266,6 +266,18 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
             Event->Type = RR_EVENT_TYPE_QUIT;
             return true;
         }
+        case SDL_EVENT_WINDOW_FOCUS_GAINED:
+        {
+            Event->Type = RR_EVENT_TYPE_FOCUS;
+            Event->Focus.Focused = true;
+            return true;
+        }
+        case SDL_EVENT_WINDOW_FOCUS_LOST:
+        {
+            Event->Type = RR_EVENT_TYPE_FOCUS;
+            Event->Focus.Focused = false;
+            return true;
+        }
         default:
             return false;
     }

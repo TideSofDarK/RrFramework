@@ -171,10 +171,10 @@ typedef enum
     RR_UI_WINDOW_FLAGS_NO_MOVE_BIT = (1 << 4),
     RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT = (1 << 5),
     RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT = (1 << 6),
-    RR_UI_WINDOW_FLAGS_CLOSE_BIT = (1 << 7),
+    RR_UI_WINDOW_FLAGS_NO_CLOSE_BIT = (1 << 7),
     RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT = (1 << 8),
     RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT = (1 << 9),
-    RR_UI_WINDOW_FLAGS_DOCKED_BIT = (1 << 10), /* Unimplemented! */
+    RR_UI_WINDOW_FLAGS_DOCKABLE_BIT = (1 << 10),
 } Rr_UIWindowFlagsBits;
 typedef uint32_t Rr_UIWindowFlags;
 

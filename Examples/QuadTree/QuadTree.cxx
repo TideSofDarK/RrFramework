@@ -965,8 +965,7 @@ struct SQuadTreeApp
         if (Rr_UIBeginWindowEx(
                 "QuadTree",
                 NULL,
-                RR_UI_WINDOW_FLAGS_CLOSE_BIT |
-                    RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
+                RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
         {
             Rr_UITextF("Regenerating: %d", Rebuilding);
             if (Rr_UIButton("Regenerate Tree"))

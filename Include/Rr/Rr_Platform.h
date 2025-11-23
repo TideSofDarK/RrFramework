@@ -52,6 +52,7 @@ extern bool Rr_CommitMemory(void *Data, size_t Size);
 
 extern void Rr_DecommitMemory(void *Data, size_t Size);
 
+/* NOTE: These come from SDL3. */
 typedef enum Rr_Scancode
 {
     RR_SCANCODE_UNKNOWN = 0,
@@ -135,6 +136,14 @@ typedef enum Rr_Scancode
     RR_SCANCODE_KP_9 = 97,
     RR_SCANCODE_KP_0 = 98,
     RR_SCANCODE_KP_PERIOD = 99,
+    RR_SCANCODE_LCTRL = 224,
+    RR_SCANCODE_LSHIFT = 225,
+    RR_SCANCODE_LALT = 226,
+    RR_SCANCODE_LSUPER = 227,
+    RR_SCANCODE_RCTRL = 228,
+    RR_SCANCODE_RSHIFT = 229,
+    RR_SCANCODE_RALT = 230,
+    RR_SCANCODE_RSUPER = 231,
     RR_SCANCODE_COUNT = 512,
 } Rr_Scancode;
 
@@ -225,6 +234,7 @@ typedef enum Rr_EventType
     RR_EVENT_TYPE_TEXT_INPUT,
     RR_EVENT_TYPE_DROP_FILE,
     RR_EVENT_TYPE_QUIT,
+    RR_EVENT_TYPE_FOCUS,
 } Rr_EventType;
 
 typedef struct Rr_KeyEvent Rr_KeyEvent;
@@ -268,6 +278,12 @@ struct Rr_DropFileEvent
     const char *Path;
 };
 
+typedef struct Rr_FocusEvent Rr_FocusEvent;
+struct Rr_FocusEvent
+{
+    bool Focused;
+};
+
 typedef struct Rr_Event Rr_Event;
 struct Rr_Event
 {
@@ -280,6 +296,7 @@ struct Rr_Event
         Rr_KeyEvent Key;
         Rr_TextInputEvent Text;
         Rr_DropFileEvent DropFile;
+        Rr_FocusEvent Focus;
     };
 };
 

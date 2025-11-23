@@ -17,7 +17,7 @@ static void TextInputWindow()
     if (Rr_UIBeginWindowEx(
             "Text Input Window",
             &TextInputWindowOpen,
-            RR_UI_WINDOW_FLAGS_CLOSE_BIT))
+            0))
     {
         static char StringBuffer[2048] = "";
         char LabelBuffer[64];
@@ -47,7 +47,7 @@ static void FixedSizeWindow()
     if (Rr_UIBeginWindowEx(
             "Fixed Size Window",
             &FixedSizeWindowOpen,
-            RR_UI_WINDOW_FLAGS_CLOSE_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT))
+            RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT))
     {
         Rr_UIText("Resizing is disabled for this window.");
         Rr_UITextF("Window Size: %.0fx%.0f", WINDOW_SIZE.X, WINDOW_SIZE.Y);
@@ -170,7 +170,7 @@ static void ThemeEditorWindow()
     if (Rr_UIBeginWindowEx(
             "Theme Editor",
             &ThemeEditorWindowOpen,
-            RR_UI_WINDOW_FLAGS_CLOSE_BIT))
+            0))
     {
         Rr_UIStyle *Style = Rr_UIGetStyle();
         Rr_UIColors *Colors = Rr_UIGetColors();
@@ -513,7 +513,7 @@ static void Iterate(void)
     Rr_UIDebugOverlay();
 
     static bool Open = true;
-    static bool CloseButton = true;
+    static bool NoClose = false;
     static bool NoResize = false;
     static bool NoScrollbar = false;
     static bool NoTitleBar = false;
@@ -521,9 +521,9 @@ static void Iterate(void)
     static bool AutoResize = true;
 
     Rr_UIWindowFlags Flags = 0;
-    if (CloseButton)
+    if (NoClose)
     {
-        Flags |= RR_UI_WINDOW_FLAGS_CLOSE_BIT;
+        Flags |= RR_UI_WINDOW_FLAGS_NO_CLOSE_BIT;
     }
     if (NoResize)
     {
@@ -632,7 +632,10 @@ static void Iterate(void)
                 "This is an example of a child window.\nUse child windows to "
                 "group your widgets.");
 
-            if (Rr_UIBeginWindowEx("Dockable Child Window", NULL, 0))
+            if (Rr_UIBeginWindowEx(
+                    "Dockable Child Window",
+                    NULL,
+                    RR_UI_WINDOW_FLAGS_DOCKABLE_BIT))
             {
                 Rr_UIText("This window can be docked/undocked (WIP).");
 
@@ -901,7 +904,7 @@ static void Iterate(void)
 
         if (Rr_UIBeginWindow("Checkboxes"))
         {
-            Rr_UICheckbox("Close Button", &CloseButton);
+            Rr_UICheckbox("Close Button", &NoClose);
             Rr_UICheckbox("No Resize", &NoResize);
             Rr_UICheckbox("Auto Resize", &AutoResize);
             Rr_UICheckbox("No Scrollbar", &NoScrollbar);

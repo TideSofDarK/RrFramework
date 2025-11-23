@@ -274,6 +274,10 @@ struct Rr_UIContext
     RR_ARRAY(char) TextInputBuffer;
     bool DeferTextInputBufferCopy;
 
+    bool CtrlHeld;
+    bool ShiftHeld;
+    bool AltHeld;
+    bool SuperHeld;
     RR_ARRAY(Rr_KeyEvent) KeyboardInputEvents;
 
     Rr_Vec2 ScreenSize;
@@ -703,9 +707,9 @@ static inline bool Rr_UIWindowNoTitleBar(Rr_UIWindow *Window)
     return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT);
 }
 
-static inline bool Rr_UIWindowHasCloseButton(Rr_UIWindow *Window)
+static inline bool Rr_UIWindowNoClose(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_CLOSE_BIT);
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_CLOSE_BIT);
 }
 
 static inline bool Rr_UIWindowNoCollapse(Rr_UIWindow *Window)
@@ -743,6 +747,11 @@ static inline bool Rr_UIWindowNoVerticalScrollbar(Rr_UIWindow *Window)
 static inline bool Rr_UIWindowEscapeCloses(Rr_UIWindow *Window)
 {
     return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT);
+}
+
+static inline bool Rr_UIWindowDockable(Rr_UIWindow *Window)
+{
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_DOCKABLE_BIT);
 }
 
 static inline bool Rr_UIWindowCollapsed(Rr_UIWindow *Window)
@@ -2813,14 +2822,19 @@ void Rr_UIPopFont(void)
 
 static inline Rr_Vec2 Rr_UIGetMinWindowSize(Rr_UIWindowFlags Flags)
 {
-    if (RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT))
+    Rr_Vec2 Size = Rr_V2F(Rr_UICurrentLineHeight());
+    Size = Rr_AddV2(Size, Rr_MulV2F(Rr_UICurrentWindowPadding(), 2.0f));
+    if (!RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT))
     {
-        return gUIContext->MinWindowSizeNoTitle;
+        Size.Y += gUIContext->TitleBarHeight;
     }
-    else
+    if (!RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT))
     {
-        return gUIContext->MinWindowSize;
+        Size = Rr_AddV2(
+            Size,
+            Rr_MulV2F(Rr_V2F(gUIContext->DoubleBevelThickness), 2.0f));
     }
+    return Size;
 }
 
 Rr_Vec2 Rr_UIGetCursor(void)
@@ -2902,7 +2916,7 @@ static inline bool Rr_UIAddCollapseButton(Rr_UILayout *Layout)
 {
     Rr_UIWindow *Window = Layout->Window;
 
-    /* Assuming having a title bar. */
+    /* Assuming having a title/tab bar. */
 
     Rr_Rect ButtonRect;
     ButtonRect.Offset = Layout->Rect.Offset;
@@ -2935,11 +2949,11 @@ static inline bool Rr_UIAddCollapseButton(Rr_UILayout *Layout)
     return ClickResult.ClickCount;
 }
 
-static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
+static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout)
 {
     Rr_UIWindow *Window = Layout->Window;
 
-    /* Assuming having a title bar. */
+    /* Assuming having a title/tab bar. */
 
     float Width = gUIContext->TitleBarButtonSize * gUIContext->Style.CrossWidth;
     float Thickness =
@@ -2970,9 +2984,9 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout, bool *Open)
         Rr_UIGetHash(sizeof("Rr.Close"), "Rr.Close", Rr_UICurrentHash());
 
     Rr_UIClickResult ClickResult = Rr_UIClickSimple(Layout, &ButtonRect, Hash);
-    if (ClickResult.ClickCount && Open)
+    if (ClickResult.ClickCount && Layout->Open)
     {
-        *Open = false;
+        *Layout->Open = false;
     }
 
     Rr_UIDrawBevel(
@@ -3012,7 +3026,7 @@ static inline Rr_Vec2 Rr_UICalculateTitleBarSize(Rr_UILayout *Layout)
         Width += gUIContext->TitleBarPadding.Width * 2.0f;
     }
 
-    if (Rr_UIWindowHasCloseButton(Window))
+    if (!Rr_UIWindowNoClose(Window) && Layout->Open)
     {
         Width += gUIContext->TitleBarButtonSize;
     }
@@ -3025,10 +3039,9 @@ static inline Rr_Vec2 Rr_UICalculateTitleBarSize(Rr_UILayout *Layout)
     return Rr_V2(Width, Height);
 }
 
-static inline void Rr_UIAddWindowTabBar(Rr_UILayout *Layout, bool *Open)
+static inline void Rr_UIAddWindowTabBar(Rr_UILayout *Layout)
 {
     Rr_UIWindow *Window = Layout->Window;
-    /* Rr_UIPrimitive BevelPrimitive = Rr_UIReserveBevel(); */
 
     Rr_Rect TitleBarRect = {
         Layout->Rect.Offset,
@@ -3047,10 +3060,9 @@ static inline void Rr_UIAddWindowTabBar(Rr_UILayout *Layout, bool *Open)
         TitleBarRect.Extent.X -= gUIContext->TitleBarHeight;
     }
 
-    bool HasClose = Rr_UIWindowHasCloseButton(Window);
-    if (HasClose)
+    if (!Rr_UIWindowNoClose(Window) && Layout->Open)
     {
-        Rr_UIAddCloseButton(Layout, Open);
+        Rr_UIAddCloseButton(Layout);
 
         TitleBarRect.Extent.Width -= gUIContext->TitleBarButtonSize;
     }
@@ -3092,10 +3104,9 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
         &gUIContext->Colors.TitleForeground,
         0);
 
-    bool HasClose = Rr_UIWindowHasCloseButton(Window);
-    if (HasClose)
+    if (!Rr_UIWindowNoClose(Window) && Layout->Open)
     {
-        Rr_UIAddCloseButton(Layout, Open);
+        Rr_UIAddCloseButton(Layout);
 
         TitleBarRect.Extent.Width -= gUIContext->TitleBarButtonSize;
     }
@@ -3112,7 +3123,18 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
             Rr_UIClickDouble(Layout, &TitleBarRect, Hash);
         if (ClickResult.ClickCount == 2)
         {
-            Window->Collapsed = !Window->Collapsed;
+            if (Rr_UIWindowDockable(Window) && gUIContext->CtrlHeld)
+            {
+                Window->Undocked = !Window->Undocked;
+                if (Window->Undocked)
+                {
+                    Window->Collapsed = false;
+                }
+            }
+            else
+            {
+                Window->Collapsed = !Window->Collapsed;
+            }
         }
     }
 
@@ -3613,7 +3635,7 @@ static inline bool Rr_UIBeginWindowImpl(
 
     if (Window->Tabs)
     {
-        Rr_UIAddWindowTabBar(Layout, Open);
+        Rr_UIAddWindowTabBar(Layout);
 
         Layout->Cursor.Y += gUIContext->TitleBarHeight;
     }
@@ -3791,32 +3813,37 @@ static inline bool Rr_UIGenericButton(
 bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
 {
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
+    Rr_UIWindow *ParentWindow = NULL;
 
+    Rr_Map **WindowMap;
+    Rr_UIWindow **WindowRef;
     Rr_UIWindow *Window;
-    Rr_UIHash TitleHash;
+
+    size_t TitleLength;
+    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
     if (ParentLayout)
     {
-        Rr_UIWindow *ParentWindow = ParentLayout->Window;
+        ParentWindow = ParentLayout->Window;
+        WindowMap = &ParentWindow->ChildWindowMap;
+    }
+    else
+    {
+        WindowMap = &gUIContext->WindowMap;
+    }
+    WindowRef = RR_GET_MAP_VALUE(WindowMap, TitleHash, gUIContext->Arena);
+    Window = *WindowRef;
 
+    if (ParentLayout && (!Window || (Window && !Window->Undocked)))
+    {
         /* Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT; */
         Flags |= RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT;
         Flags |= RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
         Flags |= RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
 
-        size_t TitleLength;
-        TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
-
-        Rr_UIWindow **WindowRef = RR_GET_MAP_VALUE(
-            &ParentWindow->ChildWindowMap,
-            TitleHash,
-            gUIContext->Arena);
-        Window = *WindowRef;
-
         if (Window == NULL)
         {
             Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
-            Window->Child = true;
             *WindowRef = Window;
         }
         else
@@ -3851,10 +3878,17 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
                     Selected ? &gUIContext->Colors.TitleBackground
                              : &gUIContext->Colors.TitleBackgroundInactive,
                     Selected ? &gUIContext->Colors.TitleBackground
-                             : &gUIContext->Colors.ButtonHeld) &&
-                !Selected)
+                             : &gUIContext->Colors.ButtonHeld))
             {
-                ParentLayout->DeferredSelectedTab = Window;
+                if (!Selected)
+                {
+                    ParentLayout->DeferredSelectedTab = Window;
+                }
+                else if (gUIContext->CtrlHeld)
+                {
+                    Window->Undocked = true;
+                    Window->Collapsed = false;
+                }
             }
 
             ParentLayout->TabsCursor.X += ButtonRect.Extent.X;
@@ -3869,24 +3903,16 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
             Window->Tab = true;
         }
 
+        Window->Child = true;
         Window->Rect.Offset = ParentLayout->Cursor;
         Window->Z = ParentWindow->Z + 1;
         Window->TopLevelParent = ParentWindow->TopLevelParent;
 
-        assert(
-            Window->Added == false &&
-            "There already is a window with this title!");
+        assert(!Window->Added && "There already is a window with this title!");
     }
     else
     {
-        size_t TitleLength;
         TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
-
-        Rr_UIWindow **WindowRef = RR_GET_MAP_VALUE(
-            &gUIContext->WindowMap,
-            TitleHash,
-            gUIContext->Arena);
-        Window = *WindowRef;
 
         if (Window == NULL)
         {
@@ -3901,11 +3927,16 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
             Window->Flags = Flags;
         }
 
+        Window->Tab = false;
+        Window->Child = false;
         Window->TopLevelParent = Window;
 
-        assert(
-            Window->Added == false &&
-            "There already is a window with this title!");
+        if (Window->Undocked)
+        {
+            Open = &Window->Undocked;
+        }
+
+        assert(!Window->Added && "There already is a window with this title!");
     }
 
     return Rr_UIBeginWindowImpl(Window, TitleHash, Open);
@@ -8219,6 +8250,15 @@ void Rr_CleanupUI(void)
     gUIContext = NULL;
 }
 
+static inline void Rr_UIResetHeldKeysAndButtons(void)
+{
+    gUIContext->LeftMouseButton.Held = false;
+    gUIContext->CtrlHeld = false;
+    gUIContext->ShiftHeld = false;
+    gUIContext->AltHeld = false;
+    gUIContext->SuperHeld = false;
+}
+
 void Rr_ProcessUIEvent(Rr_Event *Event)
 {
     if (gUIContext == NULL)
@@ -8230,6 +8270,14 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
 
     switch (Event->Type)
     {
+        case RR_EVENT_TYPE_FOCUS:
+        {
+            if(!Event->Focus.Focused)
+            {
+                Rr_UIResetHeldKeysAndButtons();
+            }
+        }
+        break;
         case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
         {
             Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
@@ -8250,6 +8298,30 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
         case RR_EVENT_TYPE_KEY_DOWN:
         case RR_EVENT_TYPE_KEY_UP:
         {
+            if (Event->Key.Scancode == RR_SCANCODE_LCTRL ||
+                Event->Key.Scancode == RR_SCANCODE_RCTRL)
+            {
+                gUIContext->CtrlHeld = Event->Key.Down;
+            }
+
+            if (Event->Key.Scancode == RR_SCANCODE_LSHIFT ||
+                Event->Key.Scancode == RR_SCANCODE_RSHIFT)
+            {
+                gUIContext->ShiftHeld = Event->Key.Down;
+            }
+
+            if (Event->Key.Scancode == RR_SCANCODE_LALT ||
+                Event->Key.Scancode == RR_SCANCODE_RALT)
+            {
+                gUIContext->AltHeld = Event->Key.Down;
+            }
+
+            if (Event->Key.Scancode == RR_SCANCODE_LSUPER ||
+                Event->Key.Scancode == RR_SCANCODE_RSUPER)
+            {
+                gUIContext->SuperHeld = Event->Key.Down;
+            }
+
             *RR_PUSH_INTO_ARRAY(
                 &gUIContext->KeyboardInputEvents,
                 gUIContext->FrameArena) = Event->Key;

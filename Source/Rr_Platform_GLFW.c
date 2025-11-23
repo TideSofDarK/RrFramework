@@ -160,6 +160,14 @@ static const Rr_Scancode GLFWScancodes[GLFW_KEY_LAST + 1] = {
     [GLFW_KEY_KP_9] = RR_SCANCODE_KP_9,
     [GLFW_KEY_KP_0] = RR_SCANCODE_KP_0,
     [GLFW_KEY_KP_DECIMAL] = RR_SCANCODE_KP_PERIOD,
+    [GLFW_KEY_LEFT_SHIFT] = RR_SCANCODE_LSHIFT,
+    [GLFW_KEY_LEFT_CONTROL] = RR_SCANCODE_LCTRL,
+    [GLFW_KEY_LEFT_ALT] = RR_SCANCODE_LALT,
+    [GLFW_KEY_LEFT_SUPER] = RR_SCANCODE_LSUPER,
+    [GLFW_KEY_RIGHT_SHIFT] = RR_SCANCODE_RSHIFT,
+    [GLFW_KEY_RIGHT_CONTROL] = RR_SCANCODE_RCTRL,
+    [GLFW_KEY_RIGHT_ALT] = RR_SCANCODE_RALT,
+    [GLFW_KEY_RIGHT_SUPER] = RR_SCANCODE_RSUPER,
 };
 
 static void Rr_GLFWKeyCallback(
@@ -334,6 +342,13 @@ static void Rr_GLFWWindowContentScaleCallback(
     gPlatform->WindowScale.Y = Y;
 }
 
+static void Rr_GLFWWindowFocusCallback(GLFWwindow *Window, int Focused)
+{
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type = RR_EVENT_TYPE_FOCUS;
+    Event->Focus.Focused = Focused;
+}
+
 bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 {
     assert(gPlatform == NULL);
@@ -467,6 +482,7 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     glfwSetWindowContentScaleCallback(
         Window,
         &Rr_GLFWWindowContentScaleCallback);
+    glfwSetWindowFocusCallback(Window, Rr_GLFWWindowFocusCallback);
 
     return true;
 }
