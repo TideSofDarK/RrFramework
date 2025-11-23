@@ -3869,10 +3869,9 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
 
         if (ParentWindow->Tabs)
         {
-            if (!ParentWindow->SelectedTab)
+            if (!ParentLayout->DeferredSelectedTab)
             {
                 ParentLayout->DeferredSelectedTab = Window;
-                ParentWindow->SelectedTab = Window;
             }
 
             /* Switch clip rect to add tab button. */
