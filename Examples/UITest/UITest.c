@@ -588,7 +588,9 @@ static void Iterate(void)
                 "and margins are dependent on current fonts line height but\n"
                 "could be overriden with absolute values.");
 
-            Rr_UIAdvance((Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f });
+            Rr_UIAdvance(
+                (Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f },
+                Rr_V2F(0.0f));
 
             Rr_UIPushFont(MozillaHeadlineFont);
 
@@ -601,7 +603,9 @@ static void Iterate(void)
 
             Rr_UIPopFont();
 
-            Rr_UIAdvance((Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f });
+            Rr_UIAdvance(
+                (Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f },
+                Rr_V2F(0.0f));
 
             Rr_UIPushFont(StoneTombFont);
 
@@ -806,7 +810,7 @@ static void Iterate(void)
             };
             Rr_UIDrawQuadVertices(QuadVertices);
 
-            Rr_UIAdvance(AREA);
+            Rr_UIAdvance(AREA, Rr_V2F(0.0f));
 
             Rr_UIEndChild();
         }

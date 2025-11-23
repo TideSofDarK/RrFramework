@@ -232,7 +232,7 @@ extern void Rr_UIDrawQuadVertices(Rr_UIVertex const *Vertices);
 
 extern Rr_Vec2 Rr_UIGetCursor(void);
 
-extern void Rr_UIAdvance(Rr_Vec2 Size);
+extern void Rr_UIAdvance(Rr_Vec2 RigidSize, Rr_Vec2 FlexibleSize);
 
 extern void Rr_UIPushID(char const *IDString);
 

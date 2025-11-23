@@ -152,7 +152,6 @@ struct Rr_UILayout
     float TotalAvailableContentsWidth;
     float HorizontalX;
     Rr_Vec2 HorizontalMaxExtent;
-    bool NextAdvanceFlexible;
 
     RR_ARRAY(Rr_UITree) TreeStack;
     int32_t TreeDepth;
@@ -2042,8 +2041,6 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
     size_t OldCursorMin = RR_MIN(CursorBegin, *CursorEnd);
     size_t OldCursorMax = RR_MAX(CursorBegin, *CursorEnd);
 
-    Rr_Vec2 ResultSize = { 0 };
-
     Rr_UTF8Decoder Decoder = { .CString = CString };
     while (true)
     {
@@ -2833,12 +2830,28 @@ Rr_Vec2 Rr_UIGetCursor(void)
     return Layout->Cursor;
 }
 
-void Rr_UIAdvance(Rr_Vec2 Size)
+void Rr_UIAdvance(Rr_Vec2 RigidSize, Rr_Vec2 FlexibleSize)
 {
     Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
+
+    /* TODO: Can contents be updated later when ending the window? */
+
+    Rr_Rect *ContentsRect = &Layout->DeferredContentsRect;
+    Rr_Vec2 ContentsMargin = Rr_UICurrentContentsMargin();
+
+    bool Flexible = FlexibleSize.X > 0.0f || FlexibleSize.Y > 0.0f;
+    Rr_Vec2 Size;
+    if (Flexible)
+    {
+        Size = FlexibleSize;
+    }
+    else
+    {
+        Size = RigidSize;
+    }
 
     if (gUIContext->VisualizeAdvances)
     {
@@ -2855,11 +2868,6 @@ void Rr_UIAdvance(Rr_Vec2 Size)
         Rr_UIDrawRect(&Rect, &Color);
         Layout->AdvanceCount++;
     }
-
-    /* TODO: Can contents be updated later when ending the window? */
-
-    Rr_Rect *ContentsRect = &Layout->DeferredContentsRect;
-    Rr_Vec2 ContentsMargin = Rr_UICurrentContentsMargin();
 
     if (Rr_UIIsHorizontal())
     {
@@ -2882,14 +2890,10 @@ void Rr_UIAdvance(Rr_Vec2 Size)
         float TotalWidth = (Layout->Cursor.X - ContentsRect->Offset.X) + Size.X;
         ContentsRect->Extent.X = RR_MAX(ContentsRect->Extent.X, TotalWidth);
 
-        if (!Layout->NextAdvanceFlexible)
+        if (!Flexible)
         {
             Layout->DeferredMaxRigidWidth =
                 RR_MAX(Layout->DeferredMaxRigidWidth, Size.X);
-        }
-        else
-        {
-            Layout->NextAdvanceFlexible = false;
         }
     }
 }
@@ -3744,10 +3748,12 @@ static inline Rr_UIWindow *Rr_UICreateWindow(
     Rr_UIWindowFlags Flags)
 {
     Rr_UIWindow *Window = RR_ALLOC_TYPE(gUIContext->Arena, Rr_UIWindow);
-    Window->Title = memcpy(
+    char *TitleCopy = memcpy(
         RR_ALLOC(gUIContext->Arena, TitleLength + 1),
         Title,
-        TitleLength + 1);
+        TitleLength);
+    TitleCopy[TitleLength] = '\0';
+    Window->Title = TitleCopy;
     Window->Flags = Flags;
     Window->Rect.Extent = Rr_UIGetMinWindowSize(Flags);
     Window->CreatedThisFrame = true;
@@ -3822,6 +3828,10 @@ void Rr_UIEndWindow(void)
     Window->MaxFlexibleWidgetWidth = Layout->DeferredMaxFlexibleWidgetWidth;
     Window->MaxRigidWidth = Layout->DeferredMaxRigidWidth;
     Window->ContentsRect = Layout->DeferredContentsRect;
+    if (Layout->DeferredSelectedTab)
+    {
+        Window->SelectedTab = Layout->DeferredSelectedTab;
+    }
 
     if (!Collapsed)
     {
@@ -3913,7 +3923,6 @@ void Rr_UIEndWindow(void)
             };
             if (Layout->DeferredResizeHandleColor)
             {
-
                 Rr_UIDrawTriangleFilled(
                     Positions,
                     Layout->DeferredResizeHandleColor);
@@ -4085,13 +4094,6 @@ void Rr_UIEndWindow(void)
         }
     }
 
-    /* Misc. */
-
-    if (Layout->DeferredSelectedTab)
-    {
-        Window->SelectedTab = Layout->DeferredSelectedTab;
-    }
-
     /* Handle keyboard events. */
 
     bool EscapeCloses = Rr_UIWindowEscapeCloses(Window);
@@ -4147,21 +4149,21 @@ void Rr_UIEndWindow(void)
             {
                 ParentLayout->ReservedExtent.Y -= WindowExtent.Y - TitleSize.Y;
                 WindowExtent.X = TitleSize.X;
-                Rr_UIAdvance(WindowExtent);
+                Rr_UIAdvance(WindowExtent, Rr_V2F(0.0f));
             }
             else if (UncollapsedThisFrame)
             {
                 ParentLayout->ReservedExtent.Y += WindowExtent.Y - TitleSize.Y;
                 WindowExtent.Y = TitleSize.Y;
-                Rr_UIAdvance(WindowExtent);
+                Rr_UIAdvance(WindowExtent, Rr_V2F(0.0f));
             }
             else if (Collapsed)
             {
-                Rr_UIAdvance(TitleSize);
+                Rr_UIAdvance(TitleSize, Rr_V2F(0.0f));
             }
             else
             {
-                Rr_UIAdvance(WindowExtent);
+                Rr_UIAdvance(WindowExtent, Rr_V2F(0.0f));
             }
 
             /* Rr_Vec2 Advance = Window->Rect.Extent; */
@@ -4323,7 +4325,7 @@ void Rr_UIEndHorizontal(void)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Layout->Cursor.X = Layout->HorizontalX;
     Layout->HorizontalX = INFINITY;
-    Rr_UIAdvance(Layout->HorizontalMaxExtent);
+    Rr_UIAdvance(Layout->HorizontalMaxExtent, Rr_V2F(0.0f));
 }
 
 static inline float Rr_UIGetOffsetForTreeDepth(int32_t Depth)
@@ -4360,8 +4362,6 @@ static inline float Rr_UISetupFlexibleWidget(
                              Window->MaxFlexibleWidgetTitleWidth -
                              gUIContext->FlexibleTitleMargin;
     }
-
-    Layout->NextAdvanceFlexible = true;
 
     return DesiredWidgetWidth;
 }
@@ -4566,7 +4566,7 @@ bool Rr_UIBeginTree(char const *Title)
 
     TotalExtent.X += gUIContext->ButtonPadding.X;
 
-    Rr_UIAdvance(TotalExtent);
+    Rr_UIAdvance(TotalExtent, Rr_V2F(0.0f));
 
     if (Layout->TreeExpandCollapseDepth > 0 &&
         Layout->TreeDepth < Layout->TreeExpandCollapseDepth)
@@ -4679,7 +4679,9 @@ void Rr_UISeparator(void)
     Rect.Offset.Y += Rect.Extent.Y;
     Rr_UIDrawSolidQuad(&Rect, &ColorDark);
 
-    Rr_UIAdvance(Rr_V2(AvailableWidth, gUIContext->SeparatorLineHeight));
+    Rr_UIAdvance(
+        Rr_V2(gUIContext->SeparatorLineHeight, gUIContext->SeparatorLineHeight),
+        Rr_V2(AvailableWidth, gUIContext->SeparatorLineHeight));
 }
 
 void Rr_UITextEx(char const *Text, Rr_UITextFlags Flags)
@@ -4698,7 +4700,7 @@ void Rr_UITextEx(char const *Text, Rr_UITextFlags Flags)
         &gUIContext->Colors.Foreground,
         Flags);
 
-    Rr_UIAdvance(TextSize);
+    Rr_UIAdvance(TextSize, Rr_V2F(0.0f));
 }
 
 void Rr_UIText(char const *Text)
@@ -4717,7 +4719,7 @@ void Rr_UIText(char const *Text)
         &gUIContext->Colors.Foreground,
         0);
 
-    Rr_UIAdvance(TextSize);
+    Rr_UIAdvance(TextSize, Rr_V2F(0.0f));
 }
 
 void Rr_UITextF(char const *Format, ...)
@@ -4751,11 +4753,10 @@ void Rr_UILabelText(char const *Title, char const *Text)
 
     size_t TitleLength = strlen(Title);
 
-    float TextWidth = Rr_UISetupFlexibleWidget(
-        Layout,
-        TitleLength,
-        Title,
-        Rr_UICalculateTextSize(SIZE_MAX, Text, 0.0f, 0).X);
+    float RigidWidth = Rr_UICalculateTextSize(SIZE_MAX, Text, 0.0f, 0).X;
+
+    float FlexibleWidth =
+        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, RigidWidth);
 
     Rr_Vec2 TextSize = Rr_UIDrawText(
         false,
@@ -4767,7 +4768,7 @@ void Rr_UILabelText(char const *Title, char const *Text)
         0);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += TextWidth + gUIContext->FlexibleTitleMargin;
+    TitleOffset.X += FlexibleWidth + gUIContext->FlexibleTitleMargin;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
         TitleOffset,
@@ -4777,12 +4778,17 @@ void Rr_UILabelText(char const *Title, char const *Text)
         &gUIContext->Colors.Foreground,
         0);
 
-    Rr_Vec2 TotalExtent = {
-        TextWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+    Rr_Vec2 RigidExtent = {
+        RigidWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
         TextSize.Y,
     };
 
-    Rr_UIAdvance(TotalExtent);
+    Rr_Vec2 FlexibleExtent = {
+        FlexibleWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        TextSize.Y,
+    };
+
+    Rr_UIAdvance(RigidExtent, FlexibleExtent);
 }
 
 bool Rr_UIButton(char const *Text)
@@ -4839,7 +4845,7 @@ bool Rr_UIButton(char const *Text)
                          : &gUIContext->Colors.ButtonNormal,
         ClickResult.Held);
 
-    Rr_UIAdvance(ButtonSize);
+    Rr_UIAdvance(ButtonSize, Rr_V2F(0.0f));
 
     return ClickResult.ClickCount;
 }
@@ -4917,7 +4923,7 @@ bool Rr_UIRadioButton(
         OutlineThickness,
         &gUIContext->Colors.RadioButtonOutline);
 
-    Rr_UIAdvance(ButtonRect.Extent);
+    Rr_UIAdvance(ButtonRect.Extent, Rr_V2F(0.0f));
 
     return ClickResult.ClickCount;
 }
@@ -4982,7 +4988,7 @@ bool Rr_UICheckbox(char const *Title, bool *Checked)
             &gUIContext->Colors.Foreground);
     }
 
-    Rr_UIAdvance(ButtonRect.Extent);
+    Rr_UIAdvance(ButtonRect.Extent, Rr_V2F(0.0f));
 
     return ClickResult.ClickCount;
 }
@@ -6572,14 +6578,14 @@ static inline bool Rr_UIInputScalarMulti(
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
-    float FieldsWidth = Rr_UICalculateGenericInputScalarMultiWidth(
+    float RigidWidth = Rr_UICalculateGenericInputScalarMultiWidth(
         Cols,
         Rows,
         Data,
         ScalarType);
 
-    FieldsWidth =
-        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, FieldsWidth);
+    float FlexibleWidth =
+        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, RigidWidth);
 
     Rr_UIInputFieldResult InputResult = Rr_UIGenericInputScalarMulti(
         TitleHash,
@@ -6594,7 +6600,7 @@ static inline bool Rr_UIInputScalarMulti(
             RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT |
             RR_UI_INPUT_FIELD_FLAGS_DRAG_BIT,
-        FieldsWidth,
+        FlexibleWidth,
         true);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
@@ -6609,12 +6615,17 @@ static inline bool Rr_UIInputScalarMulti(
         &gUIContext->Colors.Foreground,
         0);
 
-    Rr_Vec2 TotalExtent = {
-        InputResult.Extent.X + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+    Rr_Vec2 RigidExtent = {
+        RigidWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
         InputResult.Extent.Y,
     };
 
-    Rr_UIAdvance(TotalExtent);
+    Rr_Vec2 FlexibleExtent = {
+        FlexibleWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        InputResult.Extent.Y,
+    };
+
+    Rr_UIAdvance(RigidExtent, FlexibleExtent);
 
     return InputResult.Edited;
 }
@@ -6647,11 +6658,10 @@ bool Rr_UIInputField(
             Rr_UICalculateTextSize(SIZE_MAX, Placeholder, 0.0f, 0).X);
     }
 
-    float FieldWidth = Rr_UISetupFlexibleWidget(
-        Layout,
-        TitleLength,
-        Title,
-        TextSize.X + gUIContext->InputFieldPadding.X * 2.0f);
+    float RigidWidth = TextSize.X + gUIContext->InputFieldPadding.X * 2.0f;
+
+    float FlexibleWidth =
+        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, RigidWidth);
 
     Rr_UIInputFieldResult Result = Rr_UIGenericInputField(
         TitleHash,
@@ -6661,7 +6671,7 @@ bool Rr_UIInputField(
         Placeholder,
         FilterFunc,
         Flags,
-        FieldWidth);
+        FlexibleWidth);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
     TitleOffset.X += Result.Extent.X + gUIContext->FlexibleTitleMargin;
@@ -6675,12 +6685,17 @@ bool Rr_UIInputField(
         &gUIContext->Colors.Foreground,
         0);
 
-    Rr_Vec2 TotalExtent = {
-        Result.Extent.X + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+    Rr_Vec2 RigidExtent = {
+        RigidWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
         Result.Extent.Y,
     };
 
-    Rr_UIAdvance(TotalExtent);
+    Rr_Vec2 FlexibleExtent = {
+        FlexibleWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        Result.Extent.Y,
+    };
+
+    Rr_UIAdvance(RigidExtent, FlexibleExtent);
 
     Rr_DestroyScratch(Scratch);
 
@@ -7216,7 +7231,7 @@ static inline void Rr_UIColorPickerPopup(
         Layout->Cursor,
         Rr_V2(StaticHSV.Y * TargetSize, (1.0f - StaticHSV.Z) * TargetSize));
 
-    Rr_UIAdvance(Rr_V2F(TargetSize));
+    Rr_UIAdvance(Rr_V2F(TargetSize), Rr_V2F(0.0f));
 
     Rr_UIHash HSelectorHash =
         Rr_UIGetHash(sizeof("HSelector"), "HSelector", Rr_UICurrentHash());
@@ -7302,7 +7317,7 @@ static inline void Rr_UIColorPickerPopup(
         HSVChanged = true;
     }
 
-    Rr_UIAdvance(HSelectorRect.Extent);
+    Rr_UIAdvance(HSelectorRect.Extent, Rr_V2F(0.0f));
 
     Rr_UIEndHorizontal();
 
@@ -7413,15 +7428,15 @@ static inline bool Rr_UIInputColorEx(
 
     float ColorBoxWithMargin = gUIContext->ComponentMargin + ColorBoxExtent.X;
 
-    float FieldsWidth = Rr_UICalculateGenericInputScalarMultiWidth(
+    float RigidWidth = Rr_UICalculateGenericInputScalarMultiWidth(
         ChannelCount,
         1,
         Channels,
         RR_UI_SCALAR_TYPE_FLOAT);
-    FieldsWidth += ColorBoxWithMargin;
+    RigidWidth += ColorBoxWithMargin;
 
-    FieldsWidth =
-        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, FieldsWidth);
+    float FlexibleWidth =
+        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, RigidWidth);
 
     Rr_UIInputFieldResult InputResult = Rr_UIGenericInputScalarMulti(
         TitleHash,
@@ -7436,7 +7451,7 @@ static inline bool Rr_UIInputColorEx(
             RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT |
             RR_UI_INPUT_FIELD_FLAGS_DRAG_BIT,
-        FieldsWidth - ColorBoxWithMargin,
+        FlexibleWidth - ColorBoxWithMargin,
         true);
 
     Rr_Vec2 ColorBoxOffset = Layout->Cursor;
@@ -7499,13 +7514,19 @@ static inline bool Rr_UIInputColorEx(
         &gUIContext->Colors.Foreground,
         0);
 
-    Rr_Vec2 TotalExtent = {
-        InputResult.Extent.X + ColorBoxWithMargin +
-            gUIContext->FlexibleTitleMargin + TitleExtent.X,
+    Rr_Vec2 RigidExtent = {
+        RigidWidth + ColorBoxWithMargin + gUIContext->FlexibleTitleMargin +
+            TitleExtent.X,
         InputResult.Extent.Y,
     };
 
-    Rr_UIAdvance(TotalExtent);
+    Rr_Vec2 FlexibleExtent = {
+        FlexibleWidth + ColorBoxWithMargin + gUIContext->FlexibleTitleMargin +
+            TitleExtent.X,
+        InputResult.Extent.Y,
+    };
+
+    Rr_UIAdvance(RigidExtent, FlexibleExtent);
 
     return ColorChanged;
 }
@@ -7556,17 +7577,18 @@ bool Rr_UICombobox(
         &gUIContext->Colors.Foreground,
         0);
 
-    float ButtonWidth = Rr_UISetupFlexibleWidget(
-        Layout,
-        TitleLength,
-        Title,
+    float RigidWidth =
         SelectedTextSize.X + gUIContext->InputFieldPadding.X * 2.0f +
-            Font->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f);
+        Font->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f;
+
+    float FlexibleWidth =
+        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, RigidWidth);
+
     float ButtonHeight =
         SelectedTextSize.Height + gUIContext->InputFieldPadding.Y * 2.0f;
 
     Rr_Vec2 ButtonExtent = {
-        ButtonWidth,
+        FlexibleWidth,
         ButtonHeight,
     };
 
@@ -7649,7 +7671,7 @@ bool Rr_UICombobox(
                 OptionButtonQuad.Vertices,
                 &OptionButtonRect,
                 &OptionButtonColor);
-            Rr_UIAdvance(OptionSize);
+            Rr_UIAdvance(OptionSize, Rr_V2F(0.0f));
         }
         Rr_UIEndWindow();
         Rr_UIPopContentsMargin();
@@ -7701,7 +7723,7 @@ bool Rr_UICombobox(
     }
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
-    TitlePosition.X += ButtonWidth + gUIContext->FlexibleTitleMargin;
+    TitlePosition.X += FlexibleWidth + gUIContext->FlexibleTitleMargin;
     TitlePosition.Y += gUIContext->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
@@ -7712,12 +7734,17 @@ bool Rr_UICombobox(
         &gUIContext->Colors.Foreground,
         0);
 
-    Rr_Vec2 TotalExtent = {
-        ButtonExtent.X + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+    Rr_Vec2 RigidExtent = {
+        RigidWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
         Font->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f,
     };
 
-    Rr_UIAdvance(TotalExtent);
+    Rr_Vec2 FlexibleExtent = {
+        FlexibleWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        Font->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f,
+    };
+
+    Rr_UIAdvance(RigidExtent, FlexibleExtent);
 
     return OptionChanged;
 }
@@ -7740,15 +7767,15 @@ static inline float Rr_UISlider(
 
     /* NOTE: Reserve three handles worth of width just in case. Probably could
      * also use value text width. */
-    float MinSliderWidth = Font->LineHeight * 10.0f;
+    float RigidWidth = Font->LineHeight * 10.0f;
 
-    float SliderWidth =
-        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, MinSliderWidth);
+    float FlexibleWidth =
+        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, RigidWidth);
 
     Rr_Rect SliderRect = {
         Layout->Cursor,
         {
-            SliderWidth,
+            FlexibleWidth,
             Font->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f,
         },
     };
@@ -7758,12 +7785,12 @@ static inline float Rr_UISlider(
     float HandleWidth = Font->LineHeight * 0.75f;
     if (HandleSizeRatio != 0.0f)
     {
-        HandleWidth = RR_MAX(HandleWidth, SliderWidth * HandleSizeRatio);
+        HandleWidth = RR_MAX(HandleWidth, FlexibleWidth * HandleSizeRatio);
     }
     HandleWidth = RR_UI_ROUND(HandleWidth);
     Rr_Rect HandleRect = { Layout->Cursor,
                            Rr_V2(HandleWidth, SliderRect.Extent.Y) };
-    HandleRect.Offset.X += Normalized * (SliderWidth - HandleWidth);
+    HandleRect.Offset.X += Normalized * (FlexibleWidth - HandleWidth);
     HandleRect.Offset.X = roundf(HandleRect.Offset.X);
     HandleRect = Rr_ResizeRect(&HandleRect, -gUIContext->BevelThickness);
     Rr_UIDrawBevel(&HandleRect, &gUIContext->Colors.ButtonNormal, false);
@@ -7821,7 +7848,7 @@ static inline float Rr_UISlider(
     if (ClickResult.ClickCount || ClickResult.Moved)
     {
         float SliderMin = Layout->Cursor.X + HandleWidth / 2.0f;
-        float SliderMax = SliderMin + SliderWidth - HandleWidth;
+        float SliderMax = SliderMin + FlexibleWidth - HandleWidth;
 
         Normalized =
             (gUIContext->MousePosition.X - SliderMin) / (SliderMax - SliderMin);
@@ -7849,12 +7876,17 @@ static inline float Rr_UISlider(
         &gUIContext->Colors.Foreground,
         0);
 
-    Rr_Vec2 TotalExtent = {
-        SliderRect.Extent.X + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+    Rr_Vec2 RigidExtent = {
+        RigidWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
         SliderRect.Extent.Y,
     };
 
-    Rr_UIAdvance(TotalExtent);
+    Rr_Vec2 FlexibleExtent = {
+        FlexibleWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        SliderRect.Extent.Y,
+    };
+
+    Rr_UIAdvance(RigidExtent, FlexibleExtent);
 
     return Normalized;
 }
