@@ -101,7 +101,10 @@ struct Rr_UIWindow
     bool Open;
     bool Child;
     bool Tab;
+
     bool Undocked;
+    bool UndockNextFrame;
+    Rr_Vec2 UndockedOffset;
 
     bool Tabs;
     Rr_UIWindow *SelectedTab;
@@ -3016,7 +3019,7 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout)
         &gUIContext->Colors.TitleForeground);
 }
 
-static inline void Rr_UISetWindowOffsetRelativeToTitle(
+static inline Rr_Vec2 Rr_UIGetWindowOffsetRelativeToTitle(
     Rr_UIWindow *Window,
     Rr_Vec2 Offset)
 {
@@ -3029,7 +3032,7 @@ static inline void Rr_UISetWindowOffsetRelativeToTitle(
         Offset.X -= gUIContext->TitleBarHeight;
     }
     Offset = Rr_SubV2(Offset, gUIContext->TitleBarPadding);
-    Window->Rect.Offset = Offset;
+    return Offset;
 }
 
 static inline Rr_Vec2 Rr_UICalculateTitleBarSize(Rr_UILayout *Layout)
@@ -3154,11 +3157,8 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
         if (ClickResult.ClickCount == 1 && Rr_UIWindowUndockable(Window) &&
             gUIContext->CtrlHeld)
         {
-            Window->Undocked = !Window->Undocked;
-            if (Window->Undocked)
-            {
-                Window->Collapsed = false;
-            }
+            Window->UndockedOffset = Layout->Rect.Offset;
+            Window->UndockNextFrame = !Window->Undocked;
             Rr_UIResetClickAndDrag();
             Rr_UIConsumeMouseAndKeyboardInput();
         }
@@ -3867,124 +3867,115 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
     }
     WindowRef = RR_GET_MAP_VALUE(WindowMap, TitleHash, gUIContext->Arena);
     Window = *WindowRef;
-
-    if (ParentLayout)
-    {
-        if (Window == NULL)
-        {
-            Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
-            *WindowRef = Window;
-        }
-        else
-        {
-            Window->Flags = Flags;
-        }
-
-        if (!Window->Undocked)
-        {
-            if (ParentWindow->Tabs)
-            {
-                Window->TabsParent = ParentWindow;
-
-                bool Selected = ParentWindow->SelectedTab == Window;
-                if (!ParentLayout->DeferredSelectedTab)
-                {
-                    ParentLayout->DeferredSelectedTab = Window;
-                }
-
-                Rr_Vec2 TitleSize =
-                    Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0, 0);
-                Rr_Rect ButtonRect = {
-                    .Offset = ParentLayout->TabsCursor,
-                    .Extent = Rr_V2(
-                        TitleSize.X + gUIContext->TitleBarPadding.X * 2.0f,
-                        gUIContext->TitleBarHeight),
-                };
-                if (Rr_UIGenericButton(
-                        ParentLayout,
-                        Window->Title,
-                        &ButtonRect,
-                        &gUIContext->Colors.TitleForeground,
-                        Selected ? &gUIContext->Colors.TitleBackground
-                                 : &gUIContext->Colors.TitleBackgroundInactive,
-                        Selected ? &gUIContext->Colors.TitleBackground
-                                 : &gUIContext->Colors.ButtonHeld))
-                {
-                    if (Rr_UIWindowUndockable(Window) && gUIContext->CtrlHeld)
-                    {
-                        Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
-                        Window->Undocked = true;
-                        Window->Collapsed = false;
-                        if (Selected)
-                        {
-                            ParentLayout->DeferredSelectedTab =
-                                ParentLayout->LastAddedTab;
-                        }
-                        Rr_Vec2 TitlePosition = ButtonRect.Offset;
-                        TitlePosition.X += gUIContext->ButtonPadding.X;
-                        Rr_UISetWindowOffsetRelativeToTitle(
-                            Window,
-                            TitlePosition);
-                        gUIContext->ClickParent = Window;
-                    }
-                    else if (!Selected)
-                    {
-                        ParentLayout->DeferredSelectedTab = Window;
-                    }
-                }
-
-                ParentLayout->TabsCursor.X += ButtonRect.Extent.X;
-
-                /* Render it as borderless and titleless child if docked. */
-
-                if (!Window->Undocked)
-                {
-                    ParentLayout->LastAddedTab = Window;
-
-                    if (!Selected || ParentLayout->WasCollapsed)
-                    {
-                        return false;
-                    }
-
-                    Window->Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
-                    Window->Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
-                    Window->Tab = true;
-                }
-            }
-            else
-            {
-                Window->TabsParent = NULL;
-            }
-
-            if (!Window->Undocked)
-            {
-                Rr_UIWindowFlags const CHILD_FLAGS =
-                    RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
-                    RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
-                    RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
-
-                Window->Flags |= CHILD_FLAGS;
-                Window->Child = true;
-                Window->Rect.Offset = ParentLayout->Cursor;
-                Window->Z = ParentWindow->Z;
-                Window->TopLevelParent = ParentWindow->TopLevelParent;
-
-                return Rr_UIBeginWindowImpl(Window, TitleHash, Open);
-            }
-        }
-    }
-
     if (Window == NULL)
     {
         Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
-        Window->Z = gUIContext->TotalWindowCount++;
-        Window->Rect.Offset =
-            Rr_FloorV2(Rr_V2F(gUIContext->DefaultFont->LineHeight));
         *WindowRef = Window;
     }
     else
     {
         Window->Flags = Flags;
+    }
+
+    if (ParentWindow && !Window->UndockNextFrame && !Window->Undocked)
+    {
+        if (ParentWindow->Tabs)
+        {
+            Window->TabsParent = ParentWindow;
+
+            bool Selected = ParentWindow->SelectedTab == Window;
+            if (!ParentLayout->DeferredSelectedTab)
+            {
+                ParentLayout->DeferredSelectedTab = Window;
+            }
+            if (!ParentWindow->SelectedTab)
+            {
+                ParentWindow->SelectedTab = Window;
+                Selected = true;
+            }
+
+            Rr_Vec2 TitleSize =
+                Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0, 0);
+            Rr_Rect ButtonRect = {
+                .Offset = ParentLayout->TabsCursor,
+                .Extent = Rr_V2(
+                    TitleSize.X + gUIContext->TitleBarPadding.X * 2.0f,
+                    gUIContext->TitleBarHeight),
+            };
+            if (Rr_UIGenericButton(
+                    ParentLayout,
+                    Window->Title,
+                    &ButtonRect,
+                    &gUIContext->Colors.TitleForeground,
+                    Selected ? &gUIContext->Colors.TitleBackground
+                             : &gUIContext->Colors.TitleBackgroundInactive,
+                    Selected ? &gUIContext->Colors.TitleBackground
+                             : &gUIContext->Colors.ButtonHeld))
+            {
+                if (Rr_UIWindowUndockable(Window) && gUIContext->CtrlHeld)
+                {
+                    Rr_Vec2 TitlePosition = ButtonRect.Offset;
+                    TitlePosition.X += gUIContext->TitleBarPadding.X;
+                    TitlePosition.Y += gUIContext->TitleBarPadding.Y;
+                    Window->UndockedOffset =
+                        Rr_UIGetWindowOffsetRelativeToTitle(
+                            Window,
+                            TitlePosition);
+                    Window->UndockNextFrame = true;
+
+                    if (Selected)
+                    {
+                        ParentLayout->DeferredSelectedTab =
+                            ParentLayout->LastAddedTab;
+                    }
+                }
+                else if (!Selected)
+                {
+                    ParentLayout->DeferredSelectedTab = Window;
+                }
+            }
+
+            ParentLayout->TabsCursor.X += ButtonRect.Extent.X;
+            ParentLayout->LastAddedTab = Window;
+
+            if (!Selected || ParentLayout->WasCollapsed)
+            {
+                return false;
+            }
+
+            Window->Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
+            Window->Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
+            Window->Tab = true;
+        }
+
+        Rr_UIWindowFlags const CHILD_FLAGS =
+            RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT | RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
+            RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
+
+        Window->Flags |= CHILD_FLAGS;
+        Window->Child = true;
+        Window->Rect.Offset = ParentLayout->Cursor;
+        Window->Z = ParentWindow->Z;
+        Window->TopLevelParent = ParentWindow->TopLevelParent;
+
+        return Rr_UIBeginWindowImpl(Window, TitleHash, Open);
+    }
+
+    if (Window->CreatedThisFrame)
+    {
+        Window->Z = gUIContext->TotalWindowCount++;
+        Window->Rect.Offset =
+            Rr_FloorV2(Rr_V2F(gUIContext->DefaultFont->LineHeight));
+    }
+
+    if (Window->UndockNextFrame)
+    {
+        Window->Rect.Offset = Window->UndockedOffset;
+        Window->UndockNextFrame = false;
+        Window->Undocked = true;
+        Window->Collapsed = false;
+        /* Window->SkipThisFrame = true; */
+        Window->Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
     }
 
     Window->Tab = false;
@@ -8701,7 +8692,8 @@ void Rr_UIDebugOverlay(void)
             NULL,
             RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT |
                 RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
-                RR_UI_WINDOW_FLAGS_NO_MOVE_BIT | RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT))
+                RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
+                RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT))
     {
         Rr_UIPopWindowPadding();
         if (Rr_UIBeginTabs("DebugOverlayTabs"))
@@ -8836,10 +8828,13 @@ void Rr_UIDebugOverlay(void)
 
                 Rr_UITextF(
                     "Hovered Window: %s\n"
+                    "Click Parent: %s\n"
                     "Active Windows: %b\n"
                     "Popup Window Open: %b",
                     gUIContext->HoveredWindow ? gUIContext->HoveredWindow->Title
                                               : NULL,
+                    gUIContext->ClickParent ? gUIContext->ClickParent->Title
+                                            : NULL,
                     gUIContext->ActiveLayouts.Count,
                     gUIContext->PopupWindow.Open);
 
