@@ -3534,10 +3534,15 @@ static inline void Rr_UISwapWindowZ(Rr_UIWindow *WindowA, Rr_UIWindow *WindowB)
 
 static inline void Rr_UIPutWindowOnTop(Rr_UIWindow *Window)
 {
-    if (gUIContext->HighestWindow && gUIContext->HighestWindow != Window)
+    if (Window->Child)
     {
-        Window->TopLevelParent->Z = gUIContext->HighestWindow->Z + 1;
+        return;
     }
+    if (!gUIContext->HighestWindow || gUIContext->HighestWindow == Window)
+    {
+        return;
+    }
+    Window->TopLevelParent->Z = gUIContext->HighestWindow->Z + 1;
 }
 
 static inline bool Rr_UIBeginWindowImpl(
@@ -3545,6 +3550,8 @@ static inline bool Rr_UIBeginWindowImpl(
     Rr_UIHash Hash,
     bool *Open)
 {
+    assert(!Window->Added && "There already is a window with this title!");
+
     Rr_UIConsumeNextWindowCreateCollapsed(Window);
     bool WindowOffsetConsumed = Rr_UIConsumeNextWindowOffset(Window);
     bool WindowExtentConsumed = Rr_UIConsumeNextWindowExtent(Window);
@@ -3569,10 +3576,7 @@ static inline bool Rr_UIBeginWindowImpl(
 
         Window->OpenedThisFrame = true;
         Window->SkipThisFrame = true;
-        if (gUIContext->HighestWindow)
-        {
-            Rr_UIPutWindowOnTop(Window);
-        }
+        Rr_UIPutWindowOnTop(Window);
     }
 
     /* NOTE: Have to access current window and finish its clip rect. */
@@ -3922,13 +3926,9 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
             Window->Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
             Window->Tab = true;
         }
-
-        assert(!Window->Added && "There already is a window with this title!");
     }
     else
     {
-        TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
-
         if (Window == NULL)
         {
             Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
@@ -3950,8 +3950,6 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
         {
             Open = &Window->Undocked;
         }
-
-        assert(!Window->Added && "There already is a window with this title!");
     }
 
     return Rr_UIBeginWindowImpl(Window, TitleHash, Open);
