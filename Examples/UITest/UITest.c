@@ -14,10 +14,7 @@ static Rr_UIFont *MozillaHeadlineFont = NULL;
 
 static void TextInputWindow()
 {
-    if (Rr_UIBeginWindowEx(
-            "Text Input Window",
-            &TextInputWindowOpen,
-            0))
+    if (Rr_UIBeginWindowEx("Text Input Window", &TextInputWindowOpen, 0))
     {
         static char StringBuffer[2048] = "";
         char LabelBuffer[64];
@@ -129,6 +126,7 @@ static void PrintTheme(void)
     PrintColor("TitleBackground", &Colors->TitleBackground);
     PrintColor("TitleBackground2", &Colors->TitleBackground2);
     PrintColor("TitleBackgroundInactive", &Colors->TitleBackgroundInactive);
+    PrintColor("TitleBackgroundTabs", &Colors->TitleBackgroundTabs);
     PrintColor(
         "TitleCloseButtonBackground",
         &Colors->TitleCloseButtonBackground);
@@ -167,10 +165,7 @@ static void PrintTheme(void)
 
 static void ThemeEditorWindow()
 {
-    if (Rr_UIBeginWindowEx(
-            "Theme Editor",
-            &ThemeEditorWindowOpen,
-            0))
+    if (Rr_UIBeginWindowEx("Theme Editor", &ThemeEditorWindowOpen, 0))
     {
         Rr_UIStyle *Style = Rr_UIGetStyle();
         Rr_UIColors *Colors = Rr_UIGetColors();
@@ -231,6 +226,9 @@ static void ThemeEditorWindow()
         Rr_UIInputColor4(
             "Title Background Inactive",
             Colors->TitleBackgroundInactive.Elements);
+        Rr_UIInputColor4(
+            "Title Background Tabs",
+            Colors->TitleBackgroundTabs.Elements);
         Rr_UIInputColor4(
             "Title Close Button",
             Colors->TitleCloseButtonBackground.Elements);

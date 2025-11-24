@@ -175,6 +175,8 @@ struct Rr_UILayout
     bool DeferredClampOffsetToScreen;
     Rr_UIWindow *DeferredSelectedTab;
 
+    Rr_UIWindow *LastAddedTab;
+
     bool LockOffset;
     bool LockExtent;
 
@@ -294,7 +296,6 @@ struct Rr_UIContext
     Rr_Vec2 MinWindowSizeNoTitle;
     float TitleBarHeight;
     Rr_Vec2 TitleBarPadding;
-    float TitleBarButtonSize;
     float ResizeHandleSize;
     float FrameThickness;
     float SeparatorLineHeight;
@@ -2781,7 +2782,6 @@ static inline void Rr_UIRecalculateStyle(void)
     gUIContext->TitleBarPadding = Rr_MulV2F(Style->TitleBarPadding, LineHeight);
     gUIContext->TitleBarHeight =
         RR_UI_ROUND(gUIContext->TitleBarPadding.Y * 2.0f + LineHeight);
-    gUIContext->TitleBarButtonSize = RR_UI_ROUND(gUIContext->TitleBarHeight);
     gUIContext->MinWindowSizeNoTitle =
         Rr_MulV2F(gUIContext->WindowPadding, 2.0f);
     gUIContext->MinWindowSizeNoTitle.X += gUIContext->ScrollbarWidth;
@@ -2931,7 +2931,7 @@ static inline bool Rr_UIAddCollapseButton(Rr_UILayout *Layout)
 
     Rr_Rect ButtonRect;
     ButtonRect.Offset = Layout->Rect.Offset;
-    ButtonRect.Extent = Rr_V2F(gUIContext->TitleBarButtonSize);
+    ButtonRect.Extent = Rr_V2F(gUIContext->TitleBarHeight);
 
     Rr_UIHash Hash =
         Rr_UIGetHash(sizeof("Rr.Collapse"), "Rr.Collapse", Rr_UICurrentHash());
@@ -2966,9 +2966,9 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout)
 
     /* Assuming having a title/tab bar. */
 
-    float Width = gUIContext->TitleBarButtonSize * gUIContext->Style.CrossWidth;
+    float Width = gUIContext->TitleBarHeight * gUIContext->Style.CrossWidth;
     float Thickness =
-        gUIContext->TitleBarButtonSize * gUIContext->Style.CrossThickness;
+        gUIContext->TitleBarHeight * gUIContext->Style.CrossThickness;
     Rr_Rect TitleRect = Layout->Rect;
     TitleRect.Extent.Height = gUIContext->TitleBarHeight;
     Rr_Rect BarRect;
@@ -2985,11 +2985,11 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout)
     Rr_Rect ButtonRect;
     ButtonRect.Offset.X =
         TitleRect.Offset.X + TitleRect.Extent.Width -
-        (TitleRect.Extent.Height + gUIContext->TitleBarButtonSize) * 0.5f,
+        (TitleRect.Extent.Height + gUIContext->TitleBarHeight) * 0.5f,
     ButtonRect.Offset.Y =
         TitleRect.Offset.Y +
-        (TitleRect.Extent.Height - gUIContext->TitleBarButtonSize) * 0.5f;
-    ButtonRect.Extent = Rr_V2F(gUIContext->TitleBarButtonSize);
+        (TitleRect.Extent.Height - gUIContext->TitleBarHeight) * 0.5f;
+    ButtonRect.Extent = Rr_V2F(gUIContext->TitleBarHeight);
 
     Rr_UIHash Hash =
         Rr_UIGetHash(sizeof("Rr.Close"), "Rr.Close", Rr_UICurrentHash());
@@ -3013,6 +3013,22 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout)
         &BarRect,
         RR_ANGLE_DEG(-45.0f),
         &gUIContext->Colors.TitleForeground);
+}
+
+static inline void Rr_UISetWindowOffsetRelativeToTitle(
+    Rr_UIWindow *Window,
+    Rr_Vec2 Offset)
+{
+    if (!Rr_UIWindowNoBorders(Window))
+    {
+        Offset = Rr_SubV2(Offset, Rr_V2F(gUIContext->DoubleBevelThickness));
+    }
+    if (!Rr_UIWindowNoCollapse(Window))
+    {
+        Offset.X -= gUIContext->TitleBarHeight;
+    }
+    Offset = Rr_SubV2(Offset, gUIContext->TitleBarPadding);
+    Window->Rect.Offset = Offset;
 }
 
 static inline Rr_Vec2 Rr_UICalculateTitleBarSize(Rr_UILayout *Layout)
@@ -3039,11 +3055,11 @@ static inline Rr_Vec2 Rr_UICalculateTitleBarSize(Rr_UILayout *Layout)
 
     if (!Rr_UIWindowNoClose(Window) && Layout->Open)
     {
-        Width += gUIContext->TitleBarButtonSize;
+        Width += gUIContext->TitleBarHeight;
     }
     if (!Rr_UIWindowNoCollapse(Window))
     {
-        Width += gUIContext->TitleBarButtonSize;
+        Width += gUIContext->TitleBarHeight;
     }
     Height += gUIContext->TitleBarHeight;
 
@@ -3058,6 +3074,8 @@ static inline void Rr_UIAddWindowTabBar(Rr_UILayout *Layout)
         Layout->Rect.Offset,
         Rr_V2(Layout->Rect.Extent.Width, gUIContext->TitleBarHeight),
     };
+
+    Rr_UIDrawRect(&TitleBarRect, &gUIContext->Colors.TitleBackgroundTabs);
 
     Rr_Vec2 TabsCursor = Layout->Rect.Offset;
 
@@ -3075,7 +3093,7 @@ static inline void Rr_UIAddWindowTabBar(Rr_UILayout *Layout)
     {
         Rr_UIAddCloseButton(Layout);
 
-        TitleBarRect.Extent.Width -= gUIContext->TitleBarButtonSize;
+        TitleBarRect.Extent.Width -= gUIContext->TitleBarHeight;
     }
 
     Layout->TabsCursorStart = TabsCursor;
@@ -3119,7 +3137,7 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
     {
         Rr_UIAddCloseButton(Layout);
 
-        TitleBarRect.Extent.Width -= gUIContext->TitleBarButtonSize;
+        TitleBarRect.Extent.Width -= gUIContext->TitleBarHeight;
     }
 
     /* Allow double clicking the title bevel to toggle collapse state. */
@@ -3825,22 +3843,6 @@ static inline bool Rr_UIGenericButton(
     return ClickResult.ClickCount;
 }
 
-static inline void Rr_UISetWindowOffsetRelativeToTitle(
-    Rr_UIWindow *Window,
-    Rr_Vec2 Offset)
-{
-    if (!Rr_UIWindowNoBorders(Window))
-    {
-        Offset = Rr_SubV2(Offset, Rr_V2F(gUIContext->DoubleBevelThickness));
-    }
-    if (!Rr_UIWindowNoCollapse(Window))
-    {
-        Offset.X -= gUIContext->TitleBarButtonSize;
-    }
-    Offset = Rr_SubV2(Offset, gUIContext->TitleBarPadding);
-    Window->Rect.Offset = Offset;
-}
-
 bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
 {
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
@@ -3865,13 +3867,8 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
     WindowRef = RR_GET_MAP_VALUE(WindowMap, TitleHash, gUIContext->Arena);
     Window = *WindowRef;
 
-    if (ParentLayout && (!Window || (Window && !Window->Undocked)))
+    if (ParentLayout)
     {
-        /* Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT; */
-        Flags |= RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT;
-        Flags |= RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
-        Flags |= RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
-
         if (Window == NULL)
         {
             Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
@@ -3882,95 +3879,115 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
             Window->Flags = Flags;
         }
 
-        Window->Child = true;
-        Window->Rect.Offset = ParentLayout->Cursor;
-        Window->Z = ParentWindow->Z;
-        Window->TopLevelParent = ParentWindow->TopLevelParent;
-
-        if (ParentWindow->Tabs)
+        if (!Window->Undocked)
         {
-            if (!ParentLayout->DeferredSelectedTab)
+            if (ParentWindow->Tabs)
             {
-                ParentLayout->DeferredSelectedTab = Window;
-            }
-
-            /* Switch clip rect to add tab button. */
-
-            bool Selected = ParentWindow->SelectedTab == Window;
-
-            Rr_Vec2 TitleSize =
-                Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0, 0);
-            Rr_Rect ButtonRect = {
-                .Offset = ParentLayout->TabsCursor,
-                .Extent = Rr_AddV2(
-                    TitleSize,
-                    Rr_MulV2F(gUIContext->TitleBarPadding, 2.0f)),
-            };
-            if (Rr_UIGenericButton(
-                    ParentLayout,
-                    Window->Title,
-                    &ButtonRect,
-                    &gUIContext->Colors.TitleForeground,
-                    Selected ? &gUIContext->Colors.TitleBackground
-                             : &gUIContext->Colors.TitleBackgroundInactive,
-                    Selected ? &gUIContext->Colors.TitleBackground
-                             : &gUIContext->Colors.ButtonHeld))
-            {
-                if (Rr_UIWindowUndockable(Window) && gUIContext->CtrlHeld)
-                {
-                    Window->Undocked = true;
-                    Window->Collapsed = false;
-                    if (Selected)
-                    {
-                        ParentLayout->DeferredSelectedTab = NULL;
-                    }
-                    Rr_Vec2 TitlePosition = ButtonRect.Offset;
-                    TitlePosition.X += gUIContext->ButtonPadding.X;
-                    Rr_UISetWindowOffsetRelativeToTitle(
-                        Window,
-                        TitlePosition);
-                }
-                else if (!Selected)
+                bool Selected = ParentWindow->SelectedTab == Window;
+                if (!ParentLayout->DeferredSelectedTab)
                 {
                     ParentLayout->DeferredSelectedTab = Window;
                 }
+
+                Rr_Vec2 TitleSize =
+                    Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0, 0);
+                Rr_Rect ButtonRect = {
+                    .Offset = ParentLayout->TabsCursor,
+                    .Extent = Rr_V2(
+                        TitleSize.X + gUIContext->TitleBarPadding.X * 2.0f,
+                        gUIContext->TitleBarHeight),
+                };
+                if (Rr_UIGenericButton(
+                        ParentLayout,
+                        Window->Title,
+                        &ButtonRect,
+                        &gUIContext->Colors.TitleForeground,
+                        Selected ? &gUIContext->Colors.TitleBackground
+                                 : &gUIContext->Colors.TitleBackgroundInactive,
+                        Selected ? &gUIContext->Colors.TitleBackground
+                                 : &gUIContext->Colors.ButtonHeld))
+                {
+                    if (Rr_UIWindowUndockable(Window) && gUIContext->CtrlHeld)
+                    {
+                        Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
+                        Window->Undocked = true;
+                        Window->Collapsed = false;
+                        if (Selected)
+                        {
+                            ParentLayout->DeferredSelectedTab =
+                                ParentLayout->LastAddedTab;
+                        }
+                        Rr_Vec2 TitlePosition = ButtonRect.Offset;
+                        TitlePosition.X += gUIContext->ButtonPadding.X;
+                        Rr_UISetWindowOffsetRelativeToTitle(
+                            Window,
+                            TitlePosition);
+                    }
+                    else if (!Selected)
+                    {
+                        ParentLayout->DeferredSelectedTab = Window;
+                    }
+
+                    gUIContext->ClickParent = Window;
+                }
+
+                ParentLayout->TabsCursor.X += ButtonRect.Extent.X;
+
+                /* Render it as borderless and titleless child if docked. */
+
+                if (!Window->Undocked)
+                {
+                    ParentLayout->LastAddedTab = Window;
+
+                    if (!Selected || ParentLayout->WasCollapsed)
+                    {
+                        return false;
+                    }
+
+                    Window->Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
+                    Window->Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
+                    Window->Tab = true;
+                }
             }
 
-            ParentLayout->TabsCursor.X += ButtonRect.Extent.X;
-
-            if (!Selected || ParentLayout->WasCollapsed)
+            if (!Window->Undocked)
             {
-                return false;
-            }
+                Rr_UIWindowFlags const CHILD_FLAGS =
+                    RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
+                    RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
+                    RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
 
-            Window->Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
-            Window->Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
-            Window->Tab = true;
+                Window->Flags |= CHILD_FLAGS;
+                Window->Child = true;
+                Window->Rect.Offset = ParentLayout->Cursor;
+                Window->Z = ParentWindow->Z;
+                Window->TopLevelParent = ParentWindow->TopLevelParent;
+
+                return Rr_UIBeginWindowImpl(Window, TitleHash, Open);
+            }
         }
+    }
+
+    if (Window == NULL)
+    {
+        Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
+        Window->Z = gUIContext->TotalWindowCount++;
+        Window->Rect.Offset =
+            Rr_FloorV2(Rr_V2F(gUIContext->DefaultFont->LineHeight));
+        *WindowRef = Window;
     }
     else
     {
-        if (Window == NULL)
-        {
-            Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
-            Window->Z = gUIContext->TotalWindowCount++;
-            Window->Rect.Offset =
-                Rr_FloorV2(Rr_V2F(gUIContext->DefaultFont->LineHeight));
-            *WindowRef = Window;
-        }
-        else
-        {
-            Window->Flags = Flags;
-        }
+        Window->Flags = Flags;
+    }
 
-        Window->Tab = false;
-        Window->Child = false;
-        Window->TopLevelParent = Window;
+    Window->Tab = false;
+    Window->Child = false;
+    Window->TopLevelParent = Window;
 
-        if (Window->Undocked)
-        {
-            Open = &Window->Undocked;
-        }
+    if (Window->Undocked)
+    {
+        Open = &Window->Undocked;
     }
 
     return Rr_UIBeginWindowImpl(Window, TitleHash, Open);
