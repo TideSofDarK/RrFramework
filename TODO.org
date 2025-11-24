@@ -62,7 +62,7 @@
 - [X] Separate window/contens padding.
 - [X] Auto resize ignores title width.
 - [X] Input fields with custom clip rects happen to ignore parent bounds.
-- [ ] Better tabs.
+- [X] Better tabs.
 - [X] Upgrade click system to allow double clicking titles.
       Also fix input field flicker.
 - [X] Add separate ID/Hash stack.

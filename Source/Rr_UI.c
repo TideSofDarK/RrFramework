@@ -8695,13 +8695,15 @@ void Rr_UIDebugOverlay(void)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
+    Rr_UIPushWindowPadding(Rr_V2F(0.0f));
     if (Rr_UIBeginWindowEx(
             "Rr.DebugOverlay",
             NULL,
             RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT |
                 RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
-                RR_UI_WINDOW_FLAGS_NO_MOVE_BIT))
+                RR_UI_WINDOW_FLAGS_NO_MOVE_BIT | RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT))
     {
+        Rr_UIPopWindowPadding();
         if (Rr_UIBeginTabs("DebugOverlayTabs"))
         {
             if (Rr_UIBeginWindowEx(

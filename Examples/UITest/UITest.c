@@ -935,7 +935,10 @@ static void Iterate(void)
             Rr_UIEndWindow();
         }
 
-        if (Rr_UIBeginWindow("Input Fields"))
+        if (Rr_UIBeginWindowEx(
+                "Input Fields",
+                NULL,
+                RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
         {
             static char StringBuffer[16] = "Hello, World!";
             Rr_UIInputText("String (16 bytes)", 16, StringBuffer);
