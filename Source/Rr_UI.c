@@ -105,6 +105,7 @@ struct Rr_UIWindow
 
     bool Tabs;
     Rr_UIWindow *SelectedTab;
+    Rr_UIWindow *TabsParent;
 
     bool ShownAtLeastOnce;
     bool CreatedThisFrame;
@@ -3883,6 +3884,8 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
         {
             if (ParentWindow->Tabs)
             {
+                Window->TabsParent = ParentWindow;
+
                 bool Selected = ParentWindow->SelectedTab == Window;
                 if (!ParentLayout->DeferredSelectedTab)
                 {
@@ -3922,13 +3925,12 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
                         Rr_UISetWindowOffsetRelativeToTitle(
                             Window,
                             TitlePosition);
+                        gUIContext->ClickParent = Window;
                     }
                     else if (!Selected)
                     {
                         ParentLayout->DeferredSelectedTab = Window;
                     }
-
-                    gUIContext->ClickParent = Window;
                 }
 
                 ParentLayout->TabsCursor.X += ButtonRect.Extent.X;
@@ -3948,6 +3950,10 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
                     Window->Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
                     Window->Tab = true;
                 }
+            }
+            else
+            {
+                Window->TabsParent = NULL;
             }
 
             if (!Window->Undocked)
@@ -3984,6 +3990,7 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
     Window->Tab = false;
     Window->Child = false;
     Window->TopLevelParent = Window;
+    Window->TabsParent = NULL;
 
     if (Window->Undocked)
     {
@@ -4005,6 +4012,7 @@ static inline bool Rr_UIShouldHightlightWindow(Rr_UIWindow *Window)
     {
         ClickParent = gUIContext->ClickParent == Window ||
                       gUIContext->ClickParent->TopLevelParent == Window ||
+                      gUIContext->ClickParent == Window->TabsParent ||
                       gUIContext->ClickParent == Window->SelectedTab;
     }
     return ClickParent;
