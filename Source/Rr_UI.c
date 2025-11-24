@@ -3825,6 +3825,22 @@ static inline bool Rr_UIGenericButton(
     return ClickResult.ClickCount;
 }
 
+static inline void Rr_UISetWindowOffsetRelativeToTitle(
+    Rr_UIWindow *Window,
+    Rr_Vec2 Offset)
+{
+    if (!Rr_UIWindowNoBorders(Window))
+    {
+        Offset = Rr_SubV2(Offset, Rr_V2F(gUIContext->DoubleBevelThickness));
+    }
+    if (!Rr_UIWindowNoCollapse(Window))
+    {
+        Offset.X -= gUIContext->TitleBarButtonSize;
+    }
+    Offset = Rr_SubV2(Offset, gUIContext->TitleBarPadding);
+    Window->Rect.Offset = Offset;
+}
+
 bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
 {
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
@@ -3868,7 +3884,7 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
 
         Window->Child = true;
         Window->Rect.Offset = ParentLayout->Cursor;
-        Window->Z = ParentWindow->Z + 1;
+        Window->Z = ParentWindow->Z;
         Window->TopLevelParent = ParentWindow->TopLevelParent;
 
         if (ParentWindow->Tabs)
@@ -3908,6 +3924,11 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
                     {
                         ParentLayout->DeferredSelectedTab = NULL;
                     }
+                    Rr_Vec2 TitlePosition = ButtonRect.Offset;
+                    TitlePosition.X += gUIContext->ButtonPadding.X;
+                    Rr_UISetWindowOffsetRelativeToTitle(
+                        Window,
+                        TitlePosition);
                 }
                 else if (!Selected)
                 {
