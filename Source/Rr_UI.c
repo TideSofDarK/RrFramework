@@ -3157,10 +3157,15 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
         if (ClickResult.ClickCount == 1 && Rr_UIWindowUndockable(Window) &&
             gUIContext->CtrlHeld)
         {
-            Window->UndockedOffset = Layout->Rect.Offset;
-            Window->UndockNextFrame = !Window->Undocked;
-            Rr_UIResetClickAndDrag();
-            Rr_UIConsumeMouseAndKeyboardInput();
+            if (Window->Undocked)
+            {
+                Window->Undocked = false;
+            }
+            else
+            {
+                Window->UndockedOffset = Layout->Rect.Offset;
+                Window->UndockNextFrame = true;
+            }
         }
         else if (ClickResult.ClickCount == 2)
         {
@@ -3968,6 +3973,11 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
             Rr_FloorV2(Rr_V2F(gUIContext->DefaultFont->LineHeight));
     }
 
+    Window->Tab = false;
+    Window->Child = false;
+    Window->TopLevelParent = Window;
+    Window->TabsParent = NULL;
+
     if (Window->UndockNextFrame)
     {
         Window->Rect.Offset = Window->UndockedOffset;
@@ -3976,12 +3986,9 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
         Window->Collapsed = false;
         /* Window->SkipThisFrame = true; */
         Window->Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
+        Rr_UIPutWindowOnTop(Window);
+        gUIContext->ClickParent = Window;
     }
-
-    Window->Tab = false;
-    Window->Child = false;
-    Window->TopLevelParent = Window;
-    Window->TabsParent = NULL;
 
     if (Window->Undocked)
     {
