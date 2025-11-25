@@ -631,11 +631,11 @@ static void Iterate(void)
                 "group your widgets.");
 
             if (Rr_UIBeginWindowEx(
-                    "Dockable Child Window",
+                    "Undockable Child Window",
                     NULL,
                     RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
             {
-                Rr_UIText("This window can be docked/undocked (WIP).");
+                Rr_UIText("Hold CTRL and click its title to undock this window.");
 
                 Rr_UIEndWindow();
             }

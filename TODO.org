@@ -83,6 +83,7 @@
 - [X] Nested windows.
 - [X] Swap font rendering with stb_truetype.
 - [ ] More animations.
+- [ ] Less flicker on auto-resize etc.
 - [ ] Proper stack data structure.
 - [ ] Horizontal scrollbar.
 

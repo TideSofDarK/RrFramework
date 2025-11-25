@@ -707,10 +707,18 @@ static inline Rr_UIFont *Rr_UICurrentFont(void)
     return gUIContext->DefaultFont;
 }
 
+static inline void Rr_UIConsumeMouseInput(void)
+{
+    gUIContext->LeftMouseButton.Down = false;
+    gUIContext->LeftMouseButton.DownOverWindow = false;
+    gUIContext->LeftMouseButton.Up = false;
+    gUIContext->LeftMouseButton.Held = false;
+}
+
 static inline void Rr_UIConsumeMouseAndKeyboardInput(void)
 {
+    Rr_UIConsumeMouseInput();
     RR_CLEAR_ARRAY(&gUIContext->KeyboardInputEvents);
-    RR_ZERO(gUIContext->LeftMouseButton);
     gUIContext->CtrlHeld = false;
     gUIContext->ShiftHeld = false;
     gUIContext->AltHeld = false;
@@ -3166,10 +3174,14 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
                 Window->UndockedOffset = Layout->Rect.Offset;
                 Window->UndockNextFrame = true;
             }
+
+            Rr_UIConsumeMouseInput();
         }
         else if (ClickResult.ClickCount == 2)
         {
             Window->Collapsed = !Window->Collapsed;
+
+            Rr_UIConsumeMouseInput();
         }
     }
 
@@ -3703,24 +3715,29 @@ static inline bool Rr_UIBeginWindowImpl(
     /* Add vertical scrollbar if necessary. */
 
     bool VerticalScrollbarAdded = false;
-    if (Layout->DeferredAutoResize || Rr_UIWindowNoVerticalScrollbar(Window))
+    if (!Layout->WasCollapsed)
     {
-        Window->VScroll = 0.0f;
-        Window->VScrollTarget = 0.0f;
-    }
-    else
-    {
-        VerticalScrollbarAdded = Rr_UIAddVerticalScrollbar(Layout);
-        if (VerticalScrollbarAdded ||
-            (Layout->DeferredAutoResize && Window->SkipThisFrame))
+        if (Layout->DeferredAutoResize ||
+            Rr_UIWindowNoVerticalScrollbar(Window))
         {
-            Layout->TotalAvailableContentsWidth -= gUIContext->ScrollbarWidth;
-        };
-        Window->VScroll = Rr_Damp(
-            Window->VScroll,
-            15.0f * (float)Rr_GetDeltaSeconds(),
-            Window->VScrollTarget);
-        Layout->Cursor.Y -= roundf(Window->VScroll);
+            Window->VScroll = 0.0f;
+            Window->VScrollTarget = 0.0f;
+        }
+        else
+        {
+            VerticalScrollbarAdded = Rr_UIAddVerticalScrollbar(Layout);
+            if (VerticalScrollbarAdded ||
+                (Layout->DeferredAutoResize && Window->SkipThisFrame))
+            {
+                Layout->TotalAvailableContentsWidth -=
+                    gUIContext->ScrollbarWidth;
+            };
+            Window->VScroll = Rr_Damp(
+                Window->VScroll,
+                15.0f * (float)Rr_GetDeltaSeconds(),
+                Window->VScrollTarget);
+            Layout->Cursor.Y -= roundf(Window->VScroll);
+        }
     }
 
     /* NOTE: Defer drawing the handle to Rr_UIEndWindow()! */
@@ -3933,10 +3950,14 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
                         ParentLayout->DeferredSelectedTab =
                             ParentLayout->LastAddedTab;
                     }
+
+                    Rr_UIConsumeMouseInput();
                 }
                 else if (!Selected)
                 {
                     ParentLayout->DeferredSelectedTab = Window;
+
+                    Rr_UIConsumeMouseInput();
                 }
             }
 
@@ -3988,6 +4009,7 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
         Window->Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
         Rr_UIPutWindowOnTop(Window);
         gUIContext->ClickParent = Window;
+        Rr_UIResetDrag();
     }
 
     if (Window->Undocked)
@@ -4026,8 +4048,6 @@ void Rr_UIEndWindow(void)
 
     Rr_UIAssertNoHorizontal(Layout);
 
-    bool Collapsed = Rr_UIWindowCollapsed(Window);
-
     Layout->DeferredContentsRect.Extent.Y += Layout->WindowPadding.Y;
 
     /* Apply deferred layout properties. */
@@ -4039,20 +4059,24 @@ void Rr_UIEndWindow(void)
     Window->ContentsRect = Layout->DeferredContentsRect;
     Window->SelectedTab = Layout->DeferredSelectedTab;
 
-    if (!Collapsed)
+    Rr_Rect TotalClipRect = Layout->Rect;
+    if (!Rr_UIWindowNoBorders(Window))
     {
-        /* Since window wasn't collapsed, current clip rect refers to contents
-         * area. Begin new clip rect to draw borders, resize handle and
-         * scrolloffs. */
-
-        Rr_UIEndClipRect(Layout);
-
-        Rr_Rect TotalClipRectWithBorders =
+        TotalClipRect =
             Rr_ResizeRect(&Layout->Rect, gUIContext->DoubleBevelThickness);
-        Rr_UIBeginClipRect(Layout, &TotalClipRectWithBorders);
+
+        if (TotalClipRect.Offset.X < Layout->CurrentClipRect->Rect.Offset.X)
+        {
+            /* Since window wasn't collapsed, current clip rect refers to
+             * contents area. Begin new clip rect to draw borders, resize handle
+             * and scrolloffs. */
+
+            Rr_UIEndClipRect(Layout);
+            Rr_UIBeginClipRect(Layout, &TotalClipRect);
+        }
     }
 
-    if (!Collapsed)
+    if (!Layout->WasCollapsed)
     {
         /* NOTE: Flooring these fixed imprecise FillRatio calculation.
          * If the bug ever returns it probably means the fix should be applied
@@ -4138,10 +4162,11 @@ void Rr_UIEndWindow(void)
 
     if (!Rr_UIWindowNoBorders(Window))
     {
-        Rr_Rect BordersRect =
-            Rr_ResizeRect(&Layout->Rect, gUIContext->DoubleBevelThickness);
+        /* Rr_Rect BordersRect = */
+        /*     Rr_ResizeRect(&Layout->Rect, gUIContext->DoubleBevelThickness);
+         */
         Rr_UIDrawDoubleBevel(
-            &BordersRect,
+            &TotalClipRect,
             Rr_UIShouldHightlightWindow(Window)
                 ? &gUIContext->Colors.SelectedOutline
                 : &gUIContext->Colors.Outline,
@@ -4150,7 +4175,7 @@ void Rr_UIEndWindow(void)
 
     /* NOTE: Forward scroll wheel behavior to the top-level parent. */
 
-    if (!Collapsed || Window->Child)
+    if (!Layout->WasCollapsed || Window->Child)
     {
         Rr_UIScrollBehavior(
             Window,
@@ -4349,6 +4374,7 @@ void Rr_UIEndWindow(void)
                     gUIContext->DoubleBevelThickness * 2.0f);
             }
             Rr_Vec2 WindowExtent = Window->Rect.Extent;
+            bool Collapsed = Rr_UIWindowCollapsed(Window);
             bool CollapsedThisFrame = Collapsed && !Layout->WasCollapsed;
             bool UncollapsedThisFrame = !Collapsed && Layout->WasCollapsed;
             if (CollapsedThisFrame)
