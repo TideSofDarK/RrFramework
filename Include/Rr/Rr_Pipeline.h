@@ -102,7 +102,7 @@ struct Rr_VertexInputBinding
 {
     Rr_VertexInputRate Rate;
     size_t AttributeCount;
-    const Rr_VertexInputAttribute *Attributes;
+    Rr_VertexInputAttribute const *Attributes;
 };
 
 typedef enum
@@ -183,7 +183,7 @@ struct Rr_PipelineSpecialization
 {
     uint32_t ConstantID;
     uint32_t Size;
-    const void *Data;
+    void const *Data;
 };
 
 typedef struct Rr_Multisampling Rr_Multisampling;
@@ -196,15 +196,17 @@ typedef struct Rr_GraphicsPipelineCreateInfo Rr_GraphicsPipelineCreateInfo;
 struct Rr_GraphicsPipelineCreateInfo
 {
     size_t VertexShaderSPVSize;
-    const void *VertexShaderSPVData;
+    void const *VertexShaderSPVData;
+    char const *VertexEntryPoint;
     size_t VertexSpecializationCount;
     Rr_PipelineSpecialization *VertexSpecializations;
     size_t FragmentShaderSPVSize;
-    const void *FragmentShaderSPVData;
+    void const *FragmentShaderSPVData;
+    char const *FragmentEntryPoint;
     size_t FragmentSpecializationCount;
     Rr_PipelineSpecialization *FragmentSpecializations;
     size_t VertexInputBindingCount;
-    const Rr_VertexInputBinding *VertexInputBindings;
+    Rr_VertexInputBinding const *VertexInputBindings;
     Rr_Topology Topology;
     size_t ColorTargetCount;
     Rr_ColorTargetInfo *ColorTargets;
@@ -218,7 +220,8 @@ typedef struct Rr_ComputePipelineCreateInfo Rr_ComputePipelineCreateInfo;
 struct Rr_ComputePipelineCreateInfo
 {
     size_t ShaderSPVSize;
-    const void *ShaderSPVData;
+    void const *ShaderSPVData;
+    char const *EntryPoint;
     Rr_PipelineLayout *Layout;
     size_t SpecializationCount;
     Rr_PipelineSpecialization *Specializations;
@@ -254,19 +257,19 @@ struct Rr_BindingSet
 
 extern Rr_PipelineLayout *Rr_CreatePipelineLayout(
     size_t BindingSetCount,
-    const Rr_BindingSet *BindingSet);
+    Rr_BindingSet const *BindingSet);
 
 extern void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout);
 
 extern Rr_ComputePipeline *Rr_CreateComputePipeline(
-    const Rr_ComputePipelineCreateInfo *CreateInfo);
+    Rr_ComputePipelineCreateInfo const *CreateInfo);
 
 extern void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline);
 
 extern Rr_ColorTargetBlend Rr_AlphaBlend(void);
 
 extern Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
-    const Rr_GraphicsPipelineCreateInfo *CreateInfo);
+    Rr_GraphicsPipelineCreateInfo const *CreateInfo);
 
 extern void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);
 

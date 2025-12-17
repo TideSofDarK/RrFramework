@@ -318,8 +318,7 @@ static inline void Rr_CodepointToUTF8(uint32_t Codepoint, char Buffer[5])
 
 static void Rr_GLFWCharCallback(GLFWwindow *Window, uint32_t Codepoint)
 {
-    Rr_Platform *RrWindow = glfwGetWindowUserPointer(Window);
-    char *Buffer = RR_ALLOC_NO_ZERO(RrWindow->Arena, 5);
+    char *Buffer = RR_ALLOC_NO_ZERO(gPlatform->Arena, 5);
     Rr_CodepointToUTF8(Codepoint, Buffer);
 
     Rr_Event *Event = Rr_AddEvent();

@@ -37,7 +37,7 @@
 static VkRenderPass Rr_GetCompatibleRenderPass(
     uint32_t ColorTargetCount,
     Rr_ColorTargetInfo *ColorTargets,
-    const Rr_DepthStencil *DepthStencil,
+    Rr_DepthStencil const *DepthStencil,
     uint32_t SampleCount)
 {
     Rr_RenderPassMapKey Key = {
@@ -93,7 +93,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
 
 Rr_PipelineLayout *Rr_CreatePipelineLayout(
     size_t BindingSetCount,
-    const Rr_BindingSet *BindingSets)
+    Rr_BindingSet const *BindingSets)
 {
     assert(BindingSetCount <= RR_MAX_SETS);
 
@@ -122,7 +122,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
     for (size_t SetIndex = 0; SetIndex < BindingSetCount; ++SetIndex)
     {
-        const Rr_BindingSet *Set = BindingSets + SetIndex;
+        Rr_BindingSet const *Set = BindingSets + SetIndex;
 
         assert(Set->BindingCount < RR_MAX_BINDINGS);
 
@@ -258,7 +258,7 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
 }
 
 Rr_ComputePipeline *Rr_CreateComputePipeline(
-    const Rr_ComputePipelineCreateInfo *CreateInfo)
+    Rr_ComputePipelineCreateInfo const *CreateInfo)
 {
     assert(CreateInfo);
     assert(CreateInfo->Layout != NULL);
@@ -306,7 +306,7 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_COMPUTE_BIT,
         .module = ShaderModule,
-        .pName = "main",
+        .pName = CreateInfo->EntryPoint ? CreateInfo->EntryPoint : "main",
     };
 
     if (CreateInfo->SpecializationCount > 0)
@@ -403,7 +403,7 @@ Rr_ColorTargetBlend Rr_AlphaBlend(void)
 }
 
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
-    const Rr_GraphicsPipelineCreateInfo *CreateInfo)
+    Rr_GraphicsPipelineCreateInfo const *CreateInfo)
 {
     assert(CreateInfo);
     assert(CreateInfo->Layout);
@@ -459,7 +459,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena);
         *PipelineShaderStageCreateInfo = (VkPipelineShaderStageCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .pName = "main",
+            .pName = CreateInfo->VertexEntryPoint ? CreateInfo->VertexEntryPoint
+                                                  : "main",
             .stage = VK_SHADER_STAGE_VERTEX_BIT,
             .module = VertModule,
         };
@@ -493,7 +494,9 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         *PipelineShaderStageCreateInfo = (VkPipelineShaderStageCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .pNext = NULL,
-            .pName = "main",
+            .pName = CreateInfo->FragmentEntryPoint
+                         ? CreateInfo->FragmentEntryPoint
+                         : "main",
             .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
             .module = FragModule,
         };
@@ -513,7 +516,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
          BindingIndex < CreateInfo->VertexInputBindingCount;
          ++BindingIndex)
     {
-        const Rr_VertexInputBinding *VertexInputBinding =
+        Rr_VertexInputBinding const *VertexInputBinding =
             CreateInfo->VertexInputBindings + BindingIndex;
 
         RR_RESERVE_ARRAY(
@@ -525,7 +528,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
              AttributeIndex < VertexInputBinding->AttributeCount;
              ++AttributeIndex)
         {
-            const Rr_VertexInputAttribute *Attribute =
+            Rr_VertexInputAttribute const *Attribute =
                 VertexInputBinding->Attributes + AttributeIndex;
 
             VkVertexInputAttributeDescription *AttributeDescription =

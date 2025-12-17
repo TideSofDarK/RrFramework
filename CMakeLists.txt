@@ -53,7 +53,7 @@ endfunction ()
 
 find_package(Vulkan REQUIRED)
 
-set(RR_PLATFORM_LIBRARY "GLFW" CACHE STRING "Platform library (either SDL or GLFW)")
+set(RR_PLATFORM_LIBRARY "SDL" CACHE STRING "Platform library (either SDL or GLFW)")
 
 #
 # Pre-C23 asset embedding support

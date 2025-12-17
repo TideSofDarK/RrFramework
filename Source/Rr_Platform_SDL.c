@@ -40,6 +40,10 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 
     RR_LOG("Using SDL platform library");
 
+#if defined(__linux__)
+    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
+#endif
+
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_CRITICAL);
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
@@ -169,8 +173,12 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
         }
         case SDL_EVENT_TEXT_INPUT:
         {
+            size_t Length = strlen(SDLEvent.text.text);
+            char *Buffer = RR_ALLOC_NO_ZERO(gPlatform->Arena, Length + 1);
+            memcpy(Buffer, SDLEvent.text.text, Length + 1);
+
             Event->Type = RR_EVENT_TYPE_TEXT_INPUT;
-            Event->Text.Text = SDLEvent.text.text;
+            Event->Text.CString = Buffer;
             return true;
         }
         case SDL_EVENT_KEY_DOWN:
