@@ -27,6 +27,7 @@ function(rr_enable_development_options TARGET)
             -Wpedantic
             -Wconversion
             -Wshadow
+            -Wno-missing-designated-field-initializers
             -Wno-unused-function
             -Wno-unused-parameter
             -Wno-unused-variable
