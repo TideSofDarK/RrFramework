@@ -197,12 +197,12 @@ struct Rr_GraphicsPipelineCreateInfo
 {
     size_t VertexShaderSPVSize;
     void const *VertexShaderSPVData;
-    char const *VertexEntryPoint;
+    char const *VertexShaderEntryPoint;
     size_t VertexSpecializationCount;
     Rr_PipelineSpecialization *VertexSpecializations;
     size_t FragmentShaderSPVSize;
     void const *FragmentShaderSPVData;
-    char const *FragmentEntryPoint;
+    char const *FragmentShaderEntryPoint;
     size_t FragmentSpecializationCount;
     Rr_PipelineSpecialization *FragmentSpecializations;
     size_t VertexInputBindingCount;
@@ -221,7 +221,7 @@ struct Rr_ComputePipelineCreateInfo
 {
     size_t ShaderSPVSize;
     void const *ShaderSPVData;
-    char const *EntryPoint;
+    char const *ShaderEntryPoint;
     Rr_PipelineLayout *Layout;
     size_t SpecializationCount;
     Rr_PipelineSpecialization *Specializations;

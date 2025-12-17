@@ -306,7 +306,8 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_COMPUTE_BIT,
         .module = ShaderModule,
-        .pName = CreateInfo->EntryPoint ? CreateInfo->EntryPoint : "main",
+        .pName = CreateInfo->ShaderEntryPoint ? CreateInfo->ShaderEntryPoint
+                                              : "main",
     };
 
     if (CreateInfo->SpecializationCount > 0)
@@ -459,8 +460,9 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena);
         *PipelineShaderStageCreateInfo = (VkPipelineShaderStageCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .pName = CreateInfo->VertexEntryPoint ? CreateInfo->VertexEntryPoint
-                                                  : "main",
+            .pName = CreateInfo->VertexShaderEntryPoint
+                         ? CreateInfo->VertexShaderEntryPoint
+                         : "main",
             .stage = VK_SHADER_STAGE_VERTEX_BIT,
             .module = VertModule,
         };
@@ -494,8 +496,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         *PipelineShaderStageCreateInfo = (VkPipelineShaderStageCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .pNext = NULL,
-            .pName = CreateInfo->FragmentEntryPoint
-                         ? CreateInfo->FragmentEntryPoint
+            .pName = CreateInfo->FragmentShaderEntryPoint
+                         ? CreateInfo->FragmentShaderEntryPoint
                          : "main",
             .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
             .module = FragModule,

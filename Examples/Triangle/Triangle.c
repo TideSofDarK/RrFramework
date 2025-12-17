@@ -78,12 +78,12 @@ static void Iterate(void)
         .StoreOp = RR_STORE_OP_STORE,
         .Clear = (Rr_ColorClear){ 0 },
     };
-    Rr_GraphNode *OffscreenNode =
+    Rr_GraphNode *GraphicsNode =
         Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
-    Rr_BindGraphicsPipeline(OffscreenNode, GraphicsPipeline);
-    Rr_BindVertexBuffer(OffscreenNode, VertexBuffer, 0, 0);
-    Rr_BindIndexBuffer(OffscreenNode, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);
-    Rr_DrawIndexed(OffscreenNode, 3, 1, 0, 0, 0);
+    Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+    Rr_BindVertexBuffer(GraphicsNode, VertexBuffer, 0, 0);
+    Rr_BindIndexBuffer(GraphicsNode, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);
+    Rr_DrawIndexed(GraphicsNode, 3, 1, 0, 0, 0);
 
     Rr_UIDebugOverlay();
 }
