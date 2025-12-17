@@ -8,7 +8,9 @@ project(RrFramework LANGUAGES C CXX)
 
 set(BUILD_SHARED_LIBS OFF)
 
-include(CMake/CPM.cmake)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
+
+include(CPM)
 
 #
 # Enable warnings and sanitizers
@@ -53,7 +55,7 @@ endfunction ()
 
 find_package(Vulkan REQUIRED)
 
-set(RR_PLATFORM_LIBRARY "SDL" CACHE STRING "Platform library (either SDL or GLFW)")
+set(RR_PLATFORM_LIBRARY "GLFW" CACHE STRING "Platform library (either SDL or GLFW)")
 
 #
 # Pre-C23 asset embedding support
@@ -278,7 +280,7 @@ rr_embed_assets(
 # Examples
 #
 
-option(RR_EXAMPLES "Build included examples" ON)
+option(RR_EXAMPLES "Build included examples" OFF)
 if (RR_EXAMPLES)
     add_subdirectory(Examples/Triangle)
     add_subdirectory(Examples/GLTFCube)

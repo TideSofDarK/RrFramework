@@ -3332,6 +3332,7 @@ void Rr_BindSamplerAt(
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
     assert(Sampler != NULL);
+    assert(Node->CurrentLayout);
 
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_SAMPLER,
@@ -3383,6 +3384,7 @@ static void Rr_BindSampledImageEx(
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
     assert(Image);
+    assert(Node->CurrentLayout);
 
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
 
@@ -3481,7 +3483,6 @@ void Rr_BindSampledImage3D(
     uint32_t Set,
     uint32_t Binding)
 {
-
     Rr_BindSampledImage3DAt(Node, Image3D, Set, Binding, 0);
 }
 
@@ -3554,6 +3555,7 @@ static void Rr_BindCombinedImageSamplerEx(
     assert(Binding < RR_MAX_BINDINGS);
     assert(Sampler != NULL);
     assert(Image);
+    assert(Node->CurrentLayout);
 
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
 
@@ -3905,6 +3907,7 @@ static void Rr_BindStorageImageEx(
 {
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
+    assert(Node->CurrentLayout);
 
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
 
