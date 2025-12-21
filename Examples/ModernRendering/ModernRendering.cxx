@@ -5,8 +5,6 @@
 #include <array>
 #include <format>
 #include <functional>
-#include <print>
-#include <utility>
 #include <vector>
 
 using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
@@ -133,14 +131,21 @@ struct SFullscreenBlit
 
         Rr_Asset VertexShader =
             Rr_LoadAsset(EXAMPLE_ASSET_FULLSCREENTRIANGLE_VERT_SPV);
+        Rr_ShaderInfo VertexShaderInfo = {
+            .SPVSize = VertexShader.Size,
+            .SPVData = VertexShader.Pointer,
+        };
+
         Rr_Asset FragmentShader = Rr_LoadAsset(FragSPV);
+        Rr_ShaderInfo FragmentShaderInfo = {
+            .SPVSize = FragmentShader.Size,
+            .SPVData = FragmentShader.Pointer,
+        };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
-        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
-        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
-        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
-        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
+        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
+        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
@@ -194,14 +199,21 @@ struct SSkybox
         ColorTarget.Blend = Rr_AlphaBlend();
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_VERT_SPV);
+        Rr_ShaderInfo VertexShaderInfo = {
+            .SPVSize = VertexShader.Size,
+            .SPVData = VertexShader.Pointer,
+        };
+
         Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_FRAG_SPV);
+        Rr_ShaderInfo FragmentShaderInfo = {
+            .SPVSize = FragmentShader.Size,
+            .SPVData = FragmentShader.Pointer,
+        };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
-        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
-        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
-        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
-        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
+        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
+        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
@@ -367,14 +379,21 @@ struct SGrid
         ColorTarget.Blend = Rr_AlphaBlend();
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_GRID_VERT_SPV);
+        Rr_ShaderInfo VertexShaderInfo = {
+            .SPVSize = VertexShader.Size,
+            .SPVData = VertexShader.Pointer,
+        };
+
         Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_GRID_FRAG_SPV);
+        Rr_ShaderInfo FragmentShaderInfo = {
+            .SPVSize = FragmentShader.Size,
+            .SPVData = FragmentShader.Pointer,
+        };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
-        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
-        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
-        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
-        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
+        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
+        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
         PipelineInfo.DepthStencil.EnableDepthTest = true;
@@ -967,15 +986,22 @@ struct SLighting
         };
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_SHADOWMAP_VERT_SPV);
+        Rr_ShaderInfo VertexShaderInfo = {
+            .SPVSize = VertexShader.Size,
+            .SPVData = VertexShader.Pointer,
+        };
+
         Rr_Asset FragmentShader =
             Rr_LoadAsset(EXAMPLE_ASSET_SHADOWMAP_FRAG_SPV);
+        Rr_ShaderInfo FragmentShaderInfo = {
+            .SPVSize = FragmentShader.Size,
+            .SPVData = FragmentShader.Pointer,
+        };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
-        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
-        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
-        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
-        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
+        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
+        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
         PipelineInfo.VertexInputBindings = VertexInputBindings.data();
         PipelineInfo.DepthStencil.EnableDepthTest = true;
@@ -1234,23 +1260,31 @@ struct SSSAO
         ColorTarget.Format = RR_IMAGE_FORMAT_R32_SFLOAT;
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
+        Rr_ShaderInfo VertexShaderInfo = {
+            .SPVSize = VertexShader.Size,
+            .SPVData = VertexShader.Pointer,
+        };
+
         Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_SSAO_FRAG_SPV);
+        Rr_ShaderInfo FragmentShaderInfo = {
+            .SPVSize = FragmentShader.Size,
+            .SPVData = FragmentShader.Pointer,
+        };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
-        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
-        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
-        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
-        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
+        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
+        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
         SSAOPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_SSAOBLUR_FRAG_SPV);
-
-        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
-        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
+        FragmentShaderInfo = {
+            .SPVSize = FragmentShader.Size,
+            .SPVData = FragmentShader.Pointer,
+        };
 
         BlurPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
@@ -1460,15 +1494,22 @@ struct SModernRenderingApp
 
         Rr_Asset VertexShader =
             Rr_LoadAsset(EXAMPLE_ASSET_MODERNRENDERING_VERT_SPV);
+        Rr_ShaderInfo VertexShaderInfo = {
+            .SPVSize = VertexShader.Size,
+            .SPVData = VertexShader.Pointer,
+        };
+
         Rr_Asset FragmentShader =
             Rr_LoadAsset(EXAMPLE_ASSET_MODERNRENDERING_FRAG_SPV);
+        Rr_ShaderInfo FragmentShaderInfo = {
+            .SPVSize = FragmentShader.Size,
+            .SPVData = FragmentShader.Pointer,
+        };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
         PipelineInfo.Layout = ForwardPassPipelineLayout;
-        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
-        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
-        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
-        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
+        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
+        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
         PipelineInfo.VertexInputBindings = VertexInputBindings.data();
         PipelineInfo.ColorTargetCount = ColorTargets.size();
@@ -1485,14 +1526,19 @@ struct SModernRenderingApp
         ForwardPassPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_NORMALDEPTHPREPASS_VERT_SPV);
+        VertexShaderInfo = {
+            .SPVSize = VertexShader.Size,
+            .SPVData = VertexShader.Pointer,
+        };
+
         FragmentShader =
             Rr_LoadAsset(EXAMPLE_ASSET_NORMALDEPTHPREPASS_FRAG_SPV);
+        FragmentShaderInfo = {
+            .SPVSize = FragmentShader.Size,
+            .SPVData = FragmentShader.Pointer,
+        };
 
         PipelineInfo.Layout = NormalDepthPrepassPipelineLayout;
-        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
-        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
-        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
-        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
         PipelineInfo.DepthStencil.EnableDepthWrite = true;
         ColorTargets[0] = Rr_ColorTargetInfo{
             .Format = RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT,

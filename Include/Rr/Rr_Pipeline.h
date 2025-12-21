@@ -192,19 +192,21 @@ struct Rr_Multisampling
     uint32_t SampleCount;
 };
 
+typedef struct Rr_ShaderInfo Rr_ShaderInfo;
+struct Rr_ShaderInfo
+{
+    size_t SPVSize;
+    void const *SPVData;
+    char const *EntryPoint;
+    size_t SpecializationCount;
+    Rr_PipelineSpecialization const *Specializations;
+};
+
 typedef struct Rr_GraphicsPipelineCreateInfo Rr_GraphicsPipelineCreateInfo;
 struct Rr_GraphicsPipelineCreateInfo
 {
-    size_t VertexShaderSPVSize;
-    void const *VertexShaderSPVData;
-    char const *VertexShaderEntryPoint;
-    size_t VertexSpecializationCount;
-    Rr_PipelineSpecialization const *VertexSpecializations;
-    size_t FragmentShaderSPVSize;
-    void const *FragmentShaderSPVData;
-    char const *FragmentShaderEntryPoint;
-    size_t FragmentSpecializationCount;
-    Rr_PipelineSpecialization const *FragmentSpecializations;
+    Rr_ShaderInfo const *VertexShaderInfo;
+    Rr_ShaderInfo const *FragmentShaderInfo;
     size_t VertexInputBindingCount;
     Rr_VertexInputBinding const *VertexInputBindings;
     Rr_Topology Topology;
@@ -214,17 +216,6 @@ struct Rr_GraphicsPipelineCreateInfo
     Rr_Rasterizer Rasterizer;
     Rr_DepthStencil DepthStencil;
     Rr_PipelineLayout *Layout;
-};
-
-typedef struct Rr_ComputePipelineCreateInfo Rr_ComputePipelineCreateInfo;
-struct Rr_ComputePipelineCreateInfo
-{
-    size_t ShaderSPVSize;
-    void const *ShaderSPVData;
-    char const *ShaderEntryPoint;
-    Rr_PipelineLayout *Layout;
-    size_t SpecializationCount;
-    Rr_PipelineSpecialization *Specializations;
 };
 
 typedef enum
@@ -262,7 +253,8 @@ extern Rr_PipelineLayout *Rr_CreatePipelineLayout(
 extern void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout);
 
 extern Rr_ComputePipeline *Rr_CreateComputePipeline(
-    Rr_ComputePipelineCreateInfo const *CreateInfo);
+    Rr_ShaderInfo const *ShaderInfo,
+    Rr_PipelineLayout *PipelineLayout);
 
 extern void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline);
 
@@ -272,6 +264,20 @@ extern Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     Rr_GraphicsPipelineCreateInfo const *CreateInfo);
 
 extern void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);
+
+/* Serialization */
+
+extern Rr_ShaderInfo *Rr_SerializeShaderInfo(
+    Rr_ShaderInfo const *ShaderInfo,
+    size_t *OutSize,
+    void *OutData);
+
+extern Rr_ShaderInfo *Rr_DeserializeShaderInfo(void *Data);
+
+extern Rr_GraphicsPipelineCreateInfo *Rr_SerializeGraphicsPipelineCreateInfo(
+    Rr_GraphicsPipelineCreateInfo const *CreateInfo,
+    size_t *OutSize,
+    void *OutData);
 
 #ifdef __cplusplus
 }

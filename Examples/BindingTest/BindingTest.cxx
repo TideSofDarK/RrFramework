@@ -105,15 +105,14 @@ struct SBindingTestApp
 
         Rr_Asset ComputeShader =
             Rr_LoadAsset(EXAMPLE_ASSET_BINDINGTEST_COMP_SPV);
+        Rr_ShaderInfo ShaderInfo = {
+            .SPVSize = ComputeShader.Size,
+            .SPVData = ComputeShader.Pointer,
+            .SpecializationCount = Specializations.size(),
+            .Specializations = Specializations.data(),
+        };
 
-        Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
-        PipelineCreateInfo.Layout = PipelineLayout;
-        PipelineCreateInfo.ShaderSPVSize = ComputeShader.Size;
-        PipelineCreateInfo.ShaderSPVData = ComputeShader.Pointer;
-        PipelineCreateInfo.SpecializationCount = Specializations.size();
-        PipelineCreateInfo.Specializations = Specializations.data();
-
-        ComputePipeline = Rr_CreateComputePipeline(&PipelineCreateInfo);
+        ComputePipeline = Rr_CreateComputePipeline(&ShaderInfo, PipelineLayout);
     }
 
     void InitBuffers()

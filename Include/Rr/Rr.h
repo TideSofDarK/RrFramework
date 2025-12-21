@@ -25,6 +25,7 @@
 #pragma once
 
 #include <Rr/Rr_App.h>
+#include <Rr/Rr_Arena.h>
 #include <Rr/Rr_Asset.h>
 #include <Rr/Rr_Buffer.h>
 #include <Rr/Rr_Defines.h>

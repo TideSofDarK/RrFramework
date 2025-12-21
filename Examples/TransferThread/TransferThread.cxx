@@ -201,15 +201,22 @@ struct STransferThreadApp
 
         Rr_Asset VertexShader =
             Rr_LoadAsset(EXAMPLE_ASSET_TRANSFERTHREAD_VERT_SPV);
+        Rr_ShaderInfo VertexShaderInfo = {
+            .SPVSize = VertexShader.Size,
+            .SPVData = VertexShader.Pointer,
+        };
+
         Rr_Asset FragmentShader =
             Rr_LoadAsset(EXAMPLE_ASSET_TRANSFERTHREAD_FRAG_SPV);
+        Rr_ShaderInfo FragmentShaderInfo = {
+            .SPVSize = FragmentShader.Size,
+            .SPVData = FragmentShader.Pointer,
+        };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
-        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
-        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
-        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
-        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
+        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
+        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
@@ -254,15 +261,22 @@ struct STransferThreadApp
 
         Rr_Asset VertexShader =
             Rr_LoadAsset(EXAMPLE_ASSET_PLACEHOLDER_VERT_SPV);
+        Rr_ShaderInfo VertexShaderInfo = {
+            .SPVSize = VertexShader.Size,
+            .SPVData = VertexShader.Pointer,
+        };
+
         Rr_Asset FragmentShader =
             Rr_LoadAsset(EXAMPLE_ASSET_PLACEHOLDER_FRAG_SPV);
+        Rr_ShaderInfo FragmentShaderInfo = {
+            .SPVSize = FragmentShader.Size,
+            .SPVData = FragmentShader.Pointer,
+        };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.Layout = PipelineLayout;
-        PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
-        PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
-        PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
-        PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
+        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
+        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
@@ -300,7 +314,9 @@ struct STransferThreadApp
             nullptr,
             RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
         Rr_UIText(
-            "This example demonstrates loading images from another thread.");
+            "This example demonstrates loading images from another "
+            "thread.\nDrop PNG images here and worker thread will parse and "
+            "upload them to the GPU.");
         if (Images.size() > 1)
         {
             Rr_UISliderInt(

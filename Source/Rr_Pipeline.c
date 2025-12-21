@@ -259,13 +259,14 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
 }
 
 Rr_ComputePipeline *Rr_CreateComputePipeline(
-    Rr_ComputePipelineCreateInfo const *CreateInfo)
+    Rr_ShaderInfo const *ShaderInfo,
+    Rr_PipelineLayout *PipelineLayout)
 {
-    assert(CreateInfo);
-    assert(CreateInfo->Layout != NULL);
+    assert(ShaderInfo);
+    assert(PipelineLayout);
     assert(
-        CreateInfo->SpecializationCount == 0 ||
-        CreateInfo->Specializations != NULL);
+        ShaderInfo->SpecializationCount == 0 ||
+        ShaderInfo->Specializations != NULL);
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -281,18 +282,18 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
 
     Rr_UnlockSpinlock(&gRenderer->ComputePipelinesLock);
 
-    Rr_IncrementAtomicRelaxed(&CreateInfo->Layout->RefCount);
+    Rr_IncrementAtomicRelaxed(&PipelineLayout->RefCount);
 
     *ComputePipeline = (Rr_ComputePipeline){
-        .Layout = CreateInfo->Layout,
+        .Layout = PipelineLayout,
     };
 
     Rr_ConsumeNextObjectName(ComputePipeline->Name);
 
     VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = CreateInfo->ShaderSPVSize,
-        .pCode = (uint32_t *)CreateInfo->ShaderSPVData,
+        .codeSize = ShaderInfo->SPVSize,
+        .pCode = (uint32_t *)ShaderInfo->SPVData,
     };
 
     VkShaderModule ShaderModule;
@@ -307,22 +308,21 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_COMPUTE_BIT,
         .module = ShaderModule,
-        .pName = CreateInfo->ShaderEntryPoint ? CreateInfo->ShaderEntryPoint
-                                              : "main",
+        .pName = ShaderInfo->EntryPoint ? ShaderInfo->EntryPoint : "main",
     };
 
-    if (CreateInfo->SpecializationCount > 0)
+    if (ShaderInfo->SpecializationCount)
     {
         ShaderStageCreateInfo.pSpecializationInfo =
             Rr_GetVulkanSpecializationInfo(
-                CreateInfo->SpecializationCount,
-                CreateInfo->Specializations,
+                ShaderInfo->SpecializationCount,
+                ShaderInfo->Specializations,
                 Scratch.Arena);
     }
 
     VkComputePipelineCreateInfo PipelineCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-        .layout = CreateInfo->Layout->Handle,
+        .layout = PipelineLayout->Handle,
         .stage = ShaderStageCreateInfo,
     };
 
@@ -444,12 +444,12 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     RR_ARRAY(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
-    if (CreateInfo->VertexShaderSPVData != NULL)
+    if (CreateInfo->VertexShaderInfo)
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-            .codeSize = CreateInfo->VertexShaderSPVSize,
-            .pCode = (uint32_t *)CreateInfo->VertexShaderSPVData,
+            .codeSize = CreateInfo->VertexShaderInfo->SPVSize,
+            .pCode = (uint32_t *)CreateInfo->VertexShaderInfo->SPVData,
         };
         Device->CreateShaderModule(
             Device->Handle,
@@ -461,30 +461,30 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena);
         *PipelineShaderStageCreateInfo = (VkPipelineShaderStageCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .pName = CreateInfo->VertexShaderEntryPoint
-                         ? CreateInfo->VertexShaderEntryPoint
+            .pName = CreateInfo->VertexShaderInfo->EntryPoint
+                         ? CreateInfo->VertexShaderInfo->EntryPoint
                          : "main",
             .stage = VK_SHADER_STAGE_VERTEX_BIT,
             .module = VertModule,
         };
-        if (CreateInfo->VertexSpecializationCount)
+        if (CreateInfo->VertexShaderInfo->SpecializationCount)
         {
             PipelineShaderStageCreateInfo->pSpecializationInfo =
                 Rr_GetVulkanSpecializationInfo(
-                    CreateInfo->VertexSpecializationCount,
-                    CreateInfo->VertexSpecializations,
+                    CreateInfo->VertexShaderInfo->SpecializationCount,
+                    CreateInfo->VertexShaderInfo->Specializations,
                     Scratch.Arena);
         }
     }
 
     VkShaderModule FragModule = VK_NULL_HANDLE;
-    if (CreateInfo->FragmentShaderSPVData != NULL)
+    if (CreateInfo->FragmentShaderInfo)
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
-            .codeSize = CreateInfo->FragmentShaderSPVSize,
-            .pCode = (uint32_t *)CreateInfo->FragmentShaderSPVData,
+            .codeSize = CreateInfo->FragmentShaderInfo->SPVSize,
+            .pCode = (uint32_t *)CreateInfo->FragmentShaderInfo->SPVData,
         };
         Device->CreateShaderModule(
             Device->Handle,
@@ -497,18 +497,18 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         *PipelineShaderStageCreateInfo = (VkPipelineShaderStageCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .pNext = NULL,
-            .pName = CreateInfo->FragmentShaderEntryPoint
-                         ? CreateInfo->FragmentShaderEntryPoint
+            .pName = CreateInfo->FragmentShaderInfo->EntryPoint
+                         ? CreateInfo->FragmentShaderInfo->EntryPoint
                          : "main",
             .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
             .module = FragModule,
         };
-        if (CreateInfo->FragmentSpecializationCount)
+        if (CreateInfo->FragmentShaderInfo->SpecializationCount)
         {
             PipelineShaderStageCreateInfo->pSpecializationInfo =
                 Rr_GetVulkanSpecializationInfo(
-                    CreateInfo->FragmentSpecializationCount,
-                    CreateInfo->FragmentSpecializations,
+                    CreateInfo->FragmentShaderInfo->SpecializationCount,
+                    CreateInfo->FragmentShaderInfo->Specializations,
                     Scratch.Arena);
         }
     }
@@ -877,3 +877,61 @@ Found:
 
     return *MapRef;
 }
+
+RR_BEGIN_SERIALIZE_FUNCTION(Rr_SerializeShaderInfo, Rr_ShaderInfo)
+{
+    RR_SERIALIZE_PTR(Struct->SPVSize, Struct->SPVData);
+    if (Struct->EntryPoint)
+    {
+        RR_SERIALIZE_PTR(strlen(Struct->EntryPoint) + 1, Struct->EntryPoint);
+    }
+    Rr_PipelineSpecialization const *Specializations;
+    RR_SERIALIZE_STRUCT_PTR(
+        sizeof(Rr_PipelineSpecialization) * Struct->SpecializationCount,
+        Struct->Specializations,
+        Specializations);
+    for (size_t Index = 0; Index < Struct->SpecializationCount; ++Index)
+    {
+        Rr_PipelineSpecialization const *Specialization =
+            Specializations + Index;
+        RR_SERIALIZE_PTR(Specialization->Size, Specialization->Data);
+    }
+}
+RR_END_SERIALIZE_FUNCTION()
+
+RR_BEGIN_DESERIALIZE_FUNCTION(Rr_DeserializeShaderInfo, Rr_ShaderInfo)
+{
+    RR_DESERIALIZE_PTR(Struct->SPVData);
+    RR_DESERIALIZE_PTR(Struct->EntryPoint);
+    RR_DESERIALIZE_PTR(Struct->Specializations);
+    for (size_t Index = 0; Index < Struct->SpecializationCount; ++Index)
+    {
+        Rr_PipelineSpecialization const *Specialization =
+            Struct->Specializations + Index;
+        RR_DESERIALIZE_PTR(Specialization->Data);
+    }
+}
+RR_END_DESERIALIZE_FUNCTION()
+
+/* RR_BEGIN_SERIALIZE_FUNCTION( */
+/*     Rr_SerializeGraphicsPipelineCreateInfo, */
+/*     Rr_GraphicsPipelineCreateInfo, */
+/*     CreateInfo) */
+/* { */
+/*     Rr_SerializeShaderInfo(CreateInfo->VertexShaderInfo, &Size, OutData); */
+/*     Rr_SerializeShaderInfo(CreateInfo->FragmentShaderInfo, &Size, OutData);
+ */
+/*     /\* RR_SERIALIZE(sizeof(Rr_GraphicsPipelineCreateInfo), CreateInfo); *\/
+ */
+
+/*     RR_SERIALIZE(sizeof(Rr_VertexInputBinding) *
+ * CreateInfo->VertexInputBindingCount, CreateInfo); */
+/*     for(size_t Index = 0; Index < CreateInfo->VertexInputBindingCount;
+ * ++Index) */
+/*     { */
+/*         Rr_VertexInputBinding const *VertexInputBinding = */
+/*             CreateInfo->VertexInputBindings + Index; */
+
+/*     } */
+/* } */
+/* RR_END_SERIALIZE_FUNCTION(); */

@@ -8262,18 +8262,26 @@ void Rr_InitUI(void)
         },
     };
 
+    Rr_ShaderInfo VertexShaderInfo = {
+        .SPVSize = VertexShader.Size,
+        .SPVData = VertexShader.Pointer,
+        .SpecializationCount = RR_ARRAY_COUNT(Specializations),
+        .Specializations = Specializations,
+    };
+
+    Rr_ShaderInfo FragmentShaderInfo = {
+        .SPVSize = FragmentShader.Size,
+        .SPVData = FragmentShader.Pointer,
+    };
+
     Rr_GraphicsPipelineCreateInfo PipelineInfo = {
-        .Layout = gUIContext->PipelineLayout,
-        .VertexShaderSPVSize = VertexShader.Size,
-        .VertexShaderSPVData = VertexShader.Pointer,
-        .VertexSpecializationCount = RR_ARRAY_COUNT(Specializations),
-        .VertexSpecializations = Specializations,
-        .FragmentShaderSPVSize = FragmentShader.Size,
-        .FragmentShaderSPVData = FragmentShader.Pointer,
+        .VertexShaderInfo = &VertexShaderInfo,
+        .FragmentShaderInfo = &FragmentShaderInfo,
         .ColorTargetCount = RR_ARRAY_COUNT(ColorTargets),
         .ColorTargets = ColorTargets,
         .VertexInputBindingCount = 1,
         .VertexInputBindings = &VertexInputBinding,
+        .Layout = gUIContext->PipelineLayout,
     };
 
     uint32_t const DONT_CONVERT_TO_SRGB = 0;

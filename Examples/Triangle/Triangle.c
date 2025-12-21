@@ -2,6 +2,8 @@
 
 #include "ExampleAssets.inc"
 
+#include <stdio.h>
+
 static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Buffer *VertexBuffer;
@@ -28,18 +30,34 @@ static void Init(void)
     ColorTargets[0].Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
 
     Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_TRIANGLE_VERT_SPV);
+    Rr_ShaderInfo VertexShaderInfo = {
+        .SPVSize = VertexShader.Size,
+        .SPVData = VertexShader.Pointer,
+    };
+
     Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_TRIANGLE_FRAG_SPV);
+    Rr_ShaderInfo FragmentShaderInfo = {
+        .SPVSize = FragmentShader.Size,
+        .SPVData = FragmentShader.Pointer,
+    };
 
     Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
     PipelineInfo.Layout = PipelineLayout;
-    PipelineInfo.VertexShaderSPVSize = VertexShader.Size;
-    PipelineInfo.VertexShaderSPVData = VertexShader.Pointer;
-    PipelineInfo.FragmentShaderSPVSize = FragmentShader.Size;
-    PipelineInfo.FragmentShaderSPVData = FragmentShader.Pointer;
+    PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
+    PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
     PipelineInfo.VertexInputBindingCount = RR_ARRAY_COUNT(VertexInputBindings);
     PipelineInfo.VertexInputBindings = VertexInputBindings;
     PipelineInfo.ColorTargetCount = 1;
     PipelineInfo.ColorTargets = ColorTargets;
+
+        /* Rr_Scratch Scratch = Rr_GetScratch(NULL); */
+        /* size_t SerializedSize; */
+        /* Rr_SerializeShaderInfo(&ShaderInfo, &SerializedSize, NULL); */
+        /* fprintf(stderr, "Size: %zu\n", SerializedSize); */
+        /* void *Buffer = RR_ALLOC(Scratch.Arena, SerializedSize); */
+        /* Rr_SerializeShaderInfo(&ShaderInfo, &SerializedSize, Buffer); */
+        /* Rr_ShaderInfo *NewShaderInfo = Rr_DeserializeShaderInfo(Buffer); */
+        /* Rr_DestroyScratch(Scratch); */
 
     GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 

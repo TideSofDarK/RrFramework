@@ -69,15 +69,14 @@ struct SSortList
         };
 
         Rr_Asset ComputeShader = Rr_LoadAsset(EXAMPLE_ASSET_SORTLIST_COMP_SPV);
+        Rr_ShaderInfo ShaderInfo = {
+            .SPVSize = ComputeShader.Size,
+            .SPVData = ComputeShader.Pointer,
+            .SpecializationCount = Specializations.size(),
+            .Specializations = Specializations.data(),
+        };
 
-        Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
-        PipelineCreateInfo.Layout = Layout;
-        PipelineCreateInfo.ShaderSPVSize = ComputeShader.Size;
-        PipelineCreateInfo.ShaderSPVData = ComputeShader.Pointer;
-        PipelineCreateInfo.SpecializationCount = Specializations.size();
-        PipelineCreateInfo.Specializations = Specializations.data();
-
-        Pipeline = Rr_CreateComputePipeline(&PipelineCreateInfo);
+        Pipeline = Rr_CreateComputePipeline(&ShaderInfo, Layout);
 
         UniformBuffer = Rr_CreateBuffer(
             sizeof(SUniformData),
@@ -260,15 +259,14 @@ struct SBitonicSorter
 
         Rr_Asset ComputeShader =
             Rr_LoadAsset(EXAMPLE_ASSET_BITONICSORT_COMP_SPV);
+        Rr_ShaderInfo ShaderInfo = {
+            .SPVSize = ComputeShader.Size,
+            .SPVData = ComputeShader.Pointer,
+            .SpecializationCount = Specializations.size(),
+            .Specializations = Specializations.data(),
+        };
 
-        Rr_ComputePipelineCreateInfo PipelineCreateInfo = {};
-        PipelineCreateInfo.Layout = Layout;
-        PipelineCreateInfo.ShaderSPVSize = ComputeShader.Size;
-        PipelineCreateInfo.ShaderSPVData = ComputeShader.Pointer;
-        PipelineCreateInfo.SpecializationCount = Specializations.size();
-        PipelineCreateInfo.Specializations = Specializations.data();
-
-        Pipeline = Rr_CreateComputePipeline(&PipelineCreateInfo);
+        Pipeline = Rr_CreateComputePipeline(&ShaderInfo, Layout);
 
         UniformBuffer = Rr_CreateBuffer(
             RR_ALIGN_POW2(sizeof(SGPUSortInfo), Rr_GetUniformAlignment()) *

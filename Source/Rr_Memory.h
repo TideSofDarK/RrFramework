@@ -201,6 +201,97 @@ extern void *Rr_NextFreeListItem(void *Pointer);
 
 #define RR_NEXT_FREE_LIST_ITEM(Pointer) Rr_NextFreeListItem((Pointer))
 
+/*
+ * Generic Serialization
+ */
+
+#define RR_SERIALIZE(Amount, Src)                                             \
+    {                                                                         \
+        if (OutData)                                                          \
+        {                                                                     \
+            memcpy(((char *)(OutData)) + Current, (Src), Amount);             \
+        }                                                                     \
+        Current = RR_ALIGN_POW2(Current + Amount, (size_t)RR_SAFE_ALIGNMENT); \
+    }
+
+#define RR_SERIALIZE_PTR(Amount, Src)                                         \
+    {                                                                         \
+        if (OutData)                                                          \
+        {                                                                     \
+            memcpy(((char *)(OutData)) + Current, (Src), Amount);             \
+            memcpy((void *)&Src, &Current, sizeof(uintptr_t));                \
+        }                                                                     \
+        Current = RR_ALIGN_POW2(Current + Amount, (size_t)RR_SAFE_ALIGNMENT); \
+    }
+
+#define RR_SERIALIZE_STRUCT_PTR(Amount, Src, OutStructPtr)                    \
+    {                                                                         \
+        if (OutData)                                                          \
+        {                                                                     \
+            OutStructPtr =                                                    \
+                memcpy(((char *)(OutData)) + Current, (Src), Amount);         \
+            memcpy((void *)&Src, &Current, sizeof(uintptr_t));                \
+        }                                                                     \
+        else                                                                  \
+        {                                                                     \
+            OutStructPtr = (void *)Src;                                       \
+        }                                                                     \
+        Current = RR_ALIGN_POW2(Current + Amount, (size_t)RR_SAFE_ALIGNMENT); \
+    }
+
+#define RR_BEGIN_SERIALIZE_FUNCTION(FunctionName, StructType) \
+    StructType *FunctionName(                                 \
+        StructType const *Struct,                             \
+        size_t *OutSize,                                      \
+        void *OutData)                                        \
+    {                                                         \
+        if (!OutSize)                                         \
+        {                                                     \
+            return;                                           \
+        }                                                     \
+        size_t Current = 0;                                   \
+        if (OutData)                                          \
+        {                                                     \
+            FunctionName(Struct, &Current, NULL);             \
+            assert(*OutSize == Current);                      \
+            Current = 0;                                      \
+            RR_SERIALIZE(sizeof(StructType), Struct);         \
+            Struct = OutData;                                 \
+        }                                                     \
+        else                                                  \
+        {                                                     \
+            RR_SERIALIZE(sizeof(StructType), Struct);         \
+        }
+
+#define RR_END_SERIALIZE_FUNCTION() \
+    *OutSize = Current;             \
+    return Struct;                  \
+    }
+
+#define RR_DESERIALIZE_PTR(Ptr)                            \
+    {                                                      \
+        uintptr_t AsOffset = (uintptr_t)(Ptr);             \
+        uintptr_t PtrValue;                                \
+        if (AsOffset == 0)                                 \
+        {                                                  \
+            PtrValue = (uintptr_t)NULL;                    \
+        }                                                  \
+        else                                               \
+        {                                                  \
+            PtrValue = (uintptr_t)Data + AsOffset;         \
+        }                                                  \
+        memcpy((void *)&Ptr, &PtrValue, sizeof(PtrValue)); \
+    }
+
+#define RR_BEGIN_DESERIALIZE_FUNCTION(FunctionName, StructType) \
+    StructType *FunctionName(void *Data)                        \
+    {                                                           \
+        StructType *Struct = Data;
+
+#define RR_END_DESERIALIZE_FUNCTION() \
+    return Struct;                    \
+    }
+
 #ifdef __cplusplus
 }
 #endif
