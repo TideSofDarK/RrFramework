@@ -36,7 +36,7 @@
 
 static VkRenderPass Rr_GetCompatibleRenderPass(
     uint32_t ColorTargetCount,
-    Rr_ColorTargetInfo *ColorTargets,
+    Rr_ColorTargetInfo const *ColorTargets,
     Rr_DepthStencil const *DepthStencil,
     uint32_t SampleCount)
 {
@@ -51,7 +51,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
 
     for (uint32_t Index = 0; Index < ColorTargetCount; ++Index)
     {
-        Rr_ColorTargetInfo *Info = &ColorTargets[Index];
+        Rr_ColorTargetInfo const *Info = &ColorTargets[Index];
 
         Key.Attachments[Index].Format = Rr_ToVulkanImageFormat(Info->Format);
         Key.Attachments[Index].Samples = SampleCount;
@@ -223,7 +223,7 @@ void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
 
 static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
     size_t SpecializationCount,
-    Rr_PipelineSpecialization *Specializations,
+    Rr_PipelineSpecialization const *Specializations,
     Rr_Arena *Arena)
 {
     VkSpecializationInfo *SpecializationInfo =
@@ -236,7 +236,8 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
     char *DataStart = NULL;
     for (size_t Index = 0; Index < SpecializationCount; ++Index)
     {
-        Rr_PipelineSpecialization *Specialization = Specializations + Index;
+        Rr_PipelineSpecialization const *Specialization =
+            Specializations + Index;
         char *SpecializationData =
             RR_ALLOC_NO_ZERO(Arena, Specialization->Size);
         if (DataStart == NULL)
@@ -644,8 +645,9 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     {
         VkPipelineColorBlendAttachmentState *Attachment =
             RR_PUSH_INTO_ARRAY(&ColorAttachments, Scratch.Arena);
-        Rr_ColorTargetInfo *ColorTargetInfo = CreateInfo->ColorTargets + Index;
-        Rr_ColorTargetBlend *Blend = &ColorTargetInfo->Blend;
+        Rr_ColorTargetInfo const *ColorTargetInfo =
+            CreateInfo->ColorTargets + Index;
+        Rr_ColorTargetBlend const *Blend = &ColorTargetInfo->Blend;
 
         VkColorComponentFlags ColorWriteMask = Blend->ColorWriteMask;
         if (Blend->ColorWriteMask == RR_COLOR_COMPONENT_DEFAULT)

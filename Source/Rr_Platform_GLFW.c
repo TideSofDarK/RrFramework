@@ -573,7 +573,6 @@ bool Rr_IsWindowMinimized(void)
 bool Rr_IsWindowFullscreen(void)
 {
     return glfwGetWindowMonitor(gPlatform->Window);
-    ;
 }
 
 void Rr_SetWindowFullscreen(bool Fullscreen)
