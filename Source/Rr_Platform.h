@@ -26,7 +26,7 @@
 
 #include <Rr/Rr_Platform.h>
 
-#include "Rr_Arena.h"
+#include <Rr/Rr_Arena.h>
 
 #if defined(_MSC_VER) && !defined(__clang__) && !defined(__INTEL_COMPILER)
 #define RR_THREAD_LOCAL __declspec(thread)

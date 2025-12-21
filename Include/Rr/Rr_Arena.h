@@ -26,8 +26,9 @@
 
 #include <Rr/Rr_Defines.h>
 
-#define RR_ARENA_RESERVE_DEFAULT RR_GIGABYTES(8)
-#define RR_ARENA_COMMIT_DEFAULT  RR_KILOBYTES(64)
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct Rr_Arena Rr_Arena;
 struct Rr_Arena
@@ -71,15 +72,6 @@ extern void *Rr_AllocArena(
 
 extern void Rr_PopArena(Rr_Arena *Arena, size_t Amount);
 
-static void *Rr_GenericArenaAlloc(void *Arena, size_t Size)
-{
-    return RR_ALLOC_NO_ZERO((Rr_Arena *)Arena, Size);
-}
-
-static void Rr_GenericArenaFree(void *Arena, void *Ptr)
-{
-}
-
 /*
  * Scratch Arena
  */
@@ -100,3 +92,7 @@ extern void Rr_InitScratchArena(void);
 extern void Rr_CleanupScratchArena(void);
 
 extern Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict);
+
+#ifdef __cplusplus
+}
+#endif

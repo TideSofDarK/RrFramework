@@ -352,6 +352,15 @@ static inline size_t Rr_GetFlatBindingOffset(
     return Result;
 }
 
+static void *Rr_GenericArenaAlloc(void *Arena, size_t Size)
+{
+    return RR_ALLOC_NO_ZERO((Rr_Arena *)Arena, Size);
+}
+
+static void Rr_GenericArenaFree(void *Arena, void *Ptr)
+{
+}
+
 Rr_GLTFAsset *Rr_CreateGLTFAsset(
     Rr_GLTFContext *GLTFContext,
     struct Rr_Graph *Graph,

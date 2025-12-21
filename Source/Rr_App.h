@@ -26,7 +26,6 @@
 
 #include <Rr/Rr_App.h>
 
-#include "Rr_Arena.h"
 #include "Rr_Platform.h"
 
 struct Rr_Renderer;
