@@ -252,7 +252,7 @@ typedef struct Rr_BindingSet Rr_BindingSet;
 struct Rr_BindingSet
 {
     size_t BindingCount;
-    Rr_Binding *Bindings;
+    Rr_Binding const *Bindings;
 };
 
 extern Rr_PipelineLayout *Rr_CreatePipelineLayout(

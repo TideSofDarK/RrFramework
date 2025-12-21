@@ -128,7 +128,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
         for (uint32_t Index = 0; Index < Set->BindingCount; ++Index)
         {
-            Rr_Binding *Binding = Set->Bindings + Index;
+            Rr_Binding const *Binding = Set->Bindings + Index;
 
             assert(Binding->Type != RR_BINDING_TYPE_INVALID);
             assert(Binding->Stages != 0);
