@@ -55,8 +55,8 @@ extern void Rr_GrowArray(
         {                                                     \
             void *OldData = (Array)->Data;                    \
             (Array)->Data = RR_ALLOC_NO_ZERO(                 \
-                (Arena),                                      \
-                sizeof(*(Array)->Data) * (ElementCount));     \
+                sizeof(*(Array)->Data) * (ElementCount),      \
+                (Arena));                                     \
             (Array)->Capacity = (ElementCount);               \
             if ((Array)->Count > 0 && OldData)                \
             {                                                 \
@@ -91,21 +91,21 @@ extern void Rr_GrowArray(
 
 #define RR_LAST_ARRAY_ELEMENT(Array) ((Array)->Data[(Array)->Count - 1])
 
-#define RR_RESET_ARRAY(Array, Arena)                         \
-    do                                                       \
-    {                                                        \
-        if ((Array)->Capacity > 0)                           \
-        {                                                    \
-            (Array)->Data = RR_ALLOC_NO_ZERO(                \
-                (Arena),                                     \
-                sizeof(*(Array)->Data) * (Array)->Capacity); \
-            (Array)->Count = 0;                              \
-        }                                                    \
-        else                                                 \
-        {                                                    \
-            RR_ZERO_PTR((Array));                            \
-        }                                                    \
-    }                                                        \
+#define RR_RESET_ARRAY(Array, Arena)                        \
+    do                                                      \
+    {                                                       \
+        if ((Array)->Capacity > 0)                          \
+        {                                                   \
+            (Array)->Data = RR_ALLOC_NO_ZERO(               \
+                sizeof(*(Array)->Data) * (Array)->Capacity, \
+                (Arena));                                   \
+            (Array)->Count = 0;                             \
+        }                                                   \
+        else                                                \
+        {                                                   \
+            RR_ZERO_PTR((Array));                           \
+        }                                                   \
+    }                                                       \
     while (0)
 
 #define RR_CLEAR_ARRAY(Array) (Array)->Count = 0

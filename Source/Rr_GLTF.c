@@ -164,26 +164,26 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
-    Rr_GLTFContext *GLTFContext = RR_ALLOC_TYPE(Arena, Rr_GLTFContext);
+    Rr_GLTFContext *GLTFContext = RR_ALLOC_TYPE(Rr_GLTFContext, Arena);
     GLTFContext->Arena = Arena;
 
     GLTFContext->VertexInputStrides =
-        RR_ALLOC_TYPE_COUNT(Arena, size_t, VertexInputBindingCount);
+        RR_ALLOC_TYPE_COUNT(size_t, VertexInputBindingCount, Arena);
     GLTFContext->VertexInputBindingCount = VertexInputBindingCount;
     GLTFContext->VertexInputBindings = RR_ALLOC_COPY(
-        Arena,
         GLTFVertexInputBindings,
-        sizeof(Rr_GLTFVertexInputBinding) * VertexInputBindingCount);
+        sizeof(Rr_GLTFVertexInputBinding) * VertexInputBindingCount,
+        Arena);
     for (size_t BindingIndex = 0; BindingIndex < VertexInputBindingCount;
          ++BindingIndex)
     {
         Rr_GLTFVertexInputBinding *GLTFVertexInputBinding =
             GLTFContext->VertexInputBindings + BindingIndex;
         GLTFVertexInputBinding->AttributeTypes = RR_ALLOC_COPY(
-            Arena,
             GLTFVertexInputBindings[BindingIndex].AttributeTypes,
             sizeof(Rr_GLTFAttributeType) *
-                GLTFVertexInputBindings[BindingIndex].AttributeTypeCount);
+                GLTFVertexInputBindings[BindingIndex].AttributeTypeCount,
+            Arena);
 
         for (size_t AttributeIndex = 0;
              AttributeIndex < GLTFVertexInputBinding->AttributeTypeCount;
@@ -198,9 +198,9 @@ Rr_GLTFContext *Rr_CreateGLTFContext(
     if (GLTFTextureMappingCount > 0)
     {
         GLTFContext->TextureMappings = RR_ALLOC_COPY(
-            Arena,
             GLTFTextureMappings,
-            sizeof(Rr_GLTFTextureMapping) * GLTFTextureMappingCount);
+            sizeof(Rr_GLTFTextureMapping) * GLTFTextureMappingCount,
+            Arena);
     }
 
     return GLTFContext;
@@ -354,7 +354,7 @@ static inline size_t Rr_GetFlatBindingOffset(
 
 static void *Rr_GenericArenaAlloc(void *Arena, size_t Size)
 {
-    return RR_ALLOC_NO_ZERO((Rr_Arena *)Arena, Size);
+    return RR_ALLOC_NO_ZERO(Size, (Rr_Arena *)Arena);
 }
 
 static void Rr_GenericArenaFree(void *Arena, void *Ptr)
@@ -385,7 +385,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     }
     cgltf_load_buffers(&Options, Data, NULL);
 
-    Rr_GLTFAsset *GLTFAsset = RR_ALLOC_TYPE(GLTFContext->Arena, Rr_GLTFAsset);
+    Rr_GLTFAsset *GLTFAsset = RR_ALLOC_TYPE(Rr_GLTFAsset, GLTFContext->Arena);
 
     /* Create staging structures. */
 
@@ -470,26 +470,26 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     if (Data->materials)
     {
         GLTFAsset->Materials = RR_ALLOC_TYPE_COUNT(
-            GLTFContext->Arena,
             Rr_GLTFMaterial,
-            Data->materials_count);
+            Data->materials_count,
+            GLTFContext->Arena);
     }
 
     if (Data->images)
     {
         GLTFAsset->Images = RR_ALLOC_TYPE_COUNT(
-            GLTFContext->Arena,
             Rr_Image2D *,
-            Data->images_count);
+            Data->images_count,
+            GLTFContext->Arena);
     }
 
     /* Process meshes. */
 
     GLTFAsset->MeshCount = Data->meshes_count;
     GLTFAsset->Meshes = RR_ALLOC_TYPE_COUNT(
-        GLTFContext->Arena,
         Rr_GLTFMesh,
-        GLTFAsset->MeshCount);
+        GLTFAsset->MeshCount,
+        GLTFContext->Arena);
     size_t FirstIndex = 0;
     size_t VertexOffset = 0;
     for (size_t MeshIndex = 0; MeshIndex < Data->meshes_count; ++MeshIndex)
@@ -499,16 +499,16 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
         Rr_GLTFMesh *GLTFMesh = GLTFAsset->Meshes + MeshIndex;
         GLTFMesh->PrimitiveCount = Mesh->primitives_count;
         GLTFMesh->Primitives = RR_ALLOC_TYPE_COUNT(
-            GLTFContext->Arena,
             Rr_GLTFPrimitive,
-            GLTFMesh->PrimitiveCount);
+            GLTFMesh->PrimitiveCount,
+            GLTFContext->Arena);
 
         if (Mesh->name)
         {
             GLTFMesh->Name = RR_ALLOC_COPY(
-                GLTFContext->Arena,
                 Mesh->name,
-                strlen(Mesh->name));
+                strlen(Mesh->name),
+                GLTFContext->Arena);
         }
 
         for (size_t PrimitiveIndex = 0;
@@ -521,9 +521,9 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                 GLTFMesh->Primitives + PrimitiveIndex;
             GLTFPrimitive->AttributeCount = Primitive->attributes_count;
             GLTFPrimitive->Attributes = RR_ALLOC_TYPE_COUNT(
-                GLTFContext->Arena,
                 Rr_GLTFAttribute,
-                GLTFPrimitive->AttributeCount);
+                GLTFPrimitive->AttributeCount,
+                GLTFContext->Arena);
 
             if (Primitive->material)
             {
@@ -661,11 +661,11 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                 GLTFAsset->Materials + MaterialIndex;
             GLTFMaterial->TextureCount = TextureCount;
             GLTFMaterial->Textures =
-                RR_ALLOC_TYPE_COUNT(GLTFContext->Arena, size_t, TextureCount);
+                RR_ALLOC_TYPE_COUNT(size_t, TextureCount, GLTFContext->Arena);
             GLTFMaterial->TextureTypes = RR_ALLOC_TYPE_COUNT(
-                GLTFContext->Arena,
                 Rr_GLTFTextureType,
-                TextureCount);
+                TextureCount,
+                GLTFContext->Arena);
 
             size_t CurrentTextureIndex = 0;
 
@@ -710,16 +710,16 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
     GLTFAsset->NodeCount = Data->nodes_count;
     GLTFAsset->Nodes = RR_ALLOC_TYPE_COUNT(
-        GLTFContext->Arena,
         Rr_GLTFNode,
-        GLTFAsset->NodeCount);
+        GLTFAsset->NodeCount,
+        GLTFContext->Arena);
     for (uint32_t NodeIndex = 0; NodeIndex < GLTFAsset->NodeCount; ++NodeIndex)
     {
         cgltf_node *Node = &Data->nodes[NodeIndex];
         Rr_GLTFNode *GLTFNode = &GLTFAsset->Nodes[NodeIndex];
 
         size_t NameLength = strlen(Node->name);
-        GLTFNode->Name = RR_ALLOC_NO_ZERO(GLTFContext->Arena, NameLength + 1);
+        GLTFNode->Name = RR_ALLOC_NO_ZERO(NameLength + 1, GLTFContext->Arena);
         strcpy(GLTFNode->Name, Node->name);
 
         if (Node->has_matrix)
@@ -766,9 +766,9 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
         {
             GLTFNode->ChildrenCount = Node->children_count;
             GLTFNode->Children = RR_ALLOC_TYPE_COUNT(
-                GLTFContext->Arena,
                 Rr_GLTFNode *,
-                Node->children_count);
+                Node->children_count,
+                GLTFContext->Arena);
             for (uint32_t ChildIndex = 0; ChildIndex < Node->children_count;
                  ++ChildIndex)
             {
@@ -784,23 +784,23 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
 
     GLTFAsset->SceneCount = Data->scenes_count;
     GLTFAsset->Scenes = RR_ALLOC_TYPE_COUNT(
-        GLTFContext->Arena,
         Rr_GLTFScene,
-        GLTFAsset->SceneCount);
+        GLTFAsset->SceneCount,
+        GLTFContext->Arena);
     for (uint32_t SceneIndex = 0; SceneIndex < Data->scenes_count; ++SceneIndex)
     {
         cgltf_scene *Scene = &Data->scenes[SceneIndex];
         Rr_GLTFScene *GLTFScene = &GLTFAsset->Scenes[SceneIndex];
 
         size_t NameLength = strlen(Scene->name);
-        GLTFScene->Name = RR_ALLOC_NO_ZERO(GLTFContext->Arena, NameLength + 1);
+        GLTFScene->Name = RR_ALLOC_NO_ZERO(NameLength + 1, GLTFContext->Arena);
         strcpy(GLTFScene->Name, Scene->name);
 
         GLTFScene->NodeCount = Scene->nodes_count;
         GLTFScene->Nodes = RR_ALLOC_TYPE_COUNT(
-            GLTFContext->Arena,
             Rr_GLTFNode *,
-            GLTFScene->NodeCount);
+            GLTFScene->NodeCount,
+            GLTFContext->Arena);
 
         for (uint32_t NodeIndex = 0; NodeIndex < Scene->nodes_count;
              ++NodeIndex)

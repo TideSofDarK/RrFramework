@@ -135,11 +135,7 @@ Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict)
     return (Rr_Scratch){ 0 };
 }
 
-void *Rr_AllocArenaNoZero(
-    Rr_Arena *Arena,
-    size_t Size,
-    size_t Align,
-    size_t Count)
+void *Rr_AllocNoZero(size_t Size, size_t Align, size_t Count, Rr_Arena *Arena)
 {
     if (Arena == NULL)
     {
@@ -180,15 +176,7 @@ void *Rr_AllocArenaNoZero(
     return Result;
 }
 
-void *Rr_AllocArena(Rr_Arena *Arena, size_t Size, size_t Align, size_t Count)
+void *Rr_Alloc(size_t Size, size_t Align, size_t Count, Rr_Arena *Arena)
 {
-    return memset(
-        Rr_AllocArenaNoZero(Arena, Size, Align, Count),
-        0,
-        Size * Count);
-}
-
-void Rr_PopArena(Rr_Arena *Arena, size_t Amount)
-{
-    Arena->Position -= Amount;
+    return memset(Rr_AllocNoZero(Size, Align, Count, Arena), 0, Size * Count);
 }

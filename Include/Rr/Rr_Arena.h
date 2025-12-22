@@ -48,29 +48,27 @@ extern void Rr_ResetArena(Rr_Arena *Arena);
 
 extern void Rr_DestroyArena(Rr_Arena *Arena);
 
-extern void *Rr_AllocArenaNoZero(
-    Rr_Arena *Arena,
+extern void *Rr_AllocNoZero(
     size_t Size,
     size_t Align,
-    size_t Count);
+    size_t Count,
+    Rr_Arena *Arena);
 
-extern void *Rr_AllocArena(
-    Rr_Arena *Arena,
-    size_t Size,
-    size_t Align,
-    size_t Count);
+extern void *Rr_Alloc(size_t Size, size_t Align, size_t Count, Rr_Arena *Arena);
 
-#define RR_ALLOC(Arena, Size) Rr_AllocArena(Arena, Size, RR_SAFE_ALIGNMENT, 1)
-#define RR_ALLOC_NO_ZERO(Arena, Size) \
-    Rr_AllocArenaNoZero(Arena, Size, RR_SAFE_ALIGNMENT, 1)
-#define RR_ALLOC_TYPE(Arena, Type) \
-    (Type *)Rr_AllocArena(Arena, sizeof(Type), RR_SAFE_ALIGNMENT, 1)
-#define RR_ALLOC_TYPE_COUNT(Arena, Type, Count) \
-    (Type *)Rr_AllocArena(Arena, sizeof(Type), RR_SAFE_ALIGNMENT, Count)
-#define RR_ALLOC_COPY(Arena, Src, Size) \
-    (memcpy(RR_ALLOC_NO_ZERO(Arena, Size), Src, Size))
+#define RR_ALLOC(Size, Arena) Rr_Alloc(Size, RR_SAFE_ALIGNMENT, 1, Arena)
 
-extern void Rr_PopArena(Rr_Arena *Arena, size_t Amount);
+#define RR_ALLOC_NO_ZERO(Size, Arena) \
+    Rr_AllocNoZero(Size, RR_SAFE_ALIGNMENT, 1, Arena)
+
+#define RR_ALLOC_TYPE(Type, Arena) \
+    (Type *)Rr_Alloc(sizeof(Type), RR_SAFE_ALIGNMENT, 1, Arena)
+
+#define RR_ALLOC_TYPE_COUNT(Type, Count, Arena) \
+    (Type *)Rr_Alloc(sizeof(Type), RR_SAFE_ALIGNMENT, Count, Arena)
+
+#define RR_ALLOC_COPY(Src, Size, Arena) \
+    (memcpy(RR_ALLOC_NO_ZERO(Size, Arena), Src, Size))
 
 /*
  * Scratch Arena

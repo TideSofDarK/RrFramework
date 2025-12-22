@@ -122,7 +122,7 @@ struct RR_HIVE_NAME
 #define RR_ALLOC_HIVE_GROUP(Hive_, OutGroup_, ElementCount_, Arena_)      \
     do                                                                    \
     {                                                                     \
-        (*OutGroup_) = RR_ALLOC_TYPE((Arena), RR_HIVE_GROUP_NAME);        \
+        (*OutGroup_) = RR_ALLOC_TYPE(RR_HIVE_GROUP_NAME, (Arena));        \
         (*OutGroup_)->Previous = (Hive_)->End.Group;                      \
         (*OutGroup_)->GroupNumber =                                       \
             ((Hive_)->End.Group) == NULL                                  \
@@ -132,11 +132,11 @@ struct RR_HIVE_NAME
         (*OutGroup_)->FreeListHead = UINT16_MAX;                          \
         (*OutGroup_)->Capacity = (ElementCount_);                         \
         (*OutGroup_)->Elements =                                          \
-            RR_ALLOC_TYPE_COUNT((Arena_), RR_HIVE_TYPE, (ElementCount_)); \
+            RR_ALLOC_TYPE_COUNT(RR_HIVE_TYPE, (ElementCount_), (Arena_)); \
         (*OutGroup_)->Skips = RR_ALLOC_TYPE_COUNT(                        \
-            (Arena_),                                                     \
             Rr_HiveSkipType,                                              \
-            (ElementCount_) + 1);                                         \
+            (ElementCount_) + 1,                                          \
+            (Arena_));                                                    \
     }                                                                     \
     while (0)
 

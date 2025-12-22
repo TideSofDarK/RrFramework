@@ -218,7 +218,7 @@ static void Rr_GLFWDropCallback(
     for (int32_t Index = 0; Index < Count; ++Index)
     {
         size_t Length = strlen(Paths[Index]);
-        char *Path = RR_ALLOC_NO_ZERO(RrWindow->EventScratch.Arena, Length + 1);
+        char *Path = RR_ALLOC_NO_ZERO(Length + 1, RrWindow->EventScratch.Arena);
         memcpy(Path, Paths[Index], Length + 1);
 
         Rr_Event *Event = Rr_AddEvent();
@@ -318,7 +318,7 @@ static inline void Rr_CodepointToUTF8(uint32_t Codepoint, char Buffer[5])
 
 static void Rr_GLFWCharCallback(GLFWwindow *Window, uint32_t Codepoint)
 {
-    char *Buffer = RR_ALLOC_NO_ZERO(gPlatform->Arena, 5);
+    char *Buffer = RR_ALLOC_NO_ZERO(5, gPlatform->Arena);
     Rr_CodepointToUTF8(Codepoint, Buffer);
 
     Rr_Event *Event = Rr_AddEvent();
@@ -355,7 +355,7 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     RR_LOG("Using GLFW platform library");
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
-    gPlatform = RR_ALLOC_TYPE(Arena, Rr_Platform);
+    gPlatform = RR_ALLOC_TYPE(Rr_Platform, Arena);
     gPlatform->Arena = Arena;
     gPlatform->EventScratch =
         (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };

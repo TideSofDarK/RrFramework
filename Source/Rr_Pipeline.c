@@ -227,11 +227,11 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
     Rr_Arena *Arena)
 {
     VkSpecializationInfo *SpecializationInfo =
-        RR_ALLOC_TYPE(Arena, VkSpecializationInfo);
+        RR_ALLOC_TYPE(VkSpecializationInfo, Arena);
     SpecializationInfo->mapEntryCount = (uint32_t)SpecializationCount;
     VkSpecializationMapEntry *Entries = RR_ALLOC_NO_ZERO(
-        Arena,
-        sizeof(VkSpecializationMapEntry) * SpecializationCount);
+        sizeof(VkSpecializationMapEntry) * SpecializationCount,
+        Arena);
     uintptr_t ArenaPosition = Arena->Position;
     char *DataStart = NULL;
     for (size_t Index = 0; Index < SpecializationCount; ++Index)
@@ -239,7 +239,7 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
         Rr_PipelineSpecialization const *Specialization =
             Specializations + Index;
         char *SpecializationData =
-            RR_ALLOC_NO_ZERO(Arena, Specialization->Size);
+            RR_ALLOC_NO_ZERO(Specialization->Size, Arena);
         if (DataStart == NULL)
         {
             DataStart = SpecializationData;

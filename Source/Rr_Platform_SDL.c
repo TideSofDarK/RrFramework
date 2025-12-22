@@ -59,7 +59,7 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
         SDLWindowFlags |= SDL_WINDOW_RESIZABLE;
     }
     Rr_Arena *Arena = Rr_CreateDefaultArena();
-    gPlatform = RR_ALLOC_TYPE(Arena, Rr_Platform);
+    gPlatform = RR_ALLOC_TYPE(Rr_Platform, Arena);
     gPlatform->Arena = Arena;
     gPlatform->EventScratch =
         (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };

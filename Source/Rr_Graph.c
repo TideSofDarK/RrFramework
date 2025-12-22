@@ -62,7 +62,7 @@ Rr_Graph *Rr_BeginGraph(Rr_GraphFlags Flags)
 
     size_t ArenaPosition = ThreadContext->Arena->Position;
 
-    ThreadContext->Graph = RR_ALLOC(ThreadContext->Arena, sizeof(Rr_Graph));
+    ThreadContext->Graph = RR_ALLOC(sizeof(Rr_Graph), ThreadContext->Arena);
     ThreadContext->Graph->Arena = ThreadContext->Arena;
     ThreadContext->Graph->Flags = Flags;
     ThreadContext->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
@@ -105,7 +105,7 @@ void Rr_EndGraph(Rr_Graph *Graph)
     Device->BeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
 
     Rr_SyncStateStorage *SyncStateStorage =
-        RR_ALLOC(Graph->Arena, sizeof(Rr_SyncStateStorage));
+        RR_ALLOC(sizeof(Rr_SyncStateStorage), Graph->Arena);
 
     Rr_ExecuteGraph(
         Graph,
@@ -126,9 +126,9 @@ void Rr_EndGraph(Rr_Graph *Graph)
 
     uint32_t BufferBarrierIndex = 0;
     VkBufferMemoryBarrier *BufferBarriers = RR_ALLOC_NO_ZERO(
-        Scratch.Arena,
         Graph->Buffers.Hive.Count * RR_FRAME_OVERLAP *
-            sizeof(VkBufferMemoryBarrier));
+            sizeof(VkBufferMemoryBarrier),
+        Scratch.Arena);
     for (Rr_HandleTrieHiveIterator It = Graph->Buffers.Hive.Begin;
          It.Element != Graph->Buffers.Hive.End.Element;
          Rr_AdvanceHandleTrieHiveIterator(&It))
@@ -180,9 +180,9 @@ void Rr_EndGraph(Rr_Graph *Graph)
 
     uint32_t ImageBarrierIndex = 0;
     VkImageMemoryBarrier *ImageBarriers = RR_ALLOC_NO_ZERO(
-        Scratch.Arena,
         Graph->Images.Hive.Count * RR_FRAME_OVERLAP *
-            sizeof(VkImageMemoryBarrier));
+            sizeof(VkImageMemoryBarrier),
+        Scratch.Arena);
     for (Rr_HandleTrieHiveIterator It = Graph->Images.Hive.Begin;
          It.Element != Graph->Images.Hive.End.Element;
          Rr_AdvanceHandleTrieHiveIterator(&It))
@@ -334,7 +334,7 @@ static inline Rr_GraphNode *Rr_AddGraphNode(
     Rr_Graph *Graph,
     Rr_GraphNodeType Type)
 {
-    Rr_GraphNode *GraphNode = RR_ALLOC(Graph->Arena, sizeof(Rr_GraphNode));
+    Rr_GraphNode *GraphNode = RR_ALLOC(sizeof(Rr_GraphNode), Graph->Arena);
     GraphNode->Type = Type;
     if (Graph->NextNodeName)
     {
@@ -354,9 +354,9 @@ static inline Rr_GraphNode *Rr_AddGraphNode(
     if (GraphNode->DebugLabelCount)
     {
         GraphNode->DebugLabelStates = RR_ALLOC_COPY(
-            Graph->Arena,
             Graph->DebugLabelStates.Data,
-            sizeof(bool) * Graph->DebugLabelNames.Count);
+            sizeof(bool) * Graph->DebugLabelNames.Count,
+            Graph->Arena);
     }
 #endif
 
@@ -670,7 +670,7 @@ static void Rr_ProcessGraphNodes(
      * be executed before it. */
 
     Rr_IndexArray *AdjacencyList =
-        RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_IndexArray, Graph->Nodes.Count);
+        RR_ALLOC_TYPE_COUNT(Rr_IndexArray, Graph->Nodes.Count, Scratch.Arena);
     Rr_CreateGraphAdjacencyList(Graph, AdjacencyList, Scratch.Arena);
 
     /* Rr_PrintAdjacencyList(Graph->Nodes.Data, AdjacencyList,
@@ -678,7 +678,7 @@ static void Rr_ProcessGraphNodes(
 
     /* Topological sort. */
 
-    int *SortState = RR_ALLOC(Scratch.Arena, sizeof(int) * Graph->Nodes.Count);
+    int *SortState = RR_ALLOC(sizeof(int) * Graph->Nodes.Count, Scratch.Arena);
     for (size_t Index = 0; Index < Graph->Nodes.Count; ++Index)
     {
         Rr_GraphNode *Node = Graph->Nodes.Data[Index];
@@ -725,7 +725,7 @@ static void Rr_ProcessGraphNodes(
      * Nodes within same dependency level are meant to be batched together. */
 
     Rr_GraphNode **Reversed =
-        RR_ALLOC_TYPE_COUNT(Scratch.Arena, Rr_GraphNode *, SortedNodes->Count);
+        RR_ALLOC_TYPE_COUNT(Rr_GraphNode *, SortedNodes->Count, Scratch.Arena);
     for (size_t Index = 0; Index < SortedNodes->Count; ++Index)
     {
         Reversed[Index] = SortedNodes->Data[SortedNodes->Count - 1 - Index];
@@ -1091,10 +1091,10 @@ static void Rr_ExecuteGraphicsNode(
     };
 
     VkImageView *ImageViews =
-        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkImageView, AttachmentCount);
+        RR_ALLOC_TYPE_COUNT(VkImageView, AttachmentCount, Scratch.Arena);
 
     VkClearValue *ClearValues =
-        RR_ALLOC_TYPE_COUNT(Scratch.Arena, VkClearValue, AttachmentCount);
+        RR_ALLOC_TYPE_COUNT(VkClearValue, AttachmentCount, Scratch.Arena);
 
     uint32_t ResolveAttachmentIndex = Node->ColorTargetCount;
 
@@ -1912,9 +1912,9 @@ void Rr_ExecuteGraph(
     if (DebugLabelCount)
     {
         EarlyDebugLabelStates =
-            RR_ALLOC(Scratch.Arena, sizeof(bool) * DebugLabelCount);
+            RR_ALLOC(sizeof(bool) * DebugLabelCount, Scratch.Arena);
         LateDebugLabelStates =
-            RR_ALLOC(Scratch.Arena, sizeof(bool) * DebugLabelCount);
+            RR_ALLOC(sizeof(bool) * DebugLabelCount, Scratch.Arena);
     }
 #endif
 
@@ -2305,7 +2305,7 @@ static inline Rr_GraphImage *Rr_GetGraphHandle(
         *RR_PUSH_INTO_ARRAY(ResourceArray, Graph->Arena) = (Rr_GraphResource){
             .Container = Container,
         };
-        *GraphHandle = RR_ALLOC_TYPE(Graph->Arena, Rr_GraphHandle);
+        *GraphHandle = RR_ALLOC_TYPE(Rr_GraphHandle, Graph->Arena);
         **GraphHandle = Handle;
     }
 
@@ -2433,7 +2433,7 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
 void Rr_SetNextNodeName(Rr_Graph *Graph, const char *Name)
 {
     size_t NameLength = strlen(Name);
-    char *NodeName = RR_ALLOC_NO_ZERO(Graph->Arena, NameLength + 1);
+    char *NodeName = RR_ALLOC_NO_ZERO(NameLength + 1, Graph->Arena);
     memcpy(NodeName, Name, NameLength + 1);
     Graph->NextNodeName = NodeName;
 }
@@ -2461,7 +2461,7 @@ void Rr_BeginGraphLabel(Rr_Graph *Graph, const char *Name)
     }
 
     size_t Length = strlen(Name);
-    char *Copy = RR_ALLOC_NO_ZERO(Graph->Arena, Length + 1);
+    char *Copy = RR_ALLOC_NO_ZERO(Length + 1, Graph->Arena);
     strcpy(Copy, Name);
 
     *RR_PUSH_INTO_ARRAY(&Graph->DebugLabelNames, Graph->Arena) = Copy;
@@ -2613,7 +2613,7 @@ Rr_GraphNode *Rr_AddComputeNode(Rr_Graph *Graph)
     Rr_ComputeNode *ComputeNode = &GraphNode->Union.Compute;
 
     ComputeNode->Encoded.Encoded =
-        RR_ALLOC(Graph->Arena, sizeof(Rr_NodeFunction));
+        RR_ALLOC(sizeof(Rr_NodeFunction), Graph->Arena);
     ComputeNode->Encoded.EncodedFirst = ComputeNode->Encoded.Encoded;
 
     return GraphNode;
@@ -2638,9 +2638,9 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     {
         GraphicsNode->ColorTargetCount = (uint32_t)ColorTargetCount;
         GraphicsNode->ColorTargets = RR_ALLOC_COPY(
-            Graph->Arena,
             ColorTargets,
-            sizeof(Rr_ColorTarget) * ColorTargetCount);
+            sizeof(Rr_ColorTarget) * ColorTargetCount,
+            Graph->Arena);
 
         for (size_t Index = 0; Index < ColorTargetCount; ++Index)
         {
@@ -2680,7 +2680,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     }
     if (DepthTarget != NULL)
     {
-        GraphicsNode->DepthTarget = RR_ALLOC_TYPE(Graph->Arena, Rr_DepthTarget);
+        GraphicsNode->DepthTarget = RR_ALLOC_TYPE(Rr_DepthTarget, Graph->Arena);
         *GraphicsNode->DepthTarget = *DepthTarget;
 
         VkAccessFlags AccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
@@ -2701,7 +2701,7 @@ Rr_GraphNode *Rr_AddGraphicsNode(
     }
 
     GraphicsNode->Encoded.Encoded =
-        RR_ALLOC(Graph->Arena, sizeof(Rr_NodeFunction));
+        RR_ALLOC(sizeof(Rr_NodeFunction), Graph->Arena);
     GraphicsNode->Encoded.EncodedFirst = GraphicsNode->Encoded.Encoded;
 
     return GraphNode;
@@ -3063,10 +3063,10 @@ void Rr_CopyImageCube(
     {                                                                      \
         Rr_Arena *Arena = Node->Graph->Arena;                              \
         Rr_Encoded *Encoded = (Rr_Encoded *)&Node->Union;                  \
-        Encoded->Encoded->Next = RR_ALLOC(Arena, sizeof(Rr_NodeFunction)); \
+        Encoded->Encoded->Next = RR_ALLOC(sizeof(Rr_NodeFunction), Arena); \
         Encoded->Encoded = Encoded->Encoded->Next;                         \
         Encoded->Encoded->Type = FunctionType;                             \
-        Encoded->Encoded->Args = RR_ALLOC_NO_ZERO(Arena, sizeof(Struct));  \
+        Encoded->Encoded->Args = RR_ALLOC_NO_ZERO(sizeof(Struct), Arena);  \
         memcpy(Encoded->Encoded->Args, &(Struct), sizeof(Struct));         \
     }                                                                      \
     while (0)
@@ -4094,7 +4094,7 @@ void Rr_BeginNodeLabel(Rr_GraphNode *Node, const char *Name)
     assert(Node);
 
     size_t Length = strlen(Name) + 1;
-    char *NameBuffer = RR_ALLOC_NO_ZERO(Node->Graph->Arena, Length);
+    char *NameBuffer = RR_ALLOC_NO_ZERO(Length, Node->Graph->Arena);
     memcpy(NameBuffer, Name, Length);
 
     RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_DEBUG_LABEL, NameBuffer);
