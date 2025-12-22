@@ -899,13 +899,13 @@ struct SBlurApp
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = QuadPipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
-        QuadGraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        QuadGraphicsPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, QuadPipelineLayout);
     }
 
     void InitImage2D(const SPNGImage &PNGImage)
@@ -996,7 +996,6 @@ struct SBlurApp
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = CubePipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
@@ -1005,7 +1004,8 @@ struct SBlurApp
         PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
         PipelineInfo.VertexInputBindings = VertexInputBindings.data();
 
-        CubeGraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        CubeGraphicsPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, CubePipelineLayout);
 
         std::array GLTFAttributeTypes = {
             RR_GLTF_ATTRIBUTE_TYPE_POSITION,

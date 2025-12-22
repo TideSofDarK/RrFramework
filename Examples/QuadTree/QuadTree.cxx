@@ -691,13 +691,12 @@ struct SQuadTreeApp
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
-        PipelineInfo.Layout = Layout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = ColorTargets;
 
-        Pipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        Pipeline = Rr_CreateGraphicsPipeline(&PipelineInfo, Layout);
 
         UniformBuffer = Rr_CreateBuffer(
             sizeof(SGPUUniformData),

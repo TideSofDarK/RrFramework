@@ -281,7 +281,6 @@ struct SGSApp
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.VertexInputBindingCount = 1;
@@ -291,7 +290,8 @@ struct SGSApp
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
         PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
 
-        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        GraphicsPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
 
         /* Parse and upload splats. */
 

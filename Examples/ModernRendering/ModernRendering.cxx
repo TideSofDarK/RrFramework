@@ -143,14 +143,14 @@ struct SFullscreenBlit
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
 
-        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        GraphicsPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
     }
 
     ~SFullscreenBlit()
@@ -211,7 +211,6 @@ struct SSkybox
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
@@ -221,7 +220,8 @@ struct SSkybox
         PipelineInfo.VertexInputBindings = VertexInputBindings.data();
         PipelineInfo.Multisampling.SampleCount = MSAASampleCount;
 
-        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        GraphicsPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
     }
 
     void InitUniformBuffer()
@@ -391,7 +391,6 @@ struct SGrid
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
@@ -402,7 +401,8 @@ struct SGrid
         PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
         PipelineInfo.Multisampling.SampleCount = SampleCount;
 
-        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        GraphicsPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
     }
 
     void Draw(
@@ -999,7 +999,6 @@ struct SLighting
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
@@ -1011,7 +1010,8 @@ struct SLighting
         PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
 
-        ShadowPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        ShadowPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
 
         UniformBuffer = Rr_CreateBuffer(
             RR_MEGABYTES(2),
@@ -1272,13 +1272,12 @@ struct SSSAO
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
-        SSAOPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        SSAOPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
 
         FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_SSAOBLUR_FRAG_SPV);
         FragmentShaderInfo = {
@@ -1286,7 +1285,7 @@ struct SSSAO
             .SPVData = FragmentShader.Pointer,
         };
 
-        BlurPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        BlurPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
 
         Buffer = Rr_CreateBuffer(
             RR_KILOBYTES(1),
@@ -1507,7 +1506,6 @@ struct SModernRenderingApp
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
-        PipelineInfo.Layout = ForwardPassPipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
@@ -1523,7 +1521,8 @@ struct SModernRenderingApp
         PipelineInfo.Multisampling.SampleCount = GetMSAASampleCount();
 
         Rr_ReleaseGraphicsPipeline(ForwardPassPipeline);
-        ForwardPassPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        ForwardPassPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, ForwardPassPipelineLayout);
 
         VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_NORMALDEPTHPREPASS_VERT_SPV);
         VertexShaderInfo = {
@@ -1538,13 +1537,14 @@ struct SModernRenderingApp
             .SPVData = FragmentShader.Pointer,
         };
 
-        PipelineInfo.Layout = NormalDepthPrepassPipelineLayout;
         PipelineInfo.DepthStencil.EnableDepthWrite = true;
         ColorTargets[0] = Rr_ColorTargetInfo{
             .Format = RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT,
         };
         Rr_ReleaseGraphicsPipeline(NormalDepthPrepassPipeline);
-        NormalDepthPrepassPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        NormalDepthPrepassPipeline = Rr_CreateGraphicsPipeline(
+            &PipelineInfo,
+            NormalDepthPrepassPipelineLayout);
     }
 
     void InitAttachments()

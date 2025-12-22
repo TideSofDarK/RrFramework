@@ -405,10 +405,11 @@ Rr_ColorTargetBlend Rr_AlphaBlend(void)
 }
 
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
-    Rr_GraphicsPipelineCreateInfo const *CreateInfo)
+    Rr_GraphicsPipelineCreateInfo const *CreateInfo,
+    Rr_PipelineLayout *PipelineLayout)
 {
     assert(CreateInfo);
-    assert(CreateInfo->Layout);
+    assert(PipelineLayout);
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -425,10 +426,10 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     Rr_UnlockSpinlock(&gRenderer->GraphicsPipelinesLock);
 
-    Rr_IncrementAtomicRelaxed(&CreateInfo->Layout->RefCount);
+    Rr_IncrementAtomicRelaxed(&PipelineLayout->RefCount);
 
     *GraphicsPipeline = (Rr_GraphicsPipeline){
-        .Layout = CreateInfo->Layout,
+        .Layout = PipelineLayout,
         .HasDepthStencil = CreateInfo->DepthStencil.EnableDepthTest ||
                            CreateInfo->DepthStencil.EnableStencilTest ||
                            CreateInfo->DepthStencil.EnableDepthWrite,
@@ -708,7 +709,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         .pMultisampleState = &Multisampling,
         .pColorBlendState = &ColorBlendInfo,
         .pDepthStencilState = &DepthStencil,
-        .layout = CreateInfo->Layout->Handle,
+        .layout = PipelineLayout->Handle,
         .pDynamicState = &DynamicStateInfo,
         .renderPass = Rr_GetCompatibleRenderPass(
             (uint32_t)CreateInfo->ColorTargetCount,
@@ -878,60 +879,96 @@ Found:
     return *MapRef;
 }
 
+/* Rr_PipelineSpecialization */
+
+RR_BEGIN_SERIALIZE_FUNCTION(
+    Rr_SerializePipelineSpecialization,
+    Rr_PipelineSpecialization)
+{
+    RR_SERIALIZE_PTR(Struct_->Size, Struct_->Data);
+}
+RR_END_SERIALIZE_FUNCTION()
+
+RR_BEGIN_DESERIALIZE_FUNCTION(
+    Rr_DeserializePipelineSpecialization,
+    Rr_PipelineSpecialization)
+{
+    RR_DESERIALIZE_PTR(Struct_->Data);
+}
+RR_END_DESERIALIZE_FUNCTION()
+
+/* Rr_ShaderInfo */
+
 RR_BEGIN_SERIALIZE_FUNCTION(Rr_SerializeShaderInfo, Rr_ShaderInfo)
 {
-    RR_SERIALIZE_PTR(Struct->SPVSize, Struct->SPVData);
-    if (Struct->EntryPoint)
+    RR_SERIALIZE_PTR(Struct_->SPVSize, Struct_->SPVData);
+    if (Struct_->EntryPoint)
     {
-        RR_SERIALIZE_PTR(strlen(Struct->EntryPoint) + 1, Struct->EntryPoint);
+        RR_SERIALIZE_PTR(strlen(Struct_->EntryPoint) + 1, Struct_->EntryPoint);
     }
-    Rr_PipelineSpecialization const *Specializations;
-    RR_SERIALIZE_STRUCT_PTR(
-        sizeof(Rr_PipelineSpecialization) * Struct->SpecializationCount,
-        Struct->Specializations,
-        Specializations);
-    for (size_t Index = 0; Index < Struct->SpecializationCount; ++Index)
-    {
-        Rr_PipelineSpecialization const *Specialization =
-            Specializations + Index;
-        RR_SERIALIZE_PTR(Specialization->Size, Specialization->Data);
-    }
+    Rr_SerializePipelineSpecialization(RR_SERIALIZE_ARGS(
+        Struct_->SpecializationCount,
+        Struct_->Specializations));
 }
 RR_END_SERIALIZE_FUNCTION()
 
 RR_BEGIN_DESERIALIZE_FUNCTION(Rr_DeserializeShaderInfo, Rr_ShaderInfo)
 {
-    RR_DESERIALIZE_PTR(Struct->SPVData);
-    RR_DESERIALIZE_PTR(Struct->EntryPoint);
-    RR_DESERIALIZE_PTR(Struct->Specializations);
-    for (size_t Index = 0; Index < Struct->SpecializationCount; ++Index)
-    {
-        Rr_PipelineSpecialization const *Specialization =
-            Struct->Specializations + Index;
-        RR_DESERIALIZE_PTR(Specialization->Data);
-    }
+    RR_DESERIALIZE_PTR(Struct_->SPVData);
+    RR_DESERIALIZE_PTR(Struct_->EntryPoint);
+    Rr_DeserializePipelineSpecialization(RR_DESERIALIZE_ARGS(
+        Struct_->SpecializationCount,
+        Struct_->Specializations));
 }
 RR_END_DESERIALIZE_FUNCTION()
 
-/* RR_BEGIN_SERIALIZE_FUNCTION( */
-/*     Rr_SerializeGraphicsPipelineCreateInfo, */
-/*     Rr_GraphicsPipelineCreateInfo, */
-/*     CreateInfo) */
-/* { */
-/*     Rr_SerializeShaderInfo(CreateInfo->VertexShaderInfo, &Size, OutData); */
-/*     Rr_SerializeShaderInfo(CreateInfo->FragmentShaderInfo, &Size, OutData);
- */
-/*     /\* RR_SERIALIZE(sizeof(Rr_GraphicsPipelineCreateInfo), CreateInfo); *\/
- */
+/* Rr_VertexInputBinding */
 
-/*     RR_SERIALIZE(sizeof(Rr_VertexInputBinding) *
- * CreateInfo->VertexInputBindingCount, CreateInfo); */
-/*     for(size_t Index = 0; Index < CreateInfo->VertexInputBindingCount;
- * ++Index) */
-/*     { */
-/*         Rr_VertexInputBinding const *VertexInputBinding = */
-/*             CreateInfo->VertexInputBindings + Index; */
+RR_BEGIN_SERIALIZE_FUNCTION(
+    Rr_SerializeVertexInputBinding,
+    Rr_VertexInputBinding)
+{
+    RR_SERIALIZE_PTR(
+        sizeof(Rr_VertexInputAttribute) * Struct_->AttributeCount,
+        Struct_->Attributes);
+}
+RR_END_SERIALIZE_FUNCTION()
 
-/*     } */
-/* } */
-/* RR_END_SERIALIZE_FUNCTION(); */
+RR_BEGIN_DESERIALIZE_FUNCTION(
+    Rr_DeserializeVertexInputBinding,
+    Rr_VertexInputBinding)
+{
+    RR_DESERIALIZE_PTR(Struct_->Attributes);
+}
+RR_END_DESERIALIZE_FUNCTION()
+
+/* Rr_GraphicsPipelineCreateInfo */
+
+RR_BEGIN_SERIALIZE_FUNCTION(
+    Rr_SerializeGraphicsPipelineCreateInfo,
+    Rr_GraphicsPipelineCreateInfo)
+{
+    Rr_SerializeShaderInfo(RR_SERIALIZE_ARGS(1, Struct_->VertexShaderInfo));
+    Rr_SerializeShaderInfo(RR_SERIALIZE_ARGS(1, Struct_->FragmentShaderInfo));
+    Rr_SerializeVertexInputBinding(RR_SERIALIZE_ARGS(
+        Struct_->VertexInputBindingCount,
+        Struct_->VertexInputBindings));
+    RR_SERIALIZE_PTR(
+        sizeof(Rr_ColorTargetInfo) * Struct_->ColorTargetCount,
+        Struct_->ColorTargets);
+}
+RR_END_SERIALIZE_FUNCTION()
+
+RR_BEGIN_DESERIALIZE_FUNCTION(
+    Rr_DeserializeGraphicsPipelineCreateInfo,
+    Rr_GraphicsPipelineCreateInfo)
+{
+    Rr_DeserializeShaderInfo(RR_DESERIALIZE_ARGS(1, Struct_->VertexShaderInfo));
+    Rr_DeserializeShaderInfo(
+        RR_DESERIALIZE_ARGS(1, Struct_->FragmentShaderInfo));
+    Rr_DeserializeVertexInputBinding(RR_DESERIALIZE_ARGS(
+        Struct_->VertexInputBindingCount,
+        Struct_->VertexInputBindings));
+    RR_DESERIALIZE_PTR(Struct_->ColorTargets);
+}
+RR_END_DESERIALIZE_FUNCTION()

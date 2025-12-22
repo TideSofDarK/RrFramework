@@ -103,7 +103,6 @@ static void Init(void)
     };
 
     Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
-    PipelineInfo.Layout = PipelineLayout;
     PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
     PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
     PipelineInfo.VertexInputBindingCount = RR_ARRAY_COUNT(VertexInputBindings);
@@ -117,7 +116,7 @@ static void Init(void)
     PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_CLOCKWISE;
     PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
 
-    GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+    GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
 
     Rr_GLTFAttributeType GLTFAttributeTypes[] = {
         RR_GLTF_ATTRIBUTE_TYPE_POSITION,

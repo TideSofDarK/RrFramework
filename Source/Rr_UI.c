@@ -8281,16 +8281,17 @@ void Rr_InitUI(void)
         .ColorTargets = ColorTargets,
         .VertexInputBindingCount = 1,
         .VertexInputBindings = &VertexInputBinding,
-        .Layout = gUIContext->PipelineLayout,
     };
 
     uint32_t const DONT_CONVERT_TO_SRGB = 0;
     Specializations[0].Data = &DONT_CONVERT_TO_SRGB;
-    gUIContext->LinearPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+    gUIContext->LinearPipeline =
+        Rr_CreateGraphicsPipeline(&PipelineInfo, gUIContext->PipelineLayout);
 
     uint32_t const CONVERT_TO_SRGB = 1;
     Specializations[0].Data = &CONVERT_TO_SRGB;
-    gUIContext->SRGBPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+    gUIContext->SRGBPipeline =
+        Rr_CreateGraphicsPipeline(&PipelineInfo, gUIContext->PipelineLayout);
 
     gUIContext->VertexBuffer = Rr_CreateBuffer(
         RR_MEGABYTES(8),

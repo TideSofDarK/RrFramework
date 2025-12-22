@@ -138,13 +138,13 @@ struct SLayeredImageApp
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
-        Image2DArrayPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        Image2DArrayPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
 
         FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_IMAGE3D_FRAG_SPV);
         FragmentShaderInfo = {
@@ -152,7 +152,8 @@ struct SLayeredImageApp
             .SPVData = FragmentShader.Pointer,
         };
 
-        Image3DPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        Image3DPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
     }
 
     void InitSampler()

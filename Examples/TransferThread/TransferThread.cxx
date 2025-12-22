@@ -214,13 +214,13 @@ struct STransferThreadApp
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
-        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        GraphicsPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
     }
 
     void InitSampler()
@@ -274,13 +274,13 @@ struct STransferThreadApp
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
-        PlaceholderPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        PlaceholderPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
     }
 
     void Init()

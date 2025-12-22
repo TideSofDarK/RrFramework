@@ -42,7 +42,6 @@ static void Init(void)
     };
 
     Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
-    PipelineInfo.Layout = PipelineLayout;
     PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
     PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
     PipelineInfo.VertexInputBindingCount = RR_ARRAY_COUNT(VertexInputBindings);
@@ -50,16 +49,7 @@ static void Init(void)
     PipelineInfo.ColorTargetCount = 1;
     PipelineInfo.ColorTargets = ColorTargets;
 
-        /* Rr_Scratch Scratch = Rr_GetScratch(NULL); */
-        /* size_t SerializedSize; */
-        /* Rr_SerializeShaderInfo(&ShaderInfo, &SerializedSize, NULL); */
-        /* fprintf(stderr, "Size: %zu\n", SerializedSize); */
-        /* void *Buffer = RR_ALLOC(Scratch.Arena, SerializedSize); */
-        /* Rr_SerializeShaderInfo(&ShaderInfo, &SerializedSize, Buffer); */
-        /* Rr_ShaderInfo *NewShaderInfo = Rr_DeserializeShaderInfo(Buffer); */
-        /* Rr_DestroyScratch(Scratch); */
-
-    GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+    GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
 
     float VertexData[] = {
         -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,

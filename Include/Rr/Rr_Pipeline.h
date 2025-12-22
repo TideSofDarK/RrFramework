@@ -215,7 +215,6 @@ struct Rr_GraphicsPipelineCreateInfo
     Rr_Multisampling Multisampling;
     Rr_Rasterizer Rasterizer;
     Rr_DepthStencil DepthStencil;
-    Rr_PipelineLayout *Layout;
 };
 
 typedef enum
@@ -261,23 +260,51 @@ extern void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline);
 extern Rr_ColorTargetBlend Rr_AlphaBlend(void);
 
 extern Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
-    Rr_GraphicsPipelineCreateInfo const *CreateInfo);
+    Rr_GraphicsPipelineCreateInfo const *CreateInfo,
+    Rr_PipelineLayout *PipelineLayout);
 
 extern void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);
 
 /* Serialization */
 
-extern Rr_ShaderInfo *Rr_SerializeShaderInfo(
-    Rr_ShaderInfo const *ShaderInfo,
-    size_t *OutSize,
-    void *OutData);
+extern size_t Rr_SerializePipelineSpecialization(
+    Rr_PipelineSpecialization *SrcPtr,
+    size_t Count,
+    void *DstPtr,
+    size_t *DstOffsetPtr,
+    void *WriteOffsetTo);
 
-extern Rr_ShaderInfo *Rr_DeserializeShaderInfo(void *Data);
+extern Rr_PipelineSpecialization *Rr_DeserializePipelineSpecialization(
+    void *Data,
+    size_t Count,
+    void *Base,
+    void *WritePtrTo);
 
-extern Rr_GraphicsPipelineCreateInfo *Rr_SerializeGraphicsPipelineCreateInfo(
-    Rr_GraphicsPipelineCreateInfo const *CreateInfo,
-    size_t *OutSize,
-    void *OutData);
+extern size_t Rr_SerializeShaderInfo(
+    Rr_ShaderInfo *ShaderInfo,
+    size_t Count,
+    void *DstPtr,
+    size_t *DstOffsetPtr,
+    void *WriteOffsetTo);
+
+extern Rr_ShaderInfo *Rr_DeserializeShaderInfo(
+    void *Data,
+    size_t Count,
+    void *Base,
+    void *WritePtrTo);
+
+extern size_t Rr_SerializeGraphicsPipelineCreateInfo(
+    Rr_GraphicsPipelineCreateInfo *GraphicsPipelineCreateInfo,
+    size_t Count,
+    void *DstPtr,
+    size_t *DstOffsetPtr,
+    void *WriteOffsetTo);
+
+extern Rr_GraphicsPipelineCreateInfo *Rr_DeserializeGraphicsPipelineCreateInfo(
+    void *Data,
+    size_t Count,
+    void *Base,
+    void *WritePtrTo);
 
 #ifdef __cplusplus
 }

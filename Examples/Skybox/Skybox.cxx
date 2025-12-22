@@ -203,7 +203,6 @@ struct SSkyboxApp
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
@@ -212,7 +211,8 @@ struct SSkyboxApp
         PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
         PipelineInfo.VertexInputBindings = VertexInputBindings.data();
 
-        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        GraphicsPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
 
         std::array GLTFAttributeTypes = {
             RR_GLTF_ATTRIBUTE_TYPE_POSITION,

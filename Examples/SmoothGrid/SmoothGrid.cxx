@@ -152,7 +152,6 @@ struct SSmoothGridApp
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.Layout = PipelineLayout;
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.ColorTargetCount = 1;
@@ -162,7 +161,8 @@ struct SSmoothGridApp
         PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
         PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
 
-        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+        GraphicsPipeline =
+            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
     }
 
     void InitUniformBuffer()

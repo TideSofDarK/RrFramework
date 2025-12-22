@@ -635,7 +635,8 @@ static void Iterate(void)
                     NULL,
                     RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
             {
-                Rr_UIText("Hold CTRL and click its title to undock this window.");
+                Rr_UIText(
+                    "Hold CTRL and click its title to undock this window.");
 
                 Rr_UIEndWindow();
             }
