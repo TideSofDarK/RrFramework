@@ -272,32 +272,13 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
 
     Rr_Device *Device = &gRenderer->Device;
 
-    Rr_LockSpinlock(&gRenderer->ComputePipelinesLock);
-
-    Rr_ComputePipeline *ComputePipeline = Rr_PushComputePipelineIntoHiveLocked(
-                                              &gRenderer->ComputePipelines,
-                                              gRenderer->Arena,
-                                              &gRenderer->Lock)
-                                              .Element;
-
-    Rr_UnlockSpinlock(&gRenderer->ComputePipelinesLock);
-
-    Rr_IncrementAtomicRelaxed(&PipelineLayout->RefCount);
-
-    *ComputePipeline = (Rr_ComputePipeline){
-        .Layout = PipelineLayout,
-    };
-
-    Rr_ConsumeNextObjectName(ComputePipeline->Name);
-
     VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .codeSize = ShaderInfo->SPVSize,
         .pCode = (uint32_t *)ShaderInfo->SPVData,
     };
 
-    VkShaderModule ShaderModule;
-
+    VkShaderModule ShaderModule = VK_NULL_HANDLE;
     Device->CreateShaderModule(
         Device->Handle,
         &ShaderModuleCreateInfo,
@@ -326,21 +307,52 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
         .stage = ShaderStageCreateInfo,
     };
 
+    VkPipeline Handle = VK_NULL_HANDLE;
     VkResult Result = Device->CreateComputePipelines(
         Device->Handle,
         VK_NULL_HANDLE,
         1,
         &PipelineCreateInfo,
         NULL,
-        &ComputePipeline->Handle);
-    assert(Result == VK_SUCCESS);
+        &Handle);
 
-    Rr_SetVulkanObjectName(
-        VK_OBJECT_TYPE_PIPELINE,
-        (uint64_t)ComputePipeline->Handle,
-        ComputePipeline->Name);
+    Rr_ComputePipeline *ComputePipeline = NULL;
 
-    Device->DestroyShaderModule(Device->Handle, ShaderModule, NULL);
+    if (Result == VK_SUCCESS)
+    {
+        Rr_LockSpinlock(&gRenderer->ComputePipelinesLock);
+
+        ComputePipeline = Rr_PushComputePipelineIntoHiveLocked(
+                              &gRenderer->ComputePipelines,
+                              gRenderer->Arena,
+                              &gRenderer->Lock)
+                              .Element;
+
+        Rr_UnlockSpinlock(&gRenderer->ComputePipelinesLock);
+
+        Rr_IncrementAtomicRelaxed(&PipelineLayout->RefCount);
+
+        *ComputePipeline = (Rr_ComputePipeline){
+            .Layout = PipelineLayout,
+            .Handle = Handle,
+        };
+
+        Rr_ConsumeNextObjectName(ComputePipeline->Name);
+
+        Rr_SetVulkanObjectName(
+            VK_OBJECT_TYPE_PIPELINE,
+            (uint64_t)ComputePipeline->Handle,
+            ComputePipeline->Name);
+    }
+    else
+    {
+        /* TODO: Set error etc... */
+    }
+
+    if (ShaderModule != VK_NULL_HANDLE)
+    {
+        Device->DestroyShaderModule(Device->Handle, ShaderModule, NULL);
+    }
 
     Rr_DestroyScratch(Scratch);
 
@@ -411,36 +423,17 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     assert(CreateInfo);
     assert(PipelineLayout);
 
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    Rr_Device *Device = &gRenderer->Device;
-
-    Rr_LockSpinlock(&gRenderer->GraphicsPipelinesLock);
-
-    Rr_GraphicsPipeline *GraphicsPipeline =
-        Rr_PushGraphicsPipelineIntoHiveLocked(
-            &gRenderer->GraphicsPipelines,
-            gRenderer->Arena,
-            &gRenderer->Lock)
-            .Element;
-
-    Rr_UnlockSpinlock(&gRenderer->GraphicsPipelinesLock);
-
-    Rr_IncrementAtomicRelaxed(&PipelineLayout->RefCount);
-
-    *GraphicsPipeline = (Rr_GraphicsPipeline){
-        .Layout = PipelineLayout,
-        .HasDepthStencil = CreateInfo->DepthStencil.EnableDepthTest ||
+    bool HasDepthStencil = CreateInfo->DepthStencil.EnableDepthTest ||
                            CreateInfo->DepthStencil.EnableStencilTest ||
-                           CreateInfo->DepthStencil.EnableDepthWrite,
-    };
-
-    Rr_ConsumeNextObjectName(GraphicsPipeline->Name);
-
-    if (GraphicsPipeline->HasDepthStencil)
+                           CreateInfo->DepthStencil.EnableDepthWrite;
+    if (HasDepthStencil)
     {
         assert(CreateInfo->DepthStencil.Format != RR_IMAGE_FORMAT_UNDEFINED);
     }
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_Device *Device = &gRenderer->Device;
 
     RR_ARRAY(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 
@@ -669,9 +662,6 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         Attachment->colorWriteMask = ColorWriteMask;
     }
 
-    GraphicsPipeline->ColorAttachmentCount =
-        (uint32_t)CreateInfo->ColorTargetCount;
-
     VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .pNext = NULL,
@@ -718,19 +708,49 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             Multisampling.rasterizationSamples),
     };
 
+    VkPipeline Handle = VK_NULL_HANDLE;
     VkResult Result = Device->CreateGraphicsPipelines(
         Device->Handle,
         VK_NULL_HANDLE,
         1,
         &PipelineInfo,
         NULL,
-        &GraphicsPipeline->Handle);
-    assert(Result == VK_SUCCESS);
+        &Handle);
 
-    Rr_SetVulkanObjectName(
-        VK_OBJECT_TYPE_PIPELINE,
-        (uint64_t)GraphicsPipeline->Handle,
-        GraphicsPipeline->Name);
+    Rr_GraphicsPipeline *GraphicsPipeline = NULL;
+
+    if (Result == VK_SUCCESS)
+    {
+        Rr_LockSpinlock(&gRenderer->GraphicsPipelinesLock);
+
+        GraphicsPipeline = Rr_PushGraphicsPipelineIntoHiveLocked(
+                               &gRenderer->GraphicsPipelines,
+                               gRenderer->Arena,
+                               &gRenderer->Lock)
+                               .Element;
+
+        Rr_UnlockSpinlock(&gRenderer->GraphicsPipelinesLock);
+
+        Rr_IncrementAtomicRelaxed(&PipelineLayout->RefCount);
+
+        *GraphicsPipeline = (Rr_GraphicsPipeline){
+            .Layout = PipelineLayout,
+            .HasDepthStencil = HasDepthStencil,
+            .Handle = Handle,
+            .ColorAttachmentCount = (uint32_t)CreateInfo->ColorTargetCount,
+        };
+
+        Rr_ConsumeNextObjectName(GraphicsPipeline->Name);
+
+        Rr_SetVulkanObjectName(
+            VK_OBJECT_TYPE_PIPELINE,
+            (uint64_t)GraphicsPipeline->Handle,
+            GraphicsPipeline->Name);
+    }
+    else
+    {
+        /* TODO: Set error etc... */
+    }
 
     if (VertModule != VK_NULL_HANDLE)
     {

@@ -623,7 +623,6 @@ void Rr_SetRelativeMouseMode(bool Relative)
             GLFW_CURSOR,
             Relative ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
         Mode = Relative;
-        RR_LOG("Sdf");
     }
 }
 
