@@ -260,7 +260,8 @@ RR_EXTERN Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     Rr_GraphicsPipelineCreateInfo const *CreateInfo,
     Rr_PipelineLayout *PipelineLayout);
 
-RR_EXTERN void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);
+RR_EXTERN void Rr_ReleaseGraphicsPipeline(
+    Rr_GraphicsPipeline *GraphicsPipeline);
 
 /* Serialization */
 
