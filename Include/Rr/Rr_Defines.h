@@ -22,7 +22,8 @@
  * SOFTWARE.
  */
 
-#pragma once
+#ifndef RR_DEFINES_H
+#define RR_DEFINES_H
 
 #ifndef __cplusplus
 #include <stdbool.h>
@@ -52,7 +53,12 @@
 
 #define RR_ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 
+#ifndef RR_SAFE_ALIGNMENT
 #define RR_SAFE_ALIGNMENT 16
+#endif
+
 #define RR_ALIGN_POW2(Num, Alignment) \
     (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
 #define RR_IS_POW2(Num) (((Num - 1) & Num) == 0)
+
+#endif

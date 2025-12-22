@@ -79,7 +79,6 @@ void Rr_EndSection(Rr_Profiler *Profiler, const char *SectionName)
     {
         (*SectionRef)->TotalTicks +=
             Rr_GetPerformanceCounter() - (*SectionRef)->LastTicks;
-        return;
     }
 }
 

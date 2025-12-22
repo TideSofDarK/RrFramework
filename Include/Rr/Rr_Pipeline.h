@@ -22,14 +22,11 @@
  * SOFTWARE.
  */
 
-#pragma once
+#ifndef RR_PIPELINE_H
+#define RR_PIPELINE_H
 
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Renderer.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef struct Rr_PipelineLayout Rr_PipelineLayout;
 typedef struct Rr_ComputePipeline Rr_ComputePipeline;
@@ -245,67 +242,66 @@ struct Rr_BindingSet
     Rr_Binding const *Bindings;
 };
 
-extern Rr_PipelineLayout *Rr_CreatePipelineLayout(
+RR_EXTERN Rr_PipelineLayout *Rr_CreatePipelineLayout(
     size_t BindingSetCount,
     Rr_BindingSet const *BindingSet);
 
-extern void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout);
+RR_EXTERN void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout);
 
-extern Rr_ComputePipeline *Rr_CreateComputePipeline(
+RR_EXTERN Rr_ComputePipeline *Rr_CreateComputePipeline(
     Rr_ShaderInfo const *ShaderInfo,
     Rr_PipelineLayout *PipelineLayout);
 
-extern void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline);
+RR_EXTERN void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline);
 
-extern Rr_ColorTargetBlend Rr_AlphaBlend(void);
+RR_EXTERN Rr_ColorTargetBlend Rr_AlphaBlend(void);
 
-extern Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
+RR_EXTERN Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     Rr_GraphicsPipelineCreateInfo const *CreateInfo,
     Rr_PipelineLayout *PipelineLayout);
 
-extern void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);
+RR_EXTERN void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);
 
 /* Serialization */
 
-extern size_t Rr_SerializePipelineSpecialization(
+RR_EXTERN size_t Rr_SerializePipelineSpecialization(
     Rr_PipelineSpecialization *SrcPtr,
     size_t Count,
     void *DstPtr,
     size_t *DstOffsetPtr,
     void *WriteOffsetTo);
 
-extern Rr_PipelineSpecialization *Rr_DeserializePipelineSpecialization(
+RR_EXTERN Rr_PipelineSpecialization *Rr_DeserializePipelineSpecialization(
     void *Data,
     size_t Count,
     void *Base,
     void *WritePtrTo);
 
-extern size_t Rr_SerializeShaderInfo(
+RR_EXTERN size_t Rr_SerializeShaderInfo(
     Rr_ShaderInfo *ShaderInfo,
     size_t Count,
     void *DstPtr,
     size_t *DstOffsetPtr,
     void *WriteOffsetTo);
 
-extern Rr_ShaderInfo *Rr_DeserializeShaderInfo(
+RR_EXTERN Rr_ShaderInfo *Rr_DeserializeShaderInfo(
     void *Data,
     size_t Count,
     void *Base,
     void *WritePtrTo);
 
-extern size_t Rr_SerializeGraphicsPipelineCreateInfo(
+RR_EXTERN size_t Rr_SerializeGraphicsPipelineCreateInfo(
     Rr_GraphicsPipelineCreateInfo *GraphicsPipelineCreateInfo,
     size_t Count,
     void *DstPtr,
     size_t *DstOffsetPtr,
     void *WriteOffsetTo);
 
-extern Rr_GraphicsPipelineCreateInfo *Rr_DeserializeGraphicsPipelineCreateInfo(
+RR_EXTERN Rr_GraphicsPipelineCreateInfo *
+Rr_DeserializeGraphicsPipelineCreateInfo(
     void *Data,
     size_t Count,
     void *Base,
     void *WritePtrTo);
 
-#ifdef __cplusplus
-}
 #endif

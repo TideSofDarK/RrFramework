@@ -22,7 +22,8 @@
  * SOFTWARE.
  */
 
-#pragma once
+#ifndef RR_UTILITY_H
+#define RR_UTILITY_H
 
 #include <Rr/Rr_Math.h>
 
@@ -30,10 +31,6 @@
 #include <cstring>
 #else
 #include <string.h>
-#endif
-
-#ifdef __cplusplus
-extern "C" {
 #endif
 
 static size_t Rr_NextPowerOfTwo(size_t Number)
@@ -51,33 +48,33 @@ static float Rr_WrapMinMax(float X, float Min, float Max)
     return Min + Rr_WrapMax(X - Min, Max - Min);
 }
 
-static inline float Rr_ToLinearChannel(float Value)
+static float Rr_ToLinearChannel(float Value)
 {
     return Value <= 0.0031308f ? Value * 12.92f
                                : powf(Value, 1.0f / 2.4f) * 1.055f - 0.055f;
 }
 
-static inline float Rr_ToSRGBChannel(float Value)
+static float Rr_ToSRGBChannel(float Value)
 {
     return Value <= 0.04045f ? Value / 12.92f
                              : powf((Value + 0.055f) / 1.055f, 2.4f);
 }
 
-static inline void Rr_UIToLinearColor(Rr_Vec4 *Color)
+static void Rr_UIToLinearColor(Rr_Vec4 *Color)
 {
     Color->R = Rr_ToLinearChannel(Color->R);
     Color->G = Rr_ToLinearChannel(Color->G);
     Color->B = Rr_ToLinearChannel(Color->B);
 }
 
-static inline void Rr_UIToSRGBColor(Rr_Vec4 *Color)
+static void Rr_UIToSRGBColor(Rr_Vec4 *Color)
 {
     Color->R = Rr_ToSRGBChannel(Color->R);
     Color->G = Rr_ToSRGBChannel(Color->G);
     Color->B = Rr_ToSRGBChannel(Color->B);
 }
 
-static inline Rr_Vec3 Rr_U32ToRGB(uint32_t Color)
+static Rr_Vec3 Rr_U32ToRGB(uint32_t Color)
 {
     Rr_Vec3 Result;
 
@@ -88,7 +85,7 @@ static inline Rr_Vec3 Rr_U32ToRGB(uint32_t Color)
     return Result;
 }
 
-static inline Rr_Vec4 Rr_U32ToRGBA(uint32_t Color)
+static Rr_Vec4 Rr_U32ToRGBA(uint32_t Color)
 {
     Rr_Vec4 Result;
 
@@ -100,7 +97,7 @@ static inline Rr_Vec4 Rr_U32ToRGBA(uint32_t Color)
     return Result;
 }
 
-static inline uint32_t Rr_RGBAToU32(Rr_Vec4 Color)
+static uint32_t Rr_RGBAToU32(Rr_Vec4 Color)
 {
     uint32_t Result = 0;
 
@@ -123,7 +120,7 @@ struct Rr_UTF8Decoder
     uint8_t Carry;
 };
 
-static inline uint32_t Rr_UTF8Decode(Rr_UTF8Decoder *Decoder)
+static uint32_t Rr_UTF8Decode(Rr_UTF8Decoder *Decoder)
 {
     static const uint8_t READY = 128;
     static const uint8_t TWO = 192;
@@ -196,7 +193,7 @@ static inline uint32_t Rr_UTF8Decode(Rr_UTF8Decoder *Decoder)
     }
 }
 
-static inline size_t Rr_PreviousUTF8CodepointOffset(
+static size_t Rr_PreviousUTF8CodepointOffset(
     const char *CString,
     size_t CurrentOffset)
 {
@@ -208,7 +205,7 @@ static inline size_t Rr_PreviousUTF8CodepointOffset(
     return CurrentOffset;
 }
 
-static inline size_t Rr_NextUTF8CodepointOffset(
+static size_t Rr_NextUTF8CodepointOffset(
     const char *CString,
     size_t CurrentOffset)
 {
@@ -220,13 +217,12 @@ static inline size_t Rr_NextUTF8CodepointOffset(
     return CurrentOffset;
 }
 
-static inline size_t Rr_PreviousUTF8WordOffset(
+static size_t Rr_PreviousUTF8WordOffset(
     const char *CString,
     size_t CurrentOffset)
 {
     bool ReachedSpace = false;
     bool ReachedWord = false;
-    bool SkippingSpaces = false;
     if (CurrentOffset > 0 && CString[CurrentOffset - 1] == '\n')
     {
         return CurrentOffset - 1;
@@ -264,9 +260,7 @@ static inline size_t Rr_PreviousUTF8WordOffset(
     return CurrentOffset;
 }
 
-static inline size_t Rr_NextUTF8WordOffset(
-    const char *CString,
-    size_t CurrentOffset)
+static size_t Rr_NextUTF8WordOffset(const char *CString, size_t CurrentOffset)
 {
     bool ReachedSpace = false;
     if (CString[CurrentOffset] == '\n')
@@ -298,7 +292,7 @@ static inline size_t Rr_NextUTF8WordOffset(
     return CurrentOffset;
 }
 
-static inline size_t Rr_LastUTF8CharInWordOffset(
+static size_t Rr_LastUTF8CharInWordOffset(
     const char *CString,
     size_t CurrentOffset)
 {
@@ -310,9 +304,7 @@ static inline size_t Rr_LastUTF8CharInWordOffset(
     return CurrentOffset;
 }
 
-static inline size_t Rr_PreviousUTF8LFOffset(
-    const char *CString,
-    size_t CurrentOffset)
+static size_t Rr_PreviousUTF8LFOffset(const char *CString, size_t CurrentOffset)
 {
     while (CurrentOffset != 0 && CString[CurrentOffset] != '\n')
     {
@@ -321,9 +313,7 @@ static inline size_t Rr_PreviousUTF8LFOffset(
     return CurrentOffset;
 }
 
-static inline size_t Rr_NextUTF8LFOffset(
-    const char *CString,
-    size_t CurrentOffset)
+static size_t Rr_NextUTF8LFOffset(const char *CString, size_t CurrentOffset)
 {
     while (CString[CurrentOffset] != '\0' && CString[CurrentOffset] != '\n')
     {
@@ -332,6 +322,4 @@ static inline size_t Rr_NextUTF8LFOffset(
     return CurrentOffset;
 }
 
-#ifdef __cplusplus
-}
 #endif

@@ -46,8 +46,6 @@ Rr_Renderer *gRenderer;
 
 static inline void Rr_DestroySwapchainImage(Rr_SwapchainImage *SwapchainImage)
 {
-    Rr_Device *Device = &gRenderer->Device;
-
     if (SwapchainImage->ViewStorage)
     {
         Rr_DestroyImageViewStorage(SwapchainImage->ViewStorage, true);

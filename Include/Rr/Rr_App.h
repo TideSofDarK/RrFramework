@@ -22,13 +22,10 @@
  * SOFTWARE.
  */
 
-#pragma once
+#ifndef RR_APP_H
+#define RR_APP_H
 
 #include <Rr/Rr_Platform.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef struct Rr_AppConfig Rr_AppConfig;
 struct Rr_AppConfig
@@ -41,30 +38,28 @@ struct Rr_AppConfig
     void (*CleanupFunc)(void);
 };
 
-extern void Rr_Run(Rr_AppConfig *Config);
+RR_EXTERN void Rr_Run(Rr_AppConfig *Config);
 
-extern void Rr_InitThreadContext(void);
+RR_EXTERN void Rr_InitThreadContext(void);
 
-extern void Rr_CleanupThreadContext(void);
+RR_EXTERN void Rr_CleanupThreadContext(void);
 
-extern void Rr_SetTargetFrameRate(uint32_t FramesPerSecond);
+RR_EXTERN void Rr_SetTargetFrameRate(uint32_t FramesPerSecond);
 
-extern void Rr_SetBackgroundFrameRate(uint32_t FramesPerSecond);
+RR_EXTERN void Rr_SetBackgroundFrameRate(uint32_t FramesPerSecond);
 
-extern double Rr_GetFramesPerSecond(void);
+RR_EXTERN double Rr_GetFramesPerSecond(void);
 
-extern double Rr_GetDeltaSeconds(void);
+RR_EXTERN double Rr_GetDeltaSeconds(void);
 
-extern double Rr_GetTimeSeconds(void);
+RR_EXTERN double Rr_GetTimeSeconds(void);
 
-extern uint64_t Rr_GetTimeMS(void);
+RR_EXTERN uint64_t Rr_GetTimeMS(void);
 
-extern uint64_t Rr_GetTimeNS(void);
+RR_EXTERN uint64_t Rr_GetTimeNS(void);
 
-extern void Rr_Quit(void);
+RR_EXTERN void Rr_Quit(void);
 
-extern bool Rr_QuitRequested(void);
+RR_EXTERN bool Rr_QuitRequested(void);
 
-#ifdef __cplusplus
-}
 #endif

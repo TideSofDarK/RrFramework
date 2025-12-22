@@ -22,13 +22,10 @@
  * SOFTWARE.
  */
 
-#pragma once
+#ifndef RR_ARENA_H
+#define RR_ARENA_H
 
 #include <Rr/Rr_Defines.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef struct Rr_Arena Rr_Arena;
 struct Rr_Arena
@@ -40,21 +37,25 @@ struct Rr_Arena
     uintptr_t Commited;
 };
 
-extern Rr_Arena *Rr_CreateArena(size_t Reserve, size_t Commit);
+RR_EXTERN Rr_Arena *Rr_CreateArena(size_t Reserve, size_t Commit);
 
-extern Rr_Arena *Rr_CreateDefaultArena(void);
+RR_EXTERN Rr_Arena *Rr_CreateDefaultArena(void);
 
-extern void Rr_ResetArena(Rr_Arena *Arena);
+RR_EXTERN void Rr_ResetArena(Rr_Arena *Arena);
 
-extern void Rr_DestroyArena(Rr_Arena *Arena);
+RR_EXTERN void Rr_DestroyArena(Rr_Arena *Arena);
 
-extern void *Rr_AllocNoZero(
+RR_EXTERN void *Rr_AllocNoZero(
     size_t Size,
     size_t Align,
     size_t Count,
     Rr_Arena *Arena);
 
-extern void *Rr_Alloc(size_t Size, size_t Align, size_t Count, Rr_Arena *Arena);
+RR_EXTERN void *Rr_Alloc(
+    size_t Size,
+    size_t Align,
+    size_t Count,
+    Rr_Arena *Arena);
 
 #define RR_ALLOC(Size, Arena) Rr_Alloc(Size, RR_SAFE_ALIGNMENT, 1, Arena)
 
@@ -81,16 +82,14 @@ struct Rr_Scratch
     uintptr_t Position;
 };
 
-extern Rr_Scratch Rr_CreateScratch(Rr_Arena *Arena);
+RR_EXTERN Rr_Scratch Rr_CreateScratch(Rr_Arena *Arena);
 
-extern void Rr_DestroyScratch(Rr_Scratch Scratch);
+RR_EXTERN void Rr_DestroyScratch(Rr_Scratch Scratch);
 
-extern void Rr_InitScratchArena(void);
+RR_EXTERN void Rr_InitScratchArena(void);
 
-extern void Rr_CleanupScratchArena(void);
+RR_EXTERN void Rr_CleanupScratchArena(void);
 
-extern Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict);
+RR_EXTERN Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict);
 
-#ifdef __cplusplus
-}
 #endif

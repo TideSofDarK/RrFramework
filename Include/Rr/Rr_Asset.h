@@ -22,13 +22,10 @@
  * SOFTWARE.
  */
 
-#pragma once
+#ifndef RR_ASSET_H
+#define RR_ASSET_H
 
 #include <Rr/Rr_Defines.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef struct Rr_Asset Rr_Asset;
 struct Rr_Asset
@@ -104,8 +101,6 @@ typedef struct Rr_AssetRef
 
 #endif
 
-extern Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef);
+RR_EXTERN Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef);
 
-#ifdef __cplusplus
-}
 #endif

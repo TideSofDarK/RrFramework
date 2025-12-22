@@ -243,7 +243,6 @@ static inline VkDescriptorSet Rr_GetDescriptorSet(
 
         if (OldSet)
         {
-            Rr_Device *Device = State->Device;
             Rr_CopyDescriptorSet(
                 State->Sets[SetIndex],
                 OldSet,

@@ -22,13 +22,10 @@
  * SOFTWARE.
  */
 
-#pragma once
+#ifndef RR_BUFFER_H
+#define RR_BUFFER_H
 
 #include <Rr/Rr_Renderer.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 static const uint64_t RR_WHOLE_SIZE = ~0ULL;
 
@@ -49,21 +46,19 @@ typedef enum
 } Rr_BufferFlagsBits;
 typedef uint32_t Rr_BufferFlags;
 
-extern Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags);
+RR_EXTERN Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags);
 
-extern void Rr_ReleaseBuffer(Rr_Buffer *Buffer);
+RR_EXTERN void Rr_ReleaseBuffer(Rr_Buffer *Buffer);
 
-extern void *Rr_GetMappedBufferData(Rr_Buffer *Buffer);
+RR_EXTERN void *Rr_GetMappedBufferData(Rr_Buffer *Buffer);
 
-extern void *Rr_MapBuffer(Rr_Buffer *Buffer);
+RR_EXTERN void *Rr_MapBuffer(Rr_Buffer *Buffer);
 
-extern void Rr_UnmapBuffer(Rr_Buffer *Buffer);
+RR_EXTERN void Rr_UnmapBuffer(Rr_Buffer *Buffer);
 
-extern void Rr_FlushBufferRange(
+RR_EXTERN void Rr_FlushBufferRange(
     Rr_Buffer *Buffer,
     uint64_t Offset,
     uint64_t Size);
 
-#ifdef __cplusplus
-}
 #endif

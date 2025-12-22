@@ -22,17 +22,14 @@
  * SOFTWARE.
  */
 
-#pragma once
+#ifndef RR_GLTF_H
+#define RR_GLTF_H
 
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Buffer.h>
 #include <Rr/Rr_Image.h>
 #include <Rr/Rr_Pipeline.h>
 #include <Rr/Rr_Renderer.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef struct Rr_GLTFContext Rr_GLTFContext;
 
@@ -141,21 +138,19 @@ struct Rr_GLTFTextureMapping
     Rr_GLTFTextureType TextureType;
 };
 
-extern Rr_GLTFContext *Rr_CreateGLTFContext(
+RR_EXTERN Rr_GLTFContext *Rr_CreateGLTFContext(
     size_t VertexInputBindingCount,
     const Rr_VertexInputBinding *VertexInputBindings,
     const Rr_GLTFVertexInputBinding *GLTFVertexInputBindings,
     size_t GLTFTextureMappingCount,
     const Rr_GLTFTextureMapping *GLTFTextureMappings);
 
-extern void Rr_ReleaseGLTFContext(Rr_GLTFContext *GLTFContext);
+RR_EXTERN void Rr_ReleaseGLTFContext(Rr_GLTFContext *GLTFContext);
 
-extern Rr_GLTFAsset *Rr_CreateGLTFAsset(
+RR_EXTERN Rr_GLTFAsset *Rr_CreateGLTFAsset(
     Rr_GLTFContext *GLTFContext,
     struct Rr_Graph *Graph,
     size_t GLBDataSize,
     const void *GLBData);
 
-#ifdef __cplusplus
-}
 #endif

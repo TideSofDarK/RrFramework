@@ -22,7 +22,8 @@
  * SOFTWARE.
  */
 
-#pragma once
+#ifndef RR_H
+#define RR_H
 
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Arena.h>
@@ -38,3 +39,5 @@
 #include <Rr/Rr_Renderer.h>
 #include <Rr/Rr_UI.h>
 #include <Rr/Rr_Utility.h>
+
+#endif

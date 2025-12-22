@@ -22,13 +22,10 @@
  * SOFTWARE.
  */
 
-#pragma once
+#ifndef RR_RENDERER_H
+#define RR_RENDERER_H
 
 #include <Rr/Rr_App.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct Rr_Graph;
 struct Rr_Image;
@@ -195,28 +192,26 @@ struct Rr_DrawIndexedIndirectCommand
     uint32_t FirstInstance;
 };
 
-extern struct Rr_Image *Rr_GetSwapchainImage(void);
+RR_EXTERN struct Rr_Image *Rr_GetSwapchainImage(void);
 
-extern Rr_PresentMode *Rr_GetAvailablePresentModes(uint32_t *Count);
+RR_EXTERN Rr_PresentMode *Rr_GetAvailablePresentModes(uint32_t *Count);
 
-extern Rr_PresentMode Rr_GetPresentMode(void);
+RR_EXTERN Rr_PresentMode Rr_GetPresentMode(void);
 
-extern const char *Rr_GetPresentModeString(Rr_PresentMode PresentMode);
+RR_EXTERN const char *Rr_GetPresentModeString(Rr_PresentMode PresentMode);
 
-extern bool Rr_SetPresentMode(Rr_PresentMode PresentMode);
+RR_EXTERN bool Rr_SetPresentMode(Rr_PresentMode PresentMode);
 
-extern size_t Rr_GetUniformAlignment(void);
+RR_EXTERN size_t Rr_GetUniformAlignment(void);
 
-extern size_t Rr_GetStorageAlignment(void);
+RR_EXTERN size_t Rr_GetStorageAlignment(void);
 
-extern size_t Rr_GetMaxComputeSharedMemorySize(void);
+RR_EXTERN size_t Rr_GetMaxComputeSharedMemorySize(void);
 
-extern size_t Rr_GetMaxComputeWorkgroupInvocations(void);
+RR_EXTERN size_t Rr_GetMaxComputeWorkgroupInvocations(void);
 
-extern bool Rr_IsSRGBFormat(Rr_ImageFormat Format);
+RR_EXTERN bool Rr_IsSRGBFormat(Rr_ImageFormat Format);
 
-extern void Rr_SetNextObjectName(const char *Name);
+RR_EXTERN void Rr_SetNextObjectName(const char *Name);
 
-#ifdef __cplusplus
-}
 #endif

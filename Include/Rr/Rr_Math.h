@@ -22,7 +22,8 @@
  * SOFTWARE.
  */
 
-#pragma once
+#ifndef RR_MATH_H
+#define RR_MATH_H
 
 #include <Rr/Rr_Defines.h>
 
@@ -3680,4 +3681,6 @@ static inline Rr_Vec4 operator-(Rr_Vec4 In)
 
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
+
 #endif

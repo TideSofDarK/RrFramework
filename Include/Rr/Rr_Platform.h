@@ -22,13 +22,10 @@
  * SOFTWARE.
  */
 
-#pragma once
+#ifndef RR_PLATFORM_H
+#define RR_PLATFORM_H
 
 #include <Rr/Rr_Math.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef struct Rr_PlatformInfo Rr_PlatformInfo;
 struct Rr_PlatformInfo
@@ -38,19 +35,19 @@ struct Rr_PlatformInfo
     uint64_t PerformanceFrequency;
 };
 
-extern Rr_PlatformInfo *Rr_GetPlatformInfo(void);
+RR_EXTERN Rr_PlatformInfo *Rr_GetPlatformInfo(void);
 
-extern uint64_t Rr_GetPerformanceCounter(void);
+RR_EXTERN uint64_t Rr_GetPerformanceCounter(void);
 
-extern uint64_t Rr_GetPerformanceFrequency(void);
+RR_EXTERN uint64_t Rr_GetPerformanceFrequency(void);
 
-extern void *Rr_ReserveMemory(size_t Size);
+RR_EXTERN void *Rr_ReserveMemory(size_t Size);
 
-extern void Rr_ReleaseMemory(void *Data, size_t Size);
+RR_EXTERN void Rr_ReleaseMemory(void *Data, size_t Size);
 
-extern bool Rr_CommitMemory(void *Data, size_t Size);
+RR_EXTERN bool Rr_CommitMemory(void *Data, size_t Size);
 
-extern void Rr_DecommitMemory(void *Data, size_t Size);
+RR_EXTERN void Rr_DecommitMemory(void *Data, size_t Size);
 
 /* NOTE: These come from SDL3. */
 typedef enum Rr_Scancode
@@ -177,13 +174,13 @@ typedef uint32_t Rr_MouseButtonFlags;
 
 #define RR_DOUBLE_CLICK_TIME_MS (200)
 
-extern bool Rr_IsScancodePressed(Rr_Scancode Scancode);
+RR_EXTERN bool Rr_IsScancodePressed(Rr_Scancode Scancode);
 
-extern Rr_Vec2 Rr_GetMousePosition(void);
+RR_EXTERN Rr_Vec2 Rr_GetMousePosition(void);
 
-extern Rr_Vec2 Rr_GetMousePositionDelta(void);
+RR_EXTERN Rr_Vec2 Rr_GetMousePositionDelta(void);
 
-extern Rr_MouseButtonFlags Rr_GetMouseState(void);
+RR_EXTERN Rr_MouseButtonFlags Rr_GetMouseState(void);
 
 typedef struct Rr_Platform Rr_Platform;
 
@@ -194,19 +191,19 @@ typedef enum
 } Rr_WindowFlagsBits;
 typedef uint32_t Rr_WindowFlags;
 
-extern void Rr_ToggleWindowFullscreen(void);
+RR_EXTERN void Rr_ToggleWindowFullscreen(void);
 
-extern Rr_IntVec2 Rr_GetWindowSize(void);
+RR_EXTERN Rr_IntVec2 Rr_GetWindowSize(void);
 
-extern void Rr_SetWindowTitle(const char *Title);
+RR_EXTERN void Rr_SetWindowTitle(const char *Title);
 
-extern Rr_IntVec2 Rr_GetDisplaySize(void);
+RR_EXTERN Rr_IntVec2 Rr_GetDisplaySize(void);
 
-extern float Rr_GetWindowContentsScale(void);
+RR_EXTERN float Rr_GetWindowContentsScale(void);
 
-extern void Rr_SetWindowSize(Rr_IntVec2 Size);
+RR_EXTERN void Rr_SetWindowSize(Rr_IntVec2 Size);
 
-extern void Rr_SetRelativeMouseMode(bool Relative);
+RR_EXTERN void Rr_SetRelativeMouseMode(bool Relative);
 
 typedef enum Rr_CursorType
 {
@@ -216,11 +213,11 @@ typedef enum Rr_CursorType
     RR_CURSOR_TYPE_TEXT,
 } Rr_CursorType;
 
-extern void Rr_SetCursor(Rr_CursorType Type);
+RR_EXTERN void Rr_SetCursor(Rr_CursorType Type);
 
-extern void Rr_SetClipboardText(const char *CString);
+RR_EXTERN void Rr_SetClipboardText(const char *CString);
 
-extern const char *Rr_GetClipboardText(void);
+RR_EXTERN const char *Rr_GetClipboardText(void);
 
 typedef enum Rr_EventType
 {
@@ -300,6 +297,4 @@ struct Rr_Event
     };
 };
 
-#ifdef __cplusplus
-}
 #endif

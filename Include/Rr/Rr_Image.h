@@ -22,13 +22,10 @@
  * SOFTWARE.
  */
 
-#pragma once
+#ifndef RR_IMAGE_H
+#define RR_IMAGE_H
 
 #include <Rr/Rr_Renderer.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef struct Rr_Sampler Rr_Sampler;
 
@@ -83,9 +80,9 @@ struct Rr_SamplerInfo
     bool UnnormalizedCoordinates;
 };
 
-extern Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info);
+RR_EXTERN Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info);
 
-extern void Rr_ReleaseSampler(Rr_Sampler *Sampler);
+RR_EXTERN void Rr_ReleaseSampler(Rr_Sampler *Sampler);
 
 typedef enum Rr_ImageCubeFace
 {
@@ -131,37 +128,35 @@ typedef enum
 } Rr_ImageFlagsBits;
 typedef uint32_t Rr_ImageFlags;
 
-extern Rr_Image2D *Rr_CreateImage2D(
+RR_EXTERN Rr_Image2D *Rr_CreateImage2D(
     Rr_IntVec2 Extent,
     Rr_ImageFormat Format,
     Rr_ImageFlags Flags);
 
-extern Rr_Image2DArray *Rr_CreateImage2DArray(
+RR_EXTERN Rr_Image2DArray *Rr_CreateImage2DArray(
     Rr_IntVec2 Extent,
     uint32_t ArrayCount,
     Rr_ImageFormat Format,
     Rr_ImageFlags Flags);
 
-extern Rr_Image3D *Rr_CreateImage3D(
+RR_EXTERN Rr_Image3D *Rr_CreateImage3D(
     Rr_IntVec3 Extent,
     Rr_ImageFormat Format,
     Rr_ImageFlags Flags);
 
-extern Rr_ImageCube *Rr_CreateImageCube(
+RR_EXTERN Rr_ImageCube *Rr_CreateImageCube(
     Rr_IntVec2 Extent,
     Rr_ImageFormat Format,
     Rr_ImageFlags Flags);
 
-extern void Rr_ReleaseImage(struct Rr_Image *Image);
+RR_EXTERN void Rr_ReleaseImage(struct Rr_Image *Image);
 
-extern Rr_ImageFormat Rr_GetImageFormat(struct Rr_Image *Image);
+RR_EXTERN Rr_ImageFormat Rr_GetImageFormat(struct Rr_Image *Image);
 
-extern Rr_IntVec2 Rr_GetImage2DExtent(Rr_Image2D *Image);
+RR_EXTERN Rr_IntVec2 Rr_GetImage2DExtent(Rr_Image2D *Image);
 
-extern float Rr_GetImage2DAspect(Rr_Image2D *Image);
+RR_EXTERN float Rr_GetImage2DAspect(Rr_Image2D *Image);
 
-extern Rr_IntVec3 Rr_GetImage3DExtent(Rr_Image3D *Image3D);
+RR_EXTERN Rr_IntVec3 Rr_GetImage3DExtent(Rr_Image3D *Image3D);
 
-#ifdef __cplusplus
-}
 #endif
