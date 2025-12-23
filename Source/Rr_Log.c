@@ -26,6 +26,46 @@
 
 #include <stdio.h>
 
+/* TODO: Maybe make current function and priority thread-local? */
+
+char const *Rr_LogCategoryString(Rr_LogCategory Category)
+{
+    switch (Category)
+    {
+        case RR_LOG_CATEGORY_APP:
+            return "APPL";
+        case RR_LOG_CATEGORY_VULKAN:
+            return "VULK";
+        case RR_LOG_CATEGORY_RENDERER:
+            return "REND";
+        case RR_LOG_CATEGORY_IMAGE:
+            return "IMAG";
+        case RR_LOG_CATEGORY_BUFFER:
+            return "BUFF";
+        case RR_LOG_CATEGORY_GRAPH:
+            return "GRPH";
+        case RR_LOG_CATEGORY_DESCRIPTOR:
+            return "DESC";
+        case RR_LOG_CATEGORY_PLATFORM:
+            return "PLAT";
+        case RR_LOG_CATEGORY_UI:
+            return "IMGU";
+        case RR_LOG_CATEGORY_GLTF:
+            return "GLTF";
+        case RR_LOG_CATEGORY_ARENA:
+            return "AREN";
+        default:
+            return "CUST";
+    }
+}
+
+static uint32_t gLogPriority = RR_LOG_PRIORITY_TRACE;
+
+void Rr_SetLogPriority(Rr_LogPriority Priority)
+{
+    gLogPriority = Priority;
+}
+
 static void Rr_DefaultLogFunction(
     uint32_t Category,
     Rr_LogPriority Priority,
@@ -37,6 +77,7 @@ static void Rr_DefaultLogFunction(
     {
         Out = stderr;
     }
+    fprintf(Out, "[%s] ", Rr_LogCategoryString(Category));
     vfprintf(Out, Format, Args);
     fprintf(Out, "\n");
 }
@@ -53,8 +94,15 @@ Rr_LogFunc Rr_GetDefaultLogFunction(void)
     return Rr_DefaultLogFunction;
 }
 
+#define RR_CHECK_PRIORITY(Priority) \
+    if (gLogPriority < (Priority))  \
+    {                               \
+        return;                     \
+    }
+
 void Rr_Log(uint32_t Category, Rr_LogPriority Priority, char const *Format, ...)
 {
+    RR_CHECK_PRIORITY(Priority);
     va_list Args;
     va_start(Args, Format);
     gLogFunction(Category, Priority, Format, Args);
@@ -63,6 +111,7 @@ void Rr_Log(uint32_t Category, Rr_LogPriority Priority, char const *Format, ...)
 
 void Rr_LogError(uint32_t Category, char const *Format, ...)
 {
+    RR_CHECK_PRIORITY(RR_LOG_PRIORITY_ERROR);
     va_list Args;
     va_start(Args, Format);
     gLogFunction(Category, RR_LOG_PRIORITY_ERROR, Format, Args);
@@ -71,6 +120,7 @@ void Rr_LogError(uint32_t Category, char const *Format, ...)
 
 void Rr_LogWarning(uint32_t Category, char const *Format, ...)
 {
+    RR_CHECK_PRIORITY(RR_LOG_PRIORITY_WARNING);
     va_list Args;
     va_start(Args, Format);
     gLogFunction(Category, RR_LOG_PRIORITY_WARNING, Format, Args);
@@ -79,6 +129,7 @@ void Rr_LogWarning(uint32_t Category, char const *Format, ...)
 
 void Rr_LogInfo(uint32_t Category, char const *Format, ...)
 {
+    RR_CHECK_PRIORITY(RR_LOG_PRIORITY_INFO);
     va_list Args;
     va_start(Args, Format);
     gLogFunction(Category, RR_LOG_PRIORITY_INFO, Format, Args);
@@ -87,6 +138,7 @@ void Rr_LogInfo(uint32_t Category, char const *Format, ...)
 
 void Rr_LogTrace(uint32_t Category, char const *Format, ...)
 {
+    RR_CHECK_PRIORITY(RR_LOG_PRIORITY_INFO);
     va_list Args;
     va_start(Args, Format);
     gLogFunction(Category, RR_LOG_PRIORITY_TRACE, Format, Args);

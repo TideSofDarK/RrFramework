@@ -47,15 +47,22 @@ typedef enum
     RR_LOG_CATEGORY_GLTF,
     RR_LOG_CATEGORY_ARENA,
     RR_LOG_CATEGORY_CUSTOM, /* Extend categories starting with this one. */
-} Rr_LogCategory;
+} Rr_LogCategories;
+typedef uint32_t Rr_LogCategory;
+
+RR_EXTERN char const *Rr_LogCategoryString(Rr_LogCategory Category);
 
 typedef enum
 {
+    RR_LOG_PRIORITY_NONE,
     RR_LOG_PRIORITY_ERROR,
     RR_LOG_PRIORITY_WARNING,
     RR_LOG_PRIORITY_INFO,
     RR_LOG_PRIORITY_TRACE,
-} Rr_LogPriority;
+} Rr_LogPriorities;
+typedef uint32_t Rr_LogPriority;
+
+RR_EXTERN void Rr_SetLogPriority(Rr_LogPriority Priority);
 
 typedef void (*Rr_LogFunc)(
     uint32_t Category,
