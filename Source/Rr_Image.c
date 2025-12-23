@@ -46,6 +46,7 @@
 #endif
 
 #include <assert.h>
+#include <stdio.h>
 
 Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
 {

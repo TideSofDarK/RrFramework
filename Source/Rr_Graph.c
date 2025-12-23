@@ -28,11 +28,12 @@
 
 #include "Rr_Graph.h"
 
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_GRAPH
 #include "Rr_App.h"
 #include "Rr_Buffer.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Image.h"
-#include "Rr_Log.h"
+#include "Rr_LogMacro.h"
 #include "Rr_Renderer.h"
 
 #include <assert.h>
@@ -381,7 +382,7 @@ static inline bool Rr_AddNodeDependency(
             {
                 if (RR_HAS_BIT(State->AccessMask, RR_VULKAN_WRITES))
                 {
-                    RR_LOG(
+                    RR_LOG_ERROR(
                         "Node \"%s\": already writing to the versioned "
                         "resource!",
                         Node->Name);
@@ -390,7 +391,7 @@ static inline bool Rr_AddNodeDependency(
                 }
                 if (RR_HAS_BIT(Dependency->State.AccessMask, RR_VULKAN_WRITES))
                 {
-                    RR_LOG(
+                    RR_LOG_ERROR(
                         "Node \"%s\": trying to read and write a versioned "
                         "resource at the "
                         "same time!",
@@ -430,7 +431,7 @@ static inline bool Rr_AddNodeDependency(
         }
         else
         {
-            RR_LOG(
+            RR_LOG_ERROR(
                 "Node \"%s\": another node already writes to the versioned "
                 "resource!",
                 Node->Name);
@@ -554,7 +555,7 @@ static inline void Rr_ProcessDependencies(
             }
             else
             {
-                RR_ABORT("Failed to find resource producer!");
+                RR_LOG_ABORT("Failed to find resource producer!");
             }
         }
     }
@@ -603,7 +604,7 @@ static void Rr_SortGraph(
     {
         if (RR_HAS_BIT(State[CurrentNodeIndex], OnStackBit))
         {
-            RR_ABORT(
+            RR_LOG_ABORT(
                 "Cyclic graph detected on node \"%s\"!",
                 Nodes[CurrentNodeIndex]->Name);
         }
@@ -639,13 +640,13 @@ static void Rr_PrintAdjacencyList(
     {
         Rr_IndexArray *Deps = AdjacencyList + Index;
 
-        RR_LOG(
+        RR_LOG_INFO(
             "%s Node \"%s\"",
             Nodes[Index]->UsesLateCommandBuffer ? "late" : "early",
             Nodes[Index]->Name);
         for (size_t DepIndex = 0; DepIndex < Deps->Count; ++DepIndex)
         {
-            RR_LOG(
+            RR_LOG_INFO(
                 " depends on node \"%s\"",
                 Nodes[Deps->Data[DepIndex]]->Name);
         }
@@ -659,7 +660,7 @@ static void Rr_ProcessGraphNodes(
 {
     if (Graph->Nodes.Count == 0)
     {
-        RR_LOG("Graph doesn't contain any nodes!");
+        RR_LOG_WARNING("Graph doesn't contain any nodes!");
 
         return;
     }
@@ -1693,7 +1694,7 @@ static void Rr_ExecuteGraphNode(
         break;
         default:
         {
-            RR_ABORT("Unsupported node type!");
+            RR_LOG_ABORT("Unsupported node type!");
         }
         break;
     }
@@ -2132,7 +2133,7 @@ void Rr_ExecuteGraph(
             }
             else
             {
-                RR_ABORT("Multiple image layout transitions!");
+                RR_LOG_ABORT("Multiple image layout transitions!");
             }
 
             if (TransferOwnership)
@@ -2451,7 +2452,7 @@ void Rr_BeginGraphLabel(Rr_Graph *Graph, const char *Name)
         {
             if (Graph->DebugLabelStates.Data[Index])
             {
-                RR_ABORT(
+                RR_LOG_ERROR(
                     "Trying to begin label \"%s\" which is already active!",
                     Name);
             }
@@ -2482,7 +2483,7 @@ void Rr_EndGraphLabel(Rr_Graph *Graph, const char *Name)
         {
             if (!Graph->DebugLabelStates.Data[Index])
             {
-                RR_ABORT(
+                RR_LOG_ERROR(
                     "Trying to end label \"%s\" which is already disabled!",
                     Name);
             }
@@ -2491,7 +2492,7 @@ void Rr_EndGraphLabel(Rr_Graph *Graph, const char *Name)
         }
     }
 
-    RR_ABORT("Trying to end label \"%s\" which has never been used!", Name);
+    RR_LOG_ERROR("Trying to end label \"%s\" which has never been used!", Name);
 #endif
 }
 
@@ -3078,7 +3079,7 @@ void Rr_BindComputePipeline(
     assert(ComputePipeline != NULL);
     assert(Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE);
 
-    RR_NODE_ENCODE(
+    RR_NODE_ENCODE( /* NOLINT */
         RR_NODE_FUNCTION_TYPE_BIND_COMPUTE_PIPELINE,
         ComputePipeline);
 
@@ -3290,7 +3291,7 @@ void Rr_BindGraphicsPipeline(
         Node->Union.Graphics.DepthTarget != NULL ||
         !GraphicsPipeline->HasDepthStencil);
 
-    RR_NODE_ENCODE(
+    RR_NODE_ENCODE( /* NOLINT */
         RR_NODE_FUNCTION_TYPE_BIND_GRAPHICS_PIPELINE,
         ((Rr_GraphicsPipeline *){ GraphicsPipeline }));
 

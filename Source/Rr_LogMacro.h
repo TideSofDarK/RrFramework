@@ -22,32 +22,16 @@
  * SOFTWARE.
  */
 
-#pragma once
+#include <Rr/Rr_Log.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-
-#define RR_LOG(...)                   \
-    do                                \
-    {                                 \
-        fprintf(stderr, __VA_ARGS__); \
-        fprintf(stderr, "\n");        \
-    }                                 \
-    while (0)
-
-#define RR_ABORT(...)                 \
-    do                                \
-    {                                 \
-        fprintf(stderr, __VA_ARGS__); \
-        fprintf(stderr, "\n");        \
-        abort();                      \
-    }                                 \
-    while (0)
-
-#define RR_NOT_IMPLEMENTED()                 \
-    do                                       \
-    {                                        \
-        fprintf(stderr, "Not implemented!"); \
-        abort();                             \
-    }                                        \
-    while (0)
+#ifdef RR_LOG_MACRO_CATEGORY
+#define RR_LOG_ABORT(...)                                \
+    {                                                    \
+        Rr_LogError(RR_LOG_MACRO_CATEGORY, __VA_ARGS__); \
+        abort();                                         \
+    }
+#define RR_LOG_ERROR(...)   Rr_LogError(RR_LOG_MACRO_CATEGORY, __VA_ARGS__)
+#define RR_LOG_WARNING(...) Rr_LogWarning(RR_LOG_MACRO_CATEGORY, __VA_ARGS__)
+#define RR_LOG_INFO(...)    Rr_LogInfo(RR_LOG_MACRO_CATEGORY, __VA_ARGS__)
+#define RR_LOG_TRACE(...)   Rr_LogTrace(RR_LOG_MACRO_CATEGORY, __VA_ARGS__)
+#endif

@@ -24,7 +24,8 @@
 
 #include "Rr_Descriptor.h"
 
-#include "Rr_Log.h"
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_DESCRIPTOR
+#include "Rr_LogMacro.h"
 #include "Rr_Pipeline.h"
 #include "Rr_Renderer.h"
 
@@ -260,7 +261,7 @@ static inline VkDescriptorSet Rr_GetDescriptorSet(
     {                                                                        \
         if (!State->Layout)                                                  \
         {                                                                    \
-            RR_LOG(                                                          \
+            RR_LOG_ERROR(                                                    \
                 "Attempting to bind a resource but current layout is NULL, " \
                 "forgot to bind a pipeline?");                               \
             return;                                                          \

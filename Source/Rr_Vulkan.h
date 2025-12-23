@@ -24,11 +24,11 @@
 
 #pragma once
 
-#include "Rr_Log.h"
 #include "Rr_Memory.h"
 #include "Rr_Platform.h"
 
 #include <Rr/Rr_Image.h>
+#include <Rr/Rr_Log.h>
 #include <Rr/Rr_Math.h>
 #include <Rr/Rr_Pipeline.h>
 #include <Rr/Rr_Renderer.h>
@@ -350,8 +350,11 @@ static VkDescriptorType Rr_ToVulkanDescriptorType(Rr_BindingType Type)
         case RR_BINDING_TYPE_STORAGE_IMAGE:
             return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         default:
-            RR_ABORT("Invalid pipeline binding type!");
+            Rr_LogError(
+                RR_LOG_CATEGORY_VULKAN,
+                "Invalid pipeline binding type!");
     }
+    return 0;
 }
 
 static inline VkStencilOp Rr_ToVulkanStencilOp(Rr_StencilOp StencilOp)
@@ -375,8 +378,9 @@ static inline VkStencilOp Rr_ToVulkanStencilOp(Rr_StencilOp StencilOp)
         case RR_STENCIL_OP_DECREMENT_AND_WRAP:
             return VK_STENCIL_OP_DECREMENT_AND_WRAP;
         default:
-            RR_ABORT("Invalid stencil op!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid stencil op!");
     }
+    return 0;
 }
 
 static inline VkShaderStageFlags Rr_ToVulkanShaderStageFlags(
@@ -419,8 +423,9 @@ static inline VkCompareOp Rr_ToVulkanCompareOp(Rr_CompareOp CompareOp)
         case RR_COMPARE_OP_ALWAYS:
             return VK_COMPARE_OP_ALWAYS;
         default:
-            RR_ABORT("Invalid compare op!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid compare op!");
     }
+    return 0;
 }
 
 static inline VkStencilOpState Rr_ToVulkanStencilOpState(
@@ -446,8 +451,9 @@ static inline VkPolygonMode Rr_ToVulkanPolygonMode(Rr_PolygonMode PolygonMode)
         case RR_POLYGON_MODE_LINE:
             return VK_POLYGON_MODE_LINE;
         default:
-            RR_ABORT("Invalid polygon mode!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid polygon mode!");
     }
+    return 0;
 }
 
 static inline VkCullModeFlagBits Rr_ToVulkanCullMode(Rr_CullMode CullMode)
@@ -461,8 +467,9 @@ static inline VkCullModeFlagBits Rr_ToVulkanCullMode(Rr_CullMode CullMode)
         case RR_CULL_MODE_BACK:
             return VK_CULL_MODE_BACK_BIT;
         default:
-            RR_ABORT("Invalid cull mode!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid cull mode!");
     }
+    return 0;
 }
 
 static inline VkFrontFace Rr_ToVulkanFrontFace(Rr_FrontFace FrontFace)
@@ -474,8 +481,9 @@ static inline VkFrontFace Rr_ToVulkanFrontFace(Rr_FrontFace FrontFace)
         case RR_FRONT_FACE_CLOCKWISE:
             return VK_FRONT_FACE_CLOCKWISE;
         default:
-            RR_ABORT("Invalid front face!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid front face!");
     }
+    return 0;
 }
 
 static inline VkBlendFactor Rr_ToVulkanBlendFactor(Rr_BlendFactor BlendFactor)
@@ -509,8 +517,9 @@ static inline VkBlendFactor Rr_ToVulkanBlendFactor(Rr_BlendFactor BlendFactor)
         case RR_BLEND_FACTOR_SRC_ALPHA_SATURATE:
             return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
         default:
-            RR_ABORT("Invalid blend factor!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid blend factor!");
     }
+    return 0;
 }
 
 static inline VkBlendOp Rr_ToVulkanBlendOp(Rr_BlendOp BlendOp)
@@ -528,8 +537,9 @@ static inline VkBlendOp Rr_ToVulkanBlendOp(Rr_BlendOp BlendOp)
         case RR_BLEND_OP_MAX:
             return VK_BLEND_OP_MAX;
         default:
-            RR_ABORT("Invalid blend op!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid blend op!");
     }
+    return 0;
 }
 
 static inline VkPrimitiveTopology Rr_ToVulkanPrimitiveTopology(
@@ -548,8 +558,9 @@ static inline VkPrimitiveTopology Rr_ToVulkanPrimitiveTopology(
         case RR_TOPOLOGY_TRIANGLE_STRIP:
             return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
         default:
-            RR_ABORT("Invalid topology!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid topology!");
     }
+    return 0;
 }
 
 static inline VkFormat Rr_ToVulkanFormat(Rr_Format Format)
@@ -569,8 +580,9 @@ static inline VkFormat Rr_ToVulkanFormat(Rr_Format Format)
         case RR_FORMAT_VEC4:
             return VK_FORMAT_R32G32B32A32_SFLOAT;
         default:
-            RR_ABORT("Invalid format!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid format!");
     }
+    return 0;
 }
 
 static inline size_t Rr_GetFormatSize(Rr_Format Format)
@@ -588,8 +600,9 @@ static inline size_t Rr_GetFormatSize(Rr_Format Format)
         case RR_FORMAT_VEC4:
             return sizeof(float) * 4;
         default:
-            RR_ABORT("Invalid format!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid format!");
     }
+    return 0;
 }
 
 static inline VkBorderColor Rr_ToVulkanBorderColor(Rr_BorderColor BorderColor)
@@ -609,8 +622,9 @@ static inline VkBorderColor Rr_ToVulkanBorderColor(Rr_BorderColor BorderColor)
         case RR_BORDER_COLOR_INT_OPAQUE_WHITE:
             return VK_BORDER_COLOR_INT_OPAQUE_WHITE;
         default:
-            RR_ABORT("Invalid border color!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid border color!");
     }
+    return 0;
 }
 
 static inline VkSamplerAddressMode Rr_ToVulkanSamplerAddressMode(
@@ -629,8 +643,11 @@ static inline VkSamplerAddressMode Rr_ToVulkanSamplerAddressMode(
         case RR_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:
             return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
         default:
-            RR_ABORT("Invalid sampler address mode!");
+            Rr_LogError(
+                RR_LOG_CATEGORY_VULKAN,
+                "Invalid sampler address mode!");
     }
+    return 0;
 }
 
 static inline VkSamplerMipmapMode Rr_ToVulkanSamplerMipmapMode(
@@ -643,8 +660,9 @@ static inline VkSamplerMipmapMode Rr_ToVulkanSamplerMipmapMode(
         case RR_SAMPLER_MIPMAP_MODE_LINEAR:
             return VK_SAMPLER_MIPMAP_MODE_LINEAR;
         default:
-            RR_ABORT("Invalid sampler mipmap mode!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid sampler mipmap mode!");
     }
+    return 0;
 }
 
 static inline VkFilter Rr_ToVulkanFilter(Rr_Filter Filter)
@@ -656,8 +674,9 @@ static inline VkFilter Rr_ToVulkanFilter(Rr_Filter Filter)
         case RR_FILTER_LINEAR:
             return VK_FILTER_LINEAR;
         default:
-            RR_ABORT("Invalid filter!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid filter!");
     }
+    return 0;
 }
 
 static Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
@@ -701,8 +720,9 @@ static Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
         case VK_FORMAT_R32G32B32A32_SFLOAT:
             return RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT;
         default:
-            RR_ABORT("Invalid image format!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid image format!");
     }
+    return 0;
 }
 
 static VkFormat Rr_ToVulkanImageFormat(Rr_ImageFormat ImageFormat)
@@ -746,8 +766,9 @@ static VkFormat Rr_ToVulkanImageFormat(Rr_ImageFormat ImageFormat)
         case RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT:
             return VK_FORMAT_R32G32B32A32_SFLOAT;
         default:
-            RR_ABORT("Invalid image format!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid image format!");
     }
+    return 0;
 }
 
 static inline VkIndexType Rr_ToVulkanIndexType(Rr_IndexType IndexType)
@@ -761,7 +782,10 @@ static inline VkIndexType Rr_ToVulkanIndexType(Rr_IndexType IndexType)
         case RR_INDEX_TYPE_UINT32:
             return VK_INDEX_TYPE_UINT32;
         default:
-            RR_ABORT("Invalid index type!");
+        {
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid index type!");
+            return 0;
+        }
     }
 }
 
@@ -801,8 +825,9 @@ static VkAttachmentLoadOp Rr_ToVulkanLoadOp(Rr_LoadOp LoadOp)
         case RR_LOAD_OP_DONT_CARE:
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         default:
-            RR_ABORT("Invalid load op!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid load op!");
     }
+    return 0;
 }
 
 static VkAttachmentStoreOp Rr_ToVulkanStoreOp(Rr_StoreOp StoreOp)
@@ -814,8 +839,9 @@ static VkAttachmentStoreOp Rr_ToVulkanStoreOp(Rr_StoreOp StoreOp)
         case RR_STORE_OP_DONT_CARE:
             return VK_ATTACHMENT_STORE_OP_DONT_CARE;
         default:
-            RR_ABORT("Invalid store op!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid store op!");
     }
+    return 0;
 }
 
 static inline VkPresentModeKHR Rr_ToVulkanPresentMode(
@@ -832,8 +858,9 @@ static inline VkPresentModeKHR Rr_ToVulkanPresentMode(
         case RR_PRESENT_MODE_FIFO:
             return VK_PRESENT_MODE_FIFO_KHR;
         default:
-            RR_ABORT("Invalid present mode!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid present mode!");
     }
+    return 0;
 }
 
 static inline Rr_PresentMode Rr_ToPresentMode(
@@ -850,6 +877,7 @@ static inline Rr_PresentMode Rr_ToPresentMode(
         case VK_PRESENT_MODE_FIFO_KHR:
             return RR_PRESENT_MODE_FIFO;
         default:
-            RR_ABORT("Invalid present mode!");
+            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid present mode!");
     }
+    return 0;
 }

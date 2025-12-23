@@ -28,9 +28,10 @@
 
 #include "Rr_GLTF.h"
 
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_GLTF
 #include "Rr_Graph.h"
 #include "Rr_Image.h"
-#include "Rr_Log.h"
+#include "Rr_LogMacro.h"
 
 #include <stb/stb_image.h>
 
@@ -50,7 +51,7 @@ static inline Rr_IndexType Rr_CGLTFComponentTypeToIndexType(
         case cgltf_component_type_r_32u:
             return RR_INDEX_TYPE_UINT32;
         default:
-            RR_ABORT("cGLTF: Unsupported index type!");
+            RR_LOG_ABORT("cGLTF: Unsupported index type!");
     }
 }
 
@@ -122,7 +123,7 @@ static inline Rr_Format Rr_GLTFAttributeTypeToFormat(Rr_GLTFAttributeType Type)
         case RR_GLTF_ATTRIBUTE_TYPE_TANGENT:
             return RR_FORMAT_VEC3;
         default:
-            RR_ABORT("Invalid GLTF attribute type!");
+            RR_LOG_ABORT("Invalid GLTF attribute type!");
     }
 }
 
@@ -299,7 +300,7 @@ static inline bool Rr_GetGLTFVertexInputInfoForAttribute(
             {
                 if (Found)
                 {
-                    RR_ABORT(
+                    RR_LOG_ABORT(
                         "GLTF: Multiple mappings found for the same "
                         "attribute type!");
                 }
@@ -381,7 +382,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     cgltf_result Result = cgltf_parse(&Options, GLBData, GLBDataSize, &Data);
     if (Result != cgltf_result_success)
     {
-        RR_ABORT("GLTF: Parsing failed!");
+        RR_LOG_ABORT("GLTF: Parsing failed!");
     }
     cgltf_load_buffers(&Options, Data, NULL);
 
@@ -419,7 +420,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
                     Primitive->attributes + AttributeIndex;
                 if (VertexCount != Attribute->data->count)
                 {
-                    RR_ABORT("GLTF: Attributes with different counts!");
+                    RR_LOG_ABORT("GLTF: Attributes with different counts!");
                 }
             }
 
@@ -449,7 +450,7 @@ Rr_GLTFAsset *Rr_CreateGLTFAsset(
     }
     else
     {
-        RR_ABORT("GLTF: Unsupported index type!");
+        RR_LOG_ABORT("GLTF: Unsupported index type!");
     }
 
     /* @TODO: The fuck is this? */

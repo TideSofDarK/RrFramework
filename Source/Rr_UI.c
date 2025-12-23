@@ -30,8 +30,9 @@
 
 #include "Rr_BuiltinAssets.inc"
 
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_VULKAN
 #include "Rr_App.h"
-#include "Rr_Log.h"
+#include "Rr_LogMacro.h"
 #include "Rr_Renderer.h"
 
 #include <Rr/Rr_Graph.h>
@@ -463,7 +464,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     stbtt_fontinfo FontInfo;
     if (!stbtt_InitFont(&FontInfo, (unsigned char *)TTFData, 0))
     {
-        RR_LOG("Failed to parse .ttf file!");
+        RR_LOG_ERROR("Failed to parse .ttf file!");
         Rr_DestroyScratch(Scratch);
         return NULL;
     }
@@ -493,7 +494,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
             2,
             NULL))
     {
-        RR_LOG("Failed to begin .ttf packing!");
+        RR_LOG_ERROR("Failed to begin .ttf packing!");
         Rr_DestroyScratch(Scratch);
         return NULL;
     }
@@ -6203,7 +6204,7 @@ static inline void Rr_UIFormatScalar(
         break;
         default:
         {
-            RR_ABORT("Unsupported format type!");
+            RR_LOG_ABORT("Unsupported format type!");
         }
         break;
     }
@@ -6242,7 +6243,7 @@ static inline float Rr_UICalculateGenericInputScalarMultiWidth(
         break;
         default:
         {
-            RR_ABORT("Unsupported format type!");
+            RR_LOG_ABORT("Unsupported format type!");
         }
         break;
     }
@@ -6299,7 +6300,7 @@ static inline void Rr_UIRecordDragScalar(void *Data, Rr_UIScalarType Type)
         break;
         default:
         {
-            RR_ABORT("Unsupported format type!");
+            RR_LOG_ABORT("Unsupported format type!");
         }
         break;
     }
@@ -6365,7 +6366,7 @@ static inline void Rr_UIModifyDragScalar(
         break;
         default:
         {
-            RR_ABORT("Unsupported format type!");
+            RR_LOG_ABORT("Unsupported format type!");
         }
         break;
     }
@@ -6426,7 +6427,7 @@ static inline void Rr_UIModifyDragScalarRange(
         break;
         default:
         {
-            RR_ABORT("Unsupported format type!");
+            RR_LOG_ABORT("Unsupported format type!");
         }
         break;
     }
@@ -6478,7 +6479,7 @@ static inline void Rr_UIClampScalarRange(
         break;
         default:
         {
-            RR_ABORT("Unsupported format type!");
+            RR_LOG_ABORT("Unsupported format type!");
         }
         break;
     }
@@ -6537,7 +6538,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
         break;
         default:
         {
-            RR_ABORT("Unsupported format type!");
+            RR_LOG_ABORT("Unsupported format type!");
         }
         break;
     }

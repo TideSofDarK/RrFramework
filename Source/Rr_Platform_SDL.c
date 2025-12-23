@@ -24,9 +24,10 @@
 
 #include "Rr_Platform.h"
 
-#include <Rr/Rr_App.h>
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_VULKAN
+#include "Rr_LogMacro.h"
 
-#include "Rr_Log.h"
+#include <Rr/Rr_App.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -38,7 +39,7 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 {
     assert(gPlatform == NULL);
 
-    RR_LOG("Using SDL platform library");
+    RR_LOG_INFO("Using SDL platform library");
 
 #if defined(__linux__)
     SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
@@ -49,7 +50,7 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 
     if (!SDL_Vulkan_LoadLibrary(NULL))
     {
-        RR_LOG("%s", SDL_GetError());
+        RR_LOG_ERROR("%s", SDL_GetError());
     }
 
     SDL_WindowFlags SDLWindowFlags =
@@ -66,7 +67,7 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     gPlatform->Window = SDL_CreateWindow(Config->Title, 0, 0, SDLWindowFlags);
     if (!gPlatform->Window)
     {
-        RR_LOG("%s", SDL_GetError());
+        RR_LOG_ERROR("%s", SDL_GetError());
     }
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
     SDL_StartTextInput(gPlatform->Window);
@@ -174,7 +175,7 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
         case SDL_EVENT_TEXT_INPUT:
         {
             size_t Length = strlen(SDLEvent.text.text);
-            char *Buffer = RR_ALLOC_NO_ZERO(gPlatform->Arena, Length + 1);
+            char *Buffer = RR_ALLOC_NO_ZERO(Length + 1, gPlatform->Arena);
             memcpy(Buffer, SDLEvent.text.text, Length + 1);
 
             Event->Type = RR_EVENT_TYPE_TEXT_INPUT;

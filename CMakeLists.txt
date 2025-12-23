@@ -168,6 +168,7 @@ rr_enable_development_options(${PROJECT_NAME})
 target_sources(
     ${PROJECT_NAME}
     PRIVATE
+    Source/Rr_Log.c
     Source/Rr_App.c
     Source/Rr_Asset.c
     Source/Rr_Buffer.c
@@ -189,7 +190,9 @@ target_sources(
     FILE_SET HEADERS
     BASE_DIRS Include
     FILES
+    Include/Rr/Rr_Log.h
     Include/Rr/Rr_App.h
+    Include/Rr/Rr_Arena.h
     Include/Rr/Rr_Asset.h
     Include/Rr/Rr_Buffer.h
     Include/Rr/Rr_Defines.h

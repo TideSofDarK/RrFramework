@@ -28,8 +28,9 @@
 
 #include "Rr_Renderer.h"
 
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
 #include "Rr_App.h"
-#include "Rr_Log.h"
+#include "Rr_LogMacro.h"
 
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Platform.h>
@@ -41,6 +42,7 @@
 #endif
 
 #include <assert.h>
+#include <stdio.h>
 
 Rr_Renderer *gRenderer;
 
@@ -224,7 +226,7 @@ static bool Rr_InitSwapchain(void)
         PrefferedFormat ? PrefferedFormat : FallbackFormat;
     if (!SelectedFormat)
     {
-        RR_ABORT("No suitable surface format found!");
+        RR_LOG_ABORT("No suitable surface format found!");
     }
     gRenderer->Swapchain.Format = SelectedFormat->format;
     gRenderer->Swapchain.ColorSpace = SelectedFormat->colorSpace;
@@ -1710,7 +1712,7 @@ void Rr_EndVulkanCommandBufferLabel(VkCommandBuffer CommandBuffer)
 
 void Rr_PrintDestroyMessage(const char *Type, const char *Name, void *Address)
 {
-    RR_LOG(
+    RR_LOG_INFO(
         "Destroying %s: { name: \"%s\", address = %p }",
         Type,
         Name[0] != '\0' ? Name : "UNNAMED",

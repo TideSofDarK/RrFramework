@@ -24,8 +24,8 @@
 
 #include <Rr/Rr_Arena.h>
 
-#include "Rr_Log.h"
-
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_VULKAN
+#include "Rr_LogMacro.h"
 #include "Rr_Platform.h"
 
 #include <assert.h>
@@ -130,7 +130,7 @@ Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict)
         }
     }
 
-    RR_ABORT("Couldn't find appropriate arena for a scratch!");
+    RR_LOG_ABORT("Couldn't find appropriate arena for a scratch!");
 
     return (Rr_Scratch){ 0 };
 }
@@ -139,12 +139,12 @@ void *Rr_AllocNoZero(size_t Size, size_t Align, size_t Count, Rr_Arena *Arena)
 {
     if (Arena == NULL)
     {
-        RR_ABORT("Allocating from NULL arena!");
+        RR_LOG_ABORT("Allocating from NULL arena!");
     }
 
     if (Size == 0 || Count == 0)
     {
-        RR_ABORT("Allocating 0 bytes from an arena is not allowed!");
+        RR_LOG_ABORT("Allocating 0 bytes from an arena is not allowed!");
     }
 
     size_t TotalSize = Size * Count;
@@ -170,7 +170,7 @@ void *Rr_AllocNoZero(size_t Size, size_t Align, size_t Count, Rr_Arena *Arena)
     }
     else
     {
-        RR_ABORT("Arena reserved memory overflow!");
+        RR_LOG_ABORT("Arena reserved memory overflow!");
     }
 
     return Result;

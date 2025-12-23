@@ -24,7 +24,9 @@
 
 #include "Rr_Platform.h"
 
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_VULKAN
 #include "Rr_App.h"
+#include "Rr_LogMacro.h"
 #include "Rr_Vulkan.h"
 
 #include <GLFW/glfw3.h>
@@ -352,7 +354,7 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 {
     assert(gPlatform == NULL);
 
-    RR_LOG("Using GLFW platform library");
+    RR_LOG_INFO("Using GLFW platform library");
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
     gPlatform = RR_ALLOC_TYPE(Rr_Platform, Arena);
@@ -381,7 +383,7 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 
     if (!glfwVulkanSupported())
     {
-        RR_ABORT("Vulkan is not supported!");
+        RR_LOG_ABORT("Vulkan is not supported!");
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);

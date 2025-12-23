@@ -27,6 +27,7 @@
 #include "Rr_Renderer.h"
 
 #include <assert.h>
+#include <stdio.h>
 
 Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
 {

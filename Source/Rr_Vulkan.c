@@ -24,7 +24,8 @@
 
 #include "Rr_Vulkan.h"
 
-#include "Rr_Log.h"
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_VULKAN
+#include "Rr_LogMacro.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -412,7 +413,7 @@ void Rr_SelectPhysicalDevice(
         NULL);
     if (PhysicalDeviceCount == 0)
     {
-        RR_LOG("No device with Vulkan support found");
+        RR_LOG_ABORT("No device with Vulkan support found");
     }
 
     VkPhysicalDevice *PhysicalDevices =
@@ -422,7 +423,7 @@ void Rr_SelectPhysicalDevice(
         &PhysicalDeviceCount,
         &PhysicalDevices[0]);
 
-    RR_LOG("Selecting Vulkan device:");
+    RR_LOG_TRACE("Selecting Vulkan device:");
 
     typedef char Rr_DeviceString[1024];
     RR_ARRAY(Rr_DeviceString) DeviceStrings = { 0 };
@@ -533,7 +534,7 @@ void Rr_SelectPhysicalDevice(
     }
     if (BestDeviceIndex == UINT32_MAX)
     {
-        RR_LOG(
+        RR_LOG_ABORT(
             "Could not select physical device based on the chosen properties!");
     }
 
@@ -549,7 +550,7 @@ void Rr_SelectPhysicalDevice(
         {
             *Mark = ' ';
         }
-        RR_LOG("%s", DeviceStrings.Data[Index]);
+        RR_LOG_INFO("%s", DeviceStrings.Data[Index]);
     }
 
     bool UseTransferQueue =
@@ -573,7 +574,7 @@ void Rr_SelectPhysicalDevice(
         PhysicalDevice->Properties.limits.timestampPeriod > 0.0f &&
         PhysicalDevice->Properties.limits.timestampComputeAndGraphics;
 
-    RR_LOG(
+    RR_LOG_INFO(
         "Using %s transfer queue.",
         UseTransferQueue ? "dedicated" : "unified");
 }
@@ -582,7 +583,7 @@ void Rr_InitSurface(Rr_Instance *Instance, VkSurfaceKHR *Surface)
 {
     if (Rr_CreateVulkanSurface(Instance->Handle, (void *)Surface) != true)
     {
-        RR_ABORT("Failed to create Vulkan surface!");
+        RR_LOG_ABORT("Failed to create Vulkan surface!");
     }
 }
 
