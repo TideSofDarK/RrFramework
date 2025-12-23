@@ -42,4 +42,4 @@ Then simply link your application against it,
 
 * License
 
-[[LICENSE.org][MIT]]
+[[LICENSE.org][zlib]]
