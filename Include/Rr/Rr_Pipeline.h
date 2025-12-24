@@ -259,46 +259,4 @@ RR_EXTERN Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 RR_EXTERN void Rr_ReleaseGraphicsPipeline(
     Rr_GraphicsPipeline *GraphicsPipeline);
 
-/* Serialization */
-
-RR_EXTERN size_t Rr_SerializePipelineSpecialization(
-    Rr_PipelineSpecialization *SrcPtr,
-    size_t Count,
-    void *DstPtr,
-    size_t *DstOffsetPtr,
-    void *WriteOffsetTo);
-
-RR_EXTERN Rr_PipelineSpecialization *Rr_DeserializePipelineSpecialization(
-    void *Data,
-    size_t Count,
-    void *Base,
-    void *WritePtrTo);
-
-RR_EXTERN size_t Rr_SerializeShaderInfo(
-    Rr_ShaderInfo *ShaderInfo,
-    size_t Count,
-    void *DstPtr,
-    size_t *DstOffsetPtr,
-    void *WriteOffsetTo);
-
-RR_EXTERN Rr_ShaderInfo *Rr_DeserializeShaderInfo(
-    void *Data,
-    size_t Count,
-    void *Base,
-    void *WritePtrTo);
-
-RR_EXTERN size_t Rr_SerializeGraphicsPipelineCreateInfo(
-    Rr_GraphicsPipelineCreateInfo *GraphicsPipelineCreateInfo,
-    size_t Count,
-    void *DstPtr,
-    size_t *DstOffsetPtr,
-    void *WriteOffsetTo);
-
-RR_EXTERN Rr_GraphicsPipelineCreateInfo *
-Rr_DeserializeGraphicsPipelineCreateInfo(
-    void *Data,
-    size_t Count,
-    void *Base,
-    void *WritePtrTo);
-
 #endif

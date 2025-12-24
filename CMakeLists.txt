@@ -168,8 +168,8 @@ rr_enable_development_options(${PROJECT_NAME})
 target_sources(
     ${PROJECT_NAME}
     PRIVATE
-    Source/Rr_Log.c
     Source/Rr_App.c
+    Source/Rr_Arena.c
     Source/Rr_Asset.c
     Source/Rr_Buffer.c
     Source/Rr_Dependencies.cxx
@@ -177,12 +177,13 @@ target_sources(
     Source/Rr_GLTF.c
     Source/Rr_Graph.c
     Source/Rr_Image.c
-    Source/Rr_Arena.c
+    Source/Rr_Log.c
     Source/Rr_Memory.c
     Source/Rr_Pipeline.c
     Source/Rr_Platform.c
-    Source/Rr_Renderer.c
     Source/Rr_Profiler.c
+    Source/Rr_Renderer.c
+    Source/Rr_Serialization.c
     Source/Rr_UI.c
     Source/Rr_Vulkan.c
     Vendor/xxHash/xxhash.c
@@ -190,7 +191,7 @@ target_sources(
     FILE_SET HEADERS
     BASE_DIRS Include
     FILES
-    Include/Rr/Rr_Log.h
+    Include/Rr/Rr.h
     Include/Rr/Rr_App.h
     Include/Rr/Rr_Arena.h
     Include/Rr/Rr_Asset.h
@@ -198,12 +199,13 @@ target_sources(
     Include/Rr/Rr_Defines.h
     Include/Rr/Rr_GLTF.h
     Include/Rr/Rr_Graph.h
-    Include/Rr/Rr.h
     Include/Rr/Rr_Image.h
+    Include/Rr/Rr_Log.h
     Include/Rr/Rr_Math.h
     Include/Rr/Rr_Pipeline.h
     Include/Rr/Rr_Platform.h
     Include/Rr/Rr_Renderer.h
+    Include/Rr/Rr_Serialization.h
     Include/Rr/Rr_UI.h
     Include/Rr/Rr_Utility.h
 )

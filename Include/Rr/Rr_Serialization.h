@@ -18,24 +18,40 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#ifndef RR_H
-#define RR_H
+#ifndef RR_SERIALIZATION_H
+#define RR_SERIALIZATION_H
 
-#include <Rr/Rr_App.h>
-#include <Rr/Rr_Arena.h>
-#include <Rr/Rr_Asset.h>
-#include <Rr/Rr_Buffer.h>
 #include <Rr/Rr_Defines.h>
-#include <Rr/Rr_GLTF.h>
-#include <Rr/Rr_Graph.h>
-#include <Rr/Rr_Image.h>
-#include <Rr/Rr_Log.h>
-#include <Rr/Rr_Math.h>
-#include <Rr/Rr_Pipeline.h>
-#include <Rr/Rr_Platform.h>
-#include <Rr/Rr_Renderer.h>
-#include <Rr/Rr_Serialization.h>
-#include <Rr/Rr_UI.h>
-#include <Rr/Rr_Utility.h>
+
+struct Rr_PipelineSpecialization;
+struct Rr_ShaderInfo;
+struct Rr_GraphicsPipelineCreateInfo;
+
+RR_EXTERN size_t Rr_SerializePipelineSpecialization(
+    void *Dst,
+    struct Rr_PipelineSpecialization const *Src,
+    size_t Count);
+
+RR_EXTERN struct Rr_PipelineSpecialization *Rr_DeserializePipelineSpecialization(
+    void *Buffer,
+    size_t Count);
+
+RR_EXTERN size_t Rr_SerializeShaderInfo(
+    void *Dst,
+    struct Rr_ShaderInfo const *Src,
+    size_t Count);
+
+RR_EXTERN struct Rr_ShaderInfo *Rr_DeserializeShaderInfo(
+    void *Buffer,
+    size_t Count);
+
+RR_EXTERN size_t Rr_SerializeGraphicsPipelineCreateInfo(
+    void *Dst,
+    struct Rr_GraphicsPipelineCreateInfo const *Src,
+    size_t Count);
+
+RR_EXTERN struct Rr_GraphicsPipelineCreateInfo *Rr_DeserializeGraphicsPipelineCreateInfo(
+    void *Buffer,
+    size_t Count);
 
 #endif
