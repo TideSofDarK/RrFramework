@@ -86,7 +86,7 @@
     RR_EXPAND(RR_GET_MACRO(       \
         __VA_ARGS__,              \
         RR_DESERIALIZE_FIELD3,    \
-        RR_DESERIALIZE_FIELD2)(__VA_ARGS__))
+        RR_DESERIALIZE_FIELD2, )(__VA_ARGS__))
 
 #define RR_DESERIALIZE_FIELD2(Func, Field)                                   \
     if ((uintptr_t)Struct_->Field == SIZE_MAX)                               \
