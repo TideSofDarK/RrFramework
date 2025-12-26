@@ -24,9 +24,13 @@
 
 #include <string.h>
 
-#define RR_ADVANCE_PTR(Amount) \
-    *(uintptr_t *)&Ptr_ =      \
-        RR_ALIGN_POW2((uintptr_t)Ptr_ + Amount, (size_t)RR_SAFE_ALIGNMENT)
+#define RR_ADVANCE_PTR(Amount)                        \
+    {                                                 \
+        uintptr_t PtrValue_ = RR_ALIGN_POW2(          \
+            (uintptr_t)Ptr_ + Amount,                 \
+            (size_t)RR_SAFE_ALIGNMENT);               \
+        memcpy(&Ptr_, &PtrValue_, sizeof(PtrValue_)); \
+    }
 
 #define RR_SERIALIZE_FIELD(Func, Field, Count)                              \
     if (Original_->Field)                                                   \
@@ -42,14 +46,18 @@
         }                                                                   \
         if (Copies_)                                                        \
         {                                                                   \
-            *(uintptr_t *)&Copy_->Field = (uintptr_t)Ptr_ - (uintptr_t)Dst; \
+            uintptr_t FieldPtrValue_ = (uintptr_t)Ptr_ - (uintptr_t)Dst;    \
+            memcpy(&Copy_->Field, &FieldPtrValue_, sizeof(FieldPtrValue_)); \
         }                                                                   \
         RR_ADVANCE_PTR(Size);                                               \
     }                                                                       \
     else                                                                    \
     {                                                                       \
         if (Copies_)                                                        \
-            *(uintptr_t *)&Copy_->Field = SIZE_MAX;                         \
+        {                                                                   \
+            uintptr_t FieldPtrValue_ = SIZE_MAX;                            \
+            memcpy(&Copy_->Field, &FieldPtrValue_, sizeof(FieldPtrValue_)); \
+        }                                                                   \
     }
 
 #define RR_BEGIN_SERIALIZE_BODY(StructType)            \
@@ -72,7 +80,26 @@
     }                           \
     return (uintptr_t)Ptr_ - (uintptr_t)Dst;
 
-#define RR_DESERIALIZE_FIELD(Func, Field, Count)                             \
+#define RR_EXPAND(X)                        X
+#define RR_GET_MACRO(_1, _2, _3, Name, ...) Name
+#define RR_DESERIALIZE_FIELD(...) \
+    RR_EXPAND(RR_GET_MACRO(       \
+        __VA_ARGS__,              \
+        RR_DESERIALIZE_FIELD3,    \
+        RR_DESERIALIZE_FIELD2)(__VA_ARGS__))
+
+#define RR_DESERIALIZE_FIELD2(Func, Field)                                   \
+    if ((uintptr_t)Struct_->Field == SIZE_MAX)                               \
+    {                                                                        \
+        Struct_->Field = NULL;                                               \
+    }                                                                        \
+    else                                                                     \
+    {                                                                        \
+        void *Ptr = (void *)((uintptr_t)Buffer + (uintptr_t)Struct_->Field); \
+        Struct_->Field = Func(Ptr);                                          \
+    }
+
+#define RR_DESERIALIZE_FIELD3(Func, Field, Count)                            \
     if ((uintptr_t)Struct_->Field == SIZE_MAX)                               \
     {                                                                        \
         Struct_->Field = NULL;                                               \
@@ -103,7 +130,7 @@ static size_t Rr_SerializeBuffer(void *Dst, void const *Src, size_t Count)
     return RR_ALIGN_POW2(Count, (size_t)RR_SAFE_ALIGNMENT);
 }
 
-static void *Rr_DeserializeBuffer(void *Buffer, size_t Count)
+static void *Rr_DeserializeBuffer(void *Buffer)
 {
     return Buffer;
 }
@@ -128,7 +155,7 @@ Rr_PipelineSpecialization *Rr_DeserializePipelineSpecialization(
 {
     RR_BEGIN_DESERIALIZE_BODY(Rr_PipelineSpecialization);
 
-    RR_DESERIALIZE_FIELD(Rr_DeserializeBuffer, Data, 1);
+    RR_DESERIALIZE_FIELD(Rr_DeserializeBuffer, Data);
 
     RR_END_DESERIALIZE_BODY();
 }
@@ -156,8 +183,8 @@ Rr_ShaderInfo *Rr_DeserializeShaderInfo(void *Buffer, size_t Count)
 {
     RR_BEGIN_DESERIALIZE_BODY(Rr_ShaderInfo);
 
-    RR_DESERIALIZE_FIELD(Rr_DeserializeBuffer, SPVData, 1);
-    RR_DESERIALIZE_FIELD(Rr_DeserializeBuffer, EntryPoint, 1);
+    RR_DESERIALIZE_FIELD(Rr_DeserializeBuffer, SPVData);
+    RR_DESERIALIZE_FIELD(Rr_DeserializeBuffer, EntryPoint);
     RR_DESERIALIZE_FIELD(
         Rr_DeserializePipelineSpecialization,
         Specializations,
@@ -189,7 +216,7 @@ Rr_VertexInputBinding *Rr_DeserializeVertexInputBinding(
 {
     RR_BEGIN_DESERIALIZE_BODY(Rr_VertexInputBinding);
 
-    RR_DESERIALIZE_FIELD(Rr_DeserializeBuffer, Attributes, 1);
+    RR_DESERIALIZE_FIELD(Rr_DeserializeBuffer, Attributes);
 
     RR_END_DESERIALIZE_BODY();
 }
@@ -217,7 +244,7 @@ size_t Rr_SerializeGraphicsPipelineCreateInfo(
     RR_END_SERIALIZE_BODY();
 }
 
-struct Rr_GraphicsPipelineCreateInfo *Rr_DeserializeGraphicsPipelineCreateInfo(
+Rr_GraphicsPipelineCreateInfo *Rr_DeserializeGraphicsPipelineCreateInfo(
     void *Buffer,
     size_t Count)
 {
@@ -229,7 +256,7 @@ struct Rr_GraphicsPipelineCreateInfo *Rr_DeserializeGraphicsPipelineCreateInfo(
         Rr_DeserializeVertexInputBinding,
         VertexInputBindings,
         Struct_->VertexInputBindingCount);
-    RR_DESERIALIZE_FIELD(Rr_DeserializeBuffer, ColorTargets, 1);
+    RR_DESERIALIZE_FIELD(Rr_DeserializeBuffer, ColorTargets);
 
     RR_END_DESERIALIZE_BODY();
 }
