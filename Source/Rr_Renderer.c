@@ -1647,18 +1647,26 @@ bool Rr_IsSRGBFormat(Rr_ImageFormat Format)
            Format == RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32;
 }
 
-static RR_THREAD_LOCAL char NextObjectName[32] = { 0 };
+static RR_THREAD_LOCAL char NextObjectName[RR_MAX_OBJECT_NAME_LENGTH] = { 0 };
 
 void Rr_SetNextObjectName(const char *Name)
 {
     strncpy(NextObjectName, Name, sizeof(NextObjectName) - 1);
 }
 
-void Rr_ConsumeNextObjectName(char Dst[32])
+void Rr_SetNextObjectNameF(const char *Format, ...)
+{
+    va_list Args;
+    va_start(Args, Format);
+    vsnprintf(NextObjectName, sizeof(NextObjectName), Format, Args);
+    va_end(Args);
+}
+
+void Rr_ConsumeNextObjectName(char Dst[RR_MAX_OBJECT_NAME_LENGTH])
 {
     if (NextObjectName[0] != '\0')
     {
-        for (uint32_t Index = 0; Index < 32; ++Index)
+        for (uint32_t Index = 0; Index < RR_MAX_OBJECT_NAME_LENGTH; ++Index)
         {
             Dst[Index] = NextObjectName[Index];
         }

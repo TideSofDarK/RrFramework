@@ -28,6 +28,7 @@ struct Rr_Image;
 
 #define RR_FRAME_OVERLAP         2
 #define RR_MAX_COLOR_ATTACHMENTS 4
+#define RR_MAX_OBJECT_NAME_LENGTH 32
 
 typedef struct Rr_Renderer Rr_Renderer;
 
@@ -209,5 +210,7 @@ RR_EXTERN size_t Rr_GetMaxComputeWorkgroupInvocations(void);
 RR_EXTERN bool Rr_IsSRGBFormat(Rr_ImageFormat Format);
 
 RR_EXTERN void Rr_SetNextObjectName(const char *Name);
+
+RR_EXTERN void Rr_SetNextObjectNameF(const char *Format, ...);
 
 #endif

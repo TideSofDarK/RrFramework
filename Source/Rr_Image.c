@@ -422,7 +422,7 @@ static Rr_Image *Rr_CreateImage(
         AllocatedImage->ViewStorage = Rr_CreateImageViewStorage();
 
 #ifdef RR_USE_GPU_DEBUG_UTILS
-        char ObjectName[32];
+        char ObjectName[RR_MAX_OBJECT_NAME_LENGTH];
         if (snprintf(
                 ObjectName,
                 sizeof(ObjectName) - 1,

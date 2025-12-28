@@ -319,7 +319,7 @@ extern Rr_CommandPools *Rr_AcquireCommandPools(void);
 
 extern void Rr_ReleaseCommandPools(void);
 
-extern void Rr_ConsumeNextObjectName(char Dst[32]);
+extern void Rr_ConsumeNextObjectName(char Dst[RR_MAX_OBJECT_NAME_LENGTH]);
 
 extern void Rr_SetVulkanObjectName(
     VkObjectType ObjectType,

@@ -138,7 +138,7 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
         AllocatedBuffer->MappedData = AllocationInfo.pMappedData;
 
 #ifdef RR_USE_GPU_DEBUG_UTILS
-        char ObjectName[32];
+        char ObjectName[RR_MAX_OBJECT_NAME_LENGTH];
         if (snprintf(
                 ObjectName,
                 sizeof(ObjectName) - 1,

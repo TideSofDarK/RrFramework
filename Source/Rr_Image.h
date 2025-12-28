@@ -30,7 +30,7 @@ struct Rr_Sampler
 {
     VkSampler Handle;
 
-    char Name[32];
+    char Name[RR_MAX_OBJECT_NAME_LENGTH];
 
     Rr_AtomicInt RefCount;
 };
@@ -102,7 +102,7 @@ struct Rr_Image
     uint32_t AllocatedImageCount;
     Rr_AllocatedImage AllocatedImages[RR_FRAME_OVERLAP];
 
-    char Name[32];
+    char Name[RR_MAX_OBJECT_NAME_LENGTH];
 
     Rr_AtomicInt RefCount;
 };

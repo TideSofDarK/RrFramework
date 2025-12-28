@@ -522,13 +522,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     Font->CreatedForSRGBSwapchain = IsSRGBSwapchain;
     Font->RangeCount = CodepointRangeCount;
     Font->Ranges = (Rr_UIFontRange *)(((char *)Font) + sizeof(Rr_UIFont));
-    char FontNameBuffer[64];
-    snprintf(
-        FontNameBuffer,
-        sizeof(FontNameBuffer),
-        "Rr.UI.Font#%d",
-        FontIndex);
-    Rr_SetNextObjectName(FontNameBuffer);
+    Rr_SetNextObjectNameF("Rr.UI.Font#%d", FontIndex);
     Font->Image = Rr_CreateImage2D(
         ATLAS_EXTENT,
         ImageFormat,
@@ -1996,13 +1990,7 @@ static inline void Rr_UIDrawBevel(
     Rr_Vec4 *BaseColor,
     bool Pressed)
 {
-    Rr_UIBevel(
-        Rr_UIReservePrimitive(
-            RR_UI_BEVEL_VERTEX_COUNT,
-            RR_UI_BEVEL_INDEX_COUNT),
-        Rect,
-        BaseColor,
-        Pressed);
+    Rr_UIBevel(Rr_UIReserveBevel(), Rect, BaseColor, Pressed);
 }
 
 static inline void Rr_UIDrawGlyph(
