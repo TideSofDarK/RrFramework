@@ -25,7 +25,6 @@ struct SCamera
     float Pitch{};
     float Yaw{};
     Rr_Vec3 Position{};
-
     Rr_Mat4 Transform = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
 
@@ -1813,7 +1812,7 @@ struct SModernRenderingApp
 
     void UI()
     {
-        if (Rr_UIBeginWindowEx("ModernRendering.cxx", NULL, 0))
+        Rr_UIBeginWindowEx("ModernRendering.cxx", NULL, 0);
         {
             if (Rr_UIBeginTree("General"))
             {
@@ -1837,8 +1836,8 @@ struct SModernRenderingApp
                 Rr_UIEndTree();
             }
             Lighting.UI();
-            Rr_UIEndWindow();
         }
+        Rr_UIEndWindow();
     }
 
     void Iterate()

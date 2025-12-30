@@ -77,6 +77,7 @@ struct Rr_UIClipRect
     uint32_t FirstIndex;
     Rr_Rect Rect;
     Rr_Image2D *Image;
+    bool ForceLinearPipeline;
 };
 
 typedef RR_ARRAY(Rr_UIClipRect) Rr_UIClipRectArray;
@@ -103,7 +104,6 @@ struct Rr_UIWindow
     bool UndockNextFrame;
     Rr_Vec2 UndockedOffset;
 
-    bool Tabs;
     Rr_UIWindow *SelectedTab;
     Rr_UIWindow *TabsParent;
 
@@ -117,7 +117,6 @@ struct Rr_UIWindow
     float MaxRigidWidth;
 
     Rr_Map *WidgetMap;
-    Rr_Map *ChildWindowMap;
 
     Rr_UIWindow *TopLevelParent;
 };
@@ -142,7 +141,8 @@ struct Rr_UILayout
 {
     Rr_UIWindow *Window;
     bool WasCollapsed;
-
+    bool SkipItems;
+    bool SkipCompletely;
     bool *Open;
 
     Rr_Vec2 WindowPadding;
@@ -188,10 +188,9 @@ struct Rr_UILayout
     Rr_UIClipRectArray *ClipRects;
 
     Rr_UILayout *TopLevelParent;
+    Rr_UILayout *Previous;
 
     uint32_t AdvanceCount;
-
-    Rr_UILayout *Previous;
 };
 
 typedef struct Rr_UIMouseButton Rr_UIMouseButton;
@@ -235,7 +234,7 @@ struct Rr_UIContext
     Rr_Vec2 NextWindowOffset;
     Rr_Vec2 NextWindowOpenOffset;
     Rr_Vec2 NextWindowPadding;
-    int32_t NextWindowCreateCollapsed;
+    int8_t NextWindowCreateCollapsed;
 
     Rr_UIMouseButton LeftMouseButton;
     bool MouseMoved;
@@ -768,6 +767,11 @@ static inline bool Rr_UIWindowUndockable(Rr_UIWindow *Window)
     return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
 }
 
+static inline bool Rr_UIWindowTabs(Rr_UIWindow *Window)
+{
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_TABS_BIT);
+}
+
 static inline bool Rr_UIWindowCollapsed(Rr_UIWindow *Window)
 {
     return Window->Collapsed && !Rr_UIWindowNoTitleBar(Window);
@@ -901,6 +905,22 @@ static inline Rr_UILayout *Rr_UICurrentLayout(void)
     return RR_LAST_ARRAY_ELEMENT(&gUIContext->LayoutStack);
 }
 
+static inline void Rr_UIPushEmptyLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
+{
+    /* I guess we can skip zeroing since skip flags should make it clear it's an
+     * empty layout. */
+
+    Rr_UILayout *Layout =
+        RR_ALLOC_NO_ZERO(sizeof(Rr_UILayout), gUIContext->FrameArena);
+    Layout->Window = Window;
+    Layout->SkipCompletely = true;
+    Layout->SkipItems = true;
+
+    *RR_PUSH_INTO_ARRAY(&gUIContext->LayoutStack, gUIContext->FrameArena) =
+        Layout;
+    Rr_UIPushIDHash(Hash);
+}
+
 static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
 {
     Rr_UILayout *Layout =
@@ -930,7 +950,7 @@ static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
         Layout->TopLevelParent = Layout;
     }
 
-    if (Window->Tabs)
+    if (Rr_UIWindowTabs(Window))
     {
         Layout->WindowPadding = Rr_V2F(0.0f);
         Layout->DeferredSelectedTab = Window->SelectedTab;
@@ -951,6 +971,11 @@ static inline void Rr_UIPopLayout(void)
     Rr_UIPopID();
     assert(gUIContext->LayoutStack.Count);
     RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->LayoutStack));
+}
+
+static inline bool Rr_UISkipItems(void)
+{
+    return Rr_UICurrentLayout()->SkipItems;
 }
 
 static inline Rr_UIWindow *Rr_UICurrentWindow(void)
@@ -2686,9 +2711,10 @@ static inline bool Rr_UIScrollBehavior(
     return false;
 }
 
+/* TODO: Returning by value would be less error-prone. */
 static inline Rr_UIClipRect *Rr_UIEndClipRect(Rr_UILayout *Layout)
 {
-    if (!Layout)
+    if (!Layout || Layout->SkipCompletely)
     {
         return NULL;
     }
@@ -2717,6 +2743,7 @@ static inline void Rr_UIBeginClipRect(Rr_UILayout *Layout, Rr_Rect *Rect)
         ClipRect->Rect = *Rect;
     }
     ClipRect->Image = Rr_UICurrentFont()->Image;
+    ClipRect->ForceLinearPipeline = false;
 
     Layout->CurrentClipRect = ClipRect;
     Layout->MouseInsideClipRect =
@@ -3040,7 +3067,7 @@ static inline Rr_Vec2 Rr_UICalculateTitleBarSize(Rr_UILayout *Layout)
     float Width = 0.0f;
     float Height = 0.0f;
 
-    if (Window->Tabs)
+    if (Rr_UIWindowTabs(Window))
     {
         Width += Layout->TabsCursor.X - Layout->TabsCursorStart.X;
     }
@@ -3496,14 +3523,17 @@ void Rr_UISetNextWindowOpenOffset(Rr_Vec2 Offset)
     gUIContext->NextWindowOpenOffset = Offset;
 }
 
-static inline void Rr_UIConsumeNextWindowOpenOffset(Rr_UIWindow *Window)
+static inline bool Rr_UIConsumeNextWindowOpenOffset(Rr_Vec2 *OutResult)
 {
     if (gUIContext->NextWindowOpenOffset.X != INFINITY &&
         gUIContext->NextWindowOpenOffset.Y != INFINITY)
     {
-        Window->Rect.Offset = Rr_FloorV2(gUIContext->NextWindowOpenOffset);
+        *OutResult = Rr_FloorV2(gUIContext->NextWindowOpenOffset);
         gUIContext->NextWindowOpenOffset = Rr_V2F(INFINITY);
+        return true;
     }
+
+    return false;
 }
 
 void Rr_UISetNextWindowExtent(Rr_Vec2 Extent)
@@ -3546,13 +3576,6 @@ static inline void Rr_UIConsumeNextWindowCreateCollapsed(Rr_UIWindow *Window)
     gUIContext->NextWindowCreateCollapsed = 0;
 }
 
-static inline void Rr_UISwapWindowZ(Rr_UIWindow *WindowA, Rr_UIWindow *WindowB)
-{
-    int32_t Temp = WindowA->Z;
-    WindowA->Z = WindowB->Z;
-    WindowB->Z = Temp;
-}
-
 static inline void Rr_UIPutWindowOnTop(Rr_UIWindow *Window)
 {
     if (Window->Child)
@@ -3566,7 +3589,7 @@ static inline void Rr_UIPutWindowOnTop(Rr_UIWindow *Window)
     Window->TopLevelParent->Z = gUIContext->HighestWindow->Z + 1;
 }
 
-static inline bool Rr_UIBeginWindowImpl(
+static inline bool Rr_UIPushWindowLayout(
     Rr_UIWindow *Window,
     Rr_UIHash Hash,
     bool *Open)
@@ -3576,6 +3599,9 @@ static inline bool Rr_UIBeginWindowImpl(
     Rr_UIConsumeNextWindowCreateCollapsed(Window);
     bool WindowOffsetConsumed = Rr_UIConsumeNextWindowOffset(Window);
     bool WindowExtentConsumed = Rr_UIConsumeNextWindowExtent(Window);
+    Rr_Vec2 OpenOffset;
+    bool WindowOpenOffsetConsumed =
+        Rr_UIConsumeNextWindowOpenOffset(&OpenOffset);
 
     /* Return if closed.
      * Also handle show after being closed.
@@ -3589,28 +3615,27 @@ static inline bool Rr_UIBeginWindowImpl(
     Window->Open = (Open == NULL || *Open == true);
     if (!Window->Open)
     {
+        Rr_UIPushEmptyLayout(Hash, Window);
+
         return false;
     }
-    if (WasClosed)
+    else if (WasClosed)
     {
-        Rr_UIConsumeNextWindowOpenOffset(Window);
+        if (WindowOpenOffsetConsumed)
+        {
+            Window->Rect.Offset = OpenOffset;
+        }
 
         Window->OpenedThisFrame = true;
         Window->SkipThisFrame = true;
         Rr_UIPutWindowOnTop(Window);
     }
 
-    /* NOTE: Have to access current window and finish its clip rect. */
-
-    Rr_UIEndClipRect(Rr_UICurrentLayout());
-
-    Rr_UILayout *ParentLayout = NULL;
-    if (Window->Child)
-    {
-        ParentLayout = Rr_UICurrentLayout();
-    }
+    Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
+    Rr_UIEndClipRect(ParentLayout);
 
     Rr_UILayout *Layout = Rr_UIPushLayout(Hash, Window);
+
     Layout->LockOffset = WindowOffsetConsumed;
     Layout->LockExtent = WindowExtentConsumed;
     Layout->Open = Open;
@@ -3669,7 +3694,7 @@ static inline bool Rr_UIBeginWindowImpl(
 
     /* Add title bar or tab bar if necessary. */
 
-    if (Window->Tabs)
+    if (Rr_UIWindowTabs(Window))
     {
         Rr_UIAddWindowTabBar(Layout);
 
@@ -3687,12 +3712,7 @@ static inline bool Rr_UIBeginWindowImpl(
 
     if (Rr_UIWindowCollapsed(Window) && Layout->WasCollapsed)
     {
-        if (Window->Tabs)
-        {
-            return true;
-        }
-
-        Rr_UIEndWindow();
+        Layout->SkipItems = true;
 
         return false;
     }
@@ -3739,7 +3759,7 @@ static inline bool Rr_UIBeginWindowImpl(
 
     /* Keep current clip rect in case of a tabs window. */
 
-    if (!Window->Tabs)
+    /* if (!Rr_UIWindowTabs(Window)) */
     {
         Rr_UIEndClipRect(Layout);
 
@@ -3778,10 +3798,8 @@ static inline void Rr_UIBeginPopupWindow(Rr_UIHash Hash, Rr_UIWindowFlags Flags)
     Rr_UIWindow *Window = &gUIContext->PopupWindow;
     Window->Flags = Flags;
     Window->TopLevelParent = Window;
-    if (Rr_UIBeginWindowImpl(Window, Hash, NULL))
-    {
-        Rr_UICurrentLayout()->DeferredClampOffsetToScreen = true;
-    }
+    Rr_UIPushWindowLayout(Window, Hash, NULL);
+    Rr_UICurrentLayout()->DeferredClampOffsetToScreen = true;
 }
 
 static inline void Rr_UIClosePopupWindow(void)
@@ -3851,12 +3869,135 @@ static inline bool Rr_UIGenericButton(
     return ClickResult.ClickCount;
 }
 
+static bool Rr_UIBeginDockedChildWindow(
+    Rr_UIWindow *Window,
+    Rr_UIHash TitleHash,
+    bool *Open,
+    Rr_UILayout *ParentLayout,
+    Rr_UIWindow *ParentWindow)
+{
+    if (ParentLayout->SkipCompletely)
+    {
+        Rr_UIPushEmptyLayout(TitleHash, Window);
+
+        return false;
+    }
+
+    if (Rr_UIWindowTabs(ParentWindow))
+    {
+        /* TODO: Investigate better ways of adding tab buttons (without
+         * pushing more clip rects). */
+
+        Rr_Rect TabContentsRect = Rr_UIEndClipRect(ParentLayout)->Rect;
+        Rr_UIBeginClipRect(ParentLayout, &ParentLayout->Rect);
+
+        Window->TabsParent = ParentWindow;
+
+        bool Selected = ParentWindow->SelectedTab == Window;
+        if (!ParentLayout->DeferredSelectedTab)
+        {
+            ParentLayout->DeferredSelectedTab = Window;
+        }
+        if (!ParentWindow->SelectedTab)
+        {
+            ParentWindow->SelectedTab = Window;
+            Selected = true;
+        }
+
+        Rr_Vec2 TitleSize =
+            Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0, 0);
+        Rr_Rect ButtonRect = {
+            .Offset = ParentLayout->TabsCursor,
+            .Extent = Rr_V2(
+                TitleSize.X + gUIContext->TitleBarPadding.X * 2.0f,
+                gUIContext->TitleBarHeight),
+        };
+        if (Rr_UIGenericButton(
+                ParentLayout,
+                Window->Title,
+                &ButtonRect,
+                &gUIContext->Colors.TitleForeground,
+                Selected ? &gUIContext->Colors.TitleBackground
+                         : &gUIContext->Colors.TitleBackgroundInactive,
+                Selected ? &gUIContext->Colors.TitleBackground
+                         : &gUIContext->Colors.ButtonHeld))
+        {
+            if (Rr_UIWindowUndockable(Window) && gUIContext->CtrlHeld)
+            {
+                Rr_Vec2 TitlePosition = ButtonRect.Offset;
+                TitlePosition.X += gUIContext->TitleBarPadding.X;
+                TitlePosition.Y += gUIContext->TitleBarPadding.Y;
+                Window->UndockedOffset =
+                    Rr_UIGetWindowOffsetRelativeToTitle(Window, TitlePosition);
+                Window->UndockNextFrame = true;
+
+                if (Selected)
+                {
+                    ParentLayout->DeferredSelectedTab =
+                        ParentLayout->LastAddedTab;
+                }
+
+                Rr_UIConsumeMouseInput();
+            }
+            else if (!Selected)
+            {
+                ParentLayout->DeferredSelectedTab = Window;
+
+                Rr_UIConsumeMouseInput();
+            }
+        }
+
+        ParentLayout->TabsCursor.X += ButtonRect.Extent.X;
+        ParentLayout->LastAddedTab = Window;
+
+        Rr_UIEndClipRect(ParentLayout);
+        Rr_UIBeginClipRect(ParentLayout, &TabContentsRect);
+
+        if (!Selected || ParentLayout->WasCollapsed)
+        {
+            Rr_UIPushEmptyLayout(TitleHash, Window);
+
+            return false;
+        }
+
+        Window->Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
+        Window->Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
+        Window->Tab = true;
+    }
+
+    Rr_UIWindowFlags const CHILD_FLAGS =
+        RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT | RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
+        RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
+
+    Window->Flags |= CHILD_FLAGS;
+    Window->Child = true;
+    Window->Rect.Offset = ParentLayout->Cursor;
+    Window->Z = ParentWindow->Z;
+    Window->TopLevelParent = ParentWindow->TopLevelParent;
+
+    if (ParentLayout->SkipItems)
+    {
+        Rr_UIPushEmptyLayout(TitleHash, Window);
+
+        return false;
+    }
+    else
+    {
+        return Rr_UIPushWindowLayout(Window, TitleHash, Open);
+    }
+}
+
 bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
 {
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
     Rr_UIWindow *ParentWindow = NULL;
 
-    Rr_Map **WindowMap;
+    /* TODO: Resize handle is broken unless we force tabs to auto-resize. */
+    if (RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_TABS_BIT))
+    {
+        Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
+    }
+
     Rr_UIWindow **WindowRef;
     Rr_UIWindow *Window;
 
@@ -3866,13 +4007,9 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
     if (ParentLayout)
     {
         ParentWindow = ParentLayout->Window;
-        WindowMap = &ParentWindow->ChildWindowMap;
     }
-    else
-    {
-        WindowMap = &gUIContext->WindowMap;
-    }
-    WindowRef = RR_GET_MAP_VALUE(WindowMap, TitleHash, gUIContext->Arena);
+    WindowRef =
+        RR_GET_MAP_VALUE(&gUIContext->WindowMap, TitleHash, gUIContext->Arena);
     Window = *WindowRef;
     if (Window == NULL)
     {
@@ -3884,92 +4021,16 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
         Window->Flags = Flags;
     }
 
-    if (ParentWindow && !Window->UndockNextFrame && !Window->Undocked)
+    bool IsDockedChild =
+        ParentWindow && !Window->UndockNextFrame && !Window->Undocked;
+    if (IsDockedChild)
     {
-        if (ParentWindow->Tabs)
-        {
-            Window->TabsParent = ParentWindow;
-
-            bool Selected = ParentWindow->SelectedTab == Window;
-            if (!ParentLayout->DeferredSelectedTab)
-            {
-                ParentLayout->DeferredSelectedTab = Window;
-            }
-            if (!ParentWindow->SelectedTab)
-            {
-                ParentWindow->SelectedTab = Window;
-                Selected = true;
-            }
-
-            Rr_Vec2 TitleSize =
-                Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0, 0);
-            Rr_Rect ButtonRect = {
-                .Offset = ParentLayout->TabsCursor,
-                .Extent = Rr_V2(
-                    TitleSize.X + gUIContext->TitleBarPadding.X * 2.0f,
-                    gUIContext->TitleBarHeight),
-            };
-            if (Rr_UIGenericButton(
-                    ParentLayout,
-                    Window->Title,
-                    &ButtonRect,
-                    &gUIContext->Colors.TitleForeground,
-                    Selected ? &gUIContext->Colors.TitleBackground
-                             : &gUIContext->Colors.TitleBackgroundInactive,
-                    Selected ? &gUIContext->Colors.TitleBackground
-                             : &gUIContext->Colors.ButtonHeld))
-            {
-                if (Rr_UIWindowUndockable(Window) && gUIContext->CtrlHeld)
-                {
-                    Rr_Vec2 TitlePosition = ButtonRect.Offset;
-                    TitlePosition.X += gUIContext->TitleBarPadding.X;
-                    TitlePosition.Y += gUIContext->TitleBarPadding.Y;
-                    Window->UndockedOffset =
-                        Rr_UIGetWindowOffsetRelativeToTitle(
-                            Window,
-                            TitlePosition);
-                    Window->UndockNextFrame = true;
-
-                    if (Selected)
-                    {
-                        ParentLayout->DeferredSelectedTab =
-                            ParentLayout->LastAddedTab;
-                    }
-
-                    Rr_UIConsumeMouseInput();
-                }
-                else if (!Selected)
-                {
-                    ParentLayout->DeferredSelectedTab = Window;
-
-                    Rr_UIConsumeMouseInput();
-                }
-            }
-
-            ParentLayout->TabsCursor.X += ButtonRect.Extent.X;
-            ParentLayout->LastAddedTab = Window;
-
-            if (!Selected || ParentLayout->WasCollapsed)
-            {
-                return false;
-            }
-
-            Window->Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
-            Window->Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
-            Window->Tab = true;
-        }
-
-        Rr_UIWindowFlags const CHILD_FLAGS =
-            RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT | RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
-            RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
-
-        Window->Flags |= CHILD_FLAGS;
-        Window->Child = true;
-        Window->Rect.Offset = ParentLayout->Cursor;
-        Window->Z = ParentWindow->Z;
-        Window->TopLevelParent = ParentWindow->TopLevelParent;
-
-        return Rr_UIBeginWindowImpl(Window, TitleHash, Open);
+        return Rr_UIBeginDockedChildWindow(
+            Window,
+            TitleHash,
+            Open,
+            ParentLayout,
+            ParentWindow);
     }
 
     if (Window->CreatedThisFrame)
@@ -4002,7 +4063,7 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
         Open = &Window->Undocked;
     }
 
-    return Rr_UIBeginWindowImpl(Window, TitleHash, Open);
+    return Rr_UIPushWindowLayout(Window, TitleHash, Open);
 }
 
 bool Rr_UIBeginWindow(char const *Title)
@@ -4028,6 +4089,12 @@ void Rr_UIEndWindow(void)
     Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
+    if (Layout->SkipCompletely)
+    {
+        Rr_UIPopLayout();
+        return;
+    }
+
     Rr_UIWindow *Window = Layout->Window;
     Rr_UIFont *Font = Rr_UICurrentFont();
 
@@ -4147,9 +4214,6 @@ void Rr_UIEndWindow(void)
 
     if (!Rr_UIWindowNoBorders(Window))
     {
-        /* Rr_Rect BordersRect = */
-        /*     Rr_ResizeRect(&Layout->Rect, gUIContext->DoubleBevelThickness);
-         */
         Rr_UIDrawDoubleBevel(
             &TotalClipRect,
             Rr_UIShouldHightlightWindow(Window)
@@ -4345,7 +4409,7 @@ void Rr_UIEndWindow(void)
     Rr_UIPopLayout();
 
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
-    if (ParentLayout)
+    if (ParentLayout && !ParentLayout->SkipCompletely)
     {
         Rr_UIWindow *ParentWindow = ParentLayout->Window;
 
@@ -4382,10 +4446,6 @@ void Rr_UIEndWindow(void)
             {
                 Rr_UIAdvance(WindowExtent, Rr_V2F(0.0f));
             }
-
-            /* Rr_Vec2 Advance = Window->Rect.Extent; */
-            /* Advance.Y -= Rr_UICurrentContentsMargin().Y; */
-            /* Rr_UIAdvance(Window->Rect.Extent); */
         }
 
         /* Resume clip rect. */
@@ -4396,6 +4456,11 @@ void Rr_UIEndWindow(void)
 
 void Rr_UIBeginHorizontal(void)
 {
+    if (Rr_UISkipItems())
+    {
+        return;
+    }
+
     assert(
         !Rr_UIIsHorizontal() && "Did you forget to call Rr_EndHorizontal()?");
     Rr_UILayout *Layout = Rr_UICurrentLayout();
@@ -4405,6 +4470,11 @@ void Rr_UIBeginHorizontal(void)
 
 void Rr_UIEndHorizontal(void)
 {
+    if (Rr_UISkipItems())
+    {
+        return;
+    }
+
     assert(
         Rr_UIIsHorizontal() && "Did you forget to call Rr_BeginHorizontal()?");
     Rr_UILayout *Layout = Rr_UICurrentLayout();
@@ -4451,59 +4521,6 @@ static inline float Rr_UISetupFlexibleWidget(
     return DesiredWidgetWidth;
 }
 
-bool Rr_UIBeginTabs(char const *Title)
-{
-    Rr_UIAssertWindow();
-    assert(!Rr_UIIsHorizontal() && "Tabs can't be aligned horizontally!");
-
-    Rr_UIWindowFlags Flags = 0;
-    Flags |= RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT;
-    Flags |= RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
-    Flags |= RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
-
-    Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
-    Rr_UIWindow *ParentWindow = ParentLayout->Window;
-
-    size_t TitleLength;
-    Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
-
-    Rr_UIWindow **WindowRef = RR_GET_MAP_VALUE(
-        &ParentWindow->ChildWindowMap,
-        TitleHash,
-        gUIContext->Arena);
-    Rr_UIWindow *Window = *WindowRef;
-
-    if (Window == NULL)
-    {
-        Window = Rr_UICreateWindow(TitleLength, Title, TitleHash, Flags);
-        Window->Child = true;
-        Window->Tabs = true;
-        *WindowRef = Window;
-    }
-    else
-    {
-        Window->Flags = Flags;
-    }
-
-    Window->Rect.Offset = ParentLayout->Cursor;
-    Window->Z = ParentWindow->Z + 1;
-    Window->TopLevelParent = ParentWindow->TopLevelParent;
-
-    assert(
-        Window->Added == false && "There already is a window with this title!");
-    return Rr_UIBeginWindowImpl(Window, TitleHash, NULL);
-}
-
-void Rr_UIEndTabs(void)
-{
-    Rr_UIAssertWindow();
-
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
-    assert(Layout->Window->Tabs && "Did you forget to call Rr_UIBeginTabs()?");
-
-    Rr_UIEndWindow();
-}
-
 void Rr_UISetNextTreeExpanded(void)
 {
     Rr_UILayout *Layout = Rr_UICurrentLayout();
@@ -4518,6 +4535,11 @@ void Rr_UISetNextTreeCollapsed(void)
 
 bool Rr_UIBeginTree(char const *Title)
 {
+    if (Rr_UISkipItems())
+    {
+        return false;
+    }
+
     Rr_UIAssertWindow();
     assert(
         Rr_UIIsHorizontal() == false && "Trees can't be aligned horizontally!");
@@ -4728,6 +4750,11 @@ void Rr_UIPopWidgetExtent(void)
 
 void Rr_UISeparator(void)
 {
+    if (Rr_UISkipItems())
+    {
+        return;
+    }
+
     Rr_UIAssertWindow();
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIAssertNoHorizontal(Layout);
@@ -4771,6 +4798,11 @@ void Rr_UISeparator(void)
 
 void Rr_UITextEx(char const *Text, Rr_UITextFlags Flags)
 {
+    if (Rr_UISkipItems())
+    {
+        return;
+    }
+
     Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
@@ -4790,6 +4822,11 @@ void Rr_UITextEx(char const *Text, Rr_UITextFlags Flags)
 
 void Rr_UIText(char const *Text)
 {
+    if (Rr_UISkipItems())
+    {
+        return;
+    }
+
     Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
@@ -4809,6 +4846,11 @@ void Rr_UIText(char const *Text)
 
 void Rr_UITextF(char const *Format, ...)
 {
+    if (Rr_UISkipItems())
+    {
+        return;
+    }
+
     int BufferSize;
     va_list Args;
 
@@ -4831,6 +4873,11 @@ void Rr_UITextF(char const *Format, ...)
 
 void Rr_UILabelText(char const *Title, char const *Text)
 {
+    if (Rr_UISkipItems())
+    {
+        return;
+    }
+
     Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
@@ -4878,6 +4925,11 @@ void Rr_UILabelText(char const *Title, char const *Text)
 
 bool Rr_UIButton(char const *Text)
 {
+    if (Rr_UISkipItems())
+    {
+        return false;
+    }
+
     Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
@@ -4940,6 +4992,11 @@ bool Rr_UIRadioButton(
     int32_t *SelectedOption,
     int32_t ThisOption)
 {
+    if (Rr_UISkipItems())
+    {
+        return false;
+    }
+
     Rr_UIAssertWindow();
     assert(SelectedOption != NULL);
 
@@ -5015,6 +5072,11 @@ bool Rr_UIRadioButton(
 
 bool Rr_UICheckbox(char const *Title, bool *Checked)
 {
+    if (Rr_UISkipItems())
+    {
+        return false;
+    }
+
     Rr_UIAssertWindow();
     assert(Checked != NULL);
 
@@ -6657,6 +6719,11 @@ static inline bool Rr_UIInputScalarMulti(
     int Rows,
     Rr_UIScalarType ScalarType)
 {
+    if (Rr_UISkipItems())
+    {
+        return false;
+    }
+
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
@@ -6723,6 +6790,11 @@ bool Rr_UIInputField(
     Rr_UIInputFieldFilterFunc FilterFunc,
     Rr_UIInputFieldFlags Flags)
 {
+    if (Rr_UISkipItems())
+    {
+        return false;
+    }
+
     Rr_UIAssertWindow();
     assert(Title != NULL);
     assert(BufferCapacity);
@@ -7205,14 +7277,16 @@ static inline void Rr_UIColorPickerPopup(
         RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT |
         RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT;
 
-    float TargetSize = gUIContext->DefaultFont->LineHeight * 15.0f;
-    float Step = TargetSize / 6.0f;
+    float SVSelectorSize = Rr_UICurrentLineHeight() * 15.0f;
+    float SVSelectorActiveSize =
+        SVSelectorSize - gUIContext->DoubleBevelThickness * 2.0f;
+    float HSelectorStep = SVSelectorSize / 6.0f;
 
     Rr_Vec2 WindowPadding = Rr_UICurrentWindowPadding();
 
     Rr_Vec2 Position = Center;
-    Position.X -= (WindowPadding.X + TargetSize) / 2.0f;
-    Position.Y -= (WindowPadding.Y + TargetSize) / 2.0f;
+    Position.X -= (WindowPadding.X + SVSelectorSize) / 2.0f;
+    Position.Y -= (WindowPadding.Y + SVSelectorSize) / 2.0f;
     Rr_UISetNextWindowOpenOffset(Position);
     Rr_UIBeginPopupWindow(Hash, POPUP_WINDOW_FLAGS);
 
@@ -7220,15 +7294,14 @@ static inline void Rr_UIColorPickerPopup(
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
 
-    Rr_Vec4 OpaqueColor;
-    memcpy(&OpaqueColor, Channels, sizeof(float) * (size_t)ChannelCount);
-    OpaqueColor.A = 1.0f;
-
     bool HSVChanged = false;
 
     Rr_UIBeginHorizontal();
 
     /* Draw saturation and value selector. */
+
+    Rr_Vec2 SVCursor =
+        Rr_AddV2(Layout->Cursor, Rr_V2F(gUIContext->DoubleBevelThickness));
 
     static Rr_Vec3 StaticHSV;
     if (Window->OpenedThisFrame)
@@ -7242,28 +7315,31 @@ static inline void Rr_UIColorPickerPopup(
     Rr_Vec3 TopRightColor = Rr_UIHSVToRGB(&TopRightColorHSV);
 
     {
+        Rr_UIPushSubClipRect(Layout, &Layout->CurrentClipRect->Rect);
+        Layout->CurrentClipRect->ForceLinearPipeline = true;
+
         Rr_UIVertex Vertices[4];
 
         Vertices[0].Color = Rr_V4F(1.0f);
-        Vertices[0].Position = Layout->Cursor;
+        Vertices[0].Position = SVCursor;
         Vertices[0].UV = Rr_V2F(0.0f);
 
         Vertices[1].Color =
             Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 1.0f);
-        Vertices[1].Position = Layout->Cursor;
-        Vertices[1].Position.X += TargetSize;
+        Vertices[1].Position = SVCursor;
+        Vertices[1].Position.X += SVSelectorActiveSize;
         Vertices[1].UV = Rr_V2F(0.0f);
 
         Vertices[2].Color =
             Rr_V4(TopRightColor.X, TopRightColor.Y, TopRightColor.Z, 1.0f);
-        Vertices[2].Position = Layout->Cursor;
-        Vertices[2].Position.X += TargetSize;
-        Vertices[2].Position.Y += TargetSize;
+        Vertices[2].Position = SVCursor;
+        Vertices[2].Position.X += SVSelectorActiveSize;
+        Vertices[2].Position.Y += SVSelectorActiveSize;
         Vertices[2].UV = Rr_V2F(0.0f);
 
         Vertices[3].Color = Rr_V4F(1.0f);
-        Vertices[3].Position = Layout->Cursor;
-        Vertices[3].Position.Y += TargetSize;
+        Vertices[3].Position = SVCursor;
+        Vertices[3].Position.Y += SVSelectorActiveSize;
         Vertices[3].UV = Rr_V2F(0.0f);
 
         Rr_UIDrawQuadVertices(Vertices);
@@ -7274,21 +7350,23 @@ static inline void Rr_UIColorPickerPopup(
         Vertices[3].Color = Rr_V4(0.0f, 0.0f, 0.0f, 1.0f);
 
         Rr_UIDrawQuadVertices(Vertices);
+
+        Rr_UIPopSubClipRect(Layout);
     }
 
     Rr_UIDrawDoubleBevel(
-        &(Rr_Rect){ Layout->Cursor, Rr_V2F(TargetSize) },
+        &(Rr_Rect){ Layout->Cursor, Rr_V2F(SVSelectorSize) },
         &gUIContext->Colors.SelectedOutline,
         gUIContext->DoubleBevelThickness);
 
-    float SVSelectorCircleSize = TargetSize * 0.035f;
+    float SVSelectorCircleSize = SVSelectorSize * 0.035f;
 
     Rr_UIHash SVSelectorHash =
         Rr_UIGetHash(sizeof("SVSelector"), "SVSelector", Rr_UICurrentHash());
 
     Rr_Rect SVSelectorRect = {
         .Offset = Layout->Cursor,
-        .Extent = Rr_V2F(TargetSize),
+        .Extent = Rr_V2F(SVSelectorSize),
     };
 
     Rr_UIClickResult ClickResult =
@@ -7296,8 +7374,8 @@ static inline void Rr_UIColorPickerPopup(
 
     if (ClickResult.ClickCount || ClickResult.Held)
     {
-        Rr_Vec2 Delta = Rr_SubV2(gUIContext->MousePosition, Layout->Cursor);
-        Delta = Rr_DivV2F(Delta, TargetSize);
+        Rr_Vec2 Delta = Rr_SubV2(gUIContext->MousePosition, SVCursor);
+        Delta = Rr_DivV2F(Delta, SVSelectorActiveSize);
         Delta.X = RR_CLAMP(0.0f, Delta.X, 1.0f);
         Delta.Y = RR_CLAMP(0.0f, Delta.Y, 1.0f);
 
@@ -7313,10 +7391,12 @@ static inline void Rr_UIColorPickerPopup(
 
     bool SVSelectorHeld = ClickResult.Held;
     Rr_Vec2 SVSelectorCircleOffset = Rr_AddV2(
-        Layout->Cursor,
-        Rr_V2(StaticHSV.Y * TargetSize, (1.0f - StaticHSV.Z) * TargetSize));
+        SVCursor,
+        Rr_V2(
+            StaticHSV.Y * SVSelectorActiveSize,
+            (1.0f - StaticHSV.Z) * SVSelectorActiveSize));
 
-    Rr_UIAdvance(Rr_V2F(TargetSize), Rr_V2F(0.0f));
+    Rr_UIAdvance(Rr_V2F(SVSelectorSize), Rr_V2F(0.0f));
 
     Rr_UIHash HSelectorHash =
         Rr_UIGetHash(sizeof("HSelector"), "HSelector", Rr_UICurrentHash());
@@ -7327,13 +7407,17 @@ static inline void Rr_UIColorPickerPopup(
         Rr_V4(0.0f, 0.0f, 1.0f, 1.0f), Rr_V4(1.0f, 0.0f, 1.0f, 1.0f),
     };
 
-    float HSelectorWidth = TargetSize * 0.15f;
+    float HSelectorWidth = SVSelectorSize * 0.15f;
 
     Rr_Rect HSelectorRect = {
-        .Offset = Layout->Cursor,
-        .Extent = Rr_V2(HSelectorWidth, TargetSize),
+        .Offset = Rr_AddV2F(Layout->Cursor, gUIContext->DoubleBevelThickness),
+        .Extent = Rr_SubV2F(
+            Rr_V2(HSelectorWidth, SVSelectorSize),
+            gUIContext->DoubleBevelThickness * 2.0f),
     };
 
+    Rr_UIPushSubClipRect(Layout, &Layout->CurrentClipRect->Rect);
+    Layout->CurrentClipRect->ForceLinearPipeline = true;
     for (size_t Index = 0; Index < 6; ++Index)
     {
         Rr_UIDrawVerticalGradientQuad(
@@ -7349,19 +7433,23 @@ static inline void Rr_UIColorPickerPopup(
             &HColors[Index],
             &HColors[(Index + 1) % 6]);
     }
+    Rr_UIPopSubClipRect(Layout);
 
+    Rr_Rect HBevelRect =
+        Rr_ResizeRect(&HSelectorRect, gUIContext->DoubleBevelThickness);
     Rr_UIDrawDoubleBevel(
-        &HSelectorRect,
+        &HBevelRect,
         &gUIContext->Colors.SelectedOutline,
         gUIContext->DoubleBevelThickness);
 
     /* Draw hue handles. */
 
     float TriangleOutline = 2.0f;
-    float TriangleSize = TargetSize * 0.035f;
+    float TriangleSize = SVSelectorSize * 0.035f;
     Rr_Vec2 LeftTriangleOffset = Rr_V2(
-        Layout->Cursor.X + TriangleSize * 0.5f,
-        Layout->Cursor.Y + StaticHSV.X * TargetSize);
+        HSelectorRect.Offset.X + TriangleSize * 0.5f -
+            gUIContext->DoubleBevelThickness,
+        HSelectorRect.Offset.Y + StaticHSV.X * SVSelectorActiveSize);
     Rr_UIDrawFitTriangleFilled(
         LeftTriangleOffset,
         TriangleSize + TriangleOutline,
@@ -7373,8 +7461,9 @@ static inline void Rr_UIColorPickerPopup(
         RR_ANGLE_DEG(0.0f),
         &gUIContext->Colors.Foreground);
     Rr_Vec2 RightTriangleOffset = Rr_V2(
-        Layout->Cursor.X + HSelectorWidth - TriangleSize * 0.5f,
-        Layout->Cursor.Y + StaticHSV.X * TargetSize);
+        HSelectorRect.Offset.X + HSelectorWidth - TriangleSize * 0.5f -
+            gUIContext->DoubleBevelThickness,
+        HSelectorRect.Offset.Y + StaticHSV.X * SVSelectorActiveSize);
     Rr_UIDrawFitTriangleFilled(
         RightTriangleOffset,
         TriangleSize + TriangleOutline,
@@ -7392,7 +7481,7 @@ static inline void Rr_UIColorPickerPopup(
     if (ClickResult.ClickCount || ClickResult.Held)
     {
         float Delta = gUIContext->MousePosition.Y - Layout->Cursor.Y;
-        Delta /= TargetSize;
+        Delta /= SVSelectorActiveSize;
         Delta = RR_CLAMP(0.0f, Delta, 1.0f);
 
         StaticHSV.X = Delta;
@@ -7402,32 +7491,15 @@ static inline void Rr_UIColorPickerPopup(
         HSVChanged = true;
     }
 
-    Rr_UIAdvance(HSelectorRect.Extent, Rr_V2F(0.0f));
+    Rr_UIAdvance(
+        Rr_AddV2F(
+            HSelectorRect.Extent,
+            gUIContext->DoubleBevelThickness * 2.0f),
+        Rr_V2F(0.0f));
 
     Rr_UIEndHorizontal();
 
-    /* Draw saturation/value circle here so it's on top of hue selector. */
-
-    float CircleOutlineThickness = 3.0f;
-    if (SVSelectorHeld)
-    {
-        Rr_UIDrawCircleFilled(
-            SVSelectorCircleOffset,
-            SVSelectorCircleSize,
-            &OpaqueColor);
-    }
-    Rr_UIDrawCircle(
-        SVSelectorCircleOffset,
-        SVSelectorCircleSize,
-        CircleOutlineThickness,
-        &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, 1.0f });
-    Rr_UIDrawCircle(
-        SVSelectorCircleOffset,
-        SVSelectorCircleSize,
-        CircleOutlineThickness / 2.0f,
-        &gUIContext->Colors.Foreground);
-
-    /* Various input fields. */
+    /* Input fields for different representations. */
 
     bool RGBChanged = ChannelCount == 3 ? Rr_UIInputFloat3Range(
                                               "RGB###RGB32",
@@ -7489,6 +7561,36 @@ static inline void Rr_UIColorPickerPopup(
         *(Rr_Vec3 *)Channels = Rr_UIHSVToRGB(&StaticHSV);
     }
 
+    /* Draw saturation/value circle here so it's on top of everything. */
+
+    float CircleOutlineThickness = 3.0f;
+    if (SVSelectorHeld)
+    {
+        Rr_Vec4 OpaqueColor;
+        memcpy(&OpaqueColor, Channels, sizeof(float) * (size_t)ChannelCount);
+        OpaqueColor.A = 1.0f;
+
+        Rr_UIPushSubClipRect(Layout, &Layout->CurrentClipRect->Rect);
+        Layout->CurrentClipRect->ForceLinearPipeline = true;
+
+        Rr_UIDrawCircleFilled(
+            SVSelectorCircleOffset,
+            SVSelectorCircleSize,
+            &OpaqueColor);
+
+        Rr_UIPopSubClipRect(Layout);
+    }
+    Rr_UIDrawCircle(
+        SVSelectorCircleOffset,
+        SVSelectorCircleSize,
+        CircleOutlineThickness,
+        &(Rr_Vec4){ 0.0f, 0.0f, 0.0f, 1.0f });
+    Rr_UIDrawCircle(
+        SVSelectorCircleOffset,
+        SVSelectorCircleSize,
+        CircleOutlineThickness / 2.0f,
+        &gUIContext->Colors.Foreground);
+
     Rr_UIEndWindow();
 }
 
@@ -7497,6 +7599,11 @@ static inline bool Rr_UIInputColorEx(
     int ChannelCount,
     float *Channels)
 {
+    if (Rr_UISkipItems())
+    {
+        return false;
+    }
+
     Rr_UIAssertWindow();
     assert(Title != NULL);
     assert(Channels != NULL);
@@ -7571,6 +7678,10 @@ static inline bool Rr_UIInputColorEx(
     Rr_Vec4 OpaqueColor;
     memcpy(&OpaqueColor, Channels, sizeof(float) * (size_t)ChannelCount);
     OpaqueColor.A = 1.0f;
+    if (gUIContext->SRGBSwapchain)
+    {
+        Rr_UIToLinearColor(&OpaqueColor);
+    }
     Rr_UIDrawBevel(
         &ColorBoxRect,
         &OpaqueColor,
@@ -7580,9 +7691,20 @@ static inline bool Rr_UIInputColorEx(
         Rr_Rect InnerRect =
             Rr_ResizeRect(&ColorBoxRect, -gUIContext->BevelThickness);
         Rr_UIDrawCheckerQuad(&InnerRect, Font->LineHeight * 0.5f);
+
+        Rr_Vec4 TransparentColor;
+        memcpy(
+            &TransparentColor,
+            Channels,
+            sizeof(float) * (size_t)ChannelCount);
+        if (gUIContext->SRGBSwapchain)
+        {
+            Rr_UIToLinearColor(&TransparentColor);
+        }
+
         Rr_UIDrawVerticalGradientQuad(
             &InnerRect,
-            (Rr_Vec4 *)Channels,
+            &TransparentColor,
             &OpaqueColor);
     }
 
@@ -7632,6 +7754,11 @@ bool Rr_UICombobox(
     char const *const *Options,
     uint32_t *SelectedIndex)
 {
+    if (Rr_UISkipItems())
+    {
+        return false;
+    }
+
     Rr_UIAssertWindow();
     assert(Title != NULL);
     assert(OptionCount > 0);
@@ -7978,6 +8105,11 @@ static inline float Rr_UISlider(
 
 bool Rr_UISliderInt(char const *Title, int32_t *Value, int32_t Min, int32_t Max)
 {
+    if (Rr_UISkipItems())
+    {
+        return false;
+    }
+
     assert(Value != NULL);
     assert(Max > Min);
 
@@ -8007,6 +8139,11 @@ bool Rr_UISliderUnsignedInt(
     uint32_t Min,
     uint32_t Max)
 {
+    if (Rr_UISkipItems())
+    {
+        return false;
+    }
+
     assert(Value != NULL);
     assert(Max > Min);
 
@@ -8032,6 +8169,11 @@ bool Rr_UISliderUnsignedInt(
 
 bool Rr_UISliderFloat(char const *Title, float *Value, float Min, float Max)
 {
+    if (Rr_UISkipItems())
+    {
+        return false;
+    }
+
     assert(Value != NULL);
     assert(Max > Min);
 
@@ -8550,6 +8692,11 @@ static inline void Rr_UIDrawWindow(
             continue;
         }
 
+        if (ClipRect->ForceLinearPipeline)
+        {
+            Rr_BindGraphicsPipeline(GraphicsNode, gUIContext->LinearPipeline);
+        }
+
         if (ClipRect->Image != *BoundImage)
         {
             Rr_BindCombinedImage2DSampler(
@@ -8570,6 +8717,14 @@ static inline void Rr_UIDrawWindow(
             ClipRect->FirstIndex,
             0,
             0);
+
+        if (ClipRect->ForceLinearPipeline)
+        {
+            Rr_BindGraphicsPipeline(
+                GraphicsNode,
+                gUIContext->SRGBSwapchain ? gUIContext->SRGBPipeline
+                                          : gUIContext->LinearPipeline);
+        }
     }
 }
 
@@ -8713,248 +8868,215 @@ void Rr_UIDebugOverlay(void)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIPushWindowPadding(Rr_V2F(0.0f));
-    if (Rr_UIBeginWindowEx(
-            "Rr.DebugOverlay",
-            NULL,
-            RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT |
-                RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
-                RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
-                RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT))
+    Rr_UIBeginWindowEx("DebugOverlayTabs", NULL, RR_UI_WINDOW_FLAGS_TABS_BIT);
     {
-        Rr_UIPopWindowPadding();
-        if (Rr_UIBeginTabs("DebugOverlayTabs"))
+        Rr_UIBeginWindowEx("General", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
         {
-            if (Rr_UIBeginWindowEx(
-                    "General",
-                    0,
-                    RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
+            Rr_Vec2 MousePosition = Rr_GetMousePosition();
+            Rr_Vec2 MouseDelta = Rr_GetMousePositionDelta();
+            Rr_UITextF(
+                "Time: %.2f\n"
+                "Mouse Position: %.2f %.2f\n"
+                "Mouse Delta: %.2f %.2f",
+                Rr_GetTimeSeconds(),
+                MousePosition.X,
+                MousePosition.Y,
+                MouseDelta.X,
+                MouseDelta.Y);
+            Rr_UISeparator();
+            uint32_t PresentModeCount;
+            Rr_PresentMode *PresentModes =
+                Rr_GetAvailablePresentModes(&PresentModeCount);
+            char const **PresentModeStrings = RR_ALLOC(
+                PresentModeCount * sizeof(char const *),
+                Scratch.Arena);
+            uint32_t CurrentPresentModeIndex;
+            for (uint32_t Index = 0; Index < PresentModeCount; ++Index)
             {
-                Rr_Vec2 MousePosition = Rr_GetMousePosition();
-                Rr_Vec2 MouseDelta = Rr_GetMousePositionDelta();
-                Rr_UITextF(
-                    "Time: %.2f\n"
-                    "Mouse Position: %.2f %.2f\n"
-                    "Mouse Delta: %.2f %.2f",
-                    Rr_GetTimeSeconds(),
-                    MousePosition.X,
-                    MousePosition.Y,
-                    MouseDelta.X,
-                    MouseDelta.Y);
-                Rr_UISeparator();
-                uint32_t PresentModeCount;
-                Rr_PresentMode *PresentModes =
-                    Rr_GetAvailablePresentModes(&PresentModeCount);
-                char const **PresentModeStrings = RR_ALLOC(
-                    PresentModeCount * sizeof(char const *),
-                    Scratch.Arena);
-                uint32_t CurrentPresentModeIndex;
-                for (uint32_t Index = 0; Index < PresentModeCount; ++Index)
+                if (gRenderer->Swapchain.PresentMode == PresentModes[Index])
                 {
-                    if (gRenderer->Swapchain.PresentMode == PresentModes[Index])
-                    {
-                        CurrentPresentModeIndex = Index;
-                    }
-                    PresentModeStrings[Index] =
-                        Rr_GetPresentModeString(PresentModes[Index]);
+                    CurrentPresentModeIndex = Index;
                 }
-                if (Rr_UICombobox(
-                        "Present Mode",
-                        PresentModeCount,
-                        PresentModeStrings,
-                        &CurrentPresentModeIndex))
+                PresentModeStrings[Index] =
+                    Rr_GetPresentModeString(PresentModes[Index]);
+            }
+            if (Rr_UICombobox(
+                    "Present Mode",
+                    PresentModeCount,
+                    PresentModeStrings,
+                    &CurrentPresentModeIndex))
+            {
+                Rr_SetPresentMode(PresentModes[CurrentPresentModeIndex]);
+            }
+            Rr_UIInputUnsignedInt(
+                "Target Frame Rate",
+                &gApp->FrameTime.TargetFrameRate);
+
+            {
+                static double SamplingFreq = 0.5;
+                static double LastSample = 0;
+                static double LastFPS = 0;
+                static uint64_t Frames = 0;
+                Frames++;
+                double Now = Rr_GetTimeSeconds();
+                if (Now - LastSample > SamplingFreq)
                 {
-                    Rr_SetPresentMode(PresentModes[CurrentPresentModeIndex]);
+                    LastFPS = (double)Frames / SamplingFreq;
+                    LastSample = Now;
+                    Frames = 0;
                 }
-                Rr_UIInputUnsignedInt(
-                    "Target Frame Rate",
-                    &gApp->FrameTime.TargetFrameRate);
-
-                {
-                    static double SamplingFreq = 0.5;
-                    static double LastSample = 0;
-                    static double LastFPS = 0;
-                    static uint64_t Frames = 0;
-                    Frames++;
-                    double Now = Rr_GetTimeSeconds();
-                    if (Now - LastSample > SamplingFreq)
-                    {
-                        LastFPS = (double)Frames / SamplingFreq;
-                        LastSample = Now;
-                        Frames = 0;
-                    }
-                    Rr_UITextF("FPS: %.2f", LastFPS);
-                }
-
-                double MainLoopMS =
-                    (double)(RR_GET_FRAME_SECTION("Rr.MainLoop") * 1000) /
-                    (double)Rr_GetPerformanceFrequency();
-                double FrameGraphMS =
-                    (double)(RR_GET_FRAME_SECTION("Rr.FrameGraph") * 1000) /
-                    (double)Rr_GetPerformanceFrequency();
-
-                Rr_UITextF(
-                    "Main Loop: %.3fms\n"
-                    "Frame Graph: %.3fms",
-                    MainLoopMS,
-                    FrameGraphMS);
-
-                if (gRenderer->GraphicsQueue.TimestampsEnabled)
-                {
-                    Rr_UITextF("GPU: %.3fms", gRenderer->LastFrameMS);
-                }
-                else
-                {
-                    Rr_UITextF(
-                        "GPU timestamps not supported!",
-                        gRenderer->LastFrameMS);
-                }
-
-                if (Rr_UIButton("Toggle Fullscreen"))
-                {
-                    Rr_ToggleWindowFullscreen();
-                }
-
-                Rr_UIEndWindow();
+                Rr_UITextF("FPS: %.2f", LastFPS);
             }
 
-            if (Rr_UIBeginWindowEx("UI", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
+            double MainLoopMS =
+                (double)(RR_GET_FRAME_SECTION("Rr.MainLoop") * 1000) /
+                (double)Rr_GetPerformanceFrequency();
+            double FrameGraphMS =
+                (double)(RR_GET_FRAME_SECTION("Rr.FrameGraph") * 1000) /
+                (double)Rr_GetPerformanceFrequency();
+
+            Rr_UITextF(
+                "Main Loop: %.3fms\n"
+                "Frame Graph: %.3fms",
+                MainLoopMS,
+                FrameGraphMS);
+
+            if (gRenderer->GraphicsQueue.TimestampsEnabled)
+            {
+                Rr_UITextF("GPU: %.3fms", gRenderer->LastFrameMS);
+            }
+            else
             {
                 Rr_UITextF(
-                    "Vertices Capacity: %zu\n"
-                    "Indices Capacity: %zu",
-                    gUIContext->Vertices.Capacity,
-                    gUIContext->Indices.Capacity);
-
-                double DrawWindowsMS =
-                    (double)(RR_GET_FRAME_SECTION("Rr.UI.DrawWindows") * 1000) /
-                    (double)Rr_GetPerformanceFrequency();
-                double DrawTextMS =
-                    (double)(RR_GET_FRAME_SECTION("Rr.UI.DrawText") * 1000) /
-                    (double)Rr_GetPerformanceFrequency();
-                double DrawInputTextMS =
-                    (double)(RR_GET_FRAME_SECTION("Rr.UI.DrawInputText") *
-                             1000) /
-                    (double)Rr_GetPerformanceFrequency();
-
-                Rr_UITextF(
-                    "DrawWindows: %.3fms\n"
-                    "DrawText: %.3fms\n"
-                    "DrawInputText: %.3fms",
-                    DrawWindowsMS,
-                    DrawTextMS,
-                    DrawInputTextMS);
-
-                Rr_UITextF(
-                    "TextInputCursorBegin: %zu\n"
-                    "TextInputCursorEnd: %zu\n"
-                    "TextInputCodepointMaxCol: %zu",
-                    gUIContext->TextInputCursorBegin,
-                    gUIContext->TextInputCursorEnd,
-                    gUIContext->TextInputCursorCodepointMaxCol);
-
-                Rr_UITextF(
-                    "Hovered Window: %s\n"
-                    "Click Parent: %s\n"
-                    "Active Windows: %b\n"
-                    "Popup Window Open: %b",
-                    gUIContext->HoveredWindow ? gUIContext->HoveredWindow->Title
-                                              : NULL,
-                    gUIContext->ClickParent ? gUIContext->ClickParent->Title
-                                            : NULL,
-                    gUIContext->ActiveLayouts.Count,
-                    gUIContext->PopupWindow.Open);
-
-                Rr_UICheckbox(
-                    "Visualize Advances",
-                    &gUIContext->VisualizeAdvances);
-
-                Rr_UIEndWindow();
+                    "GPU timestamps not supported!",
+                    gRenderer->LastFrameMS);
             }
 
-            if (Rr_UIBeginWindowEx(
-                    "Memory",
-                    0,
-                    RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
+            if (Rr_UIButton("Toggle Fullscreen"))
             {
-                Rr_UIDebugOverlayArena(
-                    Rr_GetThreadContext()->Arena,
-                    "Main Thread");
-                Rr_UIDebugOverlayArena(gRenderer->Arena, "Renderer");
-                for (uint32_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
-                {
-                    Rr_Frame *Frame = gRenderer->Frames + Index;
-                    char FrameString[64];
-                    sprintf(FrameString, "Frame#%d", Index);
-                    Rr_UIDebugOverlayArena(Frame->Arena, FrameString);
-                }
-                Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
-                Rr_UIDebugOverlayArena(gPlatform->Arena, "Window");
-
-                Rr_UIEndWindow();
+                Rr_ToggleWindowFullscreen();
             }
-
-            if (Rr_UIBeginWindowEx(
-                    "Renderer",
-                    0,
-                    RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
-            {
-                Rr_UITextF("Frame: %zu", gRenderer->FrameNumber);
-                Rr_UITextF(
-                    "Images: %zu/%zu",
-                    gRenderer->Images.Count,
-                    gRenderer->Images.Capacity);
-                Rr_UITextF(
-                    "Buffers: %zu/%zu",
-                    gRenderer->Buffers.Count,
-                    gRenderer->Buffers.Capacity);
-                Rr_UITextF(
-                    "DescriptorSetLayouts: %zu/%zu",
-                    gRenderer->DescriptorSetLayoutStorage.Hive.Count,
-                    gRenderer->DescriptorSetLayoutStorage.Hive.Capacity);
-                Rr_UITextF(
-                    "DescriptorPools: %zu",
-                    gRenderer->DescriptorPoolListCount);
-                Rr_UITextF(
-                    "PipelineLayouts: %zu/%zu",
-                    gRenderer->PipelineLayouts.Count,
-                    gRenderer->PipelineLayouts.Capacity);
-                Rr_UITextF(
-                    "ComputePipelines: %zu/%zu",
-                    gRenderer->ComputePipelines.Count,
-                    gRenderer->ComputePipelines.Capacity);
-                Rr_UITextF(
-                    "GraphicsPipelines: %zu/%zu",
-                    gRenderer->GraphicsPipelines.Count,
-                    gRenderer->GraphicsPipelines.Capacity);
-                Rr_UITextF(
-                    "Samplers: %zu/%zu",
-                    gRenderer->Samplers.Count,
-                    gRenderer->Samplers.Capacity);
-                Rr_UITextF(
-                    "Render Passes: %zu/%zu",
-                    gRenderer->RenderPassStorage.Hive.Count,
-                    gRenderer->RenderPassStorage.Hive.Capacity);
-                Rr_UITextF(
-                    "Framebuffers: %zu/%zu",
-                    gRenderer->FramebufferStorage.Hive.Count,
-                    gRenderer->FramebufferStorage.Hive.Capacity);
-                Rr_UITextF(
-                    "SwapchainImages: %zu",
-                    gRenderer->SwapchainImages.Count);
-                Rr_UITextF(
-                    "SyncStates: %zu/%zu",
-                    gRenderer->SyncStateStorage.Hive.Count,
-                    gRenderer->SyncStateStorage.Hive.Capacity);
-
-                Rr_UIEndWindow();
-            }
-
-            Rr_UIEndTabs();
         }
+        Rr_UIEndWindow();
 
+        Rr_UIBeginWindowEx("UI", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+        {
+            Rr_UITextF(
+                "Vertices Capacity: %zu\n"
+                "Indices Capacity: %zu",
+                gUIContext->Vertices.Capacity,
+                gUIContext->Indices.Capacity);
+
+            double DrawWindowsMS =
+                (double)(RR_GET_FRAME_SECTION("Rr.UI.DrawWindows") * 1000) /
+                (double)Rr_GetPerformanceFrequency();
+            double DrawTextMS =
+                (double)(RR_GET_FRAME_SECTION("Rr.UI.DrawText") * 1000) /
+                (double)Rr_GetPerformanceFrequency();
+            double DrawInputTextMS =
+                (double)(RR_GET_FRAME_SECTION("Rr.UI.DrawInputText") * 1000) /
+                (double)Rr_GetPerformanceFrequency();
+
+            Rr_UITextF(
+                "DrawWindows: %.3fms\n"
+                "DrawText: %.3fms\n"
+                "DrawInputText: %.3fms",
+                DrawWindowsMS,
+                DrawTextMS,
+                DrawInputTextMS);
+
+            Rr_UITextF(
+                "TextInputCursorBegin: %zu\n"
+                "TextInputCursorEnd: %zu\n"
+                "TextInputCodepointMaxCol: %zu",
+                gUIContext->TextInputCursorBegin,
+                gUIContext->TextInputCursorEnd,
+                gUIContext->TextInputCursorCodepointMaxCol);
+
+            Rr_UITextF(
+                "Hovered Window: %s\n"
+                "Click Parent: %s\n"
+                "Active Windows: %b\n"
+                "Popup Window Open: %b",
+                gUIContext->HoveredWindow ? gUIContext->HoveredWindow->Title
+                                          : NULL,
+                gUIContext->ClickParent ? gUIContext->ClickParent->Title : NULL,
+                gUIContext->ActiveLayouts.Count,
+                gUIContext->PopupWindow.Open);
+
+            Rr_UICheckbox("Visualize Advances", &gUIContext->VisualizeAdvances);
+        }
+        Rr_UIEndWindow();
+
+        Rr_UIBeginWindowEx("Memory", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+        {
+            Rr_UIDebugOverlayArena(Rr_GetThreadContext()->Arena, "Main Thread");
+            Rr_UIDebugOverlayArena(gRenderer->Arena, "Renderer");
+            for (uint32_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+            {
+                Rr_Frame *Frame = gRenderer->Frames + Index;
+                char FrameString[64];
+                sprintf(FrameString, "Frame#%d", Index);
+                Rr_UIDebugOverlayArena(Frame->Arena, FrameString);
+            }
+            Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
+            Rr_UIDebugOverlayArena(gPlatform->Arena, "Window");
+        }
+        Rr_UIEndWindow();
+
+        Rr_UIBeginWindowEx("Renderer", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+        {
+            Rr_UITextF("Frame: %zu", gRenderer->FrameNumber);
+            Rr_UITextF(
+                "Images: %zu/%zu",
+                gRenderer->Images.Count,
+                gRenderer->Images.Capacity);
+            Rr_UITextF(
+                "Buffers: %zu/%zu",
+                gRenderer->Buffers.Count,
+                gRenderer->Buffers.Capacity);
+            Rr_UITextF(
+                "DescriptorSetLayouts: %zu/%zu",
+                gRenderer->DescriptorSetLayoutStorage.Hive.Count,
+                gRenderer->DescriptorSetLayoutStorage.Hive.Capacity);
+            Rr_UITextF(
+                "DescriptorPools: %zu",
+                gRenderer->DescriptorPoolListCount);
+            Rr_UITextF(
+                "PipelineLayouts: %zu/%zu",
+                gRenderer->PipelineLayouts.Count,
+                gRenderer->PipelineLayouts.Capacity);
+            Rr_UITextF(
+                "ComputePipelines: %zu/%zu",
+                gRenderer->ComputePipelines.Count,
+                gRenderer->ComputePipelines.Capacity);
+            Rr_UITextF(
+                "GraphicsPipelines: %zu/%zu",
+                gRenderer->GraphicsPipelines.Count,
+                gRenderer->GraphicsPipelines.Capacity);
+            Rr_UITextF(
+                "Samplers: %zu/%zu",
+                gRenderer->Samplers.Count,
+                gRenderer->Samplers.Capacity);
+            Rr_UITextF(
+                "Render Passes: %zu/%zu",
+                gRenderer->RenderPassStorage.Hive.Count,
+                gRenderer->RenderPassStorage.Hive.Capacity);
+            Rr_UITextF(
+                "Framebuffers: %zu/%zu",
+                gRenderer->FramebufferStorage.Hive.Count,
+                gRenderer->FramebufferStorage.Hive.Capacity);
+            Rr_UITextF(
+                "SwapchainImages: %zu",
+                gRenderer->SwapchainImages.Count);
+            Rr_UITextF(
+                "SyncStates: %zu/%zu",
+                gRenderer->SyncStateStorage.Hive.Count,
+                gRenderer->SyncStateStorage.Hive.Capacity);
+        }
         Rr_UIEndWindow();
     }
+    Rr_UIEndWindow();
 
     Rr_DestroyScratch(Scratch);
 }

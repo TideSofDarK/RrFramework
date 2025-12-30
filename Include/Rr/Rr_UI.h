@@ -169,6 +169,7 @@ typedef enum
     RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT = (1 << 8),
     RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT = (1 << 9),
     RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT = (1 << 10),
+    RR_UI_WINDOW_FLAGS_TABS_BIT = (1 << 11),
 } Rr_UIWindowFlagsBits;
 typedef uint32_t Rr_UIWindowFlags;
 
@@ -259,10 +260,6 @@ RR_EXTERN bool Rr_UIBeginWindowEx(
 RR_EXTERN bool Rr_UIBeginWindow(char const *Title);
 
 RR_EXTERN void Rr_UIEndWindow(void);
-
-RR_EXTERN bool Rr_UIBeginTabs(char const *Title);
-
-RR_EXTERN void Rr_UIEndTabs(void);
 
 RR_EXTERN void Rr_UISetNextTreeExpanded(void);
 

@@ -797,10 +797,6 @@ struct SQuadTreeApp
 
     void Update()
     {
-        float DeltaTime = Rr_GetDeltaSeconds();
-
-        Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
-
         if (Dragging)
         {
             CameraPosition =
@@ -968,10 +964,10 @@ struct SQuadTreeApp
     {
         Rr_UIDebugOverlay();
 
-        if (Rr_UIBeginWindowEx(
-                "QuadTree",
-                NULL,
-                RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT))
+        Rr_UIBeginWindowEx(
+            "QuadTree",
+            NULL,
+            RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
         {
             Rr_UITextF("Regenerating: %d", Rebuilding);
             if (Rr_UIButton("Regenerate Tree"))
@@ -1001,8 +997,8 @@ struct SQuadTreeApp
                                  : RR_PRESENT_MODE_IMMEDIATE);
             }
             Rr_UIEndHorizontal();
-            Rr_UIEndWindow();
         }
+        Rr_UIEndWindow();
 
         Update();
         Render();
