@@ -342,7 +342,7 @@ struct SGSApp
                 RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
-    void Event(Rr_Event *Event)
+    void Event(Rr_Event const *Event)
     {
         switch (Event->Type)
         {
@@ -392,7 +392,7 @@ int main()
     Rr_AppConfig Config = {};
     Config.Title = "GS";
     Config.InitFunc = []() { App = new SGSApp(); };
-    Config.EventFunc = [](Rr_Event *Event) { App->Event(Event); };
+    Config.EventFunc = [](Rr_Event const *Event) { App->Event(Event); };
     Config.IterateFunc = []() { App->Iterate(); };
     Config.CleanupFunc = []() { delete App; };
     Rr_Run(&Config);

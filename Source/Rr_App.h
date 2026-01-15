@@ -56,7 +56,7 @@ typedef struct Rr_App Rr_App;
 struct Rr_App
 {
     void (*InitFunc)(void);
-    void (*EventFunc)(Rr_Event *Event);
+    void (*EventFunc)(Rr_Event const *Event);
     void (*IterateFunc)(void);
     void (*CleanupFunc)(void);
 

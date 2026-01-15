@@ -162,7 +162,7 @@ static void Init(void)
     InitDepthImage();
 }
 
-static void Event(Rr_Event *Event)
+static void Event(Rr_Event const *Event)
 {
     switch (Event->Type)
     {

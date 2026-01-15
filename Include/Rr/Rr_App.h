@@ -29,7 +29,7 @@ struct Rr_AppConfig
     const char *Title;
     Rr_WindowFlags WindowFlags;
     void (*InitFunc)(void);
-    void (*EventFunc)(Rr_Event *Event);
+    void (*EventFunc)(Rr_Event const *Event);
     void (*IterateFunc)(void);
     void (*CleanupFunc)(void);
 };

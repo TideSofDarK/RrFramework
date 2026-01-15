@@ -198,7 +198,7 @@ struct SSmoothGridApp
         Camera.Position = Rr_V3(0.0f, 1.0f, 0.0f);
     }
 
-    void Event(Rr_Event *Event)
+    void Event(Rr_Event const *Event)
     {
         switch (Event->Type)
         {
@@ -295,7 +295,7 @@ int main()
     Config.Title = "SmoothGrid";
     Config.WindowFlags |= RR_WINDOW_FLAGS_RESIZE_BIT;
     Config.InitFunc = []() { App = new SSmoothGridApp(); };
-    Config.EventFunc = [](Rr_Event *Event) { App->Event(Event); };
+    Config.EventFunc = [](Rr_Event const *Event) { App->Event(Event); };
     Config.IterateFunc = []() { App->Iterate(); };
     Config.CleanupFunc = []() { delete App; };
     Rr_Run(&Config);
