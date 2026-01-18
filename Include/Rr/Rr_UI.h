@@ -27,6 +27,7 @@
 struct Rr_Renderer;
 struct Rr_String;
 struct Rr_Graph;
+struct Rr_Image;
 
 typedef uint64_t Rr_UIHash;
 typedef uint16_t Rr_UIIndex;
@@ -274,6 +275,12 @@ RR_EXTERN void Rr_UIPushWidgetExtent(Rr_Vec2 Extent);
 RR_EXTERN void Rr_UIPopWidgetExtent(void);
 
 RR_EXTERN void Rr_UISeparator(void);
+
+RR_EXTERN void Rr_UIImageEx(
+    struct Rr_Image *Image,
+    Rr_Vec2 Extent,
+    Rr_Vec2 UVMin,
+    Rr_Vec2 UVMax);
 
 RR_EXTERN void Rr_UITextEx(char const *Text, Rr_UITextFlags Flags);
 

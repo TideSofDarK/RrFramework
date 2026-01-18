@@ -28,6 +28,7 @@
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_VULKAN
 #include "Rr_App.h"
+#include "Rr_Image.h"
 #include "Rr_LogMacro.h"
 #include "Rr_Renderer.h"
 
@@ -885,7 +886,9 @@ void Rr_UIPopContentsMargin(void)
     RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->ContentsMarginStack));
 }
 
-static inline Rr_Rect Rr_UIRectIntersection(Rr_Rect *RectA, Rr_Rect *RectB)
+static inline Rr_Rect Rr_UIRectIntersection(
+    Rr_Rect const *RectA,
+    Rr_Rect const *RectB)
 {
     Rr_Rect Result;
     Result.Offset = Rr_MaxV2(RectA->Offset, RectB->Offset);
@@ -2728,7 +2731,9 @@ static inline Rr_UIClipRect *Rr_UIEndClipRect(Rr_UILayout *Layout)
     return NULL;
 }
 
-static inline void Rr_UIBeginClipRect(Rr_UILayout *Layout, Rr_Rect *Rect)
+static inline Rr_UIClipRect *Rr_UIBeginClipRect(
+    Rr_UILayout *Layout,
+    Rr_Rect *Rect)
 {
     Rr_UIClipRect *ClipRect =
         RR_PUSH_INTO_ARRAY(Layout->ClipRects, gUIContext->FrameArena);
@@ -2748,16 +2753,20 @@ static inline void Rr_UIBeginClipRect(Rr_UILayout *Layout, Rr_Rect *Rect)
     Layout->CurrentClipRect = ClipRect;
     Layout->MouseInsideClipRect =
         Rr_RectContains(&ClipRect->Rect, gUIContext->MousePosition);
+
+    return ClipRect;
 }
 
-static inline void Rr_UIPushSubClipRect(Rr_UILayout *Layout, Rr_Rect *Rect)
+static inline Rr_UIClipRect *Rr_UIPushSubClipRect(
+    Rr_UILayout *Layout,
+    Rr_Rect const *Rect)
 {
     Rr_UIClipRect *Last = Rr_UIEndClipRect(Layout);
     assert(Last);
 
     Rr_Rect NewRect = Rr_UIRectIntersection(&Last->Rect, Rect);
 
-    Rr_UIBeginClipRect(Layout, &NewRect);
+    return Rr_UIBeginClipRect(Layout, &NewRect);
 }
 
 static inline void Rr_UIPopSubClipRect(Rr_UILayout *Layout)
@@ -4794,6 +4803,54 @@ void Rr_UISeparator(void)
     Rr_UIAdvance(
         Rr_V2(gUIContext->SeparatorLineHeight, gUIContext->SeparatorLineHeight),
         Rr_V2(AvailableWidth, gUIContext->SeparatorLineHeight));
+}
+
+void Rr_UIImageEx(Rr_Image *Image, Rr_Vec2 Extent, Rr_Vec2 UVMin, Rr_Vec2 UVMax)
+{
+    if (Rr_UISkipItems())
+    {
+        return;
+    }
+
+    Rr_UIAssertWindow();
+
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
+
+    Rr_Rect CurrentRect = Layout->CurrentClipRect->Rect;
+    Rr_UIClipRect *ClipRect = Rr_UIPushSubClipRect(Layout, &CurrentRect);
+    ClipRect->Image = Image;
+
+    Rr_Vec2 Cursor = Layout->Cursor;
+
+    Rr_UIVertex Vertices[4] = {
+        {
+            .Position = Cursor,
+            .UV = UVMin,
+            .Color = RR_UI_VEC4_ONE,
+        },
+        {
+            .Position = { Cursor.X + Extent.X, Cursor.Y },
+            .UV = Rr_V2(UVMax.X, UVMin.Y),
+            .Color = RR_UI_VEC4_ONE,
+        },
+        {
+            .Position = Rr_AddV2(Cursor, Extent),
+            .UV = UVMax,
+            .Color = RR_UI_VEC4_ONE,
+        },
+        {
+            .Position = { Cursor.X, Cursor.Y + Extent.Y },
+            .UV = Rr_V2(UVMin.X, UVMax.Y),
+            .Color = RR_UI_VEC4_ONE,
+        },
+    };
+
+    Rr_UIDrawQuadVertices(Vertices);
+
+    Rr_UIPopSubClipRect(Layout);
+
+    Rr_UIAdvance(Extent, Rr_V2F(0.0f));
 }
 
 void Rr_UITextEx(char const *Text, Rr_UITextFlags Flags)
@@ -8667,12 +8724,23 @@ static inline void Rr_UIDrawWindow(
     {
         Rr_UIClipRect *ClipRect = Array->Data + ClipRectIndex;
 
+        if (ClipRect->IndexCount == 0)
+        {
+            continue;
+        }
+
         Rr_IntRect IntRect = {
             { (int32_t)floorf(ClipRect->Rect.Offset.X),
               (int32_t)floorf(ClipRect->Rect.Offset.Y) },
             { (int32_t)ceilf(ClipRect->Rect.Extent.Width),
               (int32_t)ceilf(ClipRect->Rect.Extent.Height) },
         };
+
+        if (IntRect.Extent.Width <= 0 || IntRect.Extent.Height <= 0)
+        {
+            continue;
+        }
+
         if (IntRect.Offset.X < 0)
         {
             IntRect.Extent.Width += IntRect.Offset.X;
@@ -8682,14 +8750,6 @@ static inline void Rr_UIDrawWindow(
         {
             IntRect.Extent.Height += IntRect.Offset.Y;
             IntRect.Offset.Y = 0;
-        }
-        if (IntRect.Extent.Width < 0 || IntRect.Extent.Height < 0)
-        {
-            continue;
-        }
-        if (ClipRect->IndexCount == 0)
-        {
-            continue;
         }
 
         if (ClipRect->ForceLinearPipeline)

@@ -26,8 +26,8 @@
 struct Rr_Graph;
 struct Rr_Image;
 
-#define RR_FRAME_OVERLAP         2
-#define RR_MAX_COLOR_ATTACHMENTS 4
+#define RR_FRAME_OVERLAP          2
+#define RR_MAX_COLOR_ATTACHMENTS  4
 #define RR_MAX_OBJECT_NAME_LENGTH 32
 
 typedef struct Rr_Renderer Rr_Renderer;

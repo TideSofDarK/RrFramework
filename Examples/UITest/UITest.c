@@ -2,6 +2,9 @@
 
 #include <Rr/Rr.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "../../Vendor/stb/stb_image.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -9,6 +12,7 @@ static bool FixedSizeWindowOpen = false;
 static bool ThemeEditorWindowOpen = false;
 static bool TextInputWindowOpen = false;
 
+static Rr_Image2D *VulkanImage = NULL;
 static Rr_UIFont *StoneTombFont = NULL;
 static Rr_UIFont *MozillaHeadlineFont = NULL;
 
@@ -484,8 +488,49 @@ static void SetPinkTheme()
         Rr_V4(1.000000f, 1.000000f, 1.000000f, 1.000000f);
 }
 
+static Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
+{
+    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+    int32_t DesiredChannels = 4;
+    int32_t Width, Height, Channels;
+    char *Data = (char *)stbi_load_from_memory(
+        (stbi_uc *)Asset.Pointer,
+        (int32_t)Asset.Size,
+        &Width,
+        &Height,
+        &Channels,
+        DesiredChannels);
+
+    Rr_Image2D *ColorImage = Rr_CreateImage2D(
+        (Rr_IntVec2){ Width, Height },
+        RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
+        RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
+
+    size_t Size = Width * Height * DesiredChannels;
+
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+        Size,
+        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+
+    memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
+
+    Rr_CopyBufferToImage2D(
+        Rr_GetGraph(),
+        StagingBuffer,
+        0,
+        (Rr_IntVec2){ Width, Height },
+        ColorImage,
+        0);
+
+    Rr_ReleaseBuffer(StagingBuffer);
+
+    return ColorImage;
+}
+
 static void Init(void)
 {
+    VulkanImage = CreateColorImageFromPNG(EXAMPLE_ASSET_VULKAN_PNG);
+
     Rr_Asset StoneTombAsset = Rr_LoadAsset(EXAMPLE_ASSET_STONETOMB_TTF);
     StoneTombFont =
         Rr_UICreateFont(StoneTombAsset.Size, StoneTombAsset.Pointer, 18.0f);
@@ -622,6 +667,16 @@ static void Iterate(void)
         }
         Rr_UIEndWindow();
 
+        Rr_UIBeginWindow("Images");
+        {
+            Rr_UIImageEx(
+                VulkanImage,
+                Rr_V2(600.0f, 400.0f),
+                Rr_V2F(0.0f),
+                Rr_V2F(1.0f));
+        }
+        Rr_UIEndWindow();
+
         Rr_UIBeginWindow("Child Windows");
         {
             Rr_UIText(
@@ -743,7 +798,7 @@ static void Iterate(void)
         }
         Rr_UIEndWindow();
 
-        if(Rr_UIBeginWindow("Custom Draw"))
+        if (Rr_UIBeginWindow("Custom Draw"))
         {
             Rr_Vec2 Cursor = Rr_UIGetCursor();
 
@@ -1004,6 +1059,7 @@ static void Iterate(void)
 
 static void Cleanup(void)
 {
+    Rr_ReleaseImage(VulkanImage);
     Rr_UIReleaseFont(StoneTombFont);
     Rr_UIReleaseFont(MozillaHeadlineFont);
 }

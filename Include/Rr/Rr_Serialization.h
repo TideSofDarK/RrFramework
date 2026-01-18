@@ -32,9 +32,8 @@ RR_EXTERN size_t Rr_SerializePipelineSpecialization(
     struct Rr_PipelineSpecialization const *Src,
     size_t Count);
 
-RR_EXTERN struct Rr_PipelineSpecialization *Rr_DeserializePipelineSpecialization(
-    void *Buffer,
-    size_t Count);
+RR_EXTERN struct Rr_PipelineSpecialization *
+Rr_DeserializePipelineSpecialization(void *Buffer, size_t Count);
 
 RR_EXTERN size_t Rr_SerializeShaderInfo(
     void *Dst,
@@ -50,8 +49,7 @@ RR_EXTERN size_t Rr_SerializeGraphicsPipelineCreateInfo(
     struct Rr_GraphicsPipelineCreateInfo const *Src,
     size_t Count);
 
-RR_EXTERN struct Rr_GraphicsPipelineCreateInfo *Rr_DeserializeGraphicsPipelineCreateInfo(
-    void *Buffer,
-    size_t Count);
+RR_EXTERN struct Rr_GraphicsPipelineCreateInfo *
+Rr_DeserializeGraphicsPipelineCreateInfo(void *Buffer, size_t Count);
 
 #endif
