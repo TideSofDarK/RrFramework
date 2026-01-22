@@ -570,9 +570,8 @@ void Rr_SelectPhysicalDevice(
         PhysicalDevice->Properties.limits.timestampPeriod > 0.0f &&
         PhysicalDevice->Properties.limits.timestampComputeAndGraphics;
 
-    RR_LOG_INFO(
-        "Using %s transfer queue.",
-        UseTransferQueue ? "dedicated" : "unified");
+    RR_LOG_INFO("Using transfer queue: %d", UseTransferQueue);
+    RR_LOG_INFO("Using ReBAR: %d", Rr_IsReBAREnabled());
 }
 
 void Rr_InitSurface(Rr_Instance *Instance, VkSurfaceKHR *Surface)

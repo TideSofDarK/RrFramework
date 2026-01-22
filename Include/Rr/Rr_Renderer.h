@@ -199,6 +199,10 @@ RR_EXTERN const char *Rr_GetPresentModeString(Rr_PresentMode PresentMode);
 
 RR_EXTERN bool Rr_SetPresentMode(Rr_PresentMode PresentMode);
 
+RR_EXTERN bool Rr_IsIntegratedDevice(void);
+
+RR_EXTERN bool Rr_IsReBAREnabled(void);
+
 RR_EXTERN size_t Rr_GetUniformAlignment(void);
 
 RR_EXTERN size_t Rr_GetStorageAlignment(void);
