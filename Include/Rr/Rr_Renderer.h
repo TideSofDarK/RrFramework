@@ -201,6 +201,8 @@ RR_EXTERN bool Rr_SetPresentMode(Rr_PresentMode PresentMode);
 
 RR_EXTERN bool Rr_IsIntegratedGPU(void);
 
+RR_EXTERN size_t Rr_GetMaxUniformRange(void);
+
 RR_EXTERN size_t Rr_GetUniformAlignment(void);
 
 RR_EXTERN size_t Rr_GetStorageAlignment(void);

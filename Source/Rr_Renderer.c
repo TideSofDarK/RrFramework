@@ -1068,6 +1068,12 @@ bool Rr_IsIntegratedGPU(void)
            VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 }
 
+size_t Rr_GetMaxUniformRange(void)
+{
+    return gRenderer->PhysicalDevice.Properties.limits
+        .maxUniformBufferRange;
+}
+
 size_t Rr_GetUniformAlignment(void)
 {
     return gRenderer->PhysicalDevice.Properties.limits
