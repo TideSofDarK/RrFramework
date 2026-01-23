@@ -1062,47 +1062,10 @@ bool Rr_IsUsingTransferQueue(void)
     return gRenderer->TransferQueue.Handle != VK_NULL_HANDLE;
 }
 
-bool Rr_IsUMA(void)
+bool Rr_IsIntegratedGPU(void)
 {
-    VkPhysicalDeviceProperties *Properties =
-        &gRenderer->PhysicalDevice.Properties;
-    return RR_HAS_BIT(
-        Properties->deviceType,
-        VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);
-}
-
-bool Rr_IsReBAREnabled(void)
-{
-    VkPhysicalDeviceProperties *Properties =
-        &gRenderer->PhysicalDevice.Properties;
-    VkPhysicalDeviceMemoryProperties *MemoryProperties =
-        &gRenderer->PhysicalDevice.MemoryProperties;
-
-    uint32_t DeviceLocalHeapCount = 0;
-    for (uint32_t Index = 0; Index < MemoryProperties->memoryHeapCount; ++Index)
-    {
-        VkMemoryHeap *MemoryHeap = &MemoryProperties->memoryHeaps[Index];
-        if (RR_HAS_BIT(MemoryHeap->flags, VK_MEMORY_HEAP_DEVICE_LOCAL_BIT))
-        {
-            DeviceLocalHeapCount++;
-        }
-    }
-    if (DeviceLocalHeapCount != 1)
-    {
-        return false;
-    }
-    for (uint32_t Index = 0; Index < MemoryProperties->memoryTypeCount; ++Index)
-    {
-        VkMemoryType *MemoryType = &MemoryProperties->memoryTypes[Index];
-        if (RR_HAS_BIT(
-                MemoryType->propertyFlags,
-                (VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)))
-        {
-            return true;
-        }
-    }
-    return false;
+    return gRenderer->PhysicalDevice.Properties.deviceType ==
+           VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 }
 
 size_t Rr_GetUniformAlignment(void)

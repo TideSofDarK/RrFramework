@@ -21,6 +21,7 @@
 #include <Rr/Rr_Log.h>
 
 #ifdef RR_LOG_MACRO_CATEGORY
+#include <stdlib.h>
 #define RR_LOG_ABORT(...)                                \
     {                                                    \
         Rr_LogError(RR_LOG_MACRO_CATEGORY, __VA_ARGS__); \
