@@ -366,7 +366,8 @@ static inline bool Rr_AddNodeDependency(
     Rr_Map **WriteToNode,
     Rr_GraphHandle *Handle,
     Rr_SyncState *State,
-    bool Weak)
+    bool AllowMultipleWrites,
+    bool AllowReadWrite)
 {
     for (size_t Index = 0; Index < Deps->Count; ++Index)
     {
@@ -374,27 +375,26 @@ static inline bool Rr_AddNodeDependency(
 
         if (Dependency->Handle.Values.Index == Handle->Values.Index)
         {
-            if (!Weak)
+            if (!AllowMultipleWrites &&
+                RR_HAS_BIT(State->AccessMask, RR_VULKAN_WRITES))
             {
-                if (RR_HAS_BIT(State->AccessMask, RR_VULKAN_WRITES))
-                {
-                    RR_LOG_ERROR(
-                        "Node \"%s\": already writing to the versioned "
-                        "resource!",
-                        Node->Name);
+                RR_LOG_ERROR(
+                    "Node \"%s\": already writing to the versioned "
+                    "resource!",
+                    Node->Name);
 
-                    return false;
-                }
-                if (RR_HAS_BIT(Dependency->State.AccessMask, RR_VULKAN_WRITES))
-                {
-                    RR_LOG_ERROR(
-                        "Node \"%s\": trying to read and write a versioned "
-                        "resource at the "
-                        "same time!",
-                        Node->Name);
+                return false;
+            }
+            if (!AllowReadWrite &&
+                RR_HAS_BIT(Dependency->State.AccessMask, RR_VULKAN_WRITES))
+            {
+                RR_LOG_ERROR(
+                    "Node \"%s\": trying to read and write a versioned "
+                    "resource at the "
+                    "same time!",
+                    Node->Name);
 
-                    return false;
-                }
+                return false;
             }
 
             /* Multiple reads might be from different stages. */
@@ -455,6 +455,7 @@ static inline bool Rr_AddBufferDependency(
         &Node->Graph->BufferWriteToNode,
         Handle,
         State,
+        false,
         false);
 }
 
@@ -469,6 +470,7 @@ static inline bool Rr_AddStorageBufferDependency(
         &Node->Graph->BufferWriteToNode,
         Handle,
         State,
+        true,
         true);
 }
 
@@ -488,6 +490,7 @@ static inline bool Rr_AddImageDependency(
         &Node->Graph->ImageWriteToNode,
         Handle,
         State,
+        false,
         false);
 }
 
@@ -507,6 +510,7 @@ static inline bool Rr_AddStorageImageDependency(
         &Node->Graph->ImageWriteToNode,
         Handle,
         State,
+        true,
         true);
 }
 
@@ -2537,13 +2541,17 @@ void Rr_TransferBufferData(
 
     Rr_MarkBufferUsed(Node->Graph, SrcBuffer);
 
-    Rr_AddBufferDependency(
+    Rr_AddNodeDependency(
         Node,
+        &Node->BufferDeps,
+        &Node->Graph->BufferWriteToNode,
         DstBufferHandle,
         &(Rr_SyncState){
             .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
             .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-        });
+        },
+        true,
+        false);
 
     Rr_MarkBufferUsed(Node->Graph, DstBuffer);
 }

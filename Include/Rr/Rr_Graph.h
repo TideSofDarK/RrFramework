@@ -52,6 +52,7 @@ RR_EXTERN void Rr_BeginGraphLabel(Rr_Graph *Graph, const char *Name);
 
 RR_EXTERN void Rr_EndGraphLabel(Rr_Graph *Graph, const char *Name);
 
+/* Allows multiple writes to the same buffer. */
 RR_EXTERN Rr_TransferNode *Rr_AddTransferNode(Rr_Graph *Graph);
 
 RR_EXTERN void Rr_TransferBufferData(
