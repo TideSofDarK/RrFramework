@@ -384,6 +384,8 @@ static inline bool Rr_AddNodeDependency(
                     "Node \"%s\": already writing to the versioned "
                     "resource!",
                     Node->Name);
+
+                return false;
             }
             if (!AlreadyWriting && WantToWrite && !AllowReadWrite)
             {
