@@ -375,18 +375,17 @@ static inline bool Rr_AddNodeDependency(
 
         if (Dependency->Handle.Values.Index == Handle->Values.Index)
         {
-            if (!AllowMultipleWrites &&
-                RR_HAS_BIT(State->AccessMask, RR_VULKAN_WRITES))
+            bool AlreadyWriting =
+                RR_HAS_BIT(Dependency->State.AccessMask, RR_VULKAN_WRITES);
+            bool WantToWrite = RR_HAS_BIT(State->AccessMask, RR_VULKAN_WRITES);
+            if (AlreadyWriting && WantToWrite && !AllowMultipleWrites)
             {
                 RR_LOG_ERROR(
                     "Node \"%s\": already writing to the versioned "
                     "resource!",
                     Node->Name);
-
-                return false;
             }
-            if (!AllowReadWrite &&
-                RR_HAS_BIT(Dependency->State.AccessMask, RR_VULKAN_WRITES))
+            if (!AlreadyWriting && WantToWrite && !AllowReadWrite)
             {
                 RR_LOG_ERROR(
                     "Node \"%s\": trying to read and write a versioned "
