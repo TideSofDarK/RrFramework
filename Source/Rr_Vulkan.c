@@ -27,6 +27,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+const char *RR_VULKAN_DEVICE_EXTENSIONS[] = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
+#ifdef __APPLE__
+    "VK_KHR_portability_subset"
+#endif
+};
+
 void Rr_InitLoader(Rr_VulkanLoader *Loader)
 {
     Loader->GetInstanceProcAddr =
@@ -278,16 +286,10 @@ static bool Rr_CheckPhysicalDevice(
         NULL,
         &ExtensionCount,
         NULL);
-    if (ExtensionCount == 0)
-    {
-        return false;
-    }
 
-    const char *TargetExtensions[] = {
-        "VK_KHR_swapchain",
-    };
-
-    bool FoundExtensions[] = { 0 };
+    bool *FoundExtensions = RR_ALLOC(
+        sizeof(bool) * RR_ARRAY_COUNT(RR_VULKAN_DEVICE_EXTENSIONS),
+        Arena);
 
     VkExtensionProperties *Extensions =
         RR_ALLOC_TYPE_COUNT(VkExtensionProperties, ExtensionCount, Arena);
@@ -300,19 +302,19 @@ static bool Rr_CheckPhysicalDevice(
     for (uint32_t Index = 0; Index < ExtensionCount; Index++)
     {
         for (uint32_t TargetIndex = 0;
-             TargetIndex < RR_ARRAY_COUNT(TargetExtensions);
+             TargetIndex < RR_ARRAY_COUNT(RR_VULKAN_DEVICE_EXTENSIONS);
              ++TargetIndex)
         {
             if (strcmp(
                     Extensions[Index].extensionName,
-                    TargetExtensions[TargetIndex]) == 0)
+                    RR_VULKAN_DEVICE_EXTENSIONS[TargetIndex]) == 0)
             {
                 FoundExtensions[TargetIndex] = true;
             }
         }
     }
     for (uint32_t TargetIndex = 0;
-         TargetIndex < RR_ARRAY_COUNT(TargetExtensions);
+         TargetIndex < RR_ARRAY_COUNT(RR_VULKAN_DEVICE_EXTENSIONS);
          ++TargetIndex)
     {
         if (!FoundExtensions[TargetIndex])
@@ -617,21 +619,13 @@ void Rr_InitDeviceAndQueues(
         }
     };
 
-#ifdef __APPLE__
-    const char *DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-                                       "VK_KHR_portability_subset" };
-#else
-    const char *DeviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-#endif
-    uint32_t DeviceExtensionCount = RR_ARRAY_COUNT(DeviceExtensions);
-
     VkDeviceCreateInfo DeviceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = NULL,
         .queueCreateInfoCount = UseTransferQueue ? 2 : 1,
         .pQueueCreateInfos = QueueInfos,
-        .enabledExtensionCount = DeviceExtensionCount,
-        .ppEnabledExtensionNames = DeviceExtensions,
+        .enabledExtensionCount = RR_ARRAY_COUNT(RR_VULKAN_DEVICE_EXTENSIONS),
+        .ppEnabledExtensionNames = RR_VULKAN_DEVICE_EXTENSIONS,
         .pEnabledFeatures = &PhysicalDevice->Features,
     };
 
