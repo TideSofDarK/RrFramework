@@ -1570,6 +1570,25 @@ static void Rr_ExecuteCopyBufferToImageNode(
         &BufferImageCopy);
 }
 
+static void Rr_ExecuteCopyImageToBufferNode(
+    Rr_Graph *Graph,
+    Rr_CopyImageToBufferNode *Node,
+    VkCommandBuffer CommandBuffer)
+{
+    Rr_Device *Device = &gRenderer->Device;
+
+    VkImage ImageHandle = Rr_GetGraphImage(Graph, Node->Image)->Handle;
+    VkBuffer BufferHandle = Rr_GetGraphBuffer(Graph, Node->Buffer)->Handle;
+
+    Device->CmdCopyImageToBuffer(
+        CommandBuffer,
+        ImageHandle,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        BufferHandle,
+        Node->BufferImageCopyCount,
+        Node->BufferImageCopies);
+}
+
 static void Rr_ExecuteCopyImageNode(
     Rr_Graph *Graph,
     Rr_CopyImageNode *Node,
@@ -1672,6 +1691,14 @@ static void Rr_ExecuteGraphNode(
             Rr_ExecuteCopyBufferToImageNode(
                 Graph,
                 &Node->Union.CopyBufferToImage,
+                CommandBuffer);
+        }
+        break;
+        case RR_GRAPH_NODE_TYPE_COPY_IMAGE_TO_BUFFER:
+        {
+            Rr_ExecuteCopyImageToBufferNode(
+                Graph,
+                &Node->Union.CopyImageToBuffer,
                 CommandBuffer);
         }
         break;
@@ -2954,6 +2981,102 @@ void Rr_CopyBufferToImageCubeEx(
         (uint32_t)FirstFace,
         1 + ((uint32_t)LastFace - (uint32_t)FirstFace),
         MipLevel);
+}
+
+static inline void Rr_AddCopyImageToBufferEx(
+    Rr_Graph *Graph,
+    Rr_Image *Image,
+    Rr_IntVec3 ImageOffset,
+    Rr_IntVec3 ImageExtent,
+    Rr_ImageAspect ImageAspect,
+    uint32_t ImageMipLevel,
+    uint32_t ImageArrayIndex,
+    uint32_t ImageArrayCount,
+    Rr_Buffer *Buffer,
+    uint64_t BufferOffset)
+{
+    assert(Image);
+    assert(Buffer);
+
+    Rr_GraphNode *GraphNode =
+        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_COPY_IMAGE_TO_BUFFER);
+
+    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Graph, Image);
+    Rr_GraphBuffer *BufferHandle = Rr_GetGraphBufferHandle(Graph, Buffer);
+
+    Rr_AddImageDependency(
+        GraphNode,
+        ImageHandle,
+        &(Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            .AccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+            .Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        });
+
+    Rr_MarkImageUsed(Graph, Image);
+
+    Rr_AddBufferDependency(
+        GraphNode,
+        BufferHandle,
+        &(Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        });
+
+    Rr_MarkBufferUsed(Graph, Buffer);
+
+    VkBufferImageCopy *BufferImageCopy =
+        RR_ALLOC_NO_ZERO(sizeof(VkBufferImageCopy), Graph->Arena);
+    *BufferImageCopy = (VkBufferImageCopy){
+        .bufferOffset = BufferOffset,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource =
+            (VkImageSubresourceLayers){
+                .aspectMask = Rr_ToVulkanImageAspect(ImageAspect),
+                .mipLevel = ImageMipLevel,
+                .baseArrayLayer = ImageArrayIndex,
+                .layerCount = ImageArrayCount,
+            },
+        .imageOffset = Rr_ToVulkanOffset3D(ImageOffset),
+        .imageExtent = Rr_ToVulkanExtent3D(ImageExtent),
+    };
+
+    GraphNode->Union.CopyImageToBuffer = (Rr_CopyImageToBufferNode){
+        .Image = *ImageHandle,
+        .Buffer = *BufferHandle,
+        .BufferImageCopyCount = 1,
+        .BufferImageCopies = BufferImageCopy,
+    };
+}
+
+void Rr_CopyImage2DToBuffer(
+    Rr_Graph *Graph,
+    Rr_Image2D *Image,
+    Rr_IntVec2 ImageOffset,
+    Rr_IntVec2 ImageExtent,
+    Rr_ImageAspect ImageAspect,
+    uint32_t ImageMipLevel,
+    Rr_Buffer *Buffer,
+    uint64_t BufferOffset)
+{
+    Rr_AddCopyImageToBufferEx(
+        Graph,
+        Image,
+        (Rr_IntVec3){
+            .XY = ImageOffset,
+            .Z = 0,
+        },
+        (Rr_IntVec3){
+            .XY = ImageExtent,
+            .Z = 1,
+        },
+        ImageAspect,
+        ImageMipLevel,
+        0,
+        1,
+        Buffer,
+        BufferOffset);
 }
 
 static inline Rr_GraphNode *Rr_AddCopyImageNode(

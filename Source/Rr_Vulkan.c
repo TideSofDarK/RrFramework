@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char *RR_VULKAN_DEVICE_EXTENSIONS[] = {
+char const *RR_VULKAN_DEVICE_EXTENSIONS[] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
 #ifdef __APPLE__
@@ -55,7 +55,7 @@ void Rr_InitLoader(Rr_VulkanLoader *Loader)
 
 void Rr_InitInstance(
     Rr_VulkanLoader *Loader,
-    const char *ApplicationName,
+    char const *ApplicationName,
     Rr_Instance *Instance)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -69,7 +69,7 @@ void Rr_InitInstance(
 
     /* Gather required extensions. */
 
-    const char *InstanceExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+    char const *InstanceExtensions[] = { VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
     uint32_t InstanceExtensionCount = RR_ARRAY_COUNT(InstanceExtensions);
 
 #ifndef RR_USE_GPU_DEBUG_UTILS
@@ -77,13 +77,13 @@ void Rr_InitInstance(
 #endif
 
     uint32_t PlatformExtensionCount;
-    const char *const *PlatformExtensions =
+    char const *const *PlatformExtensions =
         Rr_GetVulkanExtensions(&PlatformExtensionCount);
 
     uint32_t ExtensionCount = PlatformExtensionCount + InstanceExtensionCount;
 
-    const char **Extensions =
-        RR_ALLOC_TYPE_COUNT(const char *, ExtensionCount + 1, Scratch.Arena);
+    char const **Extensions =
+        RR_ALLOC_TYPE_COUNT(char const *, ExtensionCount + 1, Scratch.Arena);
     for (uint32_t Index = 0; Index < PlatformExtensionCount; Index++)
     {
         Extensions[Index] = PlatformExtensions[Index];
@@ -467,7 +467,7 @@ void Rr_SelectPhysicalDevice(
                 Memory += MemoryProperties.memoryHeaps[MemoryHeapIndex].size;
             }
 
-            const char *TypeString = NULL;
+            char const *TypeString = NULL;
             switch (Properties.deviceType)
             {
                 case VK_PHYSICAL_DEVICE_TYPE_OTHER:

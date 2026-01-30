@@ -107,6 +107,16 @@ RR_EXTERN void Rr_CopyBufferToImageCubeEx(
     Rr_ImageCubeFace LastFace,
     uint32_t MipLevel);
 
+RR_EXTERN void Rr_CopyImage2DToBuffer(
+    Rr_Graph *Graph,
+    Rr_Image2D *Image,
+    Rr_IntVec2 ImageOffset,
+    Rr_IntVec2 ImageExtent,
+    Rr_ImageAspect ImageAspect,
+    uint32_t ImageMipLevel,
+    Rr_Buffer *Buffer,
+    uint64_t BufferOffset);
+
 RR_EXTERN void Rr_CopyImage2D(
     Rr_Graph *Graph,
     Rr_Image2D *SrcImage,

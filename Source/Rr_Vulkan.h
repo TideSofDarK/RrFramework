@@ -316,7 +316,7 @@ extern void Rr_InitLoader(Rr_VulkanLoader *Loader);
 
 extern void Rr_InitInstance(
     Rr_VulkanLoader *Loader,
-    const char *ApplicationName,
+    char const *ApplicationName,
     Rr_Instance *Instance);
 
 extern void Rr_InitSurface(Rr_Instance *Instance, VkSurfaceKHR *Surface);
@@ -425,8 +425,8 @@ static inline VkCompareOp Rr_ToVulkanCompareOp(Rr_CompareOp CompareOp)
 }
 
 static inline VkStencilOpState Rr_ToVulkanStencilOpState(
-    const Rr_StencilOpState *State,
-    const Rr_DepthStencil *DepthStencil)
+    Rr_StencilOpState const *State,
+    Rr_DepthStencil const *DepthStencil)
 {
     return (VkStencilOpState){
         .compareOp = Rr_ToVulkanCompareOp(State->CompareOp),
@@ -790,6 +790,24 @@ static inline bool Rr_IsVulkanDepthFormat(VkFormat Format)
     return Format == VK_FORMAT_D32_SFLOAT ||
            Format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
            Format == VK_FORMAT_D24_UNORM_S8_UINT;
+}
+
+static inline VkExtent3D Rr_ToVulkanExtent3D(Rr_IntVec3 Extent)
+{
+    return (VkExtent3D){
+        .width = (uint32_t)Extent.X,
+        .height = (uint32_t)Extent.Y,
+        .depth = (uint32_t)Extent.Z,
+    };
+}
+
+static inline VkOffset3D Rr_ToVulkanOffset3D(Rr_IntVec3 Offset)
+{
+    return (VkOffset3D){
+        .x = Offset.X,
+        .y = Offset.Y,
+        .z = Offset.Z,
+    };
 }
 
 static inline VkImageAspectFlags Rr_ToVulkanImageAspect(Rr_ImageAspect Aspect)

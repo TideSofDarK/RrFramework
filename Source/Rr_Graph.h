@@ -52,6 +52,7 @@ typedef enum Rr_GraphNodeType
     RR_GRAPH_NODE_TYPE_BLIT,
     RR_GRAPH_NODE_TYPE_TRANSFER,
     RR_GRAPH_NODE_TYPE_COPY_BUFFER_TO_IMAGE,
+    RR_GRAPH_NODE_TYPE_COPY_IMAGE_TO_BUFFER,
     RR_GRAPH_NODE_TYPE_COPY_IMAGE,
 } Rr_GraphNodeType;
 
@@ -138,6 +139,15 @@ struct Rr_CopyBufferToImageNode
     uint32_t BaseLayer;
     uint32_t LayerCount;
     uint32_t MipLevel;
+};
+
+typedef struct Rr_CopyImageToBufferNode Rr_CopyImageToBufferNode;
+struct Rr_CopyImageToBufferNode
+{
+    Rr_GraphImage Image;
+    Rr_GraphBuffer Buffer;
+    uint32_t BufferImageCopyCount;
+    VkBufferImageCopy const *BufferImageCopies;
 };
 
 typedef struct Rr_CopyImageNode Rr_CopyImageNode;
@@ -315,6 +325,7 @@ struct Rr_GraphNode
         Rr_ClearColorImageNode ClearColorImage;
         Rr_ResolveImageNode ResolveImage;
         Rr_CopyBufferToImageNode CopyBufferToImage;
+        Rr_CopyImageToBufferNode CopyImageToBuffer;
         Rr_CopyImageNode CopyImage;
         Rr_BlitNode Blit;
         Rr_TransferNode Transfer;
