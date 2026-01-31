@@ -23,6 +23,7 @@
 #include <Rr/Rr_Image.h>
 
 #include "Rr_Platform.h"
+#include "Rr_Vulkan.h"
 
 #include <vma/vk_mem_alloc.h>
 
@@ -84,6 +85,7 @@ struct Rr_AllocatedImage
     Rr_ImageViewStorage *ViewStorage;
     VmaAllocation Allocation;
     struct Rr_Image *Container;
+    Rr_SyncState SyncState;
 };
 
 extern VkImageView Rr_GetVulkanImageView(

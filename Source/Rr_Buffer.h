@@ -30,6 +30,7 @@ struct Rr_AllocatedBuffer
     VkBuffer Handle;
     VmaAllocation Allocation;
     void *MappedData;
+    Rr_SyncState SyncState;
 };
 
 struct Rr_Buffer

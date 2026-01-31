@@ -44,20 +44,12 @@ Rr_Renderer *gRenderer;
 
 static inline void Rr_DestroySwapchainImage(Rr_SwapchainImage *SwapchainImage)
 {
-    if (SwapchainImage->ViewStorage)
+    Rr_AllocatedImage *AllocatedImage =
+        SwapchainImage->Container.AllocatedImages;
+
+    if (AllocatedImage->ViewStorage)
     {
-        Rr_DestroyImageViewStorage(SwapchainImage->ViewStorage, true);
-    }
-
-    if (SwapchainImage->Handle)
-    {
-        Rr_LockSpinlock(&gRenderer->Lock);
-
-        Rr_EraseSyncState(
-            &gRenderer->SyncStateStorage,
-            (uint64_t)SwapchainImage->Handle);
-
-        Rr_UnlockSpinlock(&gRenderer->Lock);
+        Rr_DestroyImageViewStorage(AllocatedImage->ViewStorage, true);
     }
 
     if (SwapchainImage->EarlySemaphore)
@@ -297,13 +289,14 @@ static bool Rr_InitSwapchain(void)
         &ImageCount,
         NULL);
 
-    VkImage *Images = RR_ALLOC_TYPE_COUNT(VkImage, ImageCount, Scratch.Arena);
+    VkImage *ImageHandles =
+        RR_ALLOC_TYPE_COUNT(VkImage, ImageCount, Scratch.Arena);
 
     Device->GetSwapchainImagesKHR(
         gRenderer->Device.Handle,
         gRenderer->Swapchain.Handle,
         &ImageCount,
-        Images);
+        ImageHandles);
 
     /* Create image views. */
 
@@ -325,21 +318,31 @@ static bool Rr_InitSwapchain(void)
     {
         Rr_SwapchainImage *Image = gRenderer->SwapchainImages.Data + Index;
 
-        Image->Handle = Images[Index];
+        Image->Container = (Rr_Image2D){
+            .Extent =
+                (VkExtent3D){
+                    .width = SwapchainCreateInfo.imageExtent.width,
+                    .height = SwapchainCreateInfo.imageExtent.height,
+                    .depth = 1,
+                },
+            .AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
+            .Format = SwapchainCreateInfo.imageFormat,
+            .SampleCount = VK_SAMPLE_COUNT_1_BIT,
+            .Flags = RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT,
+            .LayerCount = 1,
+            .LevelCount = 1,
+            .AllocatedImageCount = 1,
+            .AllocatedImages[0] =
+                (Rr_AllocatedImage){
+                    .Handle = ImageHandles[Index],
+                    .ViewStorage = Rr_CreateImageViewStorage(),
+                    .Container = &Image->Container,
+                    .SyncState = RR_EMPTY_SYNC,
+                },
+        };
 
-        Image->ViewStorage = Rr_CreateImageViewStorage();
         Image->EarlySemaphore = Rr_AcquireVulkanSemaphore();
         Image->LateSemaphore = Rr_AcquireVulkanSemaphore();
-
-        Rr_LockSpinlock(&gRenderer->Lock);
-
-        Rr_FindSyncState(
-            &gRenderer->SyncStateStorage,
-            (uint64_t)Image->Handle,
-            gRenderer->Arena)
-            ->StageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-
-        Rr_UnlockSpinlock(&gRenderer->Lock);
     }
 
     Rr_SetSwapchainDirty(false);
@@ -428,7 +431,7 @@ static void Rr_InitFrames(void)
             NameBuffer);
 #endif
 
-        if (gRenderer->GraphicsQueue.TimestampsEnabled)
+        if (gRenderer->MainQueue.TimestampsEnabled)
         {
             VkQueryPoolCreateInfo QueryPoolCreateInfo = {
                 .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
@@ -441,13 +444,6 @@ static void Rr_InitFrames(void)
                 NULL,
                 &Frame->QueryPool);
         }
-
-        Frame->VirtualSwapchainImage.SampleCount = VK_SAMPLE_COUNT_1_BIT;
-        Frame->VirtualSwapchainImage.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-        Frame->VirtualSwapchainImage.AllocatedImageCount = 1;
-        Frame->VirtualSwapchainImage.AllocatedImages[0] = (Rr_AllocatedImage){
-            .Container = &Frame->VirtualSwapchainImage,
-        };
     }
 }
 
@@ -520,8 +516,8 @@ void Rr_InitRenderer(const char *Title)
         gRenderer->Surface,
         &gRenderer->PhysicalDevice,
         &gRenderer->Device,
-        &gRenderer->GraphicsQueue,
-        &gRenderer->TransferQueue);
+        &gRenderer->MainQueue,
+        &gRenderer->DedicatedTransferQueue);
 
     Rr_InitVMA();
     Rr_InitFrames();
@@ -756,11 +752,13 @@ void Rr_NewFrame(void)
 
     Rr_Frame *Frame = Rr_GetCurrentFrame();
 
+    VkResult Result;
+
     /* Wait for previous work associated with given frame index. */
 
     if (Frame->SubmitFence != VK_NULL_HANDLE)
     {
-        VkResult Result = Device->WaitForFences(
+        Result = Device->WaitForFences(
             Device->Handle,
             1,
             &Frame->SubmitFence,
@@ -768,7 +766,7 @@ void Rr_NewFrame(void)
             1000000000);
         assert(Result != VK_TIMEOUT && "Submit fence timeout!");
 
-        if (gRenderer->GraphicsQueue.TimestampsEnabled)
+        if (gRenderer->MainQueue.TimestampsEnabled)
         {
             uint64_t Timestamps[2];
             Device->GetQueryPoolResults(
@@ -801,33 +799,6 @@ void Rr_NewFrame(void)
 
     Frame->Profiler = Rr_CreateProfiler(Frame->Arena);
 
-    Rr_RecreateSwapchainIfNeeded();
-
-    /* Swapchain might have been recreated so fill in updated settings. */
-
-    Frame->VirtualSwapchainImage.Extent = gRenderer->Swapchain.Extent;
-    Frame->VirtualSwapchainImage.Format = gRenderer->Swapchain.Format;
-
-    Frame->Graph = RR_ALLOC_TYPE(Rr_Graph, Frame->Arena);
-    Frame->Graph->Flags = RR_GRAPH_FLAGS_GRAPHICS_BIT |
-                          RR_GRAPH_FLAGS_COMPUTE_BIT |
-                          RR_GRAPH_FLAGS_TRANSFER_BIT;
-    Frame->Graph->Arena = Frame->Arena;
-    Frame->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
-    Frame->Graph->SwapchainImageHandle =
-        Rr_GetGraphImageHandle(Frame->Graph, &Frame->VirtualSwapchainImage);
-}
-
-void Rr_DrawFrame(void)
-{
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    Rr_Device *Device = &gRenderer->Device;
-    Rr_Swapchain *Swapchain = &gRenderer->Swapchain;
-    Rr_Frame *Frame = Rr_GetCurrentFrame();
-
-    VkResult Result;
-
     /* Acquire swapchain image. */
 
     uint32_t SwapchainImageIndex;
@@ -835,12 +806,12 @@ void Rr_DrawFrame(void)
     {
         if (!Rr_RecreateSwapchainIfNeeded())
         {
-            Rr_DestroyScratch(Scratch);
+            RR_LOG_ABORT("Couldn't recreate swapchain!");
             return;
         }
         Result = Device->AcquireNextImageKHR(
             Device->Handle,
-            Swapchain->Handle,
+            gRenderer->Swapchain.Handle,
             1000000000,
             Frame->AcquireSemaphore,
             NULL,
@@ -868,22 +839,26 @@ void Rr_DrawFrame(void)
         Rr_SetSwapchainDirty(true);
     }
 
-    Frame->SubmitFence = Rr_AcquireVulkanFence();
-
-    Rr_SwapchainImage *SwapchainImage =
+    Frame->SwapchainImage =
         &gRenderer->SwapchainImages.Data[SwapchainImageIndex];
-    VkImage SwapchainImageHandle = SwapchainImage->Handle;
 
-    /* Now that we acquired swapchain image index we can
-     * put real handles to virtual swapchain image which
-     * will be used by the graph. */
+    Frame->Graph = RR_ALLOC_TYPE(Rr_Graph, Frame->Arena);
+    Frame->Graph->QueueType = RR_QUEUE_TYPE_MAIN;
+    Frame->Graph->Arena = Frame->Arena;
+    Frame->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
+    Frame->Graph->SwapchainImageHandle =
+        Rr_GetGraphImageHandle(Frame->Graph, &Frame->SwapchainImage->Container);
+}
 
-    Frame->VirtualSwapchainImage.Extent = gRenderer->Swapchain.Extent;
-    Frame->VirtualSwapchainImage.Format = gRenderer->Swapchain.Format;
-    Frame->VirtualSwapchainImage.AllocatedImages[0].ViewStorage =
-        gRenderer->SwapchainImages.Data[SwapchainImageIndex].ViewStorage;
-    Frame->VirtualSwapchainImage.AllocatedImages[0].Handle =
-        SwapchainImageHandle;
+void Rr_DrawFrame(void)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_Device *Device = &gRenderer->Device;
+    Rr_Swapchain *Swapchain = &gRenderer->Swapchain;
+    Rr_Frame *Frame = Rr_GetCurrentFrame();
+
+    Frame->SubmitFence = Rr_AcquireVulkanFence();
 
     VkCommandBufferBeginInfo CommandBufferBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -899,7 +874,7 @@ void Rr_DrawFrame(void)
         Frame->LateCommandBuffer,
         &CommandBufferBeginInfo);
 
-    if (gRenderer->GraphicsQueue.TimestampsEnabled)
+    if (gRenderer->MainQueue.TimestampsEnabled)
     {
         Device->CmdResetQueryPool(
             Frame->EarlyCommandBuffer,
@@ -917,10 +892,7 @@ void Rr_DrawFrame(void)
 
     Rr_ExecuteGraph(
         Frame->Graph,
-        &gRenderer->SyncStateStorage,
-        &gRenderer->Lock,
-        gRenderer->Arena,
-        gRenderer->GraphicsQueue.FamilyIndex,
+        gRenderer->MainQueue.FamilyIndex,
         Frame->EarlyCommandBuffer,
         Frame->LateCommandBuffer);
 
@@ -930,17 +902,12 @@ void Rr_DrawFrame(void)
 
     /* Always transition swapchain image to present layout. */
 
-    Rr_LockSpinlock(&gRenderer->Lock);
-
-    Rr_SyncState SwapchainImageSyncState = Rr_GetSyncState(
-        &gRenderer->SyncStateStorage,
-        (uint64_t)SwapchainImageHandle);
-
-    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_AllocatedImage *AllocatedSwapchainImage =
+        &Frame->SwapchainImage->Container.AllocatedImages[0];
 
     Device->CmdPipelineBarrier(
         Frame->LateCommandBuffer,
-        SwapchainImageSyncState.StageMask,
+        AllocatedSwapchainImage->SyncState.StageMask,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
         0,
         0,
@@ -950,10 +917,10 @@ void Rr_DrawFrame(void)
         1,
         &(VkImageMemoryBarrier){
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .image = SwapchainImageHandle,
-            .oldLayout = SwapchainImageSyncState.Layout,
+            .image = AllocatedSwapchainImage->Handle,
+            .oldLayout = AllocatedSwapchainImage->SyncState.Layout,
             .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            .srcAccessMask = SwapchainImageSyncState.AccessMask,
+            .srcAccessMask = AllocatedSwapchainImage->SyncState.AccessMask,
             .dstAccessMask = 0,
             .subresourceRange = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -964,21 +931,14 @@ void Rr_DrawFrame(void)
             },
         });
 
-    Rr_LockSpinlock(&gRenderer->Lock);
-
-    *Rr_FindSyncState(
-        &gRenderer->SyncStateStorage,
-        (uint64_t)SwapchainImageHandle,
-        gRenderer->Arena) = (Rr_SyncState){
+    AllocatedSwapchainImage->SyncState = (Rr_SyncState){
         .AccessMask = 0,
         .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
         .Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-        .QueueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
+        .QueueFamilyIndex = gRenderer->MainQueue.FamilyIndex,
     };
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
-
-    if (gRenderer->GraphicsQueue.TimestampsEnabled)
+    if (gRenderer->MainQueue.TimestampsEnabled)
     {
         Device->CmdWriteTimestamp(
             Frame->LateCommandBuffer,
@@ -997,7 +957,7 @@ void Rr_DrawFrame(void)
             .commandBufferCount = 1,
             .pCommandBuffers = &Frame->EarlyCommandBuffer,
             .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &SwapchainImage->EarlySemaphore,
+            .pSignalSemaphores = &Frame->SwapchainImage->EarlySemaphore,
             .waitSemaphoreCount = 0,
             .pWaitSemaphores = NULL,
             .pWaitDstStageMask = NULL,
@@ -1007,12 +967,12 @@ void Rr_DrawFrame(void)
             .commandBufferCount = 1,
             .pCommandBuffers = &Frame->LateCommandBuffer,
             .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &SwapchainImage->LateSemaphore,
+            .pSignalSemaphores = &Frame->SwapchainImage->LateSemaphore,
             .waitSemaphoreCount = 2,
             .pWaitSemaphores =
                 (VkSemaphore[]){
                     Frame->AcquireSemaphore,
-                    SwapchainImage->EarlySemaphore,
+                    Frame->SwapchainImage->EarlySemaphore,
                 },
             .pWaitDstStageMask =
                 (VkPipelineStageFlags[]){
@@ -1022,29 +982,63 @@ void Rr_DrawFrame(void)
         },
     };
 
-    Rr_LockSpinlock(&gRenderer->GraphicsQueue.Lock);
+    Rr_LockSpinlock(&gRenderer->MainQueue.Lock);
 
     Device->QueueSubmit(
-        gRenderer->GraphicsQueue.Handle,
+        gRenderer->MainQueue.Handle,
         2,
         SubmitInfos,
         Frame->SubmitFence);
 
+    uint32_t SwapchainImageIndex =
+        (uint32_t)(Frame->SwapchainImage - gRenderer->SwapchainImages.Data);
     VkPresentInfoKHR PresentInfo = {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &SwapchainImage->LateSemaphore,
+        .pWaitSemaphores = &Frame->SwapchainImage->LateSemaphore,
         .swapchainCount = 1,
         .pSwapchains = &Swapchain->Handle,
         .pImageIndices = &SwapchainImageIndex,
     };
 
-    Result =
-        Device->QueuePresentKHR(gRenderer->GraphicsQueue.Handle, &PresentInfo);
+    VkResult Result =
+        Device->QueuePresentKHR(gRenderer->MainQueue.Handle, &PresentInfo);
+    assert(Result == VK_SUCCESS || Result == VK_SUBOPTIMAL_KHR);
 
-    Rr_UnlockSpinlock(&gRenderer->GraphicsQueue.Lock);
+    Rr_UnlockSpinlock(&gRenderer->MainQueue.Lock);
 
     Rr_DestroyScratch(Scratch);
+}
+
+bool Rr_HasQueue(Rr_QueueType QueueType)
+{
+    switch (QueueType)
+    {
+        case RR_QUEUE_TYPE_MAIN:
+            return gRenderer->MainQueue.Handle != VK_NULL_HANDLE;
+        case RR_QUEUE_TYPE_DEDICATED_TRANSFER:
+            return gRenderer->DedicatedTransferQueue.Handle != VK_NULL_HANDLE;
+        case RR_QUEUE_TYPE_ASYNC_COMPUTE:
+            return gRenderer->AsyncComputeQueue.Handle != VK_NULL_HANDLE;
+        default:
+            RR_LOG_ABORT("Invalid queue type!");
+    }
+}
+
+Rr_Queue *Rr_GetQueue(Rr_QueueType QueueType)
+{
+    assert(Rr_HasQueue(QueueType));
+    switch (QueueType)
+    {
+        case RR_QUEUE_TYPE_MAIN:
+            return &gRenderer->MainQueue;
+        case RR_QUEUE_TYPE_DEDICATED_TRANSFER:
+            return &gRenderer->DedicatedTransferQueue;
+        case RR_QUEUE_TYPE_ASYNC_COMPUTE:
+            return &gRenderer->AsyncComputeQueue;
+        default:
+            RR_LOG_ABORT("Invalid queue type!");
+    }
 }
 
 Rr_Frame *Rr_GetPreviousFrame(void)
@@ -1059,7 +1053,7 @@ Rr_Frame *Rr_GetCurrentFrame(void)
 
 bool Rr_IsUsingTransferQueue(void)
 {
-    return gRenderer->TransferQueue.Handle != VK_NULL_HANDLE;
+    return gRenderer->DedicatedTransferQueue.Handle != VK_NULL_HANDLE;
 }
 
 bool Rr_IsIntegratedGPU(void)
@@ -1070,8 +1064,7 @@ bool Rr_IsIntegratedGPU(void)
 
 size_t Rr_GetMaxUniformRange(void)
 {
-    return gRenderer->PhysicalDevice.Properties.limits
-        .maxUniformBufferRange;
+    return gRenderer->PhysicalDevice.Properties.limits.maxUniformBufferRange;
 }
 
 size_t Rr_GetUniformAlignment(void)
@@ -1113,7 +1106,7 @@ Rr_IntVec2 Rr_GetSwapchainSize(void)
 
 Rr_Image2D *Rr_GetSwapchainImage(void)
 {
-    return &Rr_GetCurrentFrame()->VirtualSwapchainImage;
+    return &Rr_GetCurrentFrame()->SwapchainImage->Container;
 }
 
 Rr_PresentMode *Rr_GetAvailablePresentModes(uint32_t *Count)
@@ -1416,68 +1409,6 @@ void Rr_DestroyVulkanFramebuffers(VkImageView ImageView)
     Rr_UnlockSpinlock(&gRenderer->FramebufferStorageLock);
 }
 
-static const Rr_SyncState RR_EMPTY_SYNC = {
-    .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-    .QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-};
-
-Rr_SyncState *Rr_FindSyncState(
-    Rr_SyncStateStorage *Storage,
-    uint64_t VulkanHandle,
-    Rr_Arena *Arena)
-{
-    Rr_SyncStateMap **MapRef = &Storage->Map;
-    uint64_t Hash = VulkanHandle;
-    for (; *MapRef; Hash <<= 2)
-    {
-        uint64_t Key = (*MapRef)->Key;
-        if (VulkanHandle == Key || Key == (uint64_t)VK_NULL_HANDLE)
-        {
-            (*MapRef)->Key = VulkanHandle;
-            return &(*MapRef)->Value;
-        }
-        MapRef = &(*MapRef)->Children[Hash >> 62];
-    }
-    assert(Arena);
-    *MapRef = Rr_PushSyncStateMapIntoHive(&Storage->Hive, Arena).Element;
-    RR_ZERO((*MapRef)->Children);
-    (*MapRef)->Value = RR_EMPTY_SYNC;
-    (*MapRef)->Key = (uint64_t)VulkanHandle;
-    return &(*MapRef)->Value;
-}
-
-Rr_SyncState Rr_GetSyncState(
-    Rr_SyncStateStorage *Storage,
-    uint64_t VulkanHandle)
-{
-    Rr_SyncStateMap **MapRef = &Storage->Map;
-    uint64_t Hash = VulkanHandle;
-    for (; *MapRef; Hash <<= 2)
-    {
-        if (VulkanHandle == (*MapRef)->Key)
-        {
-            return (*MapRef)->Value;
-        }
-        MapRef = &(*MapRef)->Children[Hash >> 62];
-    }
-    return RR_EMPTY_SYNC;
-}
-
-void Rr_EraseSyncState(Rr_SyncStateStorage *Storage, uint64_t VulkanHandle)
-{
-    Rr_SyncStateMap **MapRef = &Storage->Map;
-    uint64_t Hash = VulkanHandle;
-    for (; *MapRef; Hash <<= 2)
-    {
-        if (VulkanHandle == (*MapRef)->Key)
-        {
-            (*MapRef)->Key = (uint64_t)VK_NULL_HANDLE;
-            (*MapRef)->Value = RR_EMPTY_SYNC;
-        }
-        MapRef = &(*MapRef)->Children[Hash >> 62];
-    }
-}
-
 VkSemaphore Rr_AcquireVulkanSemaphore(void)
 {
     VkSemaphore Semaphore;
@@ -1600,7 +1531,7 @@ Rr_CommandPools *Rr_AcquireCommandPools(void)
             &(VkCommandPoolCreateInfo){
                 .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                 .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-                .queueFamilyIndex = gRenderer->GraphicsQueue.FamilyIndex,
+                .queueFamilyIndex = gRenderer->MainQueue.FamilyIndex,
             },
             NULL,
             &ThreadContext->CommandPools->Graphics);
@@ -1610,7 +1541,8 @@ Rr_CommandPools *Rr_AcquireCommandPools(void)
             &(VkCommandPoolCreateInfo){
                 .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                 .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-                .queueFamilyIndex = gRenderer->TransferQueue.FamilyIndex,
+                .queueFamilyIndex =
+                    gRenderer->DedicatedTransferQueue.FamilyIndex,
             },
             NULL,
             &ThreadContext->CommandPools->Transfer);

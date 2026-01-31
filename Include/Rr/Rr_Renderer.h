@@ -34,6 +34,13 @@ typedef struct Rr_Renderer Rr_Renderer;
 
 typedef enum
 {
+    RR_QUEUE_TYPE_MAIN,
+    RR_QUEUE_TYPE_DEDICATED_TRANSFER,
+    RR_QUEUE_TYPE_ASYNC_COMPUTE,
+} Rr_QueueType;
+
+typedef enum
+{
     RR_PRESENT_MODE_FIFO,
     RR_PRESENT_MODE_FIFO_RELAXED,
     RR_PRESENT_MODE_IMMEDIATE,
@@ -198,6 +205,8 @@ RR_EXTERN Rr_PresentMode Rr_GetPresentMode(void);
 RR_EXTERN const char *Rr_GetPresentModeString(Rr_PresentMode PresentMode);
 
 RR_EXTERN bool Rr_SetPresentMode(Rr_PresentMode PresentMode);
+
+RR_EXTERN bool Rr_HasQueue(Rr_QueueType QueueType);
 
 RR_EXTERN bool Rr_IsIntegratedGPU(void);
 

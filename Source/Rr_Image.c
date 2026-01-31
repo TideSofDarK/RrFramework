@@ -327,8 +327,7 @@ static Rr_Image *Rr_CreateImage(
     Rr_ConsumeNextObjectName(Image->Name);
 
     Image->AllocatedImageCount = 1;
-    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_PER_FRAME_BIT) ||
-        RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_READBACK_BIT))
+    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_PER_FRAME_BIT))
     {
         Image->AllocatedImageCount = RR_FRAME_OVERLAP;
     }
@@ -408,6 +407,7 @@ static Rr_Image *Rr_CreateImage(
     for (uint32_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
         Rr_AllocatedImage *AllocatedImage = Image->AllocatedImages + Index;
+        AllocatedImage->SyncState = RR_EMPTY_SYNC;
         AllocatedImage->Container = Image;
 
         VkResult Result = vmaCreateImage(
@@ -478,14 +478,6 @@ void Rr_DestroyImage(Rr_Image *Image)
         Rr_DestroyImageViewStorage(
             AllocatedImage->ViewStorage,
             DestroyFramebuffers);
-
-        Rr_LockSpinlock(&gRenderer->SyncStateStorageLock);
-
-        Rr_EraseSyncState(
-            &gRenderer->SyncStateStorage,
-            (uint64_t)AllocatedImage->Handle);
-
-        Rr_UnlockSpinlock(&gRenderer->SyncStateStorageLock);
 
         vmaDestroyImage(
             gRenderer->Allocator,

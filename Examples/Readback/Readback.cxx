@@ -1,8 +1,7 @@
 #include <Rr/Rr.h>
 
-#include <array>
 #include <cassert>
-#include <iostream>
+#include <print>
 
 struct SReadbackApp
 {
@@ -14,16 +13,25 @@ struct SReadbackApp
         ColorImage = Rr_CreateImage2D(
             { 256, 256 },
             RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
-            RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
-        ReadbackBuffer =
-            Rr_CreateBuffer(256 * 256 * 4, RR_BUFFER_FLAGS_MAPPED_BIT);
+            RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
+        ReadbackBuffer = Rr_CreateBuffer(
+            256 * 256 * 4,
+            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_READBACK_BIT);
     }
 
     void Iterate()
     {
-        Rr_Graph *Graph = Rr_GetGraph();
+        Rr_Graph *SubGraph = Rr_BeginGraph(RR_QUEUE_TYPE_MAIN);
+
+        float Channel = static_cast<float>(Rr_GetTimeSeconds());
+        Channel = Channel - static_cast<long>(Channel);
+
+        Rr_ClearColorImage2D(
+            SubGraph,
+            { .Vec4 = { Channel, Channel, Channel, 1.0f, } },
+            ColorImage);
         Rr_CopyImage2DToBuffer(
-            Graph,
+            SubGraph,
             ColorImage,
             { 0, 0 },
             { 256, 256 },
@@ -31,6 +39,28 @@ struct SReadbackApp
             0,
             ReadbackBuffer,
             0);
+        Rr_EndGraph(SubGraph);
+
+        Rr_BlitImage2D(
+            Rr_GetGraph(),
+            ColorImage,
+            Rr_GetSwapchainImage(),
+            { 0, 0, 256, 256 },
+            { 0, 0, 256, 256 },
+            RR_IMAGE_ASPECT_COLOR_BIT);
+
+        uint8_t *BufferData =
+            reinterpret_cast<uint8_t *>(Rr_GetMappedBufferData(ReadbackBuffer));
+
+        Rr_UIBeginWindow("Readback.cxx");
+        {
+            Rr_IntVec4 Value = { BufferData[0],
+                                 BufferData[1],
+                                 BufferData[2],
+                                 BufferData[3] };
+            Rr_UIInputInt4("Pixel Value", Value.Elements);
+        }
+        Rr_UIEndWindow();
     }
 
     void Cleanup()

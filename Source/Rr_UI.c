@@ -9001,7 +9001,7 @@ void Rr_UIDebugOverlay(void)
                 MainLoopMS,
                 FrameGraphMS);
 
-            if (gRenderer->GraphicsQueue.TimestampsEnabled)
+            if (gRenderer->MainQueue.TimestampsEnabled)
             {
                 Rr_UITextF("GPU: %.3fms", gRenderer->LastFrameMS);
             }
@@ -9129,10 +9129,6 @@ void Rr_UIDebugOverlay(void)
             Rr_UITextF(
                 "SwapchainImages: %zu",
                 gRenderer->SwapchainImages.Count);
-            Rr_UITextF(
-                "SyncStates: %zu/%zu",
-                gRenderer->SyncStateStorage.Hive.Count,
-                gRenderer->SyncStateStorage.Hive.Capacity);
         }
         Rr_UIEndWindow();
     }

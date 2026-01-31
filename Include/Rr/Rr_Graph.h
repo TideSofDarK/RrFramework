@@ -26,20 +26,11 @@
 #include <Rr/Rr_Pipeline.h>
 #include <Rr/Rr_Renderer.h>
 
-typedef enum
-{
-    RR_GRAPH_FLAGS_GRAPHICS_BIT = (1 << 0),
-    RR_GRAPH_FLAGS_TRANSFER_BIT = (1 << 1),
-    RR_GRAPH_FLAGS_COMPUTE_BIT = (1 << 2),
-} Rr_GraphFlagsBits;
-
-typedef uint32_t Rr_GraphFlags;
-
 typedef struct Rr_Graph Rr_Graph;
 
 RR_EXTERN struct Rr_Graph *Rr_GetGraph(void);
 
-RR_EXTERN struct Rr_Graph *Rr_BeginGraph(Rr_GraphFlags Flags);
+RR_EXTERN struct Rr_Graph *Rr_BeginGraph(Rr_QueueType QueueType);
 
 RR_EXTERN void Rr_EndGraph(struct Rr_Graph *Graph);
 
@@ -51,6 +42,31 @@ RR_EXTERN void Rr_SetNextNodeName(Rr_Graph *Graph, const char *Name);
 RR_EXTERN void Rr_BeginGraphLabel(Rr_Graph *Graph, const char *Name);
 
 RR_EXTERN void Rr_EndGraphLabel(Rr_Graph *Graph, const char *Name);
+
+RR_EXTERN void Rr_TransferBufferToQueue(
+    Rr_Graph *Graph,
+    Rr_Buffer *Buffer,
+    Rr_QueueType QueueType);
+
+RR_EXTERN void Rr_TransferImage2DToQueue(
+    Rr_Graph *Graph,
+    Rr_Image2D *Image,
+    Rr_QueueType QueueType);
+
+RR_EXTERN void Rr_TransferImage2DArrayToQueue(
+    Rr_Graph *Graph,
+    Rr_Image2DArray *Image,
+    Rr_QueueType QueueType);
+
+RR_EXTERN void Rr_TransferImage3DToQueue(
+    Rr_Graph *Graph,
+    Rr_Image3D *Image,
+    Rr_QueueType QueueType);
+
+RR_EXTERN void Rr_TransferImageCubeToQueue(
+    Rr_Graph *Graph,
+    Rr_ImageCube *Image,
+    Rr_QueueType QueueType);
 
 /* Allows multiple writes to the same buffer. */
 RR_EXTERN Rr_TransferNode *Rr_AddTransferNode(Rr_Graph *Graph);

@@ -92,6 +92,11 @@ struct Rr_SyncState
     uint32_t QueueFamilyIndex;
 };
 
+static const Rr_SyncState RR_EMPTY_SYNC = {
+    .StageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+    .QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+};
+
 typedef struct Rr_Queue Rr_Queue;
 struct Rr_Queue
 {

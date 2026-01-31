@@ -355,16 +355,19 @@ struct Rr_GraphResource
 {
     Rr_GraphHandle Handle;
     void *Container;
+    /* TODO: Currently it's being resolved under sync storage lock.
+     * Consider resolving on resource creation. */
     void *Allocated;
     uint32_t Generation;
     Rr_SyncState SyncState;
+    uint32_t DstQueueFamilyIndex;
 };
 
 typedef RR_ARRAY(Rr_GraphResource) Rr_GraphResourceArray;
 
 struct Rr_Graph
 {
-    Rr_GraphFlags Flags;
+    Rr_QueueType QueueType;
 
     RR_ARRAY(Rr_GraphNode *) Nodes;
 
@@ -377,6 +380,7 @@ struct Rr_Graph
 
     Rr_GraphImage *SwapchainImageHandle;
 
+    /* TODO: We already have buffers and images available... */
     Rr_HandleSet Buffers;
     Rr_HandleSet Images;
     Rr_HandleSet ComputePipelines;
@@ -421,9 +425,6 @@ extern Rr_GraphImage *Rr_GetGraphImageHandle(Rr_Graph *Graph, void *Container);
 
 extern void Rr_ExecuteGraph(
     Rr_Graph *Graph,
-    struct Rr_SyncStateStorage *SyncStateStorage,
-    Rr_Spinlock *SyncStateLock,
-    Rr_Arena *SyncStateArena,
     uint32_t QueueFamilyIndex,
     VkCommandBuffer EarlyCommandBuffer,
     VkCommandBuffer LateCommandBuffer);

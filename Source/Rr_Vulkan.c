@@ -31,7 +31,7 @@ char const *RR_VULKAN_DEVICE_EXTENSIONS[] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
 #ifdef __APPLE__
-    "VK_KHR_portability_subset"
+    "VK_KHR_portability_subset",
 #endif
 };
 

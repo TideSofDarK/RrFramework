@@ -32,8 +32,7 @@
 typedef struct Rr_SwapchainImage Rr_SwapchainImage;
 struct Rr_SwapchainImage
 {
-    VkImage Handle;
-    Rr_ImageViewStorage *ViewStorage;
+    Rr_Image2D Container;
     VkSemaphore EarlySemaphore;
     VkSemaphore LateSemaphore;
 };
@@ -79,7 +78,7 @@ struct Rr_Frame
     VkFence SubmitFence;
     VkQueryPool QueryPool;
 
-    Rr_Image2D VirtualSwapchainImage;
+    Rr_SwapchainImage *SwapchainImage;
 
     Rr_Graph *Graph;
 
@@ -173,39 +172,6 @@ struct Rr_RenderPassStorage
 
 extern VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassMapKey *Key);
 
-typedef struct Rr_SyncStateMap Rr_SyncStateMap;
-struct Rr_SyncStateMap
-{
-    uint64_t Key;
-    Rr_SyncState Value;
-    Rr_SyncStateMap *Children[4];
-};
-
-#define RR_HIVE_TYPE      Rr_SyncStateMap
-#define RR_HIVE_TYPE_NAME SyncStateMap
-#define RR_HIVE_PREFIX    Rr_
-#include "Rr_Hive.h"
-
-typedef struct Rr_SyncStateStorage Rr_SyncStateStorage;
-struct Rr_SyncStateStorage
-{
-    Rr_SyncStateMap *Map;
-    Rr_SyncStateMapHive Hive;
-};
-
-extern Rr_SyncState *Rr_FindSyncState(
-    Rr_SyncStateStorage *Storage,
-    uint64_t VulkanHandle,
-    Rr_Arena *Arena);
-
-extern Rr_SyncState Rr_GetSyncState(
-    Rr_SyncStateStorage *Storage,
-    uint64_t VulkanHandle);
-
-extern void Rr_EraseSyncState(
-    Rr_SyncStateStorage *Storage,
-    uint64_t VulkanHandle);
-
 struct Rr_Renderer
 {
     Rr_VulkanLoader Loader;
@@ -217,9 +183,9 @@ struct Rr_Renderer
     Rr_Swapchain Swapchain;
     RR_ARRAY(Rr_SwapchainImage) SwapchainImages;
 
-    Rr_Queue GraphicsQueue;
-    Rr_Queue TransferQueue;
-    /* Rr_Queue ComputeQueue; */
+    Rr_Queue MainQueue;
+    Rr_Queue DedicatedTransferQueue;
+    Rr_Queue AsyncComputeQueue;
 
     /* TODO: Make sure this doesn't need synchronization in general case. */
     VmaAllocator Allocator;
@@ -282,9 +248,6 @@ struct Rr_Renderer
     Rr_Spinlock DescriptorPoolListLock;
     uint32_t DescriptorPoolListCount;
 
-    Rr_SyncStateStorage SyncStateStorage;
-    Rr_Spinlock SyncStateStorageLock;
-
     Rr_Arena *Arena;
     Rr_Spinlock Lock;
 };
@@ -301,11 +264,11 @@ extern void Rr_NewFrame(void);
 
 extern void Rr_DrawFrame(void);
 
+extern Rr_Queue *Rr_GetQueue(Rr_QueueType QueueType);
+
 extern Rr_Frame *Rr_GetPreviousFrame(void);
 
 extern Rr_Frame *Rr_GetCurrentFrame(void);
-
-extern bool Rr_IsUsingTransferQueue(void);
 
 extern VkSemaphore Rr_AcquireVulkanSemaphore(void);
 

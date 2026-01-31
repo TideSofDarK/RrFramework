@@ -90,7 +90,8 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
     if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_READBACK_BIT))
     {
         AllocationCreateInfo.requiredFlags |=
-            VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+            VK_MEMORY_PROPERTY_HOST_CACHED_BIT |
+            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
         AllocationCreateInfo.flags |=
             VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
     }
@@ -124,8 +125,9 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
     for (uint32_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
-        VmaAllocationInfo AllocationInfo;
+        AllocatedBuffer->SyncState = RR_EMPTY_SYNC;
 
+        VmaAllocationInfo AllocationInfo;
         VkResult Result = vmaCreateBuffer(
             gRenderer->Allocator,
             &BufferCreateInfo,
@@ -184,14 +186,6 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
     for (uint32_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
-
-        Rr_LockSpinlock(&gRenderer->SyncStateStorageLock);
-
-        Rr_EraseSyncState(
-            &gRenderer->SyncStateStorage,
-            (uint64_t)AllocatedBuffer->Handle);
-
-        Rr_UnlockSpinlock(&gRenderer->SyncStateStorageLock);
 
         vmaDestroyBuffer(
             gRenderer->Allocator,

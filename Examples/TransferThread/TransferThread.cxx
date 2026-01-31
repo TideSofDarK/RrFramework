@@ -97,7 +97,7 @@ struct STransferThread
 
             Thread->IsBusy = true;
 
-            Rr_Graph *Graph = Rr_BeginGraph(RR_GRAPH_FLAGS_TRANSFER_BIT);
+            Rr_Graph *Graph = Rr_BeginGraph(RR_QUEUE_TYPE_DEDICATED_TRANSFER);
 
             Rr_Image2D *Image2D = CreateImage2D(Graph, Path.c_str());
 
@@ -106,6 +106,8 @@ struct STransferThread
                 std::cerr << "Unable to create Image2D!\n";
                 std::abort();
             }
+
+            Rr_TransferImage2DToQueue(Graph, Image2D, RR_QUEUE_TYPE_MAIN);
 
             Rr_EndGraph(Graph);
 
@@ -285,6 +287,11 @@ struct STransferThreadApp
 
     void Init()
     {
+        if (!Rr_HasQueue(RR_QUEUE_TYPE_DEDICATED_TRANSFER))
+        {
+            std::abort();
+        }
+
         InitSampler();
         InitPipeline();
         InitUniformBuffer();

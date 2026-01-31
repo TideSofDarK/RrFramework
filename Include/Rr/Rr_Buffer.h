@@ -23,7 +23,7 @@
 
 #include <Rr/Rr_Renderer.h>
 
-static const uint64_t RR_WHOLE_SIZE = ~0ULL;
+static uint64_t const RR_WHOLE_SIZE = ~0ULL;
 
 typedef struct Rr_Buffer Rr_Buffer;
 
