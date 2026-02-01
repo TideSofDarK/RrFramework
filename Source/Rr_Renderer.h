@@ -60,15 +60,6 @@ struct Rr_CommandPools
     Rr_CommandPools *Next;
 };
 
-#define RR_BEGIN_FRAME_SECTION(Name) \
-    Rr_BeginSection(Rr_GetCurrentFrame()->Profiler, (Name))
-
-#define RR_END_FRAME_SECTION(Name) \
-    Rr_EndSection(Rr_GetCurrentFrame()->Profiler, (Name))
-
-#define RR_GET_FRAME_SECTION(Name) \
-    Rr_GetSectionTicks(Rr_GetPreviousFrame()->Profiler, (Name))
-
 typedef struct Rr_Frame Rr_Frame;
 struct Rr_Frame
 {

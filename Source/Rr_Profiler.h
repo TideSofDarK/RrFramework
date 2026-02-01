@@ -40,10 +40,14 @@ struct Rr_Profiler
 
 extern Rr_Profiler *Rr_CreateProfiler(Rr_Arena *Arena);
 
-extern void Rr_BeginSection(Rr_Profiler *Profiler, const char *SectionName);
+extern void Rr_BeginSection(Rr_Profiler *Profiler, char const *Name);
 
-extern void Rr_EndSection(Rr_Profiler *Profiler, const char *SectionName);
+extern void Rr_EndSection(Rr_Profiler *Profiler, char const *Name);
 
-extern uint64_t Rr_GetSectionTicks(
-    Rr_Profiler *Profiler,
-    const char *SectionName);
+extern uint64_t Rr_GetSectionTicks(Rr_Profiler *Profiler, char const *Name);
+
+extern void Rr_BeginFrameSection(char const *Name);
+
+extern void Rr_EndFrameSection(char const *Name);
+
+extern uint64_t Rr_GetFrameSectionTicks(char const *Name);

@@ -2068,7 +2068,7 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
     float AvailableWidth,
     Rr_Vec4 *Color)
 {
-    RR_BEGIN_FRAME_SECTION("Rr.UI.DrawInputText");
+    Rr_BeginFrameSection("Rr.UI.DrawInputText");
 
     Rr_UIFont *Font = Rr_UICurrentFont();
     float FontSize = Font->Size;
@@ -2177,7 +2177,7 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
 
     *CursorEnd = NewCursorEnd;
 
-    RR_END_FRAME_SECTION("Rr.UI.DrawInputText");
+    Rr_EndFrameSection("Rr.UI.DrawInputText");
 
     return (Rr_Vec2){ .Width = MaxX, .Height = CurrentY + LineHeight };
 }
@@ -2196,7 +2196,7 @@ static inline Rr_Vec2 Rr_UIDrawText(
         return Rr_V2F(0.0f);
     }
 
-    RR_BEGIN_FRAME_SECTION("Rr.UI.DrawText");
+    Rr_BeginFrameSection("Rr.UI.DrawText");
 
     bool NullTerminated = false;
     if (UTF8StringLength == SIZE_MAX)
@@ -2367,7 +2367,7 @@ static inline Rr_Vec2 Rr_UIDrawText(
         }
     }
 
-    RR_END_FRAME_SECTION("Rr.UI.DrawText");
+    Rr_EndFrameSection("Rr.UI.DrawText");
 
     return (Rr_Vec2){ .Width = MaxX, .Height = CurrentY + LineHeight };
 }
@@ -8798,7 +8798,7 @@ void Rr_EndUI(void)
 
     if (gUIContext->ActiveLayouts.Count > 0)
     {
-        RR_BEGIN_FRAME_SECTION("Rr.UI.DrawWindows");
+        Rr_BeginFrameSection("Rr.UI.DrawWindows");
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
@@ -8884,7 +8884,7 @@ void Rr_EndUI(void)
 
         Rr_EndGraphLabel(Rr_GetGraph(), "Rr.UI");
 
-        RR_END_FRAME_SECTION("Rr.UI.DrawWindows");
+        Rr_EndFrameSection("Rr.UI.DrawWindows");
     }
 
     gUIContext->ClickConsumed = false;
@@ -8989,10 +8989,10 @@ void Rr_UIDebugOverlay(void)
             }
 
             double MainLoopMS =
-                (double)(RR_GET_FRAME_SECTION("Rr.MainLoop") * 1000) /
+                (double)(Rr_GetFrameSectionTicks("Rr.MainLoop") * 1000) /
                 (double)Rr_GetPerformanceFrequency();
             double FrameGraphMS =
-                (double)(RR_GET_FRAME_SECTION("Rr.FrameGraph") * 1000) /
+                (double)(Rr_GetFrameSectionTicks("Rr.FrameGraph") * 1000) /
                 (double)Rr_GetPerformanceFrequency();
 
             Rr_UITextF(
@@ -9028,13 +9028,14 @@ void Rr_UIDebugOverlay(void)
                 gUIContext->Indices.Capacity);
 
             double DrawWindowsMS =
-                (double)(RR_GET_FRAME_SECTION("Rr.UI.DrawWindows") * 1000) /
+                (double)(Rr_GetFrameSectionTicks("Rr.UI.DrawWindows") * 1000) /
                 (double)Rr_GetPerformanceFrequency();
             double DrawTextMS =
-                (double)(RR_GET_FRAME_SECTION("Rr.UI.DrawText") * 1000) /
+                (double)(Rr_GetFrameSectionTicks("Rr.UI.DrawText") * 1000) /
                 (double)Rr_GetPerformanceFrequency();
             double DrawInputTextMS =
-                (double)(RR_GET_FRAME_SECTION("Rr.UI.DrawInputText") * 1000) /
+                (double)(Rr_GetFrameSectionTicks("Rr.UI.DrawInputText") *
+                         1000) /
                 (double)Rr_GetPerformanceFrequency();
 
             Rr_UITextF(

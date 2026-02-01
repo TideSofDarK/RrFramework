@@ -156,7 +156,7 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_InitRenderer(Config->Title);
 
     Rr_NewFrame();
-    RR_BEGIN_FRAME_SECTION("Rr.MainLoop");
+    Rr_BeginFrameSection("Rr.MainLoop");
 
     /* NOTE: Order is very important! UI initialization will create GPU
      * resources so it must have access to the graph. User provided Init
@@ -212,14 +212,14 @@ void Rr_Run(Rr_AppConfig *Config)
             break;
         }
 
-        RR_END_FRAME_SECTION("Rr.MainLoop");
+        Rr_EndFrameSection("Rr.MainLoop");
 
         /* NOTE: The reason Rr_NewFrame() is called before event processing
          * is to allow it to use temporary frame arena to buffer
          * stuff such as text input. */
 
         Rr_NewFrame();
-        RR_BEGIN_FRAME_SECTION("Rr.MainLoop");
+        Rr_BeginFrameSection("Rr.MainLoop");
 
         Rr_NewUIFrame();
     }

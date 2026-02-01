@@ -20,6 +20,8 @@
 
 #include "Rr_Profiler.h"
 
+#include "Rr_Renderer.h"
+
 #if defined(__x86_64__) && !defined(__APPLE__)
 #include <xxHash/xxh_x86dispatch.h>
 #else
@@ -92,4 +94,19 @@ uint64_t Rr_GetSectionTicks(Rr_Profiler *Profiler, const char *SectionName)
     }
 
     return 0;
+}
+
+void Rr_BeginFrameSection(char const *Name)
+{
+    Rr_BeginSection(Rr_GetCurrentFrame()->Profiler, Name);
+}
+
+void Rr_EndFrameSection(char const *Name)
+{
+    Rr_EndSection(Rr_GetCurrentFrame()->Profiler, Name);
+}
+
+uint64_t Rr_GetFrameSectionTicks(char const *Name)
+{
+    return Rr_GetSectionTicks(Rr_GetPreviousFrame()->Profiler, Name);
 }

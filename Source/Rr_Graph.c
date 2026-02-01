@@ -1745,7 +1745,7 @@ void Rr_ExecuteGraph(
     VkCommandBuffer EarlyCommandBuffer,
     VkCommandBuffer LateCommandBuffer)
 {
-    RR_BEGIN_FRAME_SECTION("Rr.ExecuteGraph");
+    Rr_BeginFrameSection("Rr.ExecuteGraph");
 
     if (Graph->Nodes.Count == 0)
     {
@@ -2212,7 +2212,7 @@ void Rr_ExecuteGraph(
 
     Rr_DestroyScratch(Scratch);
 
-    RR_END_FRAME_SECTION("Rr.ExecuteGraph");
+    Rr_EndFrameSection("Rr.ExecuteGraph");
 }
 
 void Rr_FinalizeGraph(Rr_Graph *Graph)

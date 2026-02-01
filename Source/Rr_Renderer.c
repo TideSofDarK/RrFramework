@@ -888,7 +888,7 @@ void Rr_DrawFrame(void)
             0);
     }
 
-    RR_BEGIN_FRAME_SECTION("Rr.FrameGraph");
+    Rr_BeginFrameSection("Rr.FrameGraph");
 
     Rr_ExecuteGraph(
         Frame->Graph,
@@ -896,7 +896,7 @@ void Rr_DrawFrame(void)
         Frame->EarlyCommandBuffer,
         Frame->LateCommandBuffer);
 
-    RR_END_FRAME_SECTION("Rr.FrameGraph");
+    Rr_EndFrameSection("Rr.FrameGraph");
 
     Device->EndCommandBuffer(Frame->EarlyCommandBuffer);
 
@@ -1003,9 +1003,13 @@ void Rr_DrawFrame(void)
 
     VkResult Result =
         Device->QueuePresentKHR(gRenderer->MainQueue.Handle, &PresentInfo);
-    assert(Result == VK_SUCCESS || Result == VK_SUBOPTIMAL_KHR);
 
     Rr_UnlockSpinlock(&gRenderer->MainQueue.Lock);
+
+    if (Result == VK_SUBOPTIMAL_KHR || Result == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        Rr_RecreateSwapchainIfNeeded();
+    }
 
     Rr_DestroyScratch(Scratch);
 }
