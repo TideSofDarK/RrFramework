@@ -2091,7 +2091,7 @@ void Rr_ExecuteGraph(
     VkPipelineStageFlags OwnershipTransferStage = 0;
 
     uint32_t BufferOwnershipTransferIndex = 0;
-    VkBufferMemoryBarrier *BufferOwnershipTransferBarriers;
+    VkBufferMemoryBarrier *BufferOwnershipTransferBarriers = NULL;
     if (BufferOwnershipTransferCount)
     {
         BufferOwnershipTransferBarriers = RR_ALLOC_NO_ZERO(
@@ -2123,7 +2123,7 @@ void Rr_ExecuteGraph(
     }
 
     uint32_t ImageOwnershipTransferIndex = 0;
-    VkImageMemoryBarrier *ImageOwnershipTransferBarriers;
+    VkImageMemoryBarrier *ImageOwnershipTransferBarriers = NULL;
     if (ImageOwnershipTransferCount)
     {
         ImageOwnershipTransferBarriers = RR_ALLOC_NO_ZERO(
