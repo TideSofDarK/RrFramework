@@ -195,6 +195,9 @@ struct Rr_Renderer
     size_t FrameNumber; /* Total frames rendered. */
     double LastFrameMS;
 
+    VkDescriptorPool EmptyDescriptorPool;
+    VkDescriptorSet EmptyDescriptorSet;
+
     Rr_BufferHive Buffers;
     Rr_Spinlock BuffersLock;
     Rr_HandleHive ReleasedBuffers;

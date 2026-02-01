@@ -962,8 +962,6 @@ struct SQuadTreeApp
 
     void Iterate()
     {
-        Rr_UIDebugOverlay();
-
         Rr_UIBeginWindowEx(
             "QuadTree",
             NULL,

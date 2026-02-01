@@ -23,6 +23,7 @@
 #include <Rr/Rr_Graph.h>
 
 #include "Rr_Descriptor.h"
+#include "Rr_Image.h"
 
 struct Rr_Frame;
 struct Rr_SyncStateStorage;
@@ -380,15 +381,11 @@ struct Rr_Graph
 
     Rr_GraphImage *SwapchainImageHandle;
 
-    /* TODO: We already have buffers and images available... */
-    Rr_HandleSet Buffers;
-    Rr_HandleSet Images;
     Rr_HandleSet ComputePipelines;
     Rr_HandleSet GraphicsPipelines;
     Rr_HandleSet Samplers;
 
     Rr_DescriptorPoolList *DescriptorPoolList;
-    VkDescriptorSet EmptyDescriptorSet;
 
     const char *NextNodeName;
 
@@ -400,10 +397,6 @@ struct Rr_Graph
     Rr_Arena *Arena;
     uintptr_t ArenaPosition;
 };
-
-extern void Rr_MarkBufferUsed(Rr_Graph *Graph, Rr_Buffer *Buffer);
-
-extern void Rr_MarkImageUsed(Rr_Graph *Graph, struct Rr_Image *Image);
 
 extern void Rr_MarkSamplerUsed(Rr_Graph *Graph, Rr_Sampler *Sampler);
 
@@ -419,9 +412,11 @@ extern void Rr_DecrementRefCounts(Rr_Graph *Graph);
 
 extern Rr_GraphBuffer *Rr_GetGraphBufferHandle(
     Rr_Graph *Graph,
-    void *Container);
+    Rr_Buffer *Container);
 
-extern Rr_GraphImage *Rr_GetGraphImageHandle(Rr_Graph *Graph, void *Container);
+extern Rr_GraphImage *Rr_GetGraphImageHandle(
+    Rr_Graph *Graph,
+    Rr_Image *Container);
 
 extern void Rr_ExecuteGraph(
     Rr_Graph *Graph,

@@ -92,8 +92,6 @@ static void Iterate(void)
     Rr_BindVertexBuffer(GraphicsNode, VertexBuffer, 0, 0);
     Rr_BindIndexBuffer(GraphicsNode, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);
     Rr_DrawIndexed(GraphicsNode, 3, 1, 0, 0, 0);
-
-    Rr_UIDebugOverlay();
 }
 
 static void Cleanup(void)

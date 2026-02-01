@@ -218,8 +218,6 @@ static void DrawFirstGLTFPrimitive(Rr_GraphNode *GraphicsNode)
     Rr_BindSampler(GraphicsNode, NearestSampler, 0, 1);
     Rr_BindSampledImage2D(GraphicsNode, GLTFAsset->Images[0], 0, 2);
     Rr_DrawIndexed(GraphicsNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
-
-    Rr_UIDebugOverlay();
 }
 
 static void Iterate(void)

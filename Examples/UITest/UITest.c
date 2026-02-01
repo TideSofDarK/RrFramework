@@ -552,8 +552,6 @@ static void Iterate(void)
         (Rr_ColorClear){ 0.01f, 0.01f, 0.02f, 1.0f },
         Rr_GetSwapchainImage());
 
-    Rr_UIDebugOverlay();
-
     static bool GeneralWindowOpen = true;
     static bool WidgetsWindowOpen = true;
     static bool NoClose = false;

@@ -274,8 +274,6 @@ struct SSmoothGridApp
             0,
             sizeof(SGPUUniform));
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
-
-        Rr_UIDebugOverlay();
     }
 
     ~SSmoothGridApp()

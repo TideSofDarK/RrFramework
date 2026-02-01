@@ -315,7 +315,6 @@ struct STransferThreadApp
 
     void Iterate()
     {
-        Rr_UIDebugOverlay();
         Rr_UIBeginWindowEx(
             "TransferThread.cxx",
             nullptr,

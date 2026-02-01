@@ -330,8 +330,6 @@ struct SPrerenderedDepthApp
             { 0, 0, BackgroundExtent.Width, BackgroundExtent.Height },
             { 0, 0, SwapchainExtent.Width, SwapchainExtent.Height },
             RR_IMAGE_ASPECT_COLOR_BIT);
-
-        Rr_UIDebugOverlay();
     }
 
     void Cleanup()

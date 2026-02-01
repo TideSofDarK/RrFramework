@@ -191,7 +191,7 @@ static inline Rr_DescriptorsState Rr_MakeDescriptorsState(
     Rr_DescriptorsState DescriptorsState = { 0 };
     DescriptorsState.Device = &gRenderer->Device;
     DescriptorsState.CommandBuffer = CommandBuffer;
-    DescriptorsState.EmptyDescriptorSet = Graph->EmptyDescriptorSet;
+    DescriptorsState.EmptyDescriptorSet = gRenderer->EmptyDescriptorSet;
     DescriptorsState.DescriptorPoolList = Graph->DescriptorPoolList;
     return DescriptorsState;
 }
@@ -1760,27 +1760,6 @@ void Rr_ExecuteGraph(
 
     Rr_Device *Device = &gRenderer->Device;
 
-    /* TODO: Technically this can be created just once. */
-    {
-        Rr_DescriptorSetLayoutKey EmptyDescriptorSetLayoutKey = { 0 };
-        VkDescriptorSetLayout EmptyDescriptorSetLayout =
-            Rr_GetDescriptorSetLayout(&EmptyDescriptorSetLayoutKey)->Handle;
-        VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo = {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .descriptorPool = Graph->DescriptorPoolList->Handle,
-            .descriptorSetCount = 1,
-            .pSetLayouts = &EmptyDescriptorSetLayout,
-        };
-        Device->AllocateDescriptorSets(
-            Device->Handle,
-            &DescriptorSetAllocateInfo,
-            &Graph->EmptyDescriptorSet);
-        Rr_SetVulkanObjectName(
-            VK_OBJECT_TYPE_DESCRIPTOR_SET,
-            (uint64_t)Graph->EmptyDescriptorSet,
-            "Rr.EmptyDescriptorSet");
-    }
-
     if (EarlyCommandBuffer == VK_NULL_HANDLE)
     {
         EarlyCommandBuffer = LateCommandBuffer;
@@ -1848,11 +1827,11 @@ void Rr_ExecuteGraph(
     Rr_BarrierBatch BarrierBatch = { 0 };
     RR_RESERVE_ARRAY(
         &BarrierBatch.BufferBarriers,
-        Graph->Buffers.Hive.Count,
+        Graph->BufferResources.Count,
         Scratch.Arena);
     RR_RESERVE_ARRAY(
         &BarrierBatch.ImageBarriers,
-        Graph->Images.Hive.Count,
+        Graph->ImageResources.Count,
         Scratch.Arena);
 
     size_t BatchStartIndex = 0;
@@ -2225,7 +2204,8 @@ static inline Rr_GraphImage *Rr_GetGraphHandle(
     Rr_Graph *Graph,
     Rr_GraphResourceArray *ResourceArray,
     Rr_Map **Handles,
-    void *Container)
+    void *Container,
+    Rr_AtomicInt *RefCount)
 {
     assert(Container != NULL);
 
@@ -2242,43 +2222,31 @@ static inline Rr_GraphImage *Rr_GetGraphHandle(
         };
         *GraphHandle = RR_ALLOC_TYPE(Rr_GraphHandle, Graph->Arena);
         **GraphHandle = Handle;
+
+        Rr_IncrementAtomicRelaxed(RefCount);
     }
 
     return *GraphHandle;
 }
 
-Rr_GraphBuffer *Rr_GetGraphBufferHandle(Rr_Graph *Graph, void *Container)
+Rr_GraphBuffer *Rr_GetGraphBufferHandle(Rr_Graph *Graph, Rr_Buffer *Container)
 {
     return Rr_GetGraphHandle(
         Graph,
         &Graph->BufferResources,
         &Graph->BufferHandles,
-        Container);
+        Container,
+        &Container->RefCount);
 }
 
-Rr_GraphImage *Rr_GetGraphImageHandle(Rr_Graph *Graph, void *Container)
+Rr_GraphImage *Rr_GetGraphImageHandle(Rr_Graph *Graph, Rr_Image *Container)
 {
     return Rr_GetGraphHandle(
         Graph,
         &Graph->ImageResources,
         &Graph->ImageHandles,
-        Container);
-}
-
-void Rr_MarkBufferUsed(Rr_Graph *Graph, Rr_Buffer *Buffer)
-{
-    if (Rr_AddHandleToSet(&Graph->Buffers, Buffer, Graph->Arena))
-    {
-        Rr_IncrementAtomicRelaxed(&Buffer->RefCount);
-    }
-}
-
-void Rr_MarkImageUsed(Rr_Graph *Graph, Rr_Image *Image)
-{
-    if (Rr_AddHandleToSet(&Graph->Images, Image, Graph->Arena))
-    {
-        Rr_IncrementAtomicRelaxed(&Image->RefCount);
-    }
+        Container,
+        &Container->RefCount);
 }
 
 void Rr_MarkSamplerUsed(Rr_Graph *Graph, Rr_Sampler *Sampler)
@@ -2374,19 +2342,17 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
         return;
     }
 
-    for (Rr_HandleTrieHiveIterator It = Graph->Buffers.Hive.Begin;
-         It.Element != Graph->Buffers.Hive.End.Element;
-         Rr_AdvanceHandleTrieHiveIterator(&It))
+    for (size_t Index = 0; Index < Graph->BufferResources.Count; ++Index)
     {
-        Rr_Buffer *Buffer = (Rr_Buffer *)It.Element->Handle;
+        Rr_GraphResource *BufferResource = &Graph->BufferResources.Data[Index];
+        Rr_Buffer *Buffer = (Rr_Buffer *)BufferResource->Container;
         Rr_DecrementAtomicRelaxed(&Buffer->RefCount);
     }
 
-    for (Rr_HandleTrieHiveIterator It = Graph->Images.Hive.Begin;
-         It.Element != Graph->Images.Hive.End.Element;
-         Rr_AdvanceHandleTrieHiveIterator(&It))
+    for (size_t Index = 0; Index < Graph->ImageResources.Count; ++Index)
     {
-        Rr_Image *Image = (Rr_Image *)It.Element->Handle;
+        Rr_GraphResource *ImageResource = &Graph->ImageResources.Data[Index];
+        Rr_Image *Image = (Rr_Image *)ImageResource->Container;
         Rr_DecrementAtomicRelaxed(&Image->RefCount);
     }
 
@@ -2525,8 +2491,6 @@ void Rr_TransferBufferData(
             .AccessMask = VK_ACCESS_TRANSFER_READ_BIT,
         });
 
-    Rr_MarkBufferUsed(Node->Graph, SrcBuffer);
-
     Rr_AddNodeDependency(
         Node,
         &Node->BufferDeps,
@@ -2538,8 +2502,6 @@ void Rr_TransferBufferData(
         },
         true,
         false);
-
-    Rr_MarkBufferUsed(Node->Graph, DstBuffer);
 }
 
 void Rr_BlitImage2D(
@@ -2578,8 +2540,6 @@ void Rr_BlitImage2D(
             .Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         });
 
-    Rr_MarkImageUsed(Graph, SrcImage);
-
     Rr_AddImageDependency(
         GraphNode,
         DstImageHandle,
@@ -2588,8 +2548,6 @@ void Rr_BlitImage2D(
             .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
             .Layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         });
-
-    Rr_MarkImageUsed(Graph, DstImage);
 }
 
 Rr_GraphNode *Rr_AddComputeNode(Rr_Graph *Graph)
@@ -2651,7 +2609,6 @@ Rr_GraphNode *Rr_AddGraphicsNode(
                     .AccessMask = AccessMask,
                     .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 });
-            Rr_MarkImageUsed(Graph, ColorTarget->Image);
 
             if (ColorTarget->ResolveImage == NULL ||
                 ColorTarget->Image->SampleCount == 1)
@@ -2667,7 +2624,6 @@ Rr_GraphNode *Rr_AddGraphicsNode(
                     .AccessMask = AccessMask,
                     .Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 });
-            Rr_MarkImageUsed(Graph, ColorTarget->ResolveImage);
         }
     }
     if (DepthTarget != NULL)
@@ -2689,7 +2645,6 @@ Rr_GraphNode *Rr_AddGraphicsNode(
                 .AccessMask = AccessMask,
                 .Layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
             });
-        Rr_MarkImageUsed(Graph, DepthTarget->Image);
     }
 
     GraphicsNode->Encoded.Encoded =
@@ -2723,7 +2678,6 @@ void Rr_ClearColorImage2D(
             .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
             .Layout = VK_IMAGE_LAYOUT_GENERAL,
         });
-    Rr_MarkImageUsed(Graph, Image);
 
     GraphNode->Union.ClearColorImage =
         (Rr_ClearColorImageNode){ .ColorClear = ColorClear,
@@ -2762,7 +2716,6 @@ void Rr_ResolveImage2D(
             .AccessMask = VK_ACCESS_TRANSFER_READ_BIT,
             .Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         });
-    Rr_MarkImageUsed(Graph, SrcImage);
 
     Rr_GraphImage *DstImageHandle = Rr_GetGraphImageHandle(Graph, DstImage);
     Rr_AddImageDependency(
@@ -2773,7 +2726,6 @@ void Rr_ResolveImage2D(
             .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
             .Layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         });
-    Rr_MarkImageUsed(Graph, DstImage);
 }
 
 static inline Rr_GraphNode *Rr_AddCopyBufferToImageNodeEx(
@@ -2801,7 +2753,6 @@ static inline Rr_GraphNode *Rr_AddCopyBufferToImageNodeEx(
             .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
             .AccessMask = VK_ACCESS_TRANSFER_READ_BIT,
         });
-    Rr_MarkBufferUsed(Graph, Buffer);
 
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Graph, Image);
     Rr_AddImageDependency(
@@ -2812,7 +2763,6 @@ static inline Rr_GraphNode *Rr_AddCopyBufferToImageNodeEx(
             .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
             .Layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         });
-    Rr_MarkImageUsed(Graph, Image);
 
     GraphNode->Union.CopyBufferToImage = (Rr_CopyBufferToImageNode){
         .Buffer = *BufferHandle,
@@ -2972,8 +2922,6 @@ static inline void Rr_AddCopyImageToBufferNodeEx(
             .Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         });
 
-    Rr_MarkImageUsed(Graph, Image);
-
     Rr_AddBufferDependency(
         GraphNode,
         BufferHandle,
@@ -2981,8 +2929,6 @@ static inline void Rr_AddCopyImageToBufferNodeEx(
             .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
             .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
         });
-
-    Rr_MarkBufferUsed(Graph, Buffer);
 
     VkBufferImageCopy *BufferImageCopy =
         RR_ALLOC_NO_ZERO(sizeof(VkBufferImageCopy), Graph->Arena);
@@ -3066,8 +3012,6 @@ static inline Rr_GraphNode *Rr_AddCopyImageNode(
             .Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         });
 
-    Rr_MarkImageUsed(Graph, SrcImage);
-
     Rr_AddImageDependency(
         GraphNode,
         DstImageHandle,
@@ -3076,8 +3020,6 @@ static inline Rr_GraphNode *Rr_AddCopyImageNode(
             .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
             .Layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         });
-
-    Rr_MarkImageUsed(Graph, DstImage);
 
     GraphNode->Union.CopyImage = (Rr_CopyImageNode){
         .SrcImage = *SrcImageHandle,
@@ -3251,8 +3193,6 @@ static inline void Rr_DrawIndirectEx(
             .AccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
             .StageMask = VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
         });
-
-    Rr_MarkBufferUsed(Node->Graph, Buffer);
 }
 
 void Rr_DrawIndirect(
@@ -3333,8 +3273,6 @@ void Rr_BindVertexBuffer(
             .AccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
             .StageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
         });
-
-    Rr_MarkBufferUsed(Node->Graph, Buffer);
 }
 
 void Rr_BindIndexBuffer(
@@ -3364,8 +3302,6 @@ void Rr_BindIndexBuffer(
             .AccessMask = VK_ACCESS_INDEX_READ_BIT,
             .StageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
         });
-
-    Rr_MarkBufferUsed(Node->Graph, Buffer);
 }
 
 void Rr_BindGraphicsPipeline(
@@ -3498,8 +3434,6 @@ static void Rr_BindSampledImageEx(
                 Rr_GetVulkanPipelineStageMaskForSetBinding(Node, Set, Binding),
             .Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         });
-
-    Rr_MarkImageUsed(Node->Graph, Image);
 }
 
 void Rr_BindSampledImage2D(
@@ -3672,7 +3606,6 @@ static void Rr_BindCombinedImageSamplerEx(
         });
 
     Rr_MarkSamplerUsed(Node->Graph, Sampler);
-    Rr_MarkImageUsed(Node->Graph, Image);
 }
 
 void Rr_BindCombinedImage2DSampler(
@@ -3873,8 +3806,6 @@ void Rr_BindUniformBufferAt(
             .StageMask =
                 Rr_GetVulkanPipelineStageMaskForSetBinding(Node, Set, Binding),
         });
-
-    Rr_MarkBufferUsed(Node->Graph, Buffer);
 }
 
 static void Rr_BindStorageBufferEx(
@@ -3919,8 +3850,6 @@ static void Rr_BindStorageBufferEx(
             .StageMask =
                 Rr_GetVulkanPipelineStageMaskForSetBinding(Node, Set, Binding),
         });
-
-    Rr_MarkBufferUsed(Node->Graph, Buffer);
 }
 
 void Rr_BindStorageBuffer(
@@ -4034,8 +3963,6 @@ static void Rr_BindStorageImageEx(
                 Rr_GetVulkanPipelineStageMaskForSetBinding(Node, Set, Binding),
             .Layout = VK_IMAGE_LAYOUT_GENERAL,
         });
-
-    Rr_MarkImageUsed(Node->Graph, Image);
 }
 
 void Rr_BindStorageImage2D(

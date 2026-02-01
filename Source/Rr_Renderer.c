@@ -499,6 +499,58 @@ static void Rr_InitVMA(void)
     vmaCreateAllocator(&AllocatorInfo, &gRenderer->Allocator);
 }
 
+static void Rr_InitEmptyDescriptorSet(void)
+{
+    Rr_Device *Device = &gRenderer->Device;
+
+    VkResult Result;
+
+    Result = Device->CreateDescriptorPool(
+        Device->Handle,
+        &(VkDescriptorPoolCreateInfo){
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .maxSets = 1,
+        },
+        NULL,
+        &gRenderer->EmptyDescriptorPool);
+    if (Result != VK_SUCCESS)
+    {
+        goto Error;
+    }
+
+    Rr_DescriptorSetLayoutKey EmptyDescriptorSetLayoutKey = { 0 };
+    VkDescriptorSetLayout EmptyDescriptorSetLayout =
+        Rr_GetDescriptorSetLayout(&EmptyDescriptorSetLayoutKey)->Handle;
+    Result = Device->AllocateDescriptorSets(
+        Device->Handle,
+        &(VkDescriptorSetAllocateInfo){
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = gRenderer->EmptyDescriptorPool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &EmptyDescriptorSetLayout,
+        },
+        &gRenderer->EmptyDescriptorSet);
+    if (Result != VK_SUCCESS)
+    {
+        goto Error;
+    }
+
+    return;
+
+Error:
+    RR_LOG_ABORT("Failed to initialize empty descriptor set!");
+}
+
+static void Rr_CleanupEmptyDescriptorSet(void)
+{
+    Rr_Device *Device = &gRenderer->Device;
+
+    Device->DestroyDescriptorPool(
+        Device->Handle,
+        gRenderer->EmptyDescriptorPool,
+        NULL);
+}
+
 void Rr_InitRenderer(const char *Title)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -522,6 +574,7 @@ void Rr_InitRenderer(const char *Title)
     Rr_InitVMA();
     Rr_InitFrames();
     Rr_InitSwapchain();
+    Rr_InitEmptyDescriptorSet();
 
     Rr_DestroyScratch(Scratch);
 }
@@ -654,10 +707,6 @@ void Rr_CleanupRenderer(void)
 
     Rr_DestroyReleasedObjects();
 
-    /* NOTE: VkFramebuffers are destroyed along with VkImageViews.
-     * For now, we don't care for destroying render passes unless it's
-     * application shutdown. */
-
     for (Rr_DescriptorSetLayoutHiveIterator It =
              gRenderer->DescriptorSetLayoutStorage.Hive.Begin;
          It.Element != gRenderer->DescriptorSetLayoutStorage.Hive.End.Element;)
@@ -668,6 +717,12 @@ void Rr_CleanupRenderer(void)
             NULL);
         Rr_AdvanceDescriptorSetLayoutHiveIterator(&It);
     }
+
+    Rr_CleanupEmptyDescriptorSet();
+
+    /* NOTE: VkFramebuffers are destroyed along with VkImageViews.
+     * For now, we don't care for destroying render passes unless it's
+     * application shutdown. */
 
     for (Rr_RenderPassMapHiveIterator It =
              gRenderer->RenderPassStorage.Hive.Begin;

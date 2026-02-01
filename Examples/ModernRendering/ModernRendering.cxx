@@ -1844,8 +1844,6 @@ struct SModernRenderingApp
     {
         Rr_Graph *Graph = Rr_GetGraph();
 
-        Rr_UIDebugOverlay();
-
         UI();
 
         Rr_BeginGraphLabel(Graph, "ModernRendering");

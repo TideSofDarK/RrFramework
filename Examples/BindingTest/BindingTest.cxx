@@ -213,8 +213,6 @@ struct SBindingTestApp
 
     void Iterate()
     {
-        Rr_UIDebugOverlay();
-
         Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph());
         Rr_BindComputePipeline(ComputeNode, ComputePipeline);
         Rr_BindStorageBuffer(

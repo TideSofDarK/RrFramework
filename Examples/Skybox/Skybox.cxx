@@ -395,8 +395,6 @@ struct SSkyboxApp
             1);
         Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives;
         Rr_DrawIndexed(GraphicsNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
-
-        Rr_UIDebugOverlay();
     }
 
     void Cleanup()

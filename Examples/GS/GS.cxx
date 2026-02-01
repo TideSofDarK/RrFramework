@@ -370,8 +370,6 @@ struct SGSApp
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
         Render(Camera, SwapchainImage);
-
-        Rr_UIDebugOverlay();
     }
 
     ~SGSApp()
