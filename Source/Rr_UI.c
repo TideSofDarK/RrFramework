@@ -166,9 +166,6 @@ struct Rr_UILayout
 
     Rr_Vec2 ReservedExtent; /* Relative change to Window->Rect. */
     Rr_Rect DeferredContentsRect;
-    /* TODO: In theory these can be applied to Window->Rect immediately... */
-    Rr_Vec2 DeferredWindowOffset;
-    Rr_Vec2 DeferredWindowExtent;
     Rr_Vec4 const *DeferredResizeHandleColor;
     float DeferredMaxFlexibleWidgetTitleWidth;
     float DeferredMaxFlexibleWidgetWidth;
@@ -180,7 +177,11 @@ struct Rr_UILayout
     Rr_UIWindow *LastAddedTab;
 
     bool LockOffset;
-    bool LockExtent;
+    bool LockExtentX;
+    bool LockExtentY;
+
+    Rr_Vec2 MinExtent;
+    Rr_Vec2 MaxExtent;
 
     Rr_Rect VisibleRect;
 
@@ -232,6 +233,8 @@ struct Rr_UIContext
     RR_ARRAY(uint32_t) FormatFloatDecimalPlacesStack;
 
     Rr_Vec2 NextWindowExtent;
+    Rr_Vec2 NextWindowMinExtent;
+    Rr_Vec2 NextWindowMaxExtent;
     Rr_Vec2 NextWindowOffset;
     Rr_Vec2 NextWindowOpenOffset;
     Rr_Vec2 NextWindowPadding;
@@ -919,53 +922,22 @@ static inline void Rr_UIPushEmptyLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
     Layout->SkipCompletely = true;
     Layout->SkipItems = true;
 
+    Rr_UIPushIDHash(Hash);
+
     *RR_PUSH_INTO_ARRAY(&gUIContext->LayoutStack, gUIContext->FrameArena) =
         Layout;
-    Rr_UIPushIDHash(Hash);
 }
 
-static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
+static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash)
 {
-    Rr_UILayout *Layout =
-        RR_ALLOC_NO_ZERO(sizeof(Rr_UILayout), gUIContext->FrameArena);
-    *Layout = (Rr_UILayout){
-        .Window = Window,
-        .Rect = Window->Rect,
-        .Cursor = Window->Rect.Offset,
-        .TotalAvailableContentsWidth = Window->Rect.Extent.X,
-        .WasCollapsed = Rr_UIWindowCollapsed(Window),
-        .HorizontalX = INFINITY,
-        .DeferredWindowOffset = Rr_V2F(INFINITY),
-        .DeferredWindowExtent = Rr_V2F(INFINITY),
-        .DeferredAutoResize = Rr_UIWindowAutoResize(Window),
-    };
+    Rr_UILayout *Layout = RR_ALLOC_TYPE(Rr_UILayout, gUIContext->FrameArena);
 
-    if (Window->Child)
-    {
-        Layout->ParentClipRect = Rr_UICurrentLayout()->CurrentClipRect;
-        Layout->ClipRects = Rr_UICurrentLayout()->ClipRects;
-        Layout->TopLevelParent = Rr_UICurrentLayout()->TopLevelParent;
-    }
-    else
-    {
-        Layout->ClipRects =
-            RR_ALLOC_TYPE(Rr_UIClipRectArray, gUIContext->FrameArena);
-        Layout->TopLevelParent = Layout;
-    }
-
-    if (Rr_UIWindowTabs(Window))
-    {
-        Layout->WindowPadding = Rr_V2F(0.0f);
-        Layout->DeferredSelectedTab = Window->SelectedTab;
-    }
-    else
-    {
-        Layout->WindowPadding = Rr_UICurrentWindowPadding();
-    }
+    Rr_UIPushIDHash(Hash);
 
     *RR_PUSH_INTO_ARRAY(&gUIContext->LayoutStack, gUIContext->FrameArena) =
         Layout;
-    Rr_UIPushIDHash(Hash);
+    *RR_PUSH_INTO_ARRAY(&gUIContext->ActiveLayouts, gUIContext->Arena) = Layout;
+
     return Layout;
 }
 
@@ -2864,7 +2836,7 @@ void Rr_UIPopFont(void)
     }
 }
 
-static inline Rr_Vec2 Rr_UIGetMinWindowSize(Rr_UIWindowFlags Flags)
+static inline Rr_Vec2 Rr_UIGetMinWindowExtent(Rr_UIWindowFlags Flags)
 {
     Rr_Vec2 Size = Rr_V2F(Rr_UICurrentLineHeight());
     Size = Rr_AddV2(Size, Rr_MulV2F(Rr_UICurrentWindowPadding(), 2.0f));
@@ -2953,6 +2925,51 @@ void Rr_UIAdvance(Rr_Vec2 RigidSize, Rr_Vec2 FlexibleSize)
             Layout->DeferredMaxRigidWidth =
                 RR_MAX(Layout->DeferredMaxRigidWidth, Size.X);
         }
+    }
+}
+
+static inline void Rr_UISetWindowExtentChecked(
+    Rr_UILayout *Layout,
+    Rr_Vec2 Extent)
+{
+    Rr_Vec2 MinWindowExtent = Rr_UIGetMinWindowExtent(Layout->Window->Flags);
+
+    if (!Layout->LockExtentX && Extent.X != INFINITY)
+    {
+        Extent.X = floorf(Extent.X);
+
+        if (Layout->MinExtent.X != INFINITY)
+        {
+            Extent.X = RR_MAX(Extent.X, Layout->MinExtent.X);
+        }
+
+        if (Layout->MaxExtent.X != INFINITY)
+        {
+            Extent.X = RR_MIN(Extent.X, Layout->MaxExtent.X);
+        }
+
+        Extent.X = RR_MAX(Extent.X, MinWindowExtent.X);
+
+        Layout->Window->Rect.Extent.X = Extent.X;
+    }
+
+    if (!Layout->LockExtentY && Extent.Y != INFINITY)
+    {
+        Extent.Y = floorf(Extent.Y);
+
+        if (Layout->MinExtent.Y != INFINITY)
+        {
+            Extent.Y = RR_MAX(Extent.Y, Layout->MinExtent.Y);
+        }
+
+        if (Layout->MaxExtent.Y != INFINITY)
+        {
+            Extent.Y = RR_MIN(Extent.Y, Layout->MaxExtent.Y);
+        }
+
+        Extent.Y = RR_MAX(Extent.Y, MinWindowExtent.Y);
+
+        Layout->Window->Rect.Extent.Y = Extent.Y;
     }
 }
 
@@ -3258,9 +3275,7 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
         Rr_Vec2 NewWindowSize = Rr_AddV2(
             Rr_SubV2(gUIContext->MousePosition, Window->Rect.Offset),
             gUIContext->DragValueStart);
-        Rr_Vec2 MinWindowSize = Rr_UIGetMinWindowSize(Layout->Window->Flags);
-        Layout->DeferredWindowExtent =
-            Rr_FloorV2(Rr_MaxV2(NewWindowSize, MinWindowSize));
+        Rr_UISetWindowExtentChecked(Layout, NewWindowSize);
     }
 
     if (ClickResult.Held)
@@ -3508,6 +3523,23 @@ static inline char const *Rr_UICurrentFloatFormatString(void)
     }
 }
 
+static inline bool Rr_UIConsumeWindowFloat(float *Src, float *Dst)
+{
+    if (*Src != INFINITY)
+    {
+        *Dst = floorf(*Src);
+        *Src = INFINITY;
+        return true;
+    }
+    return false;
+}
+
+static inline bool Rr_UIConsumeWindowFloat2(Rr_Vec2 *Src, Rr_Vec2 *Dst)
+{
+    return Rr_UIConsumeWindowFloat(&Src->X, &Dst->X) ||
+           Rr_UIConsumeWindowFloat(&Src->Y, &Dst->Y);
+}
+
 void Rr_UISetNextWindowOffset(Rr_Vec2 Offset)
 {
     gUIContext->NextWindowOffset = Offset;
@@ -3550,18 +3582,14 @@ void Rr_UISetNextWindowExtent(Rr_Vec2 Extent)
     gUIContext->NextWindowExtent = Extent;
 }
 
-static inline bool Rr_UIConsumeNextWindowExtent(Rr_UIWindow *Window)
+void Rr_UISetNextWindowMinExtent(Rr_Vec2 Extent)
 {
-    if (gUIContext->NextWindowExtent.Width != INFINITY &&
-        gUIContext->NextWindowExtent.Height != INFINITY)
-    {
-        Window->Rect.Extent = Rr_FloorV2(gUIContext->NextWindowExtent);
-        gUIContext->NextWindowExtent = Rr_V2F(INFINITY);
+    gUIContext->NextWindowMinExtent = Extent;
+}
 
-        return true;
-    }
-
-    return false;
+void Rr_UISetNextWindowMaxExtent(Rr_Vec2 Extent)
+{
+    gUIContext->NextWindowMaxExtent = Extent;
 }
 
 void Rr_UISetNextWindowCreateCollapsed(bool Collapsed)
@@ -3605,12 +3633,38 @@ static inline bool Rr_UIPushWindowLayout(
 {
     assert(!Window->Added && "There already is a window with this title!");
 
-    Rr_UIConsumeNextWindowCreateCollapsed(Window);
-    bool WindowOffsetConsumed = Rr_UIConsumeNextWindowOffset(Window);
-    bool WindowExtentConsumed = Rr_UIConsumeNextWindowExtent(Window);
+    bool LockExtentX = Rr_UIConsumeWindowFloat(
+        &gUIContext->NextWindowExtent.X,
+        &Window->Rect.Extent.X);
+    bool LockExtentY = Rr_UIConsumeWindowFloat(
+        &gUIContext->NextWindowExtent.Y,
+        &Window->Rect.Extent.Y);
+
+    float MinExtentX = INFINITY;
+    bool LockMinExtentX = Rr_UIConsumeWindowFloat(
+        &gUIContext->NextWindowMinExtent.X,
+        &MinExtentX);
+    float MinExtentY = INFINITY;
+    bool LockMinExtentY = Rr_UIConsumeWindowFloat(
+        &gUIContext->NextWindowMinExtent.Y,
+        &MinExtentY);
+
+    float MaxExtentX = INFINITY;
+    bool LockMaxExtentX = Rr_UIConsumeWindowFloat(
+        &gUIContext->NextWindowMaxExtent.X,
+        &MaxExtentX);
+    float MaxExtentY = INFINITY;
+    bool LockMaxExtentY = Rr_UIConsumeWindowFloat(
+        &gUIContext->NextWindowMaxExtent.Y,
+        &MaxExtentY);
+
+    bool LockExtent = Rr_UIConsumeNextWindowOffset(Window);
+
     Rr_Vec2 OpenOffset;
     bool WindowOpenOffsetConsumed =
         Rr_UIConsumeNextWindowOpenOffset(&OpenOffset);
+
+    Rr_UIConsumeNextWindowCreateCollapsed(Window);
 
     /* Return if closed.
      * Also handle show after being closed.
@@ -3643,16 +3697,47 @@ static inline bool Rr_UIPushWindowLayout(
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
     Rr_UIEndClipRect(ParentLayout);
 
-    Rr_UILayout *Layout = Rr_UIPushLayout(Hash, Window);
-
-    Layout->LockOffset = WindowOffsetConsumed;
-    Layout->LockExtent = WindowExtentConsumed;
+    Rr_UILayout *Layout = Rr_UIPushLayout(Hash);
+    Layout->Window = Window;
+    Layout->Rect = Window->Rect;
+    Layout->Cursor = Window->Rect.Offset;
+    Layout->TotalAvailableContentsWidth = Window->Rect.Extent.X;
+    Layout->WasCollapsed = Rr_UIWindowCollapsed(Window);
+    Layout->HorizontalX = INFINITY;
+    Layout->DeferredAutoResize = Rr_UIWindowAutoResize(Window);
     Layout->Open = Open;
+    Layout->LockOffset = LockExtent;
+    Layout->LockExtentX = LockExtentX;
+    Layout->LockExtentY = LockExtentY;
+    Layout->MinExtent = Rr_V2(MinExtentX, MinExtentY);
+    Layout->MaxExtent = Rr_V2(MaxExtentX, MaxExtentY);
 
-    *RR_PUSH_INTO_ARRAY(&gUIContext->ActiveLayouts, gUIContext->Arena) = Layout;
+    if (Window->Child)
+    {
+        Layout->ParentClipRect = ParentLayout->CurrentClipRect;
+        Layout->ClipRects = ParentLayout->ClipRects;
+        Layout->TopLevelParent = ParentLayout->TopLevelParent;
+    }
+    else
+    {
+        Layout->ClipRects =
+            RR_ALLOC_TYPE(Rr_UIClipRectArray, gUIContext->FrameArena);
+        Layout->TopLevelParent = Layout;
+    }
+
+    if (Rr_UIWindowTabs(Window))
+    {
+        Layout->WindowPadding = Rr_V2F(0.0f);
+        Layout->DeferredSelectedTab = Window->SelectedTab;
+    }
+    else
+    {
+        Layout->WindowPadding = Rr_UICurrentWindowPadding();
+    }
+
     Window->Added = true;
 
-    if (!WindowExtentConsumed)
+    if (!(LockExtentX || LockExtentY))
     {
         if (Window->Child)
         {
@@ -3838,7 +3923,7 @@ static inline Rr_UIWindow *Rr_UICreateWindow(
     TitleCopy[TitleLength] = '\0';
     Window->Title = TitleCopy;
     Window->Flags = Flags;
-    Window->Rect.Extent = Rr_UIGetMinWindowSize(Flags);
+    Window->Rect.Extent = Rr_UIGetMinWindowExtent(Flags);
     Window->CreatedThisFrame = true;
 
     Window->SkipThisFrame = true;
@@ -4243,82 +4328,73 @@ void Rr_UIEndWindow(void)
 
     /* Apply window extent. */
 
-    if (!Layout->LockExtent)
+    if (Window->Child)
     {
-        if (Layout->DeferredWindowExtent.X != INFINITY)
-        {
-            Window->Rect.Extent = Layout->DeferredWindowExtent;
-        }
-        else if (Window->Child)
-        {
-            Window->Rect.Extent.Y =
-                Window->ContentsRect.Extent.Y + Layout->WindowPadding.Y;
+        Rr_Vec2 Extent = { 0 };
 
-            /* NOTE: Select between widths occupied by rigid widgets such as
-             * buttons and flexible widgets such as input fields. */
+        Extent.Y = Window->ContentsRect.Extent.Y + Layout->WindowPadding.Y;
+
+        /* NOTE: Select between widths occupied by rigid widgets such as
+         * buttons and flexible widgets such as input fields. */
+
+        Rr_Vec2 TitleSize = Rr_UICalculateTitleBarSize(Layout);
+
+        Extent.X = RR_MAX(
+            Layout->DeferredMaxFlexibleWidgetTitleWidth +
+                gUIContext->FlexibleTitleMargin +
+                Layout->DeferredMaxFlexibleWidgetWidth,
+            Layout->DeferredMaxRigidWidth);
+        Extent.X += Layout->WindowPadding.X * 2.0f;
+        Extent.X = RR_MAX(Extent.X, TitleSize.X);
+
+        if (!Rr_UIWindowNoTitleBar(Window))
+        {
+            Extent.Y += gUIContext->TitleBarHeight;
+        }
+
+        Extent = Rr_AddV2(Extent, Layout->ReservedExtent);
+
+        if (!Rr_UIWindowNoBorders(Window))
+        {
+            Extent = Rr_AddV2F(Extent, gUIContext->DoubleBevelThickness * 2.0f);
+        }
+
+        Rr_UISetWindowExtentChecked(Layout, Extent);
+    }
+    else if (Layout->DeferredAutoResize)
+    {
+        Rr_Vec2 Extent = { 0 };
+
+        Extent.X += Layout->WindowPadding.X * 2.0f;
+        Extent.Y += Layout->WindowPadding.Y;
+
+        Extent = Rr_AddV2(Extent, Window->ContentsRect.Extent);
+        Extent = Rr_AddV2(Extent, Layout->ReservedExtent);
+
+        if (!Rr_UIWindowNoTitleBar(Window))
+        {
+            Extent.Y += gUIContext->TitleBarHeight;
+
+            /* NOTE: Consider title width when in auto resize mode. This
+             * will be the baseline width (e.g. when window only has wrapped
+             * text). */
 
             Rr_Vec2 TitleSize = Rr_UICalculateTitleBarSize(Layout);
-
-            Window->Rect.Extent.X = RR_MAX(
-                Layout->DeferredMaxFlexibleWidgetTitleWidth +
-                    gUIContext->FlexibleTitleMargin +
-                    Layout->DeferredMaxFlexibleWidgetWidth,
-                Layout->DeferredMaxRigidWidth);
-            Window->Rect.Extent.X += Layout->WindowPadding.X * 2.0f;
-            Window->Rect.Extent.X = RR_MAX(Window->Rect.Extent.X, TitleSize.X);
-
-            if (!Rr_UIWindowNoTitleBar(Window))
-            {
-                Window->Rect.Extent.Y += gUIContext->TitleBarHeight;
-            }
-
-            Window->Rect.Extent =
-                Rr_AddV2(Window->Rect.Extent, Layout->ReservedExtent);
-
-            if (!Rr_UIWindowNoBorders(Window))
-            {
-                Window->Rect.Extent = Rr_AddV2F(
-                    Window->Rect.Extent,
-                    gUIContext->DoubleBevelThickness * 2.0f);
-            }
+            Extent.X = RR_MAX(Extent.X, TitleSize.X);
         }
-        else if (Layout->DeferredAutoResize)
+
+        if (!Rr_UIWindowNoBorders(Window))
         {
-            Rr_Vec2 Extent = { 0 };
-
-            Extent.X += Layout->WindowPadding.X * 2.0f;
-            Extent.Y += Layout->WindowPadding.Y;
-
-            Extent = Rr_AddV2(Extent, Window->ContentsRect.Extent);
-            Extent = Rr_AddV2(Extent, Layout->ReservedExtent);
-
-            if (!Rr_UIWindowNoTitleBar(Window))
-            {
-                Extent.Y += gUIContext->TitleBarHeight;
-
-                /* NOTE: Consider title width when in auto resize mode. This
-                 * will be the baseline width (e.g. when window only has wrapped
-                 * text). */
-
-                Rr_Vec2 TitleSize = Rr_UICalculateTitleBarSize(Layout);
-                Extent.X = RR_MAX(Extent.X, TitleSize.X);
-            }
-
-            Window->Rect.Extent = Extent;
-
-            if (!Rr_UIWindowNoBorders(Window))
-            {
-                Window->Rect.Extent = Rr_AddV2F(
-                    Window->Rect.Extent,
-                    gUIContext->DoubleBevelThickness * 2.0f);
-            }
+            Extent = Rr_AddV2F(Extent, gUIContext->DoubleBevelThickness * 2.0f);
         }
+
+        Rr_UISetWindowExtentChecked(Layout, Extent);
     }
 
     Layout->VisibleRect = Window->Child ? Rr_UIRectIntersection(
                                               &Layout->Rect,
                                               &Layout->ParentClipRect->Rect)
-                                        : Window->Rect;
+                                        : Layout->Rect;
 
     /* Apply window offset.
      * NOTE: Forward drag-to-move behavior to the top-level parent.
@@ -4339,13 +4415,8 @@ void Rr_UIEndWindow(void)
         {
             Rr_Vec2 Delta =
                 Rr_SubV2(gUIContext->MousePosition, gUIContext->DragMouseStart);
-            Layout->TopLevelParent->DeferredWindowOffset =
+            Layout->TopLevelParent->Window->Rect.Offset =
                 Rr_FloorV2(Rr_AddV2(gUIContext->DragValueStart, Delta));
-        }
-
-        if (Layout->DeferredWindowOffset.X != INFINITY)
-        {
-            Window->TopLevelParent->Rect.Offset = Layout->DeferredWindowOffset;
         }
 
         if (Layout->DeferredClampOffsetToScreen)
@@ -8375,9 +8446,11 @@ void Rr_InitUI(void)
     gUIContext = RR_ALLOC_TYPE(Rr_UIContext, Arena);
     gUIContext->Arena = Arena;
 
+    gUIContext->NextWindowExtent = Rr_V2F(INFINITY);
+    gUIContext->NextWindowMinExtent = Rr_V2F(INFINITY);
+    gUIContext->NextWindowMaxExtent = Rr_V2F(INFINITY);
     gUIContext->NextWindowOffset = Rr_V2F(INFINITY);
     gUIContext->NextWindowOpenOffset = Rr_V2F(INFINITY);
-    gUIContext->NextWindowExtent = Rr_V2F(INFINITY);
     gUIContext->NextWindowPadding = Rr_V2F(INFINITY);
 
     float DefaultFontSize = 10.0f * Rr_GetWindowContentsScale();

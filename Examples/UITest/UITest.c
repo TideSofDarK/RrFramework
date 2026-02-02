@@ -545,6 +545,8 @@ static void Init(void)
 
 static void Iterate(void)
 {
+    Rr_UIDebugOverlay();
+
     Rr_Graph *Graph = Rr_GetGraph();
 
     Rr_ClearColorImage2D(

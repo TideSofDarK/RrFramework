@@ -251,6 +251,10 @@ RR_EXTERN void Rr_UISetNextWindowOpenOffset(Rr_Vec2 Offset);
 
 RR_EXTERN void Rr_UISetNextWindowExtent(Rr_Vec2 Extent);
 
+RR_EXTERN void Rr_UISetNextWindowMinExtent(Rr_Vec2 Extent);
+
+RR_EXTERN void Rr_UISetNextWindowMaxExtent(Rr_Vec2 Extent);
+
 RR_EXTERN void Rr_UISetNextWindowCreateCollapsed(bool Collapsed);
 
 RR_EXTERN bool Rr_UIBeginWindowEx(
