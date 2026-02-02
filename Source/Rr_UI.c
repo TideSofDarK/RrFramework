@@ -4580,7 +4580,7 @@ static inline float Rr_UISetupFlexibleWidget(
 
     Rr_UIWindow *Window = Layout->Window;
 
-    if (Layout->DeferredAutoResize)
+    if (Layout->DeferredAutoResize && !Layout->LockExtentX)
     {
         DesiredWidgetWidth = RR_MAX(
             Window->MaxRigidWidth - Window->MaxFlexibleWidgetTitleWidth -
