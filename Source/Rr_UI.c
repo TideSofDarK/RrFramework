@@ -3816,8 +3816,7 @@ static inline bool Rr_UIPushWindowLayout(
     bool VerticalScrollbarAdded = false;
     if (!Layout->WasCollapsed)
     {
-        if (Layout->DeferredAutoResize ||
-            Rr_UIWindowNoVerticalScrollbar(Window))
+        if (Rr_UIWindowNoVerticalScrollbar(Window))
         {
             Window->VScroll = 0.0f;
             Window->VScrollTarget = 0.0f;
