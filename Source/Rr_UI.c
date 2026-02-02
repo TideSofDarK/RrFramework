@@ -3311,23 +3311,20 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(
         Rect.Extent.Y -= gUIContext->TitleBarHeight;
     }
 
-    if (!Layout->DeferredAutoResize)
+    float ContentsHeight = Window->ContentsRect.Extent.Y;
+    ContentsHeight += Layout->WindowPadding.Y;
+    if (ContentsHeight == 0.0f)
     {
-        float ContentsHeight = Window->ContentsRect.Extent.Y;
-        ContentsHeight += Layout->WindowPadding.Y;
-        if (ContentsHeight == 0.0f)
-        {
-            return Rect;
-        }
-        float FillRatio = ContentsHeight / Rect.Extent.Y;
-        if (OutFillRatio)
-        {
-            *OutFillRatio = FillRatio;
-        }
-        if (!Rr_UIWindowNoVerticalScrollbar(Window) && FillRatio > 1.0f)
-        {
-            Rect.Extent.X -= gUIContext->ScrollbarWidth;
-        }
+        return Rect;
+    }
+    float FillRatio = ContentsHeight / Rect.Extent.Y;
+    if (OutFillRatio)
+    {
+        *OutFillRatio = FillRatio;
+    }
+    if (!Rr_UIWindowNoVerticalScrollbar(Window) && FillRatio > 1.0f)
+    {
+        Rect.Extent.X -= gUIContext->ScrollbarWidth;
     }
 
     return Rect;
@@ -3383,7 +3380,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
         ScrollbarHandleSize.Y =
             RR_MAX(ScrollbarHandleSize.Y, gUIContext->BevelThickness * 3.0f);
 
-        /* This cuts a bix of height from the scrollbar hitbox so the resize
+        /* This cuts a bit of height from the scrollbar hitbox so the resize
          * handle is always on top. */
 
         Rr_Rect ClickableRect = {
