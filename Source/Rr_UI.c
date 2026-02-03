@@ -146,6 +146,8 @@ struct Rr_UILayout
     bool SkipCompletely;
     bool *Open;
 
+    bool VerticalScrollbarAdded;
+
     Rr_Vec2 WindowPadding;
 
     Rr_Rect Rect;
@@ -2163,9 +2165,8 @@ static inline Rr_Vec2 Rr_UIDrawText(
     Rr_Vec2 Position,
     size_t UTF8StringLength,
     char const *UTF8String,
-    float AvailableWidth,
-    Rr_Vec4 const *Color,
-    Rr_UITextFlags Flags)
+    float WrapWidth,
+    Rr_Vec4 const *Color)
 {
     if (UTF8StringLength == 0)
     {
@@ -2187,57 +2188,46 @@ static inline Rr_Vec2 Rr_UIDrawText(
     float CurrentX = 0.0f;
     float CurrentY = 0.0f;
 
-    bool Wrapped = RR_HAS_BIT(Flags, RR_UI_TEXT_FLAGS_WRAPPED_BIT);
-    if (Wrapped)
-    {
-        AvailableWidth = RR_MAX(AvailableWidth, LineHeight);
-    }
-
     Rr_Vec2 ResultSize = { 0 };
 
-    if (Wrapped)
+    if (WrapWidth > 0.0f)
     {
         Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-        float CurrentWordWidth = 0.0f;
-        size_t CurrentWordStart = 0;
+        WrapWidth = RR_MAX(WrapWidth, LineHeight);
 
-        /* TODO: See if it's possible to avoid allocating this much upfront */
+        float CurrentWordWidth = 0.0f;
 
         Rr_UTF8Decoder Decoder = { .CString = UTF8String };
-        uint32_t *Decoded = RR_ALLOC_NO_ZERO(
-            sizeof(uint32_t) * UTF8StringLength,
-            Scratch.Arena);
-        while (
-            Rr_UTF8Decode(&Decoder) != '\0' &&
-            (NullTerminated || Decoder.CStringParserIndex <= UTF8StringLength))
+        RR_ARRAY(uint32_t) Word = { 0 };
+        RR_RESERVE_ARRAY(&Word, 32, Scratch.Arena);
+        while (true)
         {
-            uint32_t Codepoint = Decoder.Codepoint;
-            size_t CodepointIndex = Decoder.CodepointCount - 1;
-            Decoded[CodepointIndex] = Codepoint;
+            Rr_UTF8Decode(&Decoder);
 
-            if (Codepoint == '\n')
+            uint32_t Codepoint = Decoder.Codepoint;
+            bool End = (NullTerminated && Codepoint == '\0') ||
+                       Decoder.CStringParserIndex >= UTF8StringLength;
+
+            if (!End)
             {
-                CurrentX = 0.0f;
-                CurrentY += LineHeight;
-                continue;
+                *RR_PUSH_INTO_ARRAY(&Word, Scratch.Arena) = Codepoint;
             }
 
-            if (Codepoint == ' ' || Codepoint == '\0')
+            if (End || Codepoint == ' ')
             {
-                size_t WordLength = CodepointIndex - CurrentWordStart;
+                size_t WordLength = Word.Count;
                 if (WordLength > 0)
                 {
-                    if (CurrentWordWidth > AvailableWidth)
+                    if (CurrentWordWidth > WrapWidth)
                     {
                         /* Fallback to per-character wrapping. */
 
-                        for (size_t IndexInWord = CurrentWordStart;
-                             IndexInWord <= CodepointIndex;
+                        for (size_t IndexInWord = 0; IndexInWord < Word.Count;
                              ++IndexInWord)
                         {
-                            Codepoint = Decoded[IndexInWord];
-                            if (CurrentX > AvailableWidth)
+                            Codepoint = Word.Data[IndexInWord];
+                            if (CurrentX > WrapWidth)
                             {
                                 CurrentX = 0.0f;
                                 CurrentY += LineHeight;
@@ -2260,7 +2250,7 @@ static inline Rr_Vec2 Rr_UIDrawText(
                     }
                     else
                     {
-                        if (CurrentX + CurrentWordWidth > AvailableWidth)
+                        if (CurrentX + CurrentWordWidth > WrapWidth)
                         {
                             CurrentX = 0.0f;
                             CurrentY += LineHeight;
@@ -2268,11 +2258,10 @@ static inline Rr_Vec2 Rr_UIDrawText(
 
                         Rr_Vec2 PositionInWord =
                             Rr_AddV2(Position, (Rr_Vec2){ CurrentX, CurrentY });
-                        for (size_t IndexInWord = CurrentWordStart;
-                             IndexInWord <= CodepointIndex;
+                        for (size_t IndexInWord = 0; IndexInWord < Word.Count;
                              ++IndexInWord)
                         {
-                            Codepoint = Decoded[IndexInWord];
+                            Codepoint = Word.Data[IndexInWord];
                             Rr_UIGlyph *Glyph =
                                 Rr_UIGetGlyphForCodepoint(Font, Codepoint);
                             if (!CalculateOnly)
@@ -2294,7 +2283,17 @@ static inline Rr_Vec2 Rr_UIDrawText(
                 MaxX = RR_MAX(MaxX, CurrentX);
 
                 CurrentWordWidth = 0.0f;
-                CurrentWordStart = CodepointIndex + 1;
+                RR_CLEAR_ARRAY(&Word);
+
+                if (End)
+                {
+                    break;
+                }
+            }
+            else if (Codepoint == '\n')
+            {
+                CurrentX = 0.0f;
+                CurrentY += LineHeight;
             }
             else
             {
@@ -2351,17 +2350,15 @@ static inline Rr_Vec2 Rr_UIDrawText(
 static inline Rr_Vec2 Rr_UICalculateTextSize(
     size_t UTF8StringLength,
     char const *UTF8String,
-    float AvailableWidth,
-    Rr_UITextFlags Flags)
+    float WrapWidth)
 {
     return Rr_UIDrawText(
         true,
         Rr_V2F(0.0f),
         UTF8StringLength,
         UTF8String,
-        AvailableWidth,
-        NULL,
-        Flags);
+        WrapWidth,
+        NULL);
 }
 
 static inline bool Rr_UIIsFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
@@ -3103,7 +3100,7 @@ static inline Rr_Vec2 Rr_UICalculateTitleBarSize(Rr_UILayout *Layout)
     }
     else
     {
-        Width += Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0.0f, 0).X;
+        Width += Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0.0f).X;
         Width += gUIContext->TitleBarPadding.Width * 2.0f;
     }
 
@@ -3184,8 +3181,7 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
         SIZE_MAX,
         Window->Title,
         0.0f,
-        &gUIContext->Colors.TitleForeground,
-        0);
+        &gUIContext->Colors.TitleForeground);
 
     if (!Rr_UIWindowNoClose(Window) && Layout->Open)
     {
@@ -3447,6 +3443,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
             ClickResult.Held ? &gUIContext->Colors.ScrollbarHeld
                              : &gUIContext->Colors.ScrollbarNormal,
             false);
+        Layout->VerticalScrollbarAdded = true;
     }
     else
     {
@@ -3952,14 +3949,14 @@ static inline bool Rr_UIGenericButton(
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Text, &TitleLength);
 
-    Rr_Vec2 TitleSize = Rr_UICalculateTextSize(TitleLength, Text, 0.0f, 0);
+    Rr_Vec2 TitleSize = Rr_UICalculateTextSize(TitleLength, Text, 0.0f);
 
     Rr_UIPrimitive Primitive = Rr_UIReserveBevel();
 
     Rr_Vec2 TitlePosition = Rr_AddV2(
         Rect->Offset,
         Rr_SubV2(Rr_MulV2F(Rect->Extent, 0.5f), Rr_MulV2F(TitleSize, 0.5f)));
-    Rr_UIDrawText(false, TitlePosition, TitleLength, Text, 0.0f, ColorText, 0);
+    Rr_UIDrawText(false, TitlePosition, TitleLength, Text, 0.0f, ColorText);
 
     Rr_UIClickResult ClickResult = Rr_UIClickSimple(Layout, Rect, TitleHash);
 
@@ -4007,8 +4004,7 @@ static bool Rr_UIBeginDockedChildWindow(
             Selected = true;
         }
 
-        Rr_Vec2 TitleSize =
-            Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0, 0);
+        Rr_Vec2 TitleSize = Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0);
         Rr_Rect ButtonRect = {
             .Offset = ParentLayout->TabsCursor,
             .Extent = Rr_V2(
@@ -4533,7 +4529,7 @@ static inline float Rr_UISetupFlexibleWidget(
     char const *Title,
     float DesiredWidgetWidth)
 {
-    float TitleWidth = Rr_UICalculateTextSize(TitleLength, Title, 0.0f, 0).X;
+    float TitleWidth = Rr_UICalculateTextSize(TitleLength, Title, 0.0f).X;
     Layout->DeferredMaxFlexibleWidgetTitleWidth =
         RR_MAX(Layout->DeferredMaxFlexibleWidgetTitleWidth, TitleWidth);
 
@@ -4673,8 +4669,7 @@ bool Rr_UIBeginTree(char const *Title)
         TitleLength,
         Title,
         0,
-        &gUIContext->Colors.Foreground,
-        0);
+        &gUIContext->Colors.Foreground);
 
     Rr_Vec2 TotalExtent;
     TotalExtent.X = TitleSize.X + TreeOffset;
@@ -4882,32 +4877,6 @@ void Rr_UIImageEx(Rr_Image *Image, Rr_Vec2 Extent, Rr_Vec2 UVMin, Rr_Vec2 UVMax)
     Rr_UIAdvance(Extent, Rr_V2F(0.0f));
 }
 
-void Rr_UITextEx(char const *Text, Rr_UITextFlags Flags)
-{
-    if (Rr_UISkipItems())
-    {
-        return;
-    }
-
-    Rr_UIAssertWindow();
-
-    Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
-
-    float AvailableWidth = Rr_UIGetAvailableContentsWidth(Layout);
-
-    Rr_Vec2 TextSize = Rr_UIDrawText(
-        false,
-        Layout->Cursor,
-        SIZE_MAX,
-        Text,
-        AvailableWidth,
-        &gUIContext->Colors.Foreground,
-        Flags);
-
-    Rr_UIAdvance(TextSize, Rr_V2F(0.0f));
-}
-
 void Rr_UIText(char const *Text)
 {
     if (Rr_UISkipItems())
@@ -4926,8 +4895,7 @@ void Rr_UIText(char const *Text)
         SIZE_MAX,
         Text,
         0.0f,
-        &gUIContext->Colors.Foreground,
-        0);
+        &gUIContext->Colors.Foreground);
 
     Rr_UIAdvance(TextSize, Rr_V2F(0.0f));
 }
@@ -4959,6 +4927,31 @@ void Rr_UITextF(char const *Format, ...)
     Rr_DestroyScratch(Scratch);
 }
 
+void Rr_UITextWrapped(char const *Text, float MinWidth)
+{
+    if (Rr_UISkipItems())
+    {
+        return;
+    }
+
+    Rr_UIAssertWindow();
+
+    Rr_UILayout *Layout = Rr_UICurrentLayout();
+    Rr_UIWindow *Window = Layout->Window;
+
+    float AvailableWidth = Rr_UIGetAvailableContentsWidth(Layout);
+
+    Rr_Vec2 TextSize = Rr_UIDrawText(
+        false,
+        Layout->Cursor,
+        SIZE_MAX,
+        Text,
+        RR_MAX(MinWidth, AvailableWidth),
+        &gUIContext->Colors.Foreground);
+
+    Rr_UIAdvance(TextSize, Rr_V2F(0.0f));
+}
+
 void Rr_UILabelText(char const *Title, char const *Text)
 {
     if (Rr_UISkipItems())
@@ -4973,7 +4966,7 @@ void Rr_UILabelText(char const *Title, char const *Text)
 
     size_t TitleLength = strlen(Title);
 
-    float RigidWidth = Rr_UICalculateTextSize(SIZE_MAX, Text, 0.0f, 0).X;
+    float RigidWidth = Rr_UICalculateTextSize(SIZE_MAX, Text, 0.0f).X;
 
     float FlexibleWidth =
         Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, RigidWidth);
@@ -4984,8 +4977,7 @@ void Rr_UILabelText(char const *Title, char const *Text)
         SIZE_MAX,
         Text,
         0.0f,
-        &gUIContext->Colors.Foreground,
-        0);
+        &gUIContext->Colors.Foreground);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
     TitleOffset.X += FlexibleWidth + gUIContext->FlexibleTitleMargin;
@@ -4995,8 +4987,7 @@ void Rr_UILabelText(char const *Title, char const *Text)
         TitleLength,
         Title,
         0,
-        &gUIContext->Colors.Foreground,
-        0);
+        &gUIContext->Colors.Foreground);
 
     Rr_Vec2 RigidExtent = {
         RigidWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
@@ -5026,7 +5017,7 @@ bool Rr_UIButton(char const *Text)
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Text, &TitleLength);
 
-    Rr_Vec2 TitleSize = Rr_UICalculateTextSize(TitleLength, Text, 0.0f, 0);
+    Rr_Vec2 TitleSize = Rr_UICalculateTextSize(TitleLength, Text, 0.0f);
 
     Rr_Vec2 ButtonSize;
     if (!Rr_UIApplyWidgetExtent(&ButtonSize))
@@ -5047,8 +5038,7 @@ bool Rr_UIButton(char const *Text)
         TitleLength,
         Text,
         0.0f,
-        &gUIContext->Colors.Foreground,
-        0);
+        &gUIContext->Colors.Foreground);
 
     Rr_UIClickResult ClickResult = Rr_UIClickSimple(
         Layout,
@@ -5111,8 +5101,7 @@ bool Rr_UIRadioButton(
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Colors.Foreground,
-        0);
+        &gUIContext->Colors.Foreground);
 
     Rr_Rect ButtonRect = {
         Cursor,
@@ -5188,8 +5177,7 @@ bool Rr_UICheckbox(char const *Title, bool *Checked)
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Colors.Foreground,
-        0);
+        &gUIContext->Colors.Foreground);
 
     Rr_Rect ButtonRect = {
         Layout->Cursor,
@@ -5849,7 +5837,7 @@ static inline void Rr_UIApplyInputFieldPlaceholder(
         if (AutoCenter)
         {
             *BufferSize =
-                Rr_UICalculateTextSize(SIZE_MAX, PlaceholderString, 0.0f, 0);
+                Rr_UICalculateTextSize(SIZE_MAX, PlaceholderString, 0.0f);
             BufferPosition->X =
                 Offset.X + FixedWidth * 0.5f - BufferSize->X * 0.5f;
         }
@@ -5859,8 +5847,7 @@ static inline void Rr_UIApplyInputFieldPlaceholder(
             SIZE_MAX,
             PlaceholderString,
             0.0f,
-            &gUIContext->Colors.ForegroundDimmed,
-            0);
+            &gUIContext->Colors.ForegroundDimmed);
     }
     else
     {
@@ -5940,7 +5927,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
     {
         size_t BufferLength = strlen(Buffer);
         BufferOffset = Rr_AddV2(Offset, gUIContext->InputFieldPadding);
-        BufferExtent = Rr_UICalculateTextSize(BufferLength, Buffer, 0.0f, 0);
+        BufferExtent = Rr_UICalculateTextSize(BufferLength, Buffer, 0.0f);
 
         FieldRect = (Rr_Rect){
             Offset,
@@ -5968,8 +5955,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             BufferLength,
             Buffer,
             0.0f,
-            &gUIContext->Colors.Foreground,
-            0);
+            &gUIContext->Colors.Foreground);
 
         Rr_UIApplyInputFieldPlaceholder(
             Offset,
@@ -6057,7 +6043,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
                 ? gUIContext->TextInputBuffer.Data
                 : Buffer;
         BufferOffset = Rr_AddV2(Offset, gUIContext->InputFieldPadding);
-        BufferExtent = Rr_UICalculateTextSize(SIZE_MAX, BufferString, 0.0f, 0);
+        BufferExtent = Rr_UICalculateTextSize(SIZE_MAX, BufferString, 0.0f);
 
         FieldRect = (Rr_Rect){
             Offset,
@@ -6397,7 +6383,7 @@ static inline float Rr_UICalculateGenericInputScalarMultiWidth(
                 ComponentData);
 
             Rr_Vec2 TextExtent =
-                Rr_UICalculateTextSize(SIZE_MAX, ComponentBuffer, 0.0f, 0);
+                Rr_UICalculateTextSize(SIZE_MAX, ComponentBuffer, 0.0f);
             MaxTextWidth = RR_MAX(MaxTextWidth, TextExtent.X);
         }
     }
@@ -6852,8 +6838,7 @@ static inline bool Rr_UIInputScalarMulti(
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Colors.Foreground,
-        0);
+        &gUIContext->Colors.Foreground);
 
     Rr_Vec2 RigidExtent = {
         RigidWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
@@ -6895,12 +6880,12 @@ bool Rr_UIInputField(
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
-    Rr_Vec2 TextSize = Rr_UICalculateTextSize(SIZE_MAX, Buffer, 0.0f, 0);
+    Rr_Vec2 TextSize = Rr_UICalculateTextSize(SIZE_MAX, Buffer, 0.0f);
     if (Placeholder)
     {
         TextSize.X = RR_MAX(
             TextSize.X,
-            Rr_UICalculateTextSize(SIZE_MAX, Placeholder, 0.0f, 0).X);
+            Rr_UICalculateTextSize(SIZE_MAX, Placeholder, 0.0f).X);
     }
 
     float RigidWidth = TextSize.X + gUIContext->InputFieldPadding.X * 2.0f;
@@ -6927,8 +6912,7 @@ bool Rr_UIInputField(
         TitleLength,
         Title,
         0,
-        &gUIContext->Colors.Foreground,
-        0);
+        &gUIContext->Colors.Foreground);
 
     Rr_Vec2 RigidExtent = {
         RigidWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
@@ -7806,8 +7790,7 @@ static inline bool Rr_UIInputColorEx(
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Colors.Foreground,
-        0);
+        &gUIContext->Colors.Foreground);
 
     Rr_Vec2 RigidExtent = {
         RigidWidth + ColorBoxWithMargin + gUIContext->FlexibleTitleMargin +
@@ -7874,8 +7857,7 @@ bool Rr_UICombobox(
         SIZE_MAX,
         Options[*SelectedIndex],
         0.0f,
-        &gUIContext->Colors.Foreground,
-        0);
+        &gUIContext->Colors.Foreground);
 
     float RigidWidth =
         SelectedTextSize.X + gUIContext->InputFieldPadding.X * 2.0f +
@@ -7939,8 +7921,7 @@ bool Rr_UICombobox(
                 OptionLength,
                 Options[Index],
                 0,
-                &gUIContext->Colors.Foreground,
-                0);
+                &gUIContext->Colors.Foreground);
             Rr_Rect OptionButtonRect;
             OptionButtonRect.Offset.Y = PopupLayout->Cursor.Y;
             OptionButtonRect.Offset.X =
@@ -8031,8 +8012,7 @@ bool Rr_UICombobox(
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Colors.Foreground,
-        0);
+        &gUIContext->Colors.Foreground);
 
     Rr_Vec2 RigidExtent = {
         RigidWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
@@ -8098,7 +8078,7 @@ static inline float Rr_UISlider(
     if (ValueCString != NULL)
     {
         Rr_Vec2 ValueSize =
-            Rr_UICalculateTextSize(ValueCStringLength, ValueCString, 0.0f, 0);
+            Rr_UICalculateTextSize(ValueCStringLength, ValueCString, 0.0f);
 
         float ValueMargin = RR_UI_ROUND(Font->LineHeight * 0.2f);
         Rr_Vec2 ValuePosition = Layout->Cursor;
@@ -8124,8 +8104,7 @@ static inline float Rr_UISlider(
                 SIZE_MAX,
                 ValueCString,
                 0.0f,
-                &gUIContext->Colors.Foreground,
-                0);
+                &gUIContext->Colors.Foreground);
         }
     }
 
@@ -8173,8 +8152,7 @@ static inline float Rr_UISlider(
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Colors.Foreground,
-        0);
+        &gUIContext->Colors.Foreground);
 
     Rr_Vec2 RigidExtent = {
         RigidWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,

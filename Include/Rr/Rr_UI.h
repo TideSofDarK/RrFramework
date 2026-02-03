@@ -153,12 +153,6 @@ RR_EXTERN void Rr_UIPopFont(void);
 
 typedef enum
 {
-    RR_UI_TEXT_FLAGS_WRAPPED_BIT = (1 << 0),
-} Rr_UITextFlagsBits;
-typedef uint32_t Rr_UITextFlags;
-
-typedef enum
-{
     RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT = (1 << 0),
     /* Cannot be collapsed. */
     RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT = (1 << 1),
@@ -287,11 +281,11 @@ RR_EXTERN void Rr_UIImageEx(
     Rr_Vec2 UVMin,
     Rr_Vec2 UVMax);
 
-RR_EXTERN void Rr_UITextEx(char const *Text, Rr_UITextFlags Flags);
-
 RR_EXTERN void Rr_UIText(char const *Text);
 
 RR_EXTERN void Rr_UITextF(char const *Format, ...);
+
+RR_EXTERN void Rr_UITextWrapped(char const *Text, float MinWidth);
 
 RR_EXTERN void Rr_UILabelText(char const *Title, char const *Text);
 
