@@ -164,7 +164,6 @@ struct Rr_UILayout
 
     bool MouseInsideClipRect;
 
-    Rr_Vec2 ReservedExtent; /* Relative change to Window->Rect. */
     Rr_Rect DeferredContentsRect;
     Rr_Vec4 const *DeferredResizeHandleColor;
     float DeferredMaxFlexibleWidgetTitleWidth;
@@ -727,6 +726,11 @@ static inline bool Rr_UIWindowNoTitleBar(Rr_UIWindow *Window)
 static inline bool Rr_UIWindowNoClose(Rr_UIWindow *Window)
 {
     return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_CLOSE_BIT);
+}
+
+static inline bool Rr_UIWindowNoBackground(Rr_UIWindow *Window)
+{
+    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_BACKGROUND_BIT);
 }
 
 static inline bool Rr_UIWindowNoCollapse(Rr_UIWindow *Window)
@@ -3691,6 +3695,8 @@ static inline bool Rr_UIPushWindowLayout(
         Rr_UIPutWindowOnTop(Window);
     }
 
+    Window->Added = true;
+
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
     Rr_UIEndClipRect(ParentLayout);
 
@@ -3732,8 +3738,6 @@ static inline bool Rr_UIPushWindowLayout(
         Layout->WindowPadding = Rr_UICurrentWindowPadding();
     }
 
-    Window->Added = true;
-
     if (!(LockExtentX || LockExtentY))
     {
         if (Window->Child)
@@ -3774,15 +3778,6 @@ static inline bool Rr_UIPushWindowLayout(
             Rr_AddV2F(Layout->Cursor, gUIContext->DoubleBevelThickness);
     }
 
-    /* Draw appropriate background. */
-
-    Rr_UIDrawSolidQuad(
-        &Layout->Rect,
-        Window->Child ? &gUIContext->Colors.ChildBackground
-                      : &gUIContext->Colors.Background);
-
-    Layout->TotalAvailableContentsWidth = Layout->Rect.Extent.X;
-
     /* Add title bar or tab bar if necessary. */
 
     if (Rr_UIWindowTabs(Window))
@@ -3798,15 +3793,30 @@ static inline bool Rr_UIPushWindowLayout(
         Layout->Cursor.Y += gUIContext->TitleBarHeight;
     }
 
-    /* NOTE: This allows calculating proper extents before showing the window
-     * next frame. */
+    /* NOTE: At this point window might have become collapsed! */
 
-    if (Rr_UIWindowCollapsed(Window) && Layout->WasCollapsed)
+    if (Rr_UIWindowCollapsed(Window))
     {
         Layout->SkipItems = true;
 
         return false;
     }
+
+    /* Draw background if needed. */
+
+    if (!Rr_UIWindowNoBackground(Window))
+    {
+        Rr_Rect BackgroundRect = {
+            .Offset = Layout->Cursor,
+            .Extent = Layout->Rect.Extent,
+        };
+        Rr_UIDrawSolidQuad(
+            &BackgroundRect,
+            Window->Child ? &gUIContext->Colors.ChildBackground
+                          : &gUIContext->Colors.Background);
+    }
+
+    Layout->TotalAvailableContentsWidth = Layout->Rect.Extent.X;
 
     /* Add vertical scrollbar if necessary. */
 
@@ -3815,18 +3825,21 @@ static inline bool Rr_UIPushWindowLayout(
     {
         if (Rr_UIWindowNoVerticalScrollbar(Window))
         {
+            /* TODO: Allow scrolling even if vertical scrollbar is hidden? */
+
             Window->VScroll = 0.0f;
             Window->VScrollTarget = 0.0f;
         }
         else
         {
             VerticalScrollbarAdded = Rr_UIAddVerticalScrollbar(Layout);
-            if (VerticalScrollbarAdded ||
-                (Layout->DeferredAutoResize && Window->SkipThisFrame))
+            /* if (VerticalScrollbarAdded || */
+            /*     (Layout->DeferredAutoResize && Window->SkipThisFrame)) */
+            if (VerticalScrollbarAdded)
             {
                 Layout->TotalAvailableContentsWidth -=
                     gUIContext->ScrollbarWidth;
-            };
+            }
             Window->VScroll = Rr_Damp(
                 Window->VScroll,
                 15.0f * (float)Rr_GetDeltaSeconds(),
@@ -4166,10 +4179,10 @@ static inline bool Rr_UIShouldHightlightWindow(Rr_UIWindow *Window)
     bool ClickParent = gUIContext->ClickParent;
     if (ClickParent)
     {
-        ClickParent = gUIContext->ClickParent == Window ||
-                      gUIContext->ClickParent->TopLevelParent == Window ||
-                      gUIContext->ClickParent == Window->TabsParent ||
-                      gUIContext->ClickParent == Window->SelectedTab;
+        ClickParent = gUIContext->ClickParent->TopLevelParent == Window;
+        /* || gUIContext->ClickParent == Window || */
+        /*    gUIContext->ClickParent == Window->TabsParent || */
+        /*    gUIContext->ClickParent == Window->SelectedTab; */
     }
     return ClickParent;
 }
@@ -4324,7 +4337,7 @@ void Rr_UIEndWindow(void)
 
     /* Apply window extent. */
 
-    if (Window->Child)
+    if (Window->Child || Layout->DeferredAutoResize)
     {
         Rr_Vec2 Extent = { 0 };
 
@@ -4346,37 +4359,6 @@ void Rr_UIEndWindow(void)
         if (!Rr_UIWindowNoTitleBar(Window))
         {
             Extent.Y += gUIContext->TitleBarHeight;
-        }
-
-        Extent = Rr_AddV2(Extent, Layout->ReservedExtent);
-
-        if (!Rr_UIWindowNoBorders(Window))
-        {
-            Extent = Rr_AddV2F(Extent, gUIContext->DoubleBevelThickness * 2.0f);
-        }
-
-        Rr_UISetWindowExtentChecked(Layout, Extent);
-    }
-    else if (Layout->DeferredAutoResize)
-    {
-        Rr_Vec2 Extent = { 0 };
-
-        Extent.X += Layout->WindowPadding.X * 2.0f;
-        Extent.Y += Layout->WindowPadding.Y;
-
-        Extent = Rr_AddV2(Extent, Window->ContentsRect.Extent);
-        Extent = Rr_AddV2(Extent, Layout->ReservedExtent);
-
-        if (!Rr_UIWindowNoTitleBar(Window))
-        {
-            Extent.Y += gUIContext->TitleBarHeight;
-
-            /* NOTE: Consider title width when in auto resize mode. This
-             * will be the baseline width (e.g. when window only has wrapped
-             * text). */
-
-            Rr_Vec2 TitleSize = Rr_UICalculateTitleBarSize(Layout);
-            Extent.X = RR_MAX(Extent.X, TitleSize.X);
         }
 
         if (!Rr_UIWindowNoBorders(Window))
@@ -4491,37 +4473,17 @@ void Rr_UIEndWindow(void)
 
         if (Window->Child)
         {
-            Rr_Vec2 TitleSize = Rr_UICalculateTitleBarSize(Layout);
-            if (!Rr_UIWindowNoBorders(Window))
+            Rr_Vec2 Extent = Window->Rect.Extent;
+            if (Rr_UIWindowCollapsed(Window))
             {
-                TitleSize = Rr_AddV2F(
-                    TitleSize,
-                    gUIContext->DoubleBevelThickness * 2.0f);
+                Extent.Y = gUIContext->TitleBarHeight;
+
+                if (!Rr_UIWindowNoBorders(Window))
+                {
+                    Extent.Y += gUIContext->DoubleBevelThickness * 2.0f;
+                }
             }
-            Rr_Vec2 WindowExtent = Window->Rect.Extent;
-            bool Collapsed = Rr_UIWindowCollapsed(Window);
-            bool CollapsedThisFrame = Collapsed && !Layout->WasCollapsed;
-            bool UncollapsedThisFrame = !Collapsed && Layout->WasCollapsed;
-            if (CollapsedThisFrame)
-            {
-                ParentLayout->ReservedExtent.Y -= WindowExtent.Y - TitleSize.Y;
-                WindowExtent.X = TitleSize.X;
-                Rr_UIAdvance(WindowExtent, Rr_V2F(0.0f));
-            }
-            else if (UncollapsedThisFrame)
-            {
-                ParentLayout->ReservedExtent.Y += WindowExtent.Y - TitleSize.Y;
-                WindowExtent.Y = TitleSize.Y;
-                Rr_UIAdvance(WindowExtent, Rr_V2F(0.0f));
-            }
-            else if (Collapsed)
-            {
-                Rr_UIAdvance(TitleSize, Rr_V2F(0.0f));
-            }
-            else
-            {
-                Rr_UIAdvance(WindowExtent, Rr_V2F(0.0f));
-            }
+            Rr_UIAdvance(Extent, Rr_V2F(0.0f));
         }
 
         /* Resume clip rect. */
@@ -4932,12 +4894,14 @@ void Rr_UITextEx(char const *Text, Rr_UITextFlags Flags)
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
+    float AvailableWidth = Rr_UIGetAvailableContentsWidth(Layout);
+
     Rr_Vec2 TextSize = Rr_UIDrawText(
         false,
         Layout->Cursor,
         SIZE_MAX,
         Text,
-        Rr_UIGetAvailableContentsWidth(Layout),
+        AvailableWidth,
         &gUIContext->Colors.Foreground,
         Flags);
 
