@@ -361,52 +361,27 @@ void Rr_SetWindowSize(Rr_IntVec2 Size)
 
 void Rr_SetCursor(Rr_CursorType Type)
 {
-    switch (Type)
+    if (Type >= RR_CURSOR_TYPE_COUNT)
     {
-        case RR_CURSOR_TYPE_NORMAL:
-        {
-            static SDL_Cursor *SDLCursor;
-            if (SDLCursor == NULL)
-            {
-                SDLCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
-            }
-            SDL_SetCursor(SDLCursor);
-            return;
-        }
-        case RR_CURSOR_TYPE_RESIZE_EW:
-        {
-            static SDL_Cursor *SDLCursor;
-            if (SDLCursor == NULL)
-            {
-                SDLCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE);
-            }
-            SDL_SetCursor(SDLCursor);
-            return;
-        }
-        case RR_CURSOR_TYPE_RESIZE_NWSE:
-        {
-            static SDL_Cursor *SDLCursor;
-            if (SDLCursor == NULL)
-            {
-                SDLCursor =
-                    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE);
-            }
-            SDL_SetCursor(SDLCursor);
-            return;
-        }
-        case RR_CURSOR_TYPE_TEXT:
-        {
-            static SDL_Cursor *SDLCursor;
-            if (SDLCursor == NULL)
-            {
-                SDLCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
-            }
-            SDL_SetCursor(SDLCursor);
-            return;
-        }
-        default:
-            return;
+        return;
     }
+
+    static SDL_Cursor *SDLCursors[RR_CURSOR_TYPE_COUNT] = { 0 };
+    static SDL_SystemCursor const ToSDLCursor[RR_CURSOR_TYPE_COUNT] = {
+        [RR_CURSOR_TYPE_NORMAL] = SDL_SYSTEM_CURSOR_DEFAULT,
+        [RR_CURSOR_TYPE_RESIZE_EW] = SDL_SYSTEM_CURSOR_EW_RESIZE,
+        [RR_CURSOR_TYPE_RESIZE_NS] = SDL_SYSTEM_CURSOR_NS_RESIZE,
+        [RR_CURSOR_TYPE_RESIZE_NWSE] = SDL_SYSTEM_CURSOR_NWSE_RESIZE,
+        [RR_CURSOR_TYPE_RESIZE_NESW] = SDL_SYSTEM_CURSOR_NESW_RESIZE,
+        [RR_CURSOR_TYPE_RESIZE_ALL] = SDL_SYSTEM_CURSOR_MOVE,
+        [RR_CURSOR_TYPE_TEXT] = SDL_SYSTEM_CURSOR_TEXT,
+    };
+
+    if (SDLCursors[Type] == NULL)
+    {
+        SDLCursors[Type] = SDL_CreateSystemCursor(ToSDLCursor[Type]);
+    }
+    SDL_SetCursor(SDLCursors[Type]);
 }
 
 void Rr_SetClipboardText(const char *CString)

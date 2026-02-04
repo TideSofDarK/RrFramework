@@ -674,51 +674,27 @@ void Rr_SetWindowSize(Rr_IntVec2 Size)
 
 void Rr_SetCursor(Rr_CursorType Type)
 {
-    switch (Type)
+    if (Type >= RR_CURSOR_TYPE_COUNT)
     {
-        case RR_CURSOR_TYPE_NORMAL:
-        {
-            static GLFWcursor *GLFWCursor;
-            if (GLFWCursor == NULL)
-            {
-                GLFWCursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-            }
-            glfwSetCursor(gPlatform->Window, GLFWCursor);
-            return;
-        }
-        case RR_CURSOR_TYPE_RESIZE_EW:
-        {
-            static GLFWcursor *GLFWCursor;
-            if (GLFWCursor == NULL)
-            {
-                GLFWCursor = glfwCreateStandardCursor(GLFW_RESIZE_EW_CURSOR);
-            }
-            glfwSetCursor(gPlatform->Window, GLFWCursor);
-            return;
-        }
-        case RR_CURSOR_TYPE_RESIZE_NWSE:
-        {
-            static GLFWcursor *GLFWCursor;
-            if (GLFWCursor == NULL)
-            {
-                GLFWCursor = glfwCreateStandardCursor(GLFW_RESIZE_NWSE_CURSOR);
-            }
-            glfwSetCursor(gPlatform->Window, GLFWCursor);
-            return;
-        }
-        case RR_CURSOR_TYPE_TEXT:
-        {
-            static GLFWcursor *GLFWCursor;
-            if (GLFWCursor == NULL)
-            {
-                GLFWCursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
-            }
-            glfwSetCursor(gPlatform->Window, GLFWCursor);
-            return;
-        }
-        default:
-            return;
+        return;
     }
+
+    static GLFWcursor *GLFWCursors[RR_CURSOR_TYPE_COUNT] = { 0 };
+    static int const ToGLFWCursor[RR_CURSOR_TYPE_COUNT] = {
+        [RR_CURSOR_TYPE_NORMAL] = GLFW_ARROW_CURSOR,
+        [RR_CURSOR_TYPE_RESIZE_EW] = GLFW_RESIZE_EW_CURSOR,
+        [RR_CURSOR_TYPE_RESIZE_NS] = GLFW_RESIZE_NS_CURSOR,
+        [RR_CURSOR_TYPE_RESIZE_NWSE] = GLFW_RESIZE_NWSE_CURSOR,
+        [RR_CURSOR_TYPE_RESIZE_NESW] = GLFW_RESIZE_NESW_CURSOR,
+        [RR_CURSOR_TYPE_RESIZE_ALL] = GLFW_RESIZE_ALL_CURSOR,
+        [RR_CURSOR_TYPE_TEXT] = GLFW_IBEAM_CURSOR,
+    };
+
+    if (GLFWCursors[Type] == NULL)
+    {
+        GLFWCursors[Type] = glfwCreateStandardCursor(ToGLFWCursor[Type]);
+    }
+    glfwSetCursor(gPlatform->Window, GLFWCursors[Type]);
 }
 
 void Rr_SetClipboardText(const char *CString)
