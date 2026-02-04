@@ -4927,7 +4927,7 @@ void Rr_UITextF(char const *Format, ...)
     Rr_DestroyScratch(Scratch);
 }
 
-void Rr_UITextWrapped(char const *Text, float MinWidth)
+void Rr_UITextWrapped(char const *Text, float WrapWidth)
 {
     if (Rr_UISkipItems())
     {
@@ -4937,16 +4937,13 @@ void Rr_UITextWrapped(char const *Text, float MinWidth)
     Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
-
-    float AvailableWidth = Rr_UIGetAvailableContentsWidth(Layout);
 
     Rr_Vec2 TextSize = Rr_UIDrawText(
         false,
         Layout->Cursor,
         SIZE_MAX,
         Text,
-        RR_MAX(MinWidth, AvailableWidth),
+        WrapWidth,
         &gUIContext->Colors.Foreground);
 
     Rr_UIAdvance(TextSize, Rr_V2F(0.0f));

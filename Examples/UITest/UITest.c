@@ -562,6 +562,7 @@ static void Iterate(void)
     static bool NoTitleBar = false;
     static bool NoBorders = false;
     static bool AutoResize = true;
+    static bool NoBackground = false;
 
     Rr_UIWindowFlags Flags = 0;
     if (NoClose)
@@ -587,6 +588,10 @@ static void Iterate(void)
     if (AutoResize)
     {
         Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
+    }
+    if (NoBackground)
+    {
+        Flags |= RR_UI_WINDOW_FLAGS_NO_BACKGROUND_BIT;
     }
 
     FixedSizeWindow();
@@ -625,10 +630,11 @@ static void Iterate(void)
         Rr_UISetNextWindowCreateCollapsed(false);
         Rr_UIBeginWindow("Fonts");
         {
-            Rr_UIText(
-                "Fonts can be dynamically pushed onto the stack. All paddings\n"
-                "and margins are dependent on current fonts line height but\n"
-                "could be overriden with absolute values.");
+            Rr_UITextWrapped(
+                "Fonts can be dynamically pushed onto the stack. All paddings "
+                "and margins are dependent on current fonts line height but "
+                "could be overriden with absolute values.",
+                350.0f);
 
             Rr_UIAdvance(
                 (Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f },
@@ -876,13 +882,13 @@ static void Iterate(void)
                 " - Leading Spaces and Line Breaks 1\n - Leading Spaces and "
                 "Line Breaks 2");
             Rr_UILabelText("Label", "* Line 1\n* Line 2\n* Line 3");
-            Rr_UITextEx(
+            Rr_UITextWrapped(
                 "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed "
                 "do eiusmod tempor incididunt ut labore et dolore magna "
                 "aliqua. "
                 "Ut enim ad minim veniam, quis nostrud exercitation ullamco "
                 "laboris nisi ut aliquip ex ea commodo consequat.",
-                RR_UI_TEXT_FLAGS_WRAPPED_BIT);
+                350.0f);
         }
         Rr_UIEndWindow();
 
@@ -952,6 +958,7 @@ static void Iterate(void)
             Rr_UICheckbox("No Scrollbar", &NoScrollbar);
             Rr_UICheckbox("No Title Bar", &NoTitleBar);
             Rr_UICheckbox("No Borders", &NoBorders);
+            Rr_UICheckbox("No Background", &NoBackground);
         }
         Rr_UIEndWindow();
 

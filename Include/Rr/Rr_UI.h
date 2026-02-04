@@ -285,7 +285,7 @@ RR_EXTERN void Rr_UIText(char const *Text);
 
 RR_EXTERN void Rr_UITextF(char const *Format, ...);
 
-RR_EXTERN void Rr_UITextWrapped(char const *Text, float MinWidth);
+RR_EXTERN void Rr_UITextWrapped(char const *Text, float WrapWidth);
 
 RR_EXTERN void Rr_UILabelText(char const *Title, char const *Text);
 
