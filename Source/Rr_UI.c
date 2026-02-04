@@ -207,6 +207,15 @@ struct Rr_UIMouseButton
     uint32_t ClickID;
 };
 
+typedef enum
+{
+    RR_UI_RESIZE_TYPE_N,
+    RR_UI_RESIZE_TYPE_E,
+    RR_UI_RESIZE_TYPE_S,
+    RR_UI_RESIZE_TYPE_W,
+    RR_UI_RESIZE_TYPE_SE,
+} Rr_UIResizeType;
+
 struct Rr_UIContext
 {
     Rr_UIColors Colors;
@@ -257,7 +266,7 @@ struct Rr_UIContext
     bool DragConsumed;
     bool DragMoved;
     Rr_Vec2 DragMouseStart;
-    Rr_Vec2 DragValueStart;
+    Rr_Rect DragValueStart;
     union
     {
         int32_t Int32;
@@ -2423,7 +2432,7 @@ static inline Rr_UIClickResult Rr_UIClickEx(
     Rr_Rect const *Rect,
     Rr_UIClickType Type,
     Rr_UIHash Hash,
-    Rr_Vec2 Value)
+    Rr_Rect Value)
 {
     Rr_UIWindow *Window = Layout->Window;
 
@@ -2634,7 +2643,7 @@ static inline Rr_UIClickResult Rr_UIClickDrag(
     Rr_UILayout *Layout,
     Rr_Rect *Rect,
     Rr_UIHash Hash,
-    Rr_Vec2 Value)
+    Rr_Rect Value)
 {
     return Rr_UIClickEx(Layout, Rect, RR_UI_CLICK_TYPE_DRAG, Hash, Value);
 }
@@ -2649,7 +2658,7 @@ static inline Rr_UIClickResult Rr_UIClickSimple(
         Rect,
         RR_UI_CLICK_TYPE_RELEASE,
         Hash,
-        Rr_V2F(0.0f));
+        (Rr_Rect){ 0 });
 }
 
 static inline Rr_UIClickResult Rr_UIClickMulti(
@@ -2662,7 +2671,7 @@ static inline Rr_UIClickResult Rr_UIClickMulti(
         Rect,
         RR_UI_CLICK_TYPE_DOWN,
         Hash,
-        Rr_V2F(0.0f));
+        (Rr_Rect){ 0 });
 }
 
 static inline bool Rr_UIScrollBehavior(
@@ -2851,7 +2860,7 @@ static inline Rr_Vec2 Rr_UIGetMinWindowExtent(Rr_UIWindowFlags Flags)
             Size,
             Rr_MulV2F(Rr_V2F(gUIContext->DoubleBevelThickness), 2.0f));
     }
-    return Size;
+    return Rr_FloorV2(Size);
 }
 
 Rr_Vec2 Rr_UIGetCursor(void)
@@ -2929,6 +2938,22 @@ void Rr_UIAdvance(Rr_Vec2 RigidSize, Rr_Vec2 FlexibleSize)
     }
 }
 
+static inline void Rr_UISetWindowOffsetChecked(
+    Rr_UILayout *Layout,
+    Rr_Vec2 Offset)
+{
+    if (Offset.X != INFINITY)
+    {
+        Layout->Window->Rect.Offset.X = Offset.X;
+    }
+
+    if (Offset.Y != INFINITY)
+    {
+        Layout->Window->Rect.Offset.Y = Offset.Y;
+    }
+}
+
+/* TODO: Take window parameter instead. */
 static inline void Rr_UISetWindowExtentChecked(
     Rr_UILayout *Layout,
     Rr_Vec2 Extent)
@@ -3230,39 +3255,114 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
     Rr_UIBevelEx(BevelPrimitive, &TitleBarRect, Colors, false);
 }
 
-static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
+static inline Rr_UIClickResult Rr_UIAddResizeHandle(
+    Rr_UILayout *Layout,
+    char const *HashName,
+    Rr_UIResizeType ResizeType)
 {
     Rr_UIWindow *Window = Layout->Window;
 
-    Rr_Vec2 BottomRight = Rr_AddV2(Layout->Rect.Offset, Layout->Rect.Extent);
-    Rr_Rect ResizeHandleRect = (Rr_Rect){
-        {
-            BottomRight.X - gUIContext->ResizeHandleSize,
-            BottomRight.Y - gUIContext->ResizeHandleSize,
-        },
-        {
-            gUIContext->ResizeHandleSize,
-            gUIContext->ResizeHandleSize,
-        },
-    };
+    float DoubleBevelThickness = gUIContext->DoubleBevelThickness;
 
-    /* NOTE: Work with Window->Rect directly since Layout->Rect is transformed
-     * to accomodate for borders. */
+    Rr_Rect Rect;
+    switch (ResizeType)
+    {
+        case RR_UI_RESIZE_TYPE_N:
+        {
+            Rect.Offset = Window->Rect.Offset;
+            Rect.Extent =
+                Rr_V2(Window->Rect.Extent.Width, DoubleBevelThickness);
+        }
+        break;
+        case RR_UI_RESIZE_TYPE_S:
+        {
+            Rect.Offset = Rr_AddV2(
+                Window->Rect.Offset,
+                Rr_V2(0.0f, Window->Rect.Extent.Y - DoubleBevelThickness));
+            Rect.Extent =
+                Rr_V2(Window->Rect.Extent.Width, DoubleBevelThickness);
+        }
+        break;
+        case RR_UI_RESIZE_TYPE_E:
+        {
+            Rect.Offset = Rr_AddV2(
+                Window->Rect.Offset,
+                Rr_V2(Window->Rect.Extent.Width - DoubleBevelThickness, 0.0f));
+            Rect.Extent =
+                Rr_V2(DoubleBevelThickness, Window->Rect.Extent.Height);
+        }
+        break;
+        case RR_UI_RESIZE_TYPE_W:
+        {
+            Rect.Offset = Window->Rect.Offset;
+            Rect.Extent =
+                Rr_V2(DoubleBevelThickness, Window->Rect.Extent.Height);
+        }
+        break;
+        case RR_UI_RESIZE_TYPE_SE:
+        {
+            Rr_Vec2 BottomRight =
+                Rr_AddV2(Layout->Rect.Offset, Layout->Rect.Extent);
+            Rect = (Rr_Rect){
+                {
+                    BottomRight.X - gUIContext->ResizeHandleSize,
+                    BottomRight.Y - gUIContext->ResizeHandleSize,
+                },
+                {
+                    gUIContext->ResizeHandleSize,
+                    gUIContext->ResizeHandleSize,
+                },
+            };
+        }
+        break;
+        default:
+        {
+            RR_LOG_ABORT("Invalid resize type!");
+        }
+        break;
+    }
 
     Rr_UIHash ResizeHash =
-        Rr_UIGetHash(sizeof("Rr.Resize"), "Rr.Resize", Rr_UICurrentHash());
+        Rr_UIGetHash(strlen(HashName), HashName, Rr_UICurrentHash());
     Rr_UIClickResult ClickResult = Rr_UIClickEx(
         Layout,
-        &ResizeHandleRect,
+        &Rect,
         RR_UI_CLICK_TYPE_DRAG,
         ResizeHash,
-        Rr_SubV2(
-            Rr_AddV2(Window->Rect.Offset, Window->Rect.Extent),
-            gUIContext->MousePosition));
+        Window->Rect);
 
-    if (ClickResult.Hovered || ClickResult.Held)
+    if (ClickResult.Held ||
+        (gUIContext->DragParent == Window &&
+         gUIContext->DragHash == ResizeHash) ||
+        (ClickResult.Hovered && gUIContext->DragParent == NULL))
     {
-        gUIContext->CursorType = RR_CURSOR_TYPE_RESIZE_NWSE;
+        Rr_CursorType CursorType;
+        switch (ResizeType)
+        {
+            case RR_UI_RESIZE_TYPE_N:
+            case RR_UI_RESIZE_TYPE_S:
+            {
+                CursorType = RR_CURSOR_TYPE_RESIZE_NS;
+            }
+            break;
+            case RR_UI_RESIZE_TYPE_E:
+            case RR_UI_RESIZE_TYPE_W:
+            {
+                CursorType = RR_CURSOR_TYPE_RESIZE_EW;
+            }
+            break;
+            case RR_UI_RESIZE_TYPE_SE:
+            {
+                CursorType = RR_CURSOR_TYPE_RESIZE_NWSE;
+            }
+            break;
+            default:
+            {
+                RR_LOG_ABORT("Invalid resize type!");
+            }
+            break;
+        }
+        gUIContext->CursorType = CursorType;
     }
 
     if (ClickResult.ClickCount == 2)
@@ -3272,11 +3372,94 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
     }
     else if (ClickResult.Moved)
     {
-        Rr_Vec2 NewWindowSize = Rr_AddV2(
-            Rr_SubV2(gUIContext->MousePosition, Window->Rect.Offset),
-            gUIContext->DragValueStart);
-        Rr_UISetWindowExtentChecked(Layout, NewWindowSize);
+        switch (ResizeType)
+        {
+            case RR_UI_RESIZE_TYPE_N:
+            {
+                float Height = gUIContext->DragValueStart.Extent.Y +
+                               (gUIContext->DragMouseStart.Y -
+                                gUIContext->MousePosition.Y);
+                Rr_UISetWindowExtentChecked(Layout, Rr_V2(INFINITY, Height));
+                float Offset = gUIContext->MousePosition.Y +
+                               (gUIContext->DragValueStart.Offset.Y -
+                                gUIContext->DragMouseStart.Y);
+                Offset = RR_MIN(
+                    Offset,
+                    gUIContext->DragValueStart.Offset.Y +
+                        gUIContext->DragValueStart.Extent.Y -
+                        Layout->MinExtent.Y);
+                Rr_UISetWindowOffsetChecked(Layout, Rr_V2(INFINITY, Offset));
+            }
+            break;
+            case RR_UI_RESIZE_TYPE_S:
+            {
+                float Height = gUIContext->MousePosition.Y -
+                               Window->Rect.Offset.Y +
+                               (gUIContext->DragValueStart.Offset.Y +
+                                gUIContext->DragValueStart.Extent.Y -
+                                gUIContext->DragMouseStart.Y);
+                Rr_UISetWindowExtentChecked(Layout, Rr_V2(INFINITY, Height));
+            }
+            break;
+            case RR_UI_RESIZE_TYPE_E:
+            {
+                float Width = gUIContext->MousePosition.X -
+                              Window->Rect.Offset.X +
+                              (gUIContext->DragValueStart.Offset.X +
+                               gUIContext->DragValueStart.Extent.X -
+                               gUIContext->DragMouseStart.X);
+                Rr_UISetWindowExtentChecked(Layout, Rr_V2(Width, INFINITY));
+            }
+            break;
+            case RR_UI_RESIZE_TYPE_W:
+            {
+                float Width = gUIContext->DragValueStart.Extent.X +
+                              (gUIContext->DragMouseStart.X -
+                               gUIContext->MousePosition.X);
+                Rr_UISetWindowExtentChecked(Layout, Rr_V2(Width, INFINITY));
+                float Offset = gUIContext->MousePosition.X +
+                               (gUIContext->DragValueStart.Offset.X -
+                                gUIContext->DragMouseStart.X);
+                Offset = RR_MIN(
+                    Offset,
+                    gUIContext->DragValueStart.Offset.X +
+                        gUIContext->DragValueStart.Extent.X -
+                        Layout->MinExtent.X);
+                Rr_UISetWindowOffsetChecked(Layout, Rr_V2(Offset, INFINITY));
+            }
+            break;
+            case RR_UI_RESIZE_TYPE_SE:
+            {
+                Rr_Vec2 Extent = Rr_AddV2(
+                    Rr_SubV2(gUIContext->MousePosition, Window->Rect.Offset),
+                    Rr_SubV2(
+                        Rr_AddV2(
+                            gUIContext->DragValueStart.Offset,
+                            gUIContext->DragValueStart.Extent),
+                        gUIContext->DragMouseStart));
+                Rr_UISetWindowExtentChecked(Layout, Extent);
+            }
+            break;
+            default:
+            {
+                RR_LOG_ABORT("Invalid resize type!");
+            }
+            break;
+        }
     }
+
+    return ClickResult;
+}
+
+static inline void Rr_UIAddResizeHandles(Rr_UILayout *Layout)
+{
+    Rr_UIWindow *Window = Layout->Window;
+
+    /* NOTE: Work with Window->Rect directly since Layout->Rect is transformed
+     * to accomodate for borders. */
+
+    Rr_UIClickResult ClickResult =
+        Rr_UIAddResizeHandle(Layout, "Rr.ResizeSE", RR_UI_RESIZE_TYPE_SE);
 
     if (ClickResult.Held)
     {
@@ -3294,7 +3477,16 @@ static inline bool Rr_UIAddResizeHandle(Rr_UILayout *Layout)
             &gUIContext->Colors.ResizeHandleNormal;
     }
 
-    return ClickResult.Moved;
+    if (!Rr_UIWindowNoBorders(Window) &&
+        (gUIContext->HoveredWindow == Window ||
+         gUIContext->DragParent ==
+             Window)) /* Don't test every window out there. */
+    {
+        Rr_UIAddResizeHandle(Layout, "Rr.ResizeN", RR_UI_RESIZE_TYPE_N);
+        Rr_UIAddResizeHandle(Layout, "Rr.ResizeS", RR_UI_RESIZE_TYPE_S);
+        Rr_UIAddResizeHandle(Layout, "Rr.ResizeE", RR_UI_RESIZE_TYPE_E);
+        Rr_UIAddResizeHandle(Layout, "Rr.ResizeW", RR_UI_RESIZE_TYPE_W);
+    }
 }
 
 static inline Rr_Rect Rr_UIGetWindowContentsArea(
@@ -3401,7 +3593,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
             Layout,
             &ClickableRect,
             0,
-            (Rr_Vec2){ 0.0f, Window->VScroll });
+            (Rr_Rect){ .Offset = { 0.0f, Window->VScroll } });
 
         if (ClickResult.ClickCount)
         {
@@ -3415,7 +3607,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
                      ScrollbarHandleOffset * 2.0f) /
                         (ScrollbarSize.Y / ContentsHeight) -
                     (ScrollbarHandleSize.Height / FillRatio);
-                gUIContext->DragValueStart.Y = Window->VScroll;
+                gUIContext->DragValueStart.Offset.Y = Window->VScroll;
             }
             else if (gUIContext->MousePosition.Y < ScrollbarHandlePosition.Y)
             {
@@ -3423,7 +3615,7 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
                     (gUIContext->MousePosition.Y - ScrollbarPosition.Y -
                      ScrollbarHandleOffset * 2.0f) /
                     ((ScrollbarSize.Y) / ContentsHeight);
-                gUIContext->DragValueStart.Y = Window->VScroll;
+                gUIContext->DragValueStart.Offset.Y = Window->VScroll;
             }
         }
 
@@ -3432,7 +3624,8 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
             float Delta =
                 gUIContext->MousePosition.Y - gUIContext->DragMouseStart.Y;
             Window->VScroll = Window->VScrollTarget =
-                gUIContext->DragValueStart.Y + (Delta * 1.0f / FillRatio);
+                gUIContext->DragValueStart.Offset.Y +
+                (Delta * 1.0f / FillRatio);
         }
 
         Rr_UIDrawBevel(
@@ -3638,11 +3831,13 @@ static inline bool Rr_UIPushWindowLayout(
         &gUIContext->NextWindowExtent.Y,
         &Window->Rect.Extent.Y);
 
-    float MinExtentX = INFINITY;
+    Rr_Vec2 GenericMinExtent = Rr_UIGetMinWindowExtent(Window->Flags);
+
+    float MinExtentX = GenericMinExtent.X;
     bool LockMinExtentX = Rr_UIConsumeWindowFloat(
         &gUIContext->NextWindowMinExtent.X,
         &MinExtentX);
-    float MinExtentY = INFINITY;
+    float MinExtentY = GenericMinExtent.Y;
     bool LockMinExtentY = Rr_UIConsumeWindowFloat(
         &gUIContext->NextWindowMinExtent.Y,
         &MinExtentY);
@@ -3851,7 +4046,7 @@ static inline bool Rr_UIPushWindowLayout(
     {
         /* TODO: Support resizing child windows. */
 
-        Rr_UIAddResizeHandle(Layout);
+        Rr_UIAddResizeHandles(Layout);
     }
 
     Layout->TotalAvailableContentsWidth -= Layout->WindowPadding.X * 2.0f;
@@ -4366,9 +4561,9 @@ void Rr_UIEndWindow(void)
     }
 
     Layout->VisibleRect = Window->Child ? Rr_UIRectIntersection(
-                                              &Layout->Rect,
+                                              &TotalClipRect,
                                               &Layout->ParentClipRect->Rect)
-                                        : Layout->Rect;
+                                        : TotalClipRect;
 
     /* Apply window offset.
      * NOTE: Forward drag-to-move behavior to the top-level parent.
@@ -4382,15 +4577,15 @@ void Rr_UIEndWindow(void)
         &Layout->Rect,
         RR_UI_CLICK_TYPE_DRAG_RELAXED,
         MoveHash,
-        Layout->TopLevelParent->Rect.Offset);
+        (Rr_Rect){ .Offset = Window->TopLevelParent->Rect.Offset });
     if (!Layout->LockOffset)
     {
         if (!Rr_UIWindowNoMove(Window->TopLevelParent) && ClickResult.Moved)
         {
             Rr_Vec2 Delta =
                 Rr_SubV2(gUIContext->MousePosition, gUIContext->DragMouseStart);
-            Layout->TopLevelParent->Window->Rect.Offset =
-                Rr_FloorV2(Rr_AddV2(gUIContext->DragValueStart, Delta));
+            Window->TopLevelParent->Rect.Offset =
+                Rr_FloorV2(Rr_AddV2(gUIContext->DragValueStart.Offset, Delta));
         }
 
         if (Layout->DeferredClampOffsetToScreen)
@@ -5968,7 +6163,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             &FieldRect,
             RR_UI_CLICK_TYPE_DRAG_AND_RELEASE,
             Hash,
-            Rr_V2F(0.0f));
+            (Rr_Rect){ 0 });
 
         BeganDragging = ClickResult.MovedFirstTime;
 
@@ -6081,7 +6276,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             &BufferExtent);
 
         Rr_UIClickResult ClickResult =
-            Rr_UIClickDrag(Layout, &FieldRect, Hash, Rr_V2F(0.0f));
+            Rr_UIClickDrag(Layout, &FieldRect, Hash, (Rr_Rect){ 0 });
 
         if (ClickResult.ClickCount)
         {
@@ -7439,7 +7634,7 @@ static inline void Rr_UIColorPickerPopup(
     };
 
     Rr_UIClickResult ClickResult =
-        Rr_UIClickDrag(Layout, &SVSelectorRect, SVSelectorHash, Rr_V2F(0.0f));
+        Rr_UIClickDrag(Layout, &SVSelectorRect, SVSelectorHash, (Rr_Rect){ 0 });
 
     if (ClickResult.ClickCount || ClickResult.Held)
     {
@@ -7545,7 +7740,7 @@ static inline void Rr_UIColorPickerPopup(
         &gUIContext->Colors.Foreground);
 
     ClickResult =
-        Rr_UIClickDrag(Layout, &HSelectorRect, HSelectorHash, Rr_V2F(0.0f));
+        Rr_UIClickDrag(Layout, &HSelectorRect, HSelectorHash, (Rr_Rect){ 0 });
 
     if (ClickResult.ClickCount || ClickResult.Held)
     {
@@ -8112,7 +8307,7 @@ static inline float Rr_UISlider(
         Layout,
         &SliderRect,
         TitleHash,
-        Rr_V2(HandleDragOffset, 0.0f));
+        (Rr_Rect){ .Offset.X = HandleDragOffset });
 
     Rr_UIBevel(
         BackgroundBevel,
