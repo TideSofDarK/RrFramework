@@ -3146,6 +3146,17 @@ static inline void Rr_UIAddWindowTabBar(Rr_UILayout *Layout)
 {
     Rr_UIWindow *Window = Layout->Window;
 
+    /* TODO: Better background. */
+
+    Rr_Rect TabBarBackgroundRect = {
+        .Offset = Layout->Cursor,
+        .Extent = Rr_V2(Layout->Rect.Extent.Width, gUIContext->TitleBarHeight),
+    };
+    Rr_UIDrawSolidQuad(
+        &TabBarBackgroundRect,
+        Window->Child ? &gUIContext->Colors.ChildBackground
+                      : &gUIContext->Colors.Background);
+
     Rr_Rect TitleBarRect = {
         Layout->Rect.Offset,
         Rr_V2(Layout->Rect.Extent.Width, gUIContext->TitleBarHeight),
@@ -3301,18 +3312,11 @@ static inline Rr_UIClickResult Rr_UIAddResizeHandle(
         break;
         case RR_UI_RESIZE_TYPE_SE:
         {
-            Rr_Vec2 BottomRight =
-                Rr_AddV2(Layout->Rect.Offset, Layout->Rect.Extent);
-            Rect = (Rr_Rect){
-                {
-                    BottomRight.X - gUIContext->ResizeHandleSize,
-                    BottomRight.Y - gUIContext->ResizeHandleSize,
-                },
-                {
-                    gUIContext->ResizeHandleSize,
-                    gUIContext->ResizeHandleSize,
-                },
-            };
+            Rr_Vec2 ResizeHandleExtent = Rr_V2F(gUIContext->ResizeHandleSize);
+            Rect.Offset = Rr_SubV2(
+                Rr_AddV2(Window->Rect.Offset, Window->Rect.Extent),
+                ResizeHandleExtent);
+            Rect.Extent = ResizeHandleExtent;
         }
         break;
         default:
@@ -3458,6 +3462,17 @@ static inline void Rr_UIAddResizeHandles(Rr_UILayout *Layout)
     /* NOTE: Work with Window->Rect directly since Layout->Rect is transformed
      * to accomodate for borders. */
 
+    if (!Rr_UIWindowNoBorders(Window) &&
+        (gUIContext->HoveredWindow == Window ||
+         gUIContext->DragParent ==
+             Window)) /* Don't test every window out there. */
+    {
+        Rr_UIAddResizeHandle(Layout, "Rr.ResizeN", RR_UI_RESIZE_TYPE_N);
+        Rr_UIAddResizeHandle(Layout, "Rr.ResizeS", RR_UI_RESIZE_TYPE_S);
+        Rr_UIAddResizeHandle(Layout, "Rr.ResizeE", RR_UI_RESIZE_TYPE_E);
+        Rr_UIAddResizeHandle(Layout, "Rr.ResizeW", RR_UI_RESIZE_TYPE_W);
+    }
+
     Rr_UIClickResult ClickResult =
         Rr_UIAddResizeHandle(Layout, "Rr.ResizeSE", RR_UI_RESIZE_TYPE_SE);
 
@@ -3475,17 +3490,6 @@ static inline void Rr_UIAddResizeHandles(Rr_UILayout *Layout)
     {
         Layout->DeferredResizeHandleColor =
             &gUIContext->Colors.ResizeHandleNormal;
-    }
-
-    if (!Rr_UIWindowNoBorders(Window) &&
-        (gUIContext->HoveredWindow == Window ||
-         gUIContext->DragParent ==
-             Window)) /* Don't test every window out there. */
-    {
-        Rr_UIAddResizeHandle(Layout, "Rr.ResizeN", RR_UI_RESIZE_TYPE_N);
-        Rr_UIAddResizeHandle(Layout, "Rr.ResizeS", RR_UI_RESIZE_TYPE_S);
-        Rr_UIAddResizeHandle(Layout, "Rr.ResizeE", RR_UI_RESIZE_TYPE_E);
-        Rr_UIAddResizeHandle(Layout, "Rr.ResizeW", RR_UI_RESIZE_TYPE_W);
     }
 }
 
@@ -4410,17 +4414,14 @@ void Rr_UIEndWindow(void)
     {
         TotalClipRect =
             Rr_ResizeRect(&Layout->Rect, gUIContext->DoubleBevelThickness);
-
-        if (TotalClipRect.Offset.X < Layout->CurrentClipRect->Rect.Offset.X)
-        {
-            /* Since window wasn't collapsed, current clip rect refers to
-             * contents area. Begin new clip rect to draw borders, resize handle
-             * and scrolloffs. */
-
-            Rr_UIEndClipRect(Layout);
-            Rr_UIBeginClipRect(Layout, &TotalClipRect);
-        }
     }
+
+    /* Since window wasn't collapsed, current clip rect refers to
+     * contents area. Begin new clip rect to draw borders, resize handle
+     * and scrolloffs. */
+
+    Rr_UIEndClipRect(Layout);
+    Rr_UIBeginClipRect(Layout, &TotalClipRect);
 
     if (!Layout->WasCollapsed)
     {
@@ -4574,7 +4575,7 @@ void Rr_UIEndWindow(void)
         Rr_UIGetHash(sizeof("Rr.Move"), "Rr.Move", Rr_UICurrentHash());
     Rr_UIClickResult ClickResult = Rr_UIClickEx(
         Layout,
-        &Layout->Rect,
+        &TotalClipRect,
         RR_UI_CLICK_TYPE_DRAG_RELAXED,
         MoveHash,
         (Rr_Rect){ .Offset = Window->TopLevelParent->Rect.Offset });
@@ -9267,6 +9268,21 @@ void Rr_UIDebugOverlay(void)
                 gUIContext->ClickParent ? gUIContext->ClickParent->Title : NULL,
                 gUIContext->ActiveLayouts.Count,
                 gUIContext->PopupWindow.Open);
+
+            Rr_UITextF(
+                "Drag Parent: %s\n"
+                "Drag Hash: %llu\n"
+                "Drag Value Start: %.2f %.2f %.2f %.2f\n",
+                gUIContext->DragParent ? gUIContext->DragParent->Title : NULL,
+                gUIContext->DragParent ? gUIContext->DragHash : 0,
+                gUIContext->DragParent ? gUIContext->DragValueStart.Offset.X
+                                       : 0,
+                gUIContext->DragParent ? gUIContext->DragValueStart.Offset.Y
+                                       : 0,
+                gUIContext->DragParent ? gUIContext->DragValueStart.Extent.X
+                                       : 0,
+                gUIContext->DragParent ? gUIContext->DragValueStart.Extent.Y
+                                       : 0);
 
             Rr_UICheckbox("Visualize Advances", &gUIContext->VisualizeAdvances);
         }
