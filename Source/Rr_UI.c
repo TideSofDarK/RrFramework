@@ -141,6 +141,7 @@ typedef struct Rr_UILayout Rr_UILayout;
 struct Rr_UILayout
 {
     Rr_UIWindow *Window;
+    bool WasCollapsed;
     bool SkipItems;
     bool SkipCompletely;
     bool *Open;
@@ -3900,6 +3901,7 @@ static inline bool Rr_UIPushWindowLayout(
     Layout->Rect = Window->Rect;
     Layout->Cursor = Window->Rect.Offset;
     Layout->TotalAvailableContentsWidth = Window->Rect.Extent.X;
+    Layout->WasCollapsed = Rr_UIWindowCollapsed(Window);
     Layout->HorizontalX = INFINITY;
     Layout->DeferredAutoResize = Rr_UIWindowAutoResize(Window);
     Layout->Open = Open;
@@ -4015,7 +4017,7 @@ static inline bool Rr_UIPushWindowLayout(
     /* Add vertical scrollbar if necessary. */
 
     bool VerticalScrollbarAdded = false;
-    if (!Window->Collapsed)
+    if (!Layout->WasCollapsed)
     {
         if (Rr_UIWindowNoVerticalScrollbar(Window))
         {
@@ -4249,7 +4251,7 @@ static bool Rr_UIBeginDockedChildWindow(
         Rr_UIEndClipRect(ParentLayout);
         Rr_UIBeginClipRect(ParentLayout, &TabContentsRect);
 
-        if (!Selected || ParentWindow->Collapsed)
+        if (!Selected || ParentLayout->WasCollapsed)
         {
             Rr_UIPushEmptyLayout(TitleHash, Window);
 
@@ -4421,7 +4423,7 @@ void Rr_UIEndWindow(void)
     Rr_UIEndClipRect(Layout);
     Rr_UIBeginClipRect(Layout, &TotalClipRect);
 
-    if (!Window->Collapsed)
+    if (!Layout->WasCollapsed)
     {
         /* NOTE: Flooring these fixed imprecise FillRatio calculation.
          * If the bug ever returns it probably means the fix should be applied
@@ -4517,7 +4519,7 @@ void Rr_UIEndWindow(void)
 
     /* NOTE: Forward scroll wheel behavior to the top-level parent. */
 
-    if (!Window->Collapsed || Window->Child)
+    if (!Layout->WasCollapsed || Window->Child)
     {
         Rr_UIScrollBehavior(
             Window,
