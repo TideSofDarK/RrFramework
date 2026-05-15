@@ -601,7 +601,7 @@ Rr_Image2D *Rr_CreateSTBImage2D(
     Rr_IntVec2 ImageSize;
     int32_t ImageChannels;
     char *ImageData = (char *)stbi_load_from_memory(
-        (stbi_uc *)Data,
+        (stbi_uc const *)Data,
         (int32_t)DataSize,
         &ImageSize.Width,
         &ImageSize.Height,

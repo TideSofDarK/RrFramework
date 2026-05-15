@@ -13,44 +13,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
 include(CPM)
 
 #
-# Enable warnings and sanitizers
-#
-
-function(rr_enable_development_options TARGET)
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-        target_compile_options(
-            ${TARGET}
-            PRIVATE
-            -Werror
-            -Wall
-            -Wextra
-            -Wpedantic
-            -Wconversion
-            -Wshadow
-            -Wno-missing-designated-field-initializers
-            -Wno-unused-function
-            -Wno-unused-parameter
-            -Wno-unused-variable
-            -Wno-missing-braces)
-
-        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-            target_compile_options(${TARGET} PRIVATE -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-unsafe-buffer-usage -Wno-pre-c++20-compat-pedantic)
-        endif ()
-
-        if (RR_SANITIZERS)
-            target_compile_options(${TARGET} PRIVATE -fsanitize=address,undefined)
-            target_link_options(${TARGET} PRIVATE -fsanitize=address,undefined)
-        endif ()
-    elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC")
-        target_compile_options(${TARGET} PRIVATE /W3)
-
-        if (RR_SANITIZERS)
-            target_compile_options(${TARGET} PRIVATE /fsanitize=address)
-        endif ()
-    endif ()
-endfunction ()
-
-#
 # Dependencies
 #
 
@@ -148,8 +110,11 @@ add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
 
 target_compile_features(${PROJECT_NAME} PRIVATE c_std_99)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
+target_compile_options(${PROJECT_NAME} PRIVATE $<$<STREQUAL:$<COMPILE_LANGUAGE>,C>:${RR_C_FLAGS}>)
+target_compile_options(${PROJECT_NAME} PRIVATE $<$<STREQUAL:$<COMPILE_LANGUAGE>,CXX>:${RR_CXX_FLAGS}>)
 set_target_properties(${PROJECT_NAME} PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
+set_target_properties(${PROJECT_NAME} PROPERTIES VERIFY_INTERFACE_HEADER_SETS ON)
 
 target_compile_definitions(
     ${PROJECT_NAME}
@@ -162,8 +127,6 @@ target_compile_definitions(
     PUBLIC
     "$<$<CONFIG:DEBUG>:-DRR_USE_GPU_DEBUG_UTILS>"
 )
-
-rr_enable_development_options(${PROJECT_NAME})
 
 target_sources(
     ${PROJECT_NAME}

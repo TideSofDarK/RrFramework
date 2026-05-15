@@ -271,7 +271,7 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
     VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .codeSize = ShaderInfo->SPVSize,
-        .pCode = (uint32_t *)ShaderInfo->SPVData,
+        .pCode = (uint32_t const *)ShaderInfo->SPVData,
     };
 
     VkShaderModule ShaderModule = VK_NULL_HANDLE;
@@ -439,7 +439,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .codeSize = CreateInfo->VertexShaderInfo->SPVSize,
-            .pCode = (uint32_t *)CreateInfo->VertexShaderInfo->SPVData,
+            .pCode = (uint32_t const *)CreateInfo->VertexShaderInfo->SPVData,
         };
         Device->CreateShaderModule(
             Device->Handle,
@@ -474,7 +474,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
             .pNext = VK_NULL_HANDLE,
             .codeSize = CreateInfo->FragmentShaderInfo->SPVSize,
-            .pCode = (uint32_t *)CreateInfo->FragmentShaderInfo->SPVData,
+            .pCode = (uint32_t const *)CreateInfo->FragmentShaderInfo->SPVData,
         };
         Device->CreateShaderModule(
             Device->Handle,

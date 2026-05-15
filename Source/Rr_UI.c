@@ -471,7 +471,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
         RR_ALLOC_NO_ZERO((size_t)(ATLAS_SIZE * ATLAS_SIZE), Scratch.Arena);
 
     stbtt_fontinfo FontInfo;
-    if (!stbtt_InitFont(&FontInfo, (unsigned char *)TTFData, 0))
+    if (!stbtt_InitFont(&FontInfo, (unsigned char const *)TTFData, 0))
     {
         RR_LOG_ERROR("Failed to parse .ttf file!");
         Rr_DestroyScratch(Scratch);
@@ -489,7 +489,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
 
     float PixelAscent = (float)UnscaledAscent * PixelHeightScale;
     float PixelDescent = (float)UnscaledDescent * PixelHeightScale;
-    float PixelLineGap = (float)UnscaledLineGap * PixelHeightScale;
+    /* float PixelLineGap = (float)UnscaledLineGap * PixelHeightScale; */
 
     float BakeScale = FontSize / (PixelAscent + PixelDescent);
 
@@ -534,7 +534,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     Font->AllocationSize = AllocationSize;
     Font->CreatedForSRGBSwapchain = IsSRGBSwapchain;
     Font->RangeCount = CodepointRangeCount;
-    Font->Ranges = (Rr_UIFontRange *)(((char *)Font) + sizeof(Rr_UIFont));
+    Font->Ranges = (Rr_UIFontRange *)(Font + 1);
     Rr_SetNextObjectNameF("Rr.UI.Font#%d", FontIndex);
     Font->Image = Rr_CreateImage2D(
         ATLAS_EXTENT,
@@ -1658,7 +1658,6 @@ static inline void Rr_UIDrawCheckmark(
 
     float ShortX = Size * gUIContext->Style.CheckmarkRatios.X;
     float LongX = Size - ShortX;
-    float Hypo = sqrtf(ShortX * ShortX + ShortX * ShortX);
     float Thickness = Size * gUIContext->Style.CheckmarkRatios.Y;
     float HypoY = sqrtf(Thickness * Thickness + Thickness * Thickness);
     float ShortY = Thickness / sqrtf(2.0f);
@@ -2186,13 +2185,10 @@ static inline Rr_Vec2 Rr_UIDrawText(
     }
 
     Rr_UIFont *Font = Rr_UICurrentFont();
-    float FontSize = Font->Size;
     float LineHeight = Font->LineHeight;
     float MaxX = 0.0f;
     float CurrentX = 0.0f;
     float CurrentY = 0.0f;
-
-    Rr_Vec2 ResultSize = { 0 };
 
     if (WrapWidth > 0.0f)
     {
@@ -2316,7 +2312,6 @@ static inline Rr_Vec2 Rr_UIDrawText(
             (NullTerminated || Decoder.CStringParserIndex <= UTF8StringLength))
         {
             uint32_t Codepoint = Decoder.Codepoint;
-            size_t CodepointIndex = Decoder.CodepointCount - 1;
 
             Rr_UIGlyph *Glyph = Rr_UIGetGlyphForCodepoint(Font, Codepoint);
 
@@ -2762,7 +2757,6 @@ static inline void Rr_UIRecalculateStyle(void)
 {
     Rr_UIStyle *Style = &gUIContext->Style;
     Rr_UIFont *Font = Rr_UICurrentFont();
-    float FontSize = Font->Size;
     float LineHeight = Font->LineHeight;
 
     gUIContext->WindowPadding =
@@ -2870,7 +2864,6 @@ void Rr_UIAdvance(Rr_Vec2 RigidSize, Rr_Vec2 FlexibleSize)
     Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
 
     Rr_Rect *ContentsRect = &Layout->DeferredContentsRect;
     Rr_Vec2 ContentsMargin = Rr_UICurrentContentsMargin();
@@ -3030,8 +3023,6 @@ static inline bool Rr_UIAddCollapseButton(Rr_UILayout *Layout)
 
 static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout)
 {
-    Rr_UIWindow *Window = Layout->Window;
-
     /* Assuming having a title/tab bar. */
 
     float Width = gUIContext->TitleBarHeight * gUIContext->Style.CrossWidth;
@@ -3559,8 +3550,6 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
             ScrollbarHandleSize.X = gUIContext->ScrollbarHandleWidth;
             ScrollbarHandleSize.Y *= FillRatio;
 
-            float ScrollbarHandleHeightUnpadded = ScrollbarHandleSize.Y;
-
             ScrollbarHandlePosition.Y += roundf(Window->VScroll * FillRatio);
 
             /* Vertical margins. */
@@ -3866,7 +3855,7 @@ static inline bool Rr_UIPushWindowLayout(
      * This will put window on top unless there is a flag
      * preventing that which is not currently implemented. */
 
-    bool NoBorders = Rr_UIWindowNoBorders(Window);
+    /* bool NoBorders = Rr_UIWindowNoBorders(Window); */
     bool HasTitleBar = !Rr_UIWindowNoTitleBar(Window);
 
     bool WasClosed = Window->Open == false;
@@ -4647,7 +4636,7 @@ void Rr_UIEndWindow(void)
     Rr_UILayout *ParentLayout = Rr_UICurrentLayout();
     if (ParentLayout && !ParentLayout->SkipCompletely)
     {
-        Rr_UIWindow *ParentWindow = ParentLayout->Window;
+        /* Rr_UIWindow *ParentWindow = ParentLayout->Window; */
 
         if (Window->Child)
         {
@@ -4928,7 +4917,6 @@ void Rr_UIEndTree(void)
 
     RR_UNUSED(RR_POP_FROM_ARRAY(&Layout->TreeStack));
 
-    float TreeOffset = Font->LineHeight;
     Layout->TreeDepth--;
     Layout->Cursor.X = Layout->DeferredContentsRect.Offset.X +
                        Rr_UIGetOffsetForTreeDepth(Layout->TreeDepth);
@@ -5022,7 +5010,6 @@ void Rr_UIImageEx(Rr_Image *Image, Rr_Vec2 Extent, Rr_Vec2 UVMin, Rr_Vec2 UVMax)
     Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
 
     Rr_Rect CurrentRect = Layout->CurrentClipRect->Rect;
     Rr_UIClipRect *ClipRect = Rr_UIPushSubClipRect(Layout, &CurrentRect);
@@ -5070,7 +5057,6 @@ void Rr_UIText(char const *Text)
     Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
 
     Rr_Vec2 TextSize = Rr_UIDrawText(
         false,
@@ -5142,7 +5128,6 @@ void Rr_UILabelText(char const *Title, char const *Text)
     Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
 
     size_t TitleLength = strlen(Title);
 
@@ -5192,7 +5177,6 @@ bool Rr_UIButton(char const *Text)
     Rr_UIAssertWindow();
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Text, &TitleLength);
@@ -5259,7 +5243,6 @@ bool Rr_UIRadioButton(
     assert(SelectedOption != NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
     Rr_UIFont *Font = Rr_UICurrentFont();
 
     size_t TitleLength;
@@ -5268,7 +5251,6 @@ bool Rr_UIRadioButton(
     float ButtonSize = Font->LineHeight;
     float OuterRadius = ButtonSize * 0.4f;
     float InnerRadius = OuterRadius * 0.6f;
-    float InnerRadiusHeld = OuterRadius * 0.8f;
     float OutlineThickness = Font->LineHeight / 24.0f * 0.5f;
 
     Rr_Vec2 Cursor = Layout->Cursor;
@@ -5338,7 +5320,6 @@ bool Rr_UICheckbox(char const *Title, bool *Checked)
     assert(Checked != NULL);
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
     Rr_UIFont *Font = Rr_UICurrentFont();
 
     size_t TitleLength;
@@ -5568,7 +5549,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
     size_t CursorMin;
     size_t CursorMax;
 
-#if __APPLE__
+#ifdef __APPLE__
     const Rr_KeymodFlags DEFAULT_MOD = RR_KEYMOD_GUI;
 #else
     const Rr_KeymodFlags DEFAULT_MOD = RR_KEYMOD_CTRL;
@@ -6683,8 +6664,8 @@ static inline void Rr_UIModifyDragScalarRange(
     {
         case RR_UI_SCALAR_TYPE_INT:
         {
-            int32_t Min = *(int32_t *)DataMin;
-            int32_t Max = *(int32_t *)DataMax;
+            int32_t Min = *(int32_t const *)DataMin;
+            int32_t Max = *(int32_t const *)DataMax;
             int32_t Range = Max - Min;
             int32_t *Int = (int32_t *)Data;
             *Int = gUIContext->DragScalarValue.Int32 +
@@ -6694,8 +6675,8 @@ static inline void Rr_UIModifyDragScalarRange(
         break;
         case RR_UI_SCALAR_TYPE_UINT:
         {
-            uint32_t Min = *(uint32_t *)DataMin;
-            uint32_t Max = *(uint32_t *)DataMax;
+            uint32_t Min = *(uint32_t const *)DataMin;
+            uint32_t Max = *(uint32_t const *)DataMax;
             uint32_t Range = Max - Min;
             uint32_t *UnsignedInt = (uint32_t *)Data;
             Rr_UIModifyUnsignedInt(
@@ -6707,8 +6688,8 @@ static inline void Rr_UIModifyDragScalarRange(
         break;
         case RR_UI_SCALAR_TYPE_FLOAT:
         {
-            float Min = *(float *)DataMin;
-            float Max = *(float *)DataMax;
+            float Min = *(float const *)DataMin;
+            float Max = *(float const *)DataMax;
             float Range = Max - Min;
             float *Float = (float *)Data;
             *Float = gUIContext->DragScalarValue.Float + Amount * Range;
@@ -6717,8 +6698,8 @@ static inline void Rr_UIModifyDragScalarRange(
         break;
         case RR_UI_SCALAR_TYPE_DOUBLE:
         {
-            double Min = *(double *)DataMin;
-            double Max = *(double *)DataMax;
+            double Min = *(double const *)DataMin;
+            double Max = *(double const *)DataMax;
             double Range = Max - Min;
             double *Double = (double *)Data;
             *Double = gUIContext->DragScalarValue.Double + Amount * Range;
@@ -6743,8 +6724,8 @@ static inline void Rr_UIClampScalarRange(
     {
         case RR_UI_SCALAR_TYPE_INT:
         {
-            int32_t Min = *(int32_t *)DataMin;
-            int32_t Max = *(int32_t *)DataMax;
+            int32_t Min = *(int32_t const *)DataMin;
+            int32_t Max = *(int32_t const *)DataMax;
             int32_t Range = Max - Min;
             int32_t *Int = (int32_t *)Data;
             *Int = RR_CLAMP(Min, *Int, Max);
@@ -6752,8 +6733,8 @@ static inline void Rr_UIClampScalarRange(
         break;
         case RR_UI_SCALAR_TYPE_UINT:
         {
-            uint32_t Min = *(uint32_t *)DataMin;
-            uint32_t Max = *(uint32_t *)DataMax;
+            uint32_t Min = *(uint32_t const *)DataMin;
+            uint32_t Max = *(uint32_t const *)DataMax;
             uint32_t Range = Max - Min;
             uint32_t *UnsignedInt = (uint32_t *)Data;
             *UnsignedInt = RR_CLAMP(Min, *UnsignedInt, Max);
@@ -6761,8 +6742,8 @@ static inline void Rr_UIClampScalarRange(
         break;
         case RR_UI_SCALAR_TYPE_FLOAT:
         {
-            float Min = *(float *)DataMin;
-            float Max = *(float *)DataMax;
+            float Min = *(float const *)DataMin;
+            float Max = *(float const *)DataMax;
             float Range = Max - Min;
             float *Float = (float *)Data;
             *Float = RR_CLAMP(Min, *Float, Max);
@@ -6770,8 +6751,8 @@ static inline void Rr_UIClampScalarRange(
         break;
         case RR_UI_SCALAR_TYPE_DOUBLE:
         {
-            double Min = *(double *)DataMin;
-            double Max = *(double *)DataMax;
+            double Min = *(double const *)DataMin;
+            double Max = *(double const *)DataMax;
             double Range = Max - Min;
             double *Double = (double *)Data;
             *Double = RR_CLAMP(Min, *Double, Max);
@@ -8896,8 +8877,8 @@ void Rr_BeginUI(void)
 
 static inline int Rr_UIWindowSort(void const *A, void const *B)
 {
-    Rr_UILayout const *LayoutA = *(Rr_UILayout **)A;
-    Rr_UILayout const *LayoutB = *(Rr_UILayout **)B;
+    Rr_UILayout const *LayoutA = *(Rr_UILayout *const *)A;
+    Rr_UILayout const *LayoutB = *(Rr_UILayout *const *)B;
 
     return LayoutA->Window->Z - LayoutB->Window->Z;
 }
