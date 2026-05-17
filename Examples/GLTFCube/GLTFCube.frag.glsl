@@ -15,6 +15,21 @@ layout(set = 0, binding = 0) uniform Globals
 layout(set = 0, binding = 1) uniform sampler Sampler;
 layout(set = 0, binding = 2) uniform texture2D ColorTexture;
 
+// layout(set = 0, binding = 3) uniform sampler2D bb03;
+// layout(set = 0, binding = 4) readonly buffer Lbb04
+// {
+//     mat4 Model;
+// } bb04;
+
+// layout(set = 0, binding = 5) buffer Lbb05
+// {
+//     mat4 Elements[];
+// } bb05;
+
+// layout(rgba8, set = 0, binding = 6) uniform image2D bb06;
+
+// layout(rgba8, set = 0, binding = 7) uniform image2DArray bb07[5];
+
 void main()
 {
     vec2 A = InUV * 2.0 - 1.0;

@@ -24,6 +24,9 @@
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Renderer.h>
 
+#define RR_MAX_BINDINGS         16
+#define RR_MAX_SETS             4
+
 typedef struct Rr_PipelineLayout Rr_PipelineLayout;
 typedef struct Rr_ComputePipeline Rr_ComputePipeline;
 typedef struct Rr_GraphicsPipeline Rr_GraphicsPipeline;
@@ -224,23 +227,23 @@ typedef enum
 typedef struct Rr_Binding Rr_Binding;
 struct Rr_Binding
 {
-    uint32_t Index;
-    Rr_BindingType Type;
-    Rr_ShaderStage Stages;
-    uint32_t Count;
-    Rr_ImageFormat ImageFormat;
+    uint16_t Index;
+    uint16_t Type;
+    uint16_t Stages;
+    uint8_t Count;
+    uint8_t ImageFormat;
 };
 
 typedef struct Rr_BindingSet Rr_BindingSet;
 struct Rr_BindingSet
 {
-    size_t BindingCount;
-    Rr_Binding const *Bindings;
+    uint32_t BindingCount;
+    Rr_Binding *Bindings;
 };
 
 RR_EXTERN Rr_PipelineLayout *Rr_CreatePipelineLayout(
     size_t BindingSetCount,
-    Rr_BindingSet const *BindingSet);
+    Rr_BindingSet const *BindingSets);
 
 RR_EXTERN void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout);
 

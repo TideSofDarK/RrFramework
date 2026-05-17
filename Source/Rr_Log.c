@@ -30,6 +30,8 @@ char const *Rr_LogCategoryString(Rr_LogCategory Category)
     {
         case RR_LOG_CATEGORY_APP:
             return "APPL";
+        case RR_LOG_CATEGORY_SPIRV:
+            return "SPRV";
         case RR_LOG_CATEGORY_VULKAN:
             return "VULK";
         case RR_LOG_CATEGORY_RENDERER:

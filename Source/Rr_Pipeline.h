@@ -27,29 +27,20 @@
 
 #include <Rr/Rr_Platform.h>
 
-typedef struct Rr_PackedBinding Rr_PackedBinding;
-struct Rr_PackedBinding
-{
-    uint16_t Index;
-    uint16_t Type;
-    uint16_t Stages;
-    uint8_t Count;
-    uint8_t ImageFormat;
-};
-
 typedef struct Rr_DescriptorSetLayoutKey Rr_DescriptorSetLayoutKey;
 struct Rr_DescriptorSetLayoutKey
 {
     uint32_t TotalBindingCount;
-    Rr_PackedBinding Bindings[RR_MAX_BINDINGS];
+    Rr_Binding Bindings[RR_MAX_BINDINGS];
 };
 
 typedef struct Rr_DescriptorSetLayout Rr_DescriptorSetLayout;
 struct Rr_DescriptorSetLayout
 {
     Rr_DescriptorSetLayoutKey Key;
-    VkDescriptorSetLayout Handle;
     Rr_DescriptorSetLayout *Children[4];
+
+    VkDescriptorSetLayout Handle;
 };
 
 #define RR_HIVE_TYPE      Rr_DescriptorSetLayout
@@ -65,10 +56,20 @@ struct Rr_DescriptorSetLayoutStorage
 };
 
 extern Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
-    Rr_DescriptorSetLayoutKey *Key);
+    Rr_DescriptorSetLayoutKey const *Key);
+
+typedef struct Rr_PipelineLayoutKey Rr_PipelineLayoutKey;
+struct Rr_PipelineLayoutKey
+{
+    uint32_t DescriptorSetLayoutCount;
+    VkDescriptorSetLayout DescriptorSetLayouts[RR_MAX_SETS];
+};
 
 struct Rr_PipelineLayout
 {
+    Rr_PipelineLayoutKey Key;
+    Rr_PipelineLayout *Children[4];
+
     uint32_t SetLayoutCount;
     Rr_DescriptorSetLayout *SetLayouts[RR_MAX_SETS];
 
@@ -83,6 +84,13 @@ struct Rr_PipelineLayout
 #define RR_HIVE_TYPE_NAME PipelineLayout
 #define RR_HIVE_PREFIX    Rr_
 #include "Rr_Hive.h"
+
+typedef struct Rr_PipelineLayoutStorage Rr_PipelineLayoutStorage;
+struct Rr_PipelineLayoutStorage
+{
+    Rr_PipelineLayout *Map;
+    Rr_PipelineLayoutHive Hive;
+};
 
 extern void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout);
 

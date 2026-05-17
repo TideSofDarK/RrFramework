@@ -9290,8 +9290,8 @@ void Rr_UIDebugOverlay(void)
                 gRenderer->DescriptorPoolListCount);
             Rr_UITextF(
                 "PipelineLayouts: %zu/%zu",
-                gRenderer->PipelineLayouts.Count,
-                gRenderer->PipelineLayouts.Capacity);
+                gRenderer->PipelineLayoutStorage.Hive.Count,
+                gRenderer->PipelineLayoutStorage.Hive.Capacity);
             Rr_UITextF(
                 "ComputePipelines: %zu/%zu",
                 gRenderer->ComputePipelines.Count,

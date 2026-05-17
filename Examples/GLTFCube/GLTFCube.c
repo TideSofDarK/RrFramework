@@ -242,6 +242,8 @@ static void Iterate(void)
         Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
 
     DrawFirstGLTFPrimitive(GraphicsNode);
+
+    Rr_UIDebugOverlay();
 }
 
 static void Cleanup(void)

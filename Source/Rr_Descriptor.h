@@ -24,8 +24,6 @@
 
 #include <Rr/Rr_Pipeline.h>
 
-#define RR_MAX_BINDINGS         16
-#define RR_MAX_SETS             4
 #define RR_DESCRIPTOR_POOL_SIZE 128
 
 typedef struct Rr_DescriptorPoolList Rr_DescriptorPoolList;

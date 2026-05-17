@@ -707,6 +707,17 @@ void Rr_CleanupRenderer(void)
 
     Rr_DestroyReleasedObjects();
 
+    for (Rr_PipelineLayoutHiveIterator It =
+             gRenderer->PipelineLayoutStorage.Hive.Begin;
+         It.Element != gRenderer->PipelineLayoutStorage.Hive.End.Element;)
+    {
+        Device->DestroyPipelineLayout(
+            Device->Handle,
+            It.Element->Handle,
+            NULL);
+        Rr_AdvancePipelineLayoutHiveIterator(&It);
+    }
+
     for (Rr_DescriptorSetLayoutHiveIterator It =
              gRenderer->DescriptorSetLayoutStorage.Hive.Begin;
          It.Element != gRenderer->DescriptorSetLayoutStorage.Hive.End.Element;)

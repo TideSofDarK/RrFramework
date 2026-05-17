@@ -197,10 +197,12 @@ static inline void Rr_CopyDescriptorSet(
 
     for (uint32_t Index = 0; Index < RR_MAX_BINDINGS; ++Index)
     {
-        Rr_PackedBinding *Binding = &Layout->Key.Bindings[Index];
+        Rr_Binding *Binding = &Layout->Key.Bindings[Index];
 
-        if (Binding->Count > 0)
+        if (Binding->Type != RR_BINDING_TYPE_INVALID)
         {
+            uint32_t Count = Binding->Count ? Binding->Count : 1;
+
             Copies[CurrentCopyIndex++] = (VkCopyDescriptorSet){
                 .sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
                 .srcSet = Src,
@@ -209,7 +211,7 @@ static inline void Rr_CopyDescriptorSet(
                 .dstSet = Dst,
                 .dstBinding = Binding->Index,
                 .dstArrayElement = 0,
-                .descriptorCount = Binding->Count,
+                .descriptorCount = Count,
             };
         }
     }

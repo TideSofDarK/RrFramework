@@ -212,8 +212,11 @@ struct Rr_Renderer
     Rr_FramebufferStorage FramebufferStorage;
     Rr_Spinlock FramebufferStorageLock;
 
-    Rr_PipelineLayoutHive PipelineLayouts;
-    Rr_Spinlock PipelineLayoutsLock;
+    Rr_DescriptorSetLayoutStorage DescriptorSetLayoutStorage;
+    Rr_Spinlock DescriptorSetLayoutStorageLock;
+
+    Rr_PipelineLayoutStorage PipelineLayoutStorage;
+    Rr_Spinlock PipelineLayoutStorageLock;
     Rr_HandleHive ReleasedPipelineLayouts;
     Rr_Spinlock ReleasedPipelineLayoutsLock;
 
@@ -231,9 +234,6 @@ struct Rr_Renderer
     Rr_Spinlock SamplersLock;
     Rr_HandleHive ReleasedSamplers;
     Rr_Spinlock ReleasedSamplersLock;
-
-    Rr_DescriptorSetLayoutStorage DescriptorSetLayoutStorage;
-    Rr_Spinlock DescriptorSetLayoutStorageLock;
 
     Rr_RenderPassStorage RenderPassStorage;
     Rr_Spinlock RenderPassStorageLock;
