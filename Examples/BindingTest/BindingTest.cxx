@@ -30,7 +30,6 @@ struct SS2B4Element
 
 struct SBindingTestApp
 {
-    Rr_PipelineLayout *PipelineLayout;
     Rr_ComputePipeline *ComputePipeline;
 
     Rr_Buffer *UniformBufferA;
@@ -45,49 +44,6 @@ struct SBindingTestApp
 
     void InitPipeline()
     {
-        std::array Set0Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array Set1Bindings = {
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array Set2Bindings = {
-            Rr_Binding{
-                .Index = 2,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 4,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-                .Count = 4,
-            },
-        };
-        std::array Set3Bindings = {
-            Rr_Binding{
-                .Index = 13,
-                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Set0Bindings.size(), Set0Bindings.data() },
-            Rr_BindingSet{ Set1Bindings.size(), Set1Bindings.data() },
-            Rr_BindingSet{ Set2Bindings.size(), Set2Bindings.data() },
-            Rr_BindingSet{ Set3Bindings.size(), Set3Bindings.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         uint32_t LocalSize = 16;
 
         std::array Specializations = {
@@ -112,7 +68,7 @@ struct SBindingTestApp
             .Specializations = Specializations.data(),
         };
 
-        ComputePipeline = Rr_CreateComputePipeline(&ShaderInfo, PipelineLayout);
+        ComputePipeline = Rr_CreateComputePipeline(&ShaderInfo);
     }
 
     void InitBuffers()
@@ -283,7 +239,6 @@ struct SBindingTestApp
     void Cleanup()
     {
         Rr_ReleaseComputePipeline(ComputePipeline);
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(UniformBufferA);
         Rr_ReleaseBuffer(UniformBufferB);
         Rr_ReleaseBuffer(StorageBuffer);

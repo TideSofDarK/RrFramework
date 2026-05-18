@@ -111,7 +111,6 @@ struct SPNGImage
 
 struct SBoxBlur2D
 {
-    Rr_PipelineLayout *PipelineLayout;
     Rr_ComputePipeline *Blur2DXPipeline{};
     Rr_ComputePipeline *Blur2DYPipeline{};
     Rr_Buffer *UniformBuffer;
@@ -198,7 +197,7 @@ struct SBoxBlur2D
             .Specializations = Specializations.data(),
         };
 
-        return Rr_CreateComputePipeline(&ShaderInfo, PipelineLayout);
+        return Rr_CreateComputePipeline(&ShaderInfo);
     }
 
     void RecreatePipelines(std::uint32_t KernelSize)
@@ -214,29 +213,6 @@ struct SBoxBlur2D
     SBoxBlur2D(std::uint32_t KernelSize)
         : LocalSizeX(Rr_GetMaxComputeWorkgroupInvocations())
     {
-        std::array Bindings0 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 2,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         RecreatePipelines(KernelSize);
 
         UniformBuffer = Rr_CreateBuffer(
@@ -247,7 +223,6 @@ struct SBoxBlur2D
 
     ~SBoxBlur2D()
     {
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseComputePipeline(Blur2DXPipeline);
         Rr_ReleaseComputePipeline(Blur2DYPipeline);
         Rr_ReleaseBuffer(UniformBuffer);
@@ -263,7 +238,6 @@ struct SKawaseBlur2D
         float SamplerPosMultiplier;
     };
 
-    Rr_PipelineLayout *PipelineLayout{};
     Rr_ComputePipeline *Pipeline{};
 
     std::uint32_t LocalSize{};
@@ -370,29 +344,6 @@ struct SKawaseBlur2D
     SKawaseBlur2D()
         : LocalSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
     {
-        std::array Bindings0 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 2,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         std::array Specializations = {
             Rr_PipelineSpecialization{
                 .ConstantID = 0,
@@ -409,7 +360,7 @@ struct SKawaseBlur2D
             .Specializations = Specializations.data(),
         };
 
-        Pipeline = Rr_CreateComputePipeline(&ShaderInfo, PipelineLayout);
+        Pipeline = Rr_CreateComputePipeline(&ShaderInfo);
 
         Rr_SamplerInfo SamplerInfo = {};
         SamplerInfo.MinFilter = RR_FILTER_LINEAR;
@@ -426,7 +377,6 @@ struct SKawaseBlur2D
 
     ~SKawaseBlur2D()
     {
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseComputePipeline(Pipeline);
         Rr_ReleaseSampler(Sampler);
         Rr_ReleaseBuffer(UniformBuffer);
@@ -442,7 +392,6 @@ struct SDualKawaseBlur2D
         float SamplerPosMultiplier;
     };
 
-    Rr_PipelineLayout *PipelineLayout;
     Rr_ComputePipeline *DownPipeline{};
     Rr_ComputePipeline *UpPipeline{};
 
@@ -615,35 +564,12 @@ struct SDualKawaseBlur2D
             .Specializations = Specializations.data(),
         };
 
-        return Rr_CreateComputePipeline(&ShaderInfo, PipelineLayout);
+        return Rr_CreateComputePipeline(&ShaderInfo);
     }
 
     SDualKawaseBlur2D()
         : LocalSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
     {
-        std::array Bindings0 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 2,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         DownPipeline =
             CreateBlurPipeline(EXAMPLE_ASSET_DUALKAWASE2DDOWN_COMP_SPV);
         UpPipeline = CreateBlurPipeline(EXAMPLE_ASSET_DUALKAWASE2DUP_COMP_SPV);
@@ -663,7 +589,6 @@ struct SDualKawaseBlur2D
 
     ~SDualKawaseBlur2D()
     {
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseComputePipeline(DownPipeline);
         Rr_ReleaseComputePipeline(UpPipeline);
         Rr_ReleaseSampler(Sampler);
@@ -673,7 +598,6 @@ struct SDualKawaseBlur2D
 
 struct SBoxBlurCube
 {
-    Rr_PipelineLayout *PipelineLayout;
     Rr_ComputePipeline *BlurCubeXPipeline{};
     Rr_ComputePipeline *BlurCubeYPipeline{};
     Rr_ImageCube *IntermediateImageA;
@@ -743,7 +667,7 @@ struct SBoxBlurCube
             .Specializations = Specializations.data(),
         };
 
-        return Rr_CreateComputePipeline(&ShaderInfo, PipelineLayout);
+        return Rr_CreateComputePipeline(&ShaderInfo);
     }
 
     void RecreatePipelines(std::uint32_t Radius)
@@ -764,24 +688,6 @@ struct SBoxBlurCube
         , ImageSize(ImageSize)
         , LocalSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
     {
-        std::array Bindings0 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         RecreatePipelines(Radius);
 
         IntermediateImageA = Rr_CreateImageCube(
@@ -796,7 +702,6 @@ struct SBoxBlurCube
 
     ~SBoxBlurCube()
     {
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseComputePipeline(BlurCubeXPipeline);
         Rr_ReleaseComputePipeline(BlurCubeYPipeline);
         Rr_ReleaseImage(IntermediateImageA);
@@ -824,7 +729,6 @@ struct SBlurApp
     Rr_Image2D *IntermediateImageA;
     Rr_Image2D *IntermediateImageB;
 
-    Rr_PipelineLayout *QuadPipelineLayout;
     Rr_GraphicsPipeline *QuadGraphicsPipeline;
     Rr_Image2D *OriginalImage2D{};
     Rr_Image2D *BlurredImage2D{};
@@ -841,7 +745,6 @@ struct SBlurApp
     float DualKawaseBlur2DMultiplier = 1.5f;
     SDualKawaseBlur2D DualKawaseBlur2D;
 
-    Rr_PipelineLayout *CubePipelineLayout;
     Rr_GraphicsPipeline *CubeGraphicsPipeline;
     Rr_ImageCube *OriginalImageCube;
     Rr_ImageCube *BlurredImageCube;
@@ -870,19 +773,6 @@ struct SBlurApp
 
     void InitQuadPipeline()
     {
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        QuadPipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         Rr_ColorTargetInfo ColorTarget = {};
         ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
 
@@ -904,8 +794,7 @@ struct SBlurApp
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
-        QuadGraphicsPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, QuadPipelineLayout);
+        QuadGraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     void InitImage2D(const SPNGImage &PNGImage)
@@ -947,26 +836,6 @@ struct SBlurApp
 
     void InitCubePipeline()
     {
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages =
-                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                .Stages =
-                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        CubePipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         std::array VertexAttributes = {
             Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
         };
@@ -1004,8 +873,7 @@ struct SBlurApp
         PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
         PipelineInfo.VertexInputBindings = VertexInputBindings.data();
 
-        CubeGraphicsPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, CubePipelineLayout);
+        CubeGraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         std::array GLTFAttributeTypes = {
             RR_GLTF_ATTRIBUTE_TYPE_POSITION,
@@ -1361,11 +1229,9 @@ struct SBlurApp
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseSampler(Sampler);
         Rr_ReleaseGraphicsPipeline(QuadGraphicsPipeline);
-        Rr_ReleasePipelineLayout(QuadPipelineLayout);
         Rr_ReleaseImage(OriginalImage2D);
         Rr_ReleaseImage(BlurredImage2D);
         Rr_ReleaseGraphicsPipeline(CubeGraphicsPipeline);
-        Rr_ReleasePipelineLayout(CubePipelineLayout);
         Rr_ReleaseImage(OriginalImageCube);
         Rr_ReleaseImage(BlurredImageCube);
         Rr_ReleaseGLTFContext(GLTFContext);

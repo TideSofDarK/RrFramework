@@ -167,9 +167,7 @@ struct STransferThread
 
 struct STransferThreadApp
 {
-    Rr_PipelineLayout *PlaceholderLayout;
     Rr_GraphicsPipeline *PlaceholderPipeline;
-    Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
     Rr_Sampler *Sampler;
     Rr_Buffer *UniformBuffer;
@@ -179,24 +177,6 @@ struct STransferThreadApp
 
     void InitPipeline()
     {
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         Rr_ColorTargetInfo ColorTarget = {};
         ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTarget.Blend = Rr_AlphaBlend();
@@ -221,8 +201,7 @@ struct STransferThreadApp
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
-        GraphicsPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     void InitSampler()
@@ -244,19 +223,6 @@ struct STransferThreadApp
 
     void InitPlaceholder()
     {
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        PlaceholderLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         Rr_ColorTargetInfo ColorTarget = {};
         ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTarget.Blend = Rr_AlphaBlend();
@@ -281,8 +247,7 @@ struct STransferThreadApp
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
-        PlaceholderPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+        PlaceholderPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     void Init()
@@ -413,9 +378,7 @@ struct STransferThreadApp
     void Cleanup()
     {
         Rr_ReleaseGraphicsPipeline(PlaceholderPipeline);
-        Rr_ReleasePipelineLayout(PlaceholderLayout);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(UniformBuffer);
         for (auto Image : Images)
         {

@@ -3372,14 +3372,25 @@ void Rr_BindSamplerAt(
     Rr_MarkSamplerUsed(Node->Graph, Sampler);
 }
 
-VkPipelineStageFlags Rr_GetVulkanPipelineStageMaskForSetBinding(
+static inline VkPipelineStageFlags Rr_GetVulkanPipelineStageMaskForSetBinding(
     Rr_GraphNode *Node,
-    uint32_t Set,
-    uint32_t SetBinding)
+    uint32_t SetIndex,
+    uint32_t BindingIndex)
 {
     VkPipelineStageFlags StageMask = 0;
-    VkShaderStageFlags ShaderMask =
-        Node->CurrentLayout->SetLayouts[Set]->Key.Bindings[SetBinding].Stages;
+    VkShaderStageFlags ShaderMask = 0;
+    Rr_DescriptorSetLayoutKey const *Key =
+        &Node->CurrentLayout->SetLayouts[SetIndex]->Key;
+    for (uint32_t Index = 0; Index < Key->BindingCount; ++Index)
+    {
+        Rr_VulkanBinding const *VulkanBinding = &Key->Bindings[Index];
+        if (VulkanBinding->Index == BindingIndex)
+        {
+            ShaderMask = VulkanBinding->Stages;
+            break;
+        }
+    }
+
     if (ShaderMask & VK_SHADER_STAGE_COMPUTE_BIT)
     {
         StageMask |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
@@ -3395,6 +3406,7 @@ VkPipelineStageFlags Rr_GetVulkanPipelineStageMaskForSetBinding(
             StageMask |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         }
     }
+
     return StageMask;
 }
 

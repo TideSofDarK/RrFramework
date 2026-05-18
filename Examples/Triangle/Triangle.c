@@ -4,15 +4,12 @@
 
 #include <stdio.h>
 
-static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Buffer *VertexBuffer;
 static Rr_Buffer *IndexBuffer;
 
 static void Init(void)
 {
-    PipelineLayout = Rr_CreatePipelineLayout(0, NULL);
-
     Rr_VertexInputAttribute VertexAttributes[] = {
         { .Format = RR_FORMAT_VEC3, .Location = 0 },
         { .Format = RR_FORMAT_VEC3, .Location = 1 },
@@ -49,7 +46,7 @@ static void Init(void)
     PipelineInfo.ColorTargetCount = 1;
     PipelineInfo.ColorTargets = ColorTargets;
 
-    GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+    GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
     float VertexData[] = {
         -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
@@ -99,7 +96,6 @@ static void Cleanup(void)
     Rr_ReleaseBuffer(VertexBuffer);
     Rr_ReleaseBuffer(IndexBuffer);
     Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
-    Rr_ReleasePipelineLayout(PipelineLayout);
 }
 
 int main(int ArgC, char **ArgV)

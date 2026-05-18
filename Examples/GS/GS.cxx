@@ -168,7 +168,6 @@ struct SGSApp
     Rr_Buffer *UniformBuffer{};
     Rr_Buffer *EntriesBuffer{};
 
-    Rr_PipelineLayout *PipelineLayout{};
     Rr_GraphicsPipeline *GraphicsPipeline{};
 
     void Render(const SCamera &Camera, Rr_Image2D *ColorAttachment)
@@ -235,29 +234,6 @@ struct SGSApp
 
         /* Setup graphics pipeline. */
 
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_VERTEX_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_VERTEX_BIT,
-            },
-            Rr_Binding{
-                .Index = 2,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_VERTEX_BIT,
-            },
-        };
-        std::array BindingSets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
-
         Rr_VertexInputBinding VertexInputBinding = {
             RR_VERTEX_INPUT_RATE_VERTEX,
             0,
@@ -290,8 +266,7 @@ struct SGSApp
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
         PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
 
-        GraphicsPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         /* Parse and upload splats. */
 
@@ -378,7 +353,6 @@ struct SGSApp
         Rr_ReleaseBuffer(SplatsBuffer);
         Rr_ReleaseBuffer(EntriesBuffer);
         Rr_ReleaseBuffer(UniformBuffer);
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
     }
 };

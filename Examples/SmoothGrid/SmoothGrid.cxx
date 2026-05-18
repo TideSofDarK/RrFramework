@@ -108,7 +108,6 @@ struct SSmoothGridApp
 {
     static constexpr Rr_ImageFormat DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
 
-    Rr_PipelineLayout *PipelineLayout{};
     Rr_GraphicsPipeline *GraphicsPipeline{};
 
     Rr_Image2D *DepthImage{};
@@ -120,20 +119,6 @@ struct SSmoothGridApp
 
     void InitPipeline()
     {
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages =
-                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         Rr_ColorTargetInfo ColorTarget = {};
         ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTarget.Blend = Rr_AlphaBlend();
@@ -161,8 +146,7 @@ struct SSmoothGridApp
         PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
         PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
 
-        GraphicsPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     void InitUniformBuffer()
@@ -279,7 +263,6 @@ struct SSmoothGridApp
     ~SSmoothGridApp()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseImage(DepthImage);
     }

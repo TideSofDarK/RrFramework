@@ -18,7 +18,6 @@ static Rr_GLTFContext *GLTFContext;
 static Rr_GLTFAsset *GLTFAsset;
 static Rr_Image2D *DepthAttachment;
 static Rr_Buffer *UniformBuffer;
-static Rr_PipelineLayout *PipelineLayout;
 static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Sampler *NearestSampler;
 
@@ -49,29 +48,6 @@ static void Init(void)
     SamplerInfo.MinFilter = RR_FILTER_LINEAR;
     SamplerInfo.MagFilter = RR_FILTER_LINEAR;
     NearestSampler = Rr_CreateSampler(&SamplerInfo);
-
-    Rr_Binding Bindings[] = {
-        {
-            .Index = 0,
-            .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-            .Stages = RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
-        },
-        {
-            .Index = 1,
-            .Type = RR_BINDING_TYPE_SAMPLER,
-            .Stages = RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
-        },
-        {
-            .Index = 2,
-            .Type = RR_BINDING_TYPE_SAMPLED_IMAGE,
-            .Stages = RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
-        },
-    };
-    Rr_BindingSet BindingSet = {
-        .BindingCount = RR_ARRAY_COUNT(Bindings),
-        .Bindings = Bindings,
-    };
-    PipelineLayout = Rr_CreatePipelineLayout(1, &BindingSet);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
         { .Location = 0, .Format = RR_FORMAT_VEC3 },
@@ -116,7 +92,7 @@ static void Init(void)
     PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_CLOCKWISE;
     PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
 
-    GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+    GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
     Rr_GLTFAttributeType GLTFAttributeTypes[] = {
         RR_GLTF_ATTRIBUTE_TYPE_POSITION,
@@ -252,7 +228,6 @@ static void Cleanup(void)
     Rr_ReleaseImage(DepthAttachment);
     Rr_ReleaseBuffer(UniformBuffer);
     Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
-    Rr_ReleasePipelineLayout(PipelineLayout);
     Rr_ReleaseSampler(NearestSampler);
 }
 

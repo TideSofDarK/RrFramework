@@ -24,8 +24,8 @@
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Renderer.h>
 
-#define RR_MAX_BINDINGS         16
-#define RR_MAX_SETS             4
+#define RR_MAX_BINDINGS 16
+#define RR_MAX_SETS     4
 
 typedef struct Rr_PipelineLayout Rr_PipelineLayout;
 typedef struct Rr_ComputePipeline Rr_ComputePipeline;
@@ -227,27 +227,31 @@ typedef enum
 typedef struct Rr_Binding Rr_Binding;
 struct Rr_Binding
 {
-    uint16_t Index;
-    uint16_t Type;
-    uint16_t Stages;
-    uint8_t Count;
-    uint8_t ImageFormat;
+    uint32_t Index;
+    Rr_BindingType Type;
+    Rr_ShaderStage Stages;
+    uint32_t Count;
+    Rr_ImageFormat ImageFormat;
 };
 
 typedef struct Rr_BindingSet Rr_BindingSet;
 struct Rr_BindingSet
 {
-    uint32_t BindingCount;
+    size_t BindingCount;
     Rr_Binding *Bindings;
 };
 
-RR_EXTERN Rr_PipelineLayout *Rr_CreatePipelineLayout(
-    size_t BindingSetCount,
-    Rr_BindingSet const *BindingSets);
+/* RR_EXTERN Rr_PipelineLayout *Rr_CreatePipelineLayout( */
+/*     size_t BindingSetCount, */
+/*     Rr_BindingSet const *BindingSets); */
 
-RR_EXTERN void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout);
+/* RR_EXTERN void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout);
+ */
 
 RR_EXTERN Rr_ComputePipeline *Rr_CreateComputePipeline(
+    Rr_ShaderInfo const *ShaderInfo);
+
+RR_EXTERN Rr_ComputePipeline *Rr_CreateComputePipelineWithLayout(
     Rr_ShaderInfo const *ShaderInfo,
     Rr_PipelineLayout *PipelineLayout);
 
@@ -256,6 +260,9 @@ RR_EXTERN void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline);
 RR_EXTERN Rr_ColorTargetBlend Rr_AlphaBlend(void);
 
 RR_EXTERN Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
+    Rr_GraphicsPipelineCreateInfo const *CreateInfo);
+
+RR_EXTERN Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
     Rr_GraphicsPipelineCreateInfo const *CreateInfo,
     Rr_PipelineLayout *PipelineLayout);
 

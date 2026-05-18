@@ -711,10 +711,7 @@ void Rr_CleanupRenderer(void)
              gRenderer->PipelineLayoutStorage.Hive.Begin;
          It.Element != gRenderer->PipelineLayoutStorage.Hive.End.Element;)
     {
-        Device->DestroyPipelineLayout(
-            Device->Handle,
-            It.Element->Handle,
-            NULL);
+        Device->DestroyPipelineLayout(Device->Handle, It.Element->Handle, NULL);
         Rr_AdvancePipelineLayoutHiveIterator(&It);
     }
 

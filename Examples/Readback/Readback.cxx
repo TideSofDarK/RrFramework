@@ -7,33 +7,19 @@
 
 struct SReadbackApp
 {
-    Rr_PipelineLayout *PipelineLayout{};
     Rr_ComputePipeline *ComputePipeline{};
     Rr_Image2D *ColorImage{};
     Rr_Buffer *ReadbackBuffer{};
 
     void Init()
     {
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array BindingSets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
-
         Rr_Asset ComputeShader = Rr_LoadAsset(EXAMPLE_ASSET_READBACK_COMP_SPV);
         Rr_ShaderInfo ShaderInfo = {
             .SPVSize = ComputeShader.Size,
             .SPVData = ComputeShader.Pointer,
         };
 
-        ComputePipeline = Rr_CreateComputePipeline(&ShaderInfo, PipelineLayout);
+        ComputePipeline = Rr_CreateComputePipeline(&ShaderInfo);
 
         ColorImage = Rr_CreateImage2D(
             { 256, 256 },
@@ -115,7 +101,6 @@ struct SReadbackApp
 
     void Cleanup()
     {
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseComputePipeline(ComputePipeline);
         Rr_ReleaseImage(ColorImage);
         Rr_ReleaseBuffer(ReadbackBuffer);

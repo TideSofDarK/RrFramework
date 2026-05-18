@@ -173,7 +173,7 @@ void Rr_InvalidateDescriptorsState(
     {
         Rr_DescriptorSetLayout *NewLayout = Layout->SetLayouts[Index];
         State->Sets[Index] =
-            NewLayout->Key.TotalBindingCount ? NULL : State->EmptyDescriptorSet;
+            NewLayout->Key.BindingCount ? NULL : State->EmptyDescriptorSet;
     }
 
     State->Layout = Layout;
@@ -188,21 +188,17 @@ static inline void Rr_CopyDescriptorSet(
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     VkCopyDescriptorSet *Copies = RR_ALLOC_NO_ZERO(
-        sizeof(VkCopyDescriptorSet) * Layout->Key.TotalBindingCount,
+        sizeof(VkCopyDescriptorSet) * Layout->Key.BindingCount,
         Scratch.Arena);
 
     uint32_t CurrentCopyIndex = 0;
 
-    /* TODO: It's slow and it's on the hot path. */
-
-    for (uint32_t Index = 0; Index < RR_MAX_BINDINGS; ++Index)
+    for (uint32_t Index = 0; Index < Layout->Key.BindingCount; ++Index)
     {
-        Rr_Binding *Binding = &Layout->Key.Bindings[Index];
+        Rr_VulkanBinding *Binding = &Layout->Key.Bindings[Index];
 
-        if (Binding->Type != RR_BINDING_TYPE_INVALID)
+        if (Binding->Count > 0)
         {
-            uint32_t Count = Binding->Count ? Binding->Count : 1;
-
             Copies[CurrentCopyIndex++] = (VkCopyDescriptorSet){
                 .sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET,
                 .srcSet = Src,
@@ -211,7 +207,7 @@ static inline void Rr_CopyDescriptorSet(
                 .dstSet = Dst,
                 .dstBinding = Binding->Index,
                 .dstArrayElement = 0,
-                .descriptorCount = Count,
+                .descriptorCount = Binding->Count,
             };
         }
     }

@@ -88,22 +88,25 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
     return Rr_GetVulkanRenderPass(&Key);
 }
 
-static inline uint32_t Rr_TotalBindingCount(
-    uint32_t BindingCount,
-    Rr_Binding const *Bindings)
+static inline int Rr_BindingSort(void const *A, void const *B)
 {
-    uint32_t TotalBindingCount = 0;
-    for (uint32_t Index = 0; Index < BindingCount; ++Index)
+    Rr_Binding const *BindingA = A;
+    Rr_Binding const *BindingB = B;
+
+    if (BindingA->Index > BindingB->Index)
     {
-        if (Bindings[Index].Type != RR_BINDING_TYPE_INVALID)
-        {
-            TotalBindingCount++;
-        }
+        return 1;
     }
-    return TotalBindingCount;
+
+    if (BindingA->Index < BindingB->Index)
+    {
+        return -1;
+    }
+
+    return 0;
 }
 
-Rr_PipelineLayout *Rr_CreatePipelineLayout(
+Rr_PipelineLayout *Rr_GetPipelineLayout(
     size_t BindingSetCount,
     Rr_BindingSet const *BindingSets)
 {
@@ -115,12 +118,17 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
     };
     for (size_t SetIndex = 0; SetIndex < BindingSetCount; ++SetIndex)
     {
-        Rr_Binding const *Bindings = BindingSets[SetIndex].Bindings;
-        uint32_t BindingCount = BindingSets[SetIndex].BindingCount;
+        Rr_Binding *Bindings = BindingSets[SetIndex].Bindings;
+        size_t BindingCount = BindingSets[SetIndex].BindingCount;
+
+        qsort(Bindings, BindingCount, sizeof(Rr_Binding), Rr_BindingSort);
+
         Rr_DescriptorSetLayoutKey Key = { 0 };
-        Key.TotalBindingCount = Rr_TotalBindingCount(BindingCount, Bindings);
-        memcpy(Key.Bindings, Bindings, sizeof(Rr_Binding) * BindingCount);
+        Key.BindingCount = (uint32_t)BindingCount;
+        Rr_ToVulkanBindings(BindingCount, Bindings, Key.Bindings);
+
         DescriptorSetLayouts[SetIndex] = Rr_GetDescriptorSetLayout(&Key);
+
         PipelineLayoutKey.DescriptorSetLayouts[SetIndex] =
             DescriptorSetLayouts[SetIndex]->Handle;
     }
@@ -141,7 +149,7 @@ Rr_PipelineLayout *Rr_CreatePipelineLayout(
 
             goto FoundEmpty;
         }
-        else if (memcmp(&PipelineLayoutKey, &(*MapRef)->Key, HashSize) == 0)
+        if (memcmp(&PipelineLayoutKey, &(*MapRef)->Key, HashSize) == 0)
         {
             Rr_UnlockSpinlock(&gRenderer->PipelineLayoutStorageLock);
 
@@ -196,8 +204,24 @@ FoundEmpty:
     return PipelineLayout;
 }
 
+Rr_PipelineLayout *Rr_CreatePipelineLayout(
+    size_t BindingSetCount,
+    Rr_BindingSet const *BindingSets)
+{
+    Rr_LogError(
+        RR_LOG_CATEGORY_VULKAN,
+        "Creating layouts by hand is not implemented!");
+
+    return NULL;
+}
+
 void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout)
 {
+    Rr_LogError(
+        RR_LOG_CATEGORY_VULKAN,
+        "Releasing layouts by hand is not implemented!");
+
+    /*
     if (PipelineLayout == NULL)
     {
         return;
@@ -212,6 +236,7 @@ void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout)
          .Element = PipelineLayout;
 
     Rr_UnlockSpinlock(&gRenderer->ReleasedPipelineLayoutsLock);
+    */
 }
 
 void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
@@ -271,7 +296,33 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
     return SpecializationInfo;
 }
 
-Rr_ComputePipeline *Rr_CreateComputePipeline(
+Rr_ComputePipeline *Rr_CreateComputePipeline(Rr_ShaderInfo const *ShaderInfo)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_BindingArray BindingArrays[RR_MAX_SETS] = { 0 };
+    size_t BindingSetCount = Rr_GetBindingsFromSPIRV(
+        ShaderInfo,
+        RR_SHADER_STAGE_COMPUTE_BIT,
+        BindingArrays,
+        Scratch.Arena);
+
+    Rr_BindingSet BindingSets[RR_MAX_SETS] = { 0 };
+    for (size_t Index = 0; Index < BindingSetCount; ++Index)
+    {
+        BindingSets[Index].BindingCount = BindingArrays[Index].Count;
+        BindingSets[Index].Bindings = BindingArrays[Index].Data;
+    }
+
+    Rr_PipelineLayout *PipelineLayout =
+        Rr_GetPipelineLayout(BindingSetCount, BindingSets);
+
+    Rr_DestroyScratch(Scratch);
+
+    return Rr_CreateComputePipelineWithLayout(ShaderInfo, PipelineLayout);
+}
+
+Rr_ComputePipeline *Rr_CreateComputePipelineWithLayout(
     Rr_ShaderInfo const *ShaderInfo,
     Rr_PipelineLayout *PipelineLayout)
 {
@@ -284,10 +335,6 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Device *Device = &gRenderer->Device;
-
-    /* void *Unused = */
-    /*     Rr_PipelineLayoutFromSPIRV(ShaderInfo->SPVSize, ShaderInfo->SPVData);
-     */
 
     VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -434,11 +481,44 @@ Rr_ColorTargetBlend Rr_AlphaBlend(void)
 }
 
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
+    Rr_GraphicsPipelineCreateInfo const *CreateInfo)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_BindingArray BindingArrays[RR_MAX_SETS] = { 0 };
+    size_t VertexBindingSetCount = Rr_GetBindingsFromSPIRV(
+        CreateInfo->VertexShaderInfo,
+        RR_SHADER_STAGE_VERTEX_BIT,
+        BindingArrays,
+        Scratch.Arena);
+    size_t FragmentBindingSetCount = Rr_GetBindingsFromSPIRV(
+        CreateInfo->FragmentShaderInfo,
+        RR_SHADER_STAGE_FRAGMENT_BIT,
+        BindingArrays,
+        Scratch.Arena);
+    size_t BindingSetCount =
+        RR_MAX(VertexBindingSetCount, FragmentBindingSetCount);
+
+    Rr_BindingSet BindingSets[RR_MAX_SETS] = { 0 };
+    for (size_t Index = 0; Index < BindingSetCount; ++Index)
+    {
+        BindingSets[Index].BindingCount = BindingArrays[Index].Count;
+        BindingSets[Index].Bindings = BindingArrays[Index].Data;
+    }
+
+    Rr_PipelineLayout *PipelineLayout =
+        Rr_GetPipelineLayout(BindingSetCount, BindingSets);
+
+    Rr_DestroyScratch(Scratch);
+
+    return Rr_CreateGraphicsPipelineWithLayout(CreateInfo, PipelineLayout);
+}
+
+Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
     Rr_GraphicsPipelineCreateInfo const *CreateInfo,
     Rr_PipelineLayout *PipelineLayout)
 {
     assert(CreateInfo);
-    assert(PipelineLayout);
 
     bool HasDepthStencil = CreateInfo->DepthStencil.EnableDepthTest ||
                            CreateInfo->DepthStencil.EnableStencilTest ||
@@ -452,6 +532,8 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
 
     Rr_Device *Device = &gRenderer->Device;
 
+    VkResult Result;
+
     RR_ARRAY(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 
     VkShaderModule VertModule = VK_NULL_HANDLE;
@@ -462,15 +544,11 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             .codeSize = CreateInfo->VertexShaderInfo->SPVSize,
             .pCode = (uint32_t const *)CreateInfo->VertexShaderInfo->SPVData,
         };
-        Device->CreateShaderModule(
+        Result = Device->CreateShaderModule(
             Device->Handle,
             &ShaderModuleCreateInfo,
             NULL,
             &VertModule);
-
-        /* void *Unused = Rr_PipelineLayoutFromSPIRV( */
-        /*     CreateInfo->VertexShaderInfo->SPVSize, */
-        /*     CreateInfo->VertexShaderInfo->SPVData); */
 
         VkPipelineShaderStageCreateInfo *PipelineShaderStageCreateInfo =
             RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena);
@@ -501,15 +579,11 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
             .codeSize = CreateInfo->FragmentShaderInfo->SPVSize,
             .pCode = (uint32_t const *)CreateInfo->FragmentShaderInfo->SPVData,
         };
-        Device->CreateShaderModule(
+        Result = Device->CreateShaderModule(
             Device->Handle,
             &ShaderModuleCreateInfo,
             NULL,
             &FragModule);
-
-        /* void *Unused = Rr_PipelineLayoutFromSPIRV( */
-        /*     CreateInfo->FragmentShaderInfo->SPVSize, */
-        /*     CreateInfo->FragmentShaderInfo->SPVData); */
 
         VkPipelineShaderStageCreateInfo *PipelineShaderStageCreateInfo =
             RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena);
@@ -734,7 +808,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     };
 
     VkPipeline Handle = VK_NULL_HANDLE;
-    VkResult Result = Device->CreateGraphicsPipelines(
+    Result = Device->CreateGraphicsPipelines(
         Device->Handle,
         VK_NULL_HANDLE,
         1,
@@ -879,24 +953,22 @@ FoundEmpty:
 
     RR_ARRAY(VkDescriptorSetLayoutBinding) VkBindings = { 0 };
 
-    for (size_t BindingIndex = 0; BindingIndex < RR_MAX_BINDINGS;
+    for (uint32_t BindingIndex = 0; BindingIndex < RR_MAX_BINDINGS;
          ++BindingIndex)
     {
-        Rr_Binding const *Binding = Key->Bindings + BindingIndex;
+        Rr_VulkanBinding const *Binding = Key->Bindings + BindingIndex;
 
-        if (Binding->Type == RR_BINDING_TYPE_INVALID)
+        if (Binding->Count == 0)
         {
             continue;
         }
 
-        uint32_t Count = Binding->Count ? Binding->Count : 1;
-
         *RR_PUSH_INTO_ARRAY(&VkBindings, Scratch.Arena) =
             (VkDescriptorSetLayoutBinding){
                 .binding = Binding->Index,
-                .descriptorType = Rr_ToVulkanDescriptorType(Binding->Type),
-                .descriptorCount = Count,
-                .stageFlags = Rr_ToVulkanShaderStageFlags(Binding->Stages),
+                .descriptorType = Binding->Type,
+                .descriptorCount = Binding->Count,
+                .stageFlags = Binding->Stages,
             };
     }
 

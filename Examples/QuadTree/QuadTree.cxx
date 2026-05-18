@@ -499,7 +499,6 @@ struct SQuadTreeApp
 {
     const uint32_t MAX_DRAWS = 1 << 14;
 
-    Rr_PipelineLayout *Layout{};
     Rr_GraphicsPipeline *Pipeline{};
     Rr_Buffer *UniformBuffer{};
     Rr_Buffer *StorageBuffer{};
@@ -651,29 +650,6 @@ struct SQuadTreeApp
 
     void Init()
     {
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages =
-                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages =
-                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array BindingSets = {
-            Rr_BindingSet{
-                Bindings.size(),
-                Bindings.data(),
-            },
-        };
-        Layout =
-            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
-
         Rr_ColorTargetInfo ColorTargets[1] = { 0 };
         ColorTargets[0].Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTargets[0].Blend = Rr_AlphaBlend();
@@ -696,7 +672,7 @@ struct SQuadTreeApp
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = ColorTargets;
 
-        Pipeline = Rr_CreateGraphicsPipeline(&PipelineInfo, Layout);
+        Pipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         UniformBuffer = Rr_CreateBuffer(
             sizeof(SGPUUniformData),
@@ -1009,7 +985,6 @@ struct SQuadTreeApp
         Rr_ReleaseBuffer(StorageBuffer);
         Rr_ReleaseBuffer(StagingBuffer);
         Rr_ReleaseGraphicsPipeline(Pipeline);
-        Rr_ReleasePipelineLayout(Layout);
     }
 };
 

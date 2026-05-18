@@ -138,7 +138,6 @@ struct SPNGImage
 
 struct SSkyboxApp
 {
-    Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *GraphicsPipeline;
 
     Rr_Buffer *UniformBuffer;
@@ -154,26 +153,6 @@ struct SSkyboxApp
 
     void InitPipeline()
     {
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages =
-                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                .Stages =
-                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         std::array VertexAttributes = {
             Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
         };
@@ -211,8 +190,7 @@ struct SSkyboxApp
         PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
         PipelineInfo.VertexInputBindings = VertexInputBindings.data();
 
-        GraphicsPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         std::array GLTFAttributeTypes = {
             RR_GLTF_ATTRIBUTE_TYPE_POSITION,
@@ -400,7 +378,6 @@ struct SSkyboxApp
     void Cleanup()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseBuffer(StagingBuffer);
         Rr_ReleaseSampler(Sampler);

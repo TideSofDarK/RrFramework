@@ -325,7 +325,6 @@ struct Rr_UIContext
     RR_ARRAY(Rr_UIVertex) Vertices;
     RR_ARRAY(Rr_UIIndex) Indices;
 
-    Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *LinearPipeline;
     Rr_GraphicsPipeline *SRGBPipeline;
     Rr_Buffer *VertexBuffer;
@@ -8559,26 +8558,28 @@ void Rr_InitUI(void)
 
     Rr_UISetDefaultTheme();
 
-    Rr_Binding Bindings[] = {
-        {
-            .Index = 0,
-            .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-            .Stages = RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-        },
-        {
-            .Index = 1,
-            .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-            .Stages = RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-        },
-    };
-    Rr_BindingSet BindingSets[] = {
-        {
-            RR_ARRAY_COUNT(Bindings),
-            Bindings,
-        },
-    };
-    gUIContext->PipelineLayout =
-        Rr_CreatePipelineLayout(RR_ARRAY_COUNT(BindingSets), BindingSets);
+    /* Rr_Binding Bindings[] = { */
+    /*     { */
+    /*         .Index = 0, */
+    /*         .Type = RR_BINDING_TYPE_UNIFORM_BUFFER, */
+    /*         .Stages = RR_SHADER_STAGE_VERTEX_BIT |
+     * RR_SHADER_STAGE_FRAGMENT_BIT, */
+    /*     }, */
+    /*     { */
+    /*         .Index = 1, */
+    /*         .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER, */
+    /*         .Stages = RR_SHADER_STAGE_VERTEX_BIT |
+     * RR_SHADER_STAGE_FRAGMENT_BIT, */
+    /*     }, */
+    /* }; */
+    /* Rr_BindingSet BindingSets[] = { */
+    /*     { */
+    /*         RR_ARRAY_COUNT(Bindings), */
+    /*         Bindings, */
+    /*     }, */
+    /* }; */
+    /* gUIContext->PipelineLayout = */
+    /*     Rr_CreatePipelineLayout(RR_ARRAY_COUNT(BindingSets), BindingSets); */
 
     Rr_ColorTargetInfo ColorTargets[] = {
         {
@@ -8641,13 +8642,11 @@ void Rr_InitUI(void)
 
     uint32_t const DONT_CONVERT_TO_SRGB = 0;
     Specializations[0].Data = &DONT_CONVERT_TO_SRGB;
-    gUIContext->LinearPipeline =
-        Rr_CreateGraphicsPipeline(&PipelineInfo, gUIContext->PipelineLayout);
+    gUIContext->LinearPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
     uint32_t const CONVERT_TO_SRGB = 1;
     Specializations[0].Data = &CONVERT_TO_SRGB;
-    gUIContext->SRGBPipeline =
-        Rr_CreateGraphicsPipeline(&PipelineInfo, gUIContext->PipelineLayout);
+    gUIContext->SRGBPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
     gUIContext->VertexBuffer = Rr_CreateBuffer(
         RR_MEGABYTES(8),
@@ -8684,7 +8683,6 @@ void Rr_CleanupUI(void)
     Rr_ReleaseBuffer(gUIContext->IndexBuffer);
     Rr_ReleaseBuffer(gUIContext->UniformBuffer);
     Rr_ReleaseSampler(gUIContext->Sampler);
-    Rr_ReleasePipelineLayout(gUIContext->PipelineLayout);
     Rr_ReleaseGraphicsPipeline(gUIContext->LinearPipeline);
     Rr_ReleaseGraphicsPipeline(gUIContext->SRGBPipeline);
 

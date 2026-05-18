@@ -90,7 +90,6 @@ struct SLayeredImageApp
     static constexpr std::int32_t IMAGE_WIDTH = 800;
     static constexpr std::int32_t IMAGE_HEIGHT = 600;
 
-    Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *Image2DArrayPipeline;
     Rr_GraphicsPipeline *Image3DPipeline;
     Rr_Sampler *Sampler;
@@ -102,24 +101,6 @@ struct SLayeredImageApp
 
     void InitPipelines()
     {
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         Rr_ColorTargetInfo ColorTarget = {};
         ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTarget.Blend = Rr_AlphaBlend();
@@ -143,8 +124,7 @@ struct SLayeredImageApp
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
-        Image2DArrayPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+        Image2DArrayPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_IMAGE3D_FRAG_SPV);
         FragmentShaderInfo = {
@@ -152,8 +132,7 @@ struct SLayeredImageApp
             .SPVData = FragmentShader.Pointer,
         };
 
-        Image3DPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+        Image3DPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     void InitSampler()
@@ -275,7 +254,6 @@ struct SLayeredImageApp
     {
         Rr_ReleaseGraphicsPipeline(Image2DArrayPipeline);
         Rr_ReleaseGraphicsPipeline(Image3DPipeline);
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseImage(Image2DArray);
         Rr_ReleaseImage(Image3D);

@@ -120,7 +120,7 @@ struct SFullscreenBlit
         Rr_Draw(GraphicsNode, 3, 1, 0, 0);
     }
 
-    SFullscreenBlit(Rr_PipelineLayout *PipelineLayout, Rr_AssetRef FragSPV)
+    SFullscreenBlit(Rr_AssetRef FragSPV)
     {
         Rr_SamplerInfo Info = {};
         Sampler = Rr_CreateSampler(&Info);
@@ -148,8 +148,7 @@ struct SFullscreenBlit
         PipelineInfo.ColorTargets = &ColorTarget;
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
 
-        GraphicsPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     ~SFullscreenBlit()
@@ -168,7 +167,6 @@ struct SSkybox
         float Time;
     };
 
-    Rr_PipelineLayout *PipelineLayout{};
     Rr_GraphicsPipeline *GraphicsPipeline{};
 
     Rr_Buffer *UniformBuffer{};
@@ -219,8 +217,7 @@ struct SSkybox
         PipelineInfo.VertexInputBindings = VertexInputBindings.data();
         PipelineInfo.Multisampling.SampleCount = MSAASampleCount;
 
-        GraphicsPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     void InitUniformBuffer()
@@ -313,26 +310,6 @@ struct SSkybox
 
     SSkybox(uint32_t MSAASampleCount)
     {
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages =
-                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                .Stages =
-                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         RecreatePipeline(MSAASampleCount);
         InitUniformBuffer();
         InitSampler();
@@ -342,7 +319,6 @@ struct SSkybox
     ~SSkybox()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseBuffer(StagingBuffer);
         Rr_ReleaseSampler(Sampler);
@@ -364,7 +340,6 @@ struct SGrid
         float GridBig;
     };
 
-    Rr_PipelineLayout *PipelineLayout{};
     Rr_GraphicsPipeline *GraphicsPipeline{};
 
     Rr_Buffer *UniformBuffer{};
@@ -400,8 +375,7 @@ struct SGrid
         PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
         PipelineInfo.Multisampling.SampleCount = SampleCount;
 
-        GraphicsPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+        GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     void Draw(
@@ -447,27 +421,12 @@ struct SGrid
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
                 RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
 
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages =
-                    RR_SHADER_STAGE_VERTEX_BIT | RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         RecreatePipeline(MSAASampleCount);
     }
 
     ~SGrid()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseBuffer(UniformBuffer);
     }
 };
@@ -523,7 +482,6 @@ struct SLighting
         float FarPlane;
     };
 
-    Rr_PipelineLayout *PipelineLayout{};
     Rr_GraphicsPipeline *ShadowPipeline{};
     Rr_Sampler *ShadowSampler{};
     Rr_Sampler *RegularSampler{};
@@ -948,28 +906,6 @@ struct SLighting
         SamplerInfo.MagFilter = RR_FILTER_LINEAR;
         ShadowSampler = Rr_CreateSampler(&SamplerInfo);
 
-        std::array Bindings0 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages =
-                    RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
-            },
-        };
-        std::array Bindings1 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_VERTEX_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
-            Rr_BindingSet{ Bindings1.size(), Bindings1.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         std::array VertexAttributes = {
             Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
             Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_VEC2 },
@@ -1009,8 +945,7 @@ struct SLighting
         PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
 
-        ShadowPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+        ShadowPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         UniformBuffer = Rr_CreateBuffer(
             RR_MEGABYTES(2),
@@ -1032,7 +967,6 @@ struct SLighting
     {
         Rr_ReleaseSampler(RegularSampler);
         Rr_ReleaseSampler(ShadowSampler);
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseGraphicsPipeline(ShadowPipeline);
         Rr_ReleaseBuffer(PointLightsBuffer);
         Rr_ReleaseBuffer(SpotLightsBuffer);
@@ -1051,7 +985,6 @@ struct SLighting
 struct SSSAO
 {
     Rr_Sampler *Sampler;
-    Rr_PipelineLayout *PipelineLayout;
     Rr_GraphicsPipeline *SSAOPipeline;
     Rr_GraphicsPipeline *BlurPipeline;
     Rr_Buffer *Buffer;
@@ -1237,24 +1170,6 @@ struct SSSAO
         SamplerInfo.MagFilter = RR_FILTER_LINEAR;
         Sampler = Rr_CreateSampler(&SamplerInfo);
 
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Sets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        PipelineLayout =
-            Rr_CreatePipelineLayout((uint32_t)Sets.size(), Sets.data());
-
         Rr_ColorTargetInfo ColorTarget = {};
         ColorTarget.Format = RR_IMAGE_FORMAT_R32_SFLOAT;
 
@@ -1276,7 +1191,7 @@ struct SSSAO
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
 
-        SSAOPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+        SSAOPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_SSAOBLUR_FRAG_SPV);
         FragmentShaderInfo = {
@@ -1284,7 +1199,7 @@ struct SSSAO
             .SPVData = FragmentShader.Pointer,
         };
 
-        BlurPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo, PipelineLayout);
+        BlurPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         Buffer = Rr_CreateBuffer(
             RR_KILOBYTES(1),
@@ -1295,7 +1210,6 @@ struct SSSAO
     ~SSSAO()
     {
         Rr_ReleaseSampler(Sampler);
-        Rr_ReleasePipelineLayout(PipelineLayout);
         Rr_ReleaseGraphicsPipeline(SSAOPipeline);
         Rr_ReleaseGraphicsPipeline(BlurPipeline);
         Rr_ReleaseBuffer(Buffer);
@@ -1332,9 +1246,7 @@ struct SModernRenderingApp
         },
     };
 
-    Rr_PipelineLayout *ForwardPassPipelineLayout{};
     Rr_GraphicsPipeline *ForwardPassPipeline{};
-    Rr_PipelineLayout *NormalDepthPrepassPipelineLayout{};
     Rr_GraphicsPipeline *NormalDepthPrepassPipeline{};
     Rr_Buffer *UniformBuffer{};
     Rr_Buffer *ModelBuffer{};
@@ -1361,7 +1273,6 @@ struct SModernRenderingApp
 
     UScancodes Scancodes{};
 
-    Rr_PipelineLayout *BlitLayout;
     SFullscreenBlit FullscreenBlit;
 
     SCamera Camera;
@@ -1374,111 +1285,6 @@ struct SModernRenderingApp
     uint32_t GetMSAASampleCount() const
     {
         return 1 << MSAAOptionIndex;
-    }
-
-    void InitForwardPassPipelineLayout()
-    {
-        std::array Bindings0 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages =
-                    RR_SHADER_STAGE_FRAGMENT_BIT | RR_SHADER_STAGE_VERTEX_BIT,
-            },
-        };
-        std::array Bindings1 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_SAMPLED_IMAGE,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-                .Count = MAX_POINT_LIGHTS,
-            },
-            Rr_Binding{
-                .Index = 2,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                .Index = 3,
-                .Type = RR_BINDING_TYPE_SAMPLED_IMAGE,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-                .Count = MAX_POINT_LIGHTS,
-            },
-            Rr_Binding{
-                .Index = 4,
-                .Type = RR_BINDING_TYPE_SAMPLER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                .Index = 5,
-                .Type = RR_BINDING_TYPE_SAMPLER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-            Rr_Binding{
-                .Index = 6,
-                .Type = RR_BINDING_TYPE_SAMPLED_IMAGE,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array Bindings2 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_VERTEX_BIT,
-            },
-        };
-        std::array BindingSets = {
-            Rr_BindingSet{
-                .BindingCount = Bindings0.size(),
-                .Bindings = Bindings0.data(),
-            },
-            Rr_BindingSet{
-                .BindingCount = Bindings1.size(),
-                .Bindings = Bindings1.data(),
-            },
-            Rr_BindingSet{
-                .BindingCount = Bindings2.size(),
-                .Bindings = Bindings2.data(),
-            },
-        };
-        ForwardPassPipelineLayout =
-            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
-    }
-
-    void InitNormalDepthPrepassPipelineLayout()
-    {
-        std::array Bindings0 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_VERTEX_BIT,
-            },
-        };
-        std::array Bindings2 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_VERTEX_BIT,
-            },
-        };
-        std::array BindingSets = {
-            Rr_BindingSet{
-                .BindingCount = Bindings0.size(),
-                .Bindings = Bindings0.data(),
-            },
-            Rr_BindingSet{},
-            Rr_BindingSet{
-                .BindingCount = Bindings2.size(),
-                .Bindings = Bindings2.data(),
-            },
-        };
-        NormalDepthPrepassPipelineLayout =
-            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
     }
 
     void InitPipelines()
@@ -1504,7 +1310,7 @@ struct SModernRenderingApp
             .SPVData = FragmentShader.Pointer,
         };
 
-        Rr_GraphicsPipelineCreateInfo PipelineInfo = { 0 };
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
         PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
@@ -1520,8 +1326,7 @@ struct SModernRenderingApp
         PipelineInfo.Multisampling.SampleCount = GetMSAASampleCount();
 
         Rr_ReleaseGraphicsPipeline(ForwardPassPipeline);
-        ForwardPassPipeline =
-            Rr_CreateGraphicsPipeline(&PipelineInfo, ForwardPassPipelineLayout);
+        ForwardPassPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_NORMALDEPTHPREPASS_VERT_SPV);
         VertexShaderInfo = {
@@ -1541,9 +1346,7 @@ struct SModernRenderingApp
             .Format = RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT,
         };
         Rr_ReleaseGraphicsPipeline(NormalDepthPrepassPipeline);
-        NormalDepthPrepassPipeline = Rr_CreateGraphicsPipeline(
-            &PipelineInfo,
-            NormalDepthPrepassPipelineLayout);
+        NormalDepthPrepassPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     void InitAttachments()
@@ -2018,34 +1821,14 @@ struct SModernRenderingApp
         Rr_EndGraphLabel(Graph, "ModernRendering");
     }
 
-    Rr_PipelineLayout *CreateBlitLayout()
-    {
-        std::array Bindings0 = {
-            Rr_Binding{
-                .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER,
-                .Stages = RR_SHADER_STAGE_FRAGMENT_BIT,
-            },
-        };
-        std::array BindingSets = {
-            Rr_BindingSet{
-                .BindingCount = Bindings0.size(),
-                .Bindings = Bindings0.data(),
-            },
-        };
-        return Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
-    }
-
     SModernRenderingApp()
-        : BlitLayout(CreateBlitLayout())
-        , FullscreenBlit(BlitLayout, EXAMPLE_ASSET_FULLSCREENTRIANGLE_FRAG_SPV)
+        : FullscreenBlit(EXAMPLE_ASSET_FULLSCREENTRIANGLE_FRAG_SPV)
         , Grid(GetMSAASampleCount())
         , Skybox(GetMSAASampleCount())
     {
         Lighting.AddPointLight();
         Lighting.AddSpotLight();
         InitAttachments();
-        InitForwardPassPipelineLayout();
-        InitNormalDepthPrepassPipelineLayout();
         InitPipelines();
         InitGLTFAsset();
         InitUniform();
@@ -2055,15 +1838,12 @@ struct SModernRenderingApp
 
     ~SModernRenderingApp()
     {
-        Rr_ReleasePipelineLayout(BlitLayout);
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseBuffer(ModelBuffer);
         Rr_ReleaseBuffer(IndirectBuffer);
         Rr_ReleaseGLTFContext(GLTFContext);
         Rr_ReleaseGraphicsPipeline(ForwardPassPipeline);
         Rr_ReleaseGraphicsPipeline(NormalDepthPrepassPipeline);
-        Rr_ReleasePipelineLayout(ForwardPassPipelineLayout);
-        Rr_ReleasePipelineLayout(NormalDepthPrepassPipelineLayout);
         Rr_ReleaseImage(ColorImage);
         Rr_ReleaseImage(ColorImageResolved);
         Rr_ReleaseImage(NormalDepthImage);

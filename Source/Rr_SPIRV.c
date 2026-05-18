@@ -1,7 +1,6 @@
 #include "Rr_SPIRV.h"
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_SPIRV
-#include "Rr_App.h"
 #include "Rr_LogMacro.h"
 
 typedef struct Rr_SPIRVHeader Rr_SPIRVHeader;
@@ -57,7 +56,8 @@ struct Rr_SPIRVImage
 typedef struct Rr_SPIRVStruct Rr_SPIRVStruct;
 struct Rr_SPIRVStruct
 {
-    uint32_t Decoration;
+    uint16_t Block;
+    uint16_t BufferBlock;
 };
 
 typedef struct Rr_SPIRVOp Rr_SPIRVOp;
@@ -75,49 +75,171 @@ struct Rr_SPIRVOp
     uint16_t OpCode;
 };
 
-void Rr_CreatePipelineLayoutInfoFromSPIRV(
-    size_t Size,
-    uint32_t const *Data)
+enum
 {
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+    RR_SPIRV_STORAGE_CLASS_UNIFORM_CONSTANT = 0U,
+    RR_SPIRV_STORAGE_CLASS_INPUT = 1U,
+    RR_SPIRV_STORAGE_CLASS_UNIFORM = 2U,
+    RR_SPIRV_STORAGE_CLASS_STORAGE_BUFFER = 12U,
+};
 
-    Rr_SPIRVOp *SPIRVOps = RR_ALLOC(sizeof(Rr_SPIRVOp) * 1024, Scratch.Arena);
+enum
+{
+    RR_SPIRV_DECORATION_BLOCK = 2U,
+    RR_SPIRV_DECORATION_BUFFER_BLOCK = 3U,
+    RR_SPIRV_DECORATION_BINDING = 33U,
+    RR_SPIRV_DECORATION_DESCRIPTOR_SET = 34U,
+};
+
+enum
+{
+    RR_SPIRV_OP_DECORATE = 71U,
+    RR_SPIRV_OP_VARIABLE = 59U,
+    RR_SPIRV_OP_TYPE_INT = 21U,
+    RR_SPIRV_OP_TYPE_FLOAT = 22U,
+    RR_SPIRV_OP_TYPE_VECTOR = 23U,
+    RR_SPIRV_OP_TYPE_MATRIX = 24U,
+    RR_SPIRV_OP_TYPE_IMAGE = 25U,
+    RR_SPIRV_OP_TYPE_SAMPLER = 26U,
+    RR_SPIRV_OP_TYPE_SAMPLED_IMAGE = 27U,
+    RR_SPIRV_OP_TYPE_ARRAY = 28U,
+    RR_SPIRV_OP_TYPE_RUNTIME_ARRAY = 29U,
+    RR_SPIRV_OP_TYPE_STRUCT = 30U,
+    RR_SPIRV_OP_TYPE_OPAQUE = 31U,
+    RR_SPIRV_OP_TYPE_POINTER = 32U,
+    RR_SPIRV_OP_CONSTANT = 43U,
+};
+
+static inline bool Rr_FindOrAddBinding(
+    Rr_BindingArray *BindingArray,
+    uint32_t BindingIndex,
+    Rr_Binding **OutBinding)
+{
+    for (uint32_t Index = 0; Index < BindingArray->Count; ++Index)
+    {
+        Rr_Binding *Binding = &BindingArray->Data[Index];
+        if (Binding->Index == BindingIndex)
+        {
+            *OutBinding = Binding;
+            return true;
+        }
+    }
+
+    *OutBinding = RR_PUSH_INTO_ARRAY(BindingArray, NULL);
+    return false;
+}
+
+static inline void Rr_AddSPIRVBinding(
+    uint32_t BindingIndex,
+    uint32_t Count,
+    Rr_SPIRVOp const *TypeOp,
+    uint32_t VariableStorageClass,
+    Rr_ShaderStage ShaderStage,
+    Rr_BindingArray *BindingArray,
+    Rr_Arena *Arena)
+{
+    RR_RESERVE_ARRAY(BindingArray, RR_MAX_BINDINGS, Arena);
+    Rr_Binding *Binding = NULL;
+    if (Rr_FindOrAddBinding(BindingArray, BindingIndex, &Binding))
+    {
+        /* Binding already exists, just add current stage to it. */
+        Binding->Stages |= ShaderStage;
+        return;
+    }
+    Binding->Count = Count;
+    Binding->Stages = ShaderStage;
+    Binding->Index = BindingIndex;
+    Binding->ImageFormat = RR_IMAGE_FORMAT_UNDEFINED;
+    switch (TypeOp->OpCode)
+    {
+        case RR_SPIRV_OP_TYPE_STRUCT:
+        {
+            /* Whether it's storage or uniform comes from decoration of its
+             * OpTypeStruct or, more recently, from storage class. */
+            if (TypeOp->Union.Struct.Block)
+            {
+                Binding->Type = RR_BINDING_TYPE_UNIFORM_BUFFER;
+            }
+            else if (
+                TypeOp->Union.Struct.BufferBlock ||
+                VariableStorageClass == RR_SPIRV_STORAGE_CLASS_STORAGE_BUFFER)
+            {
+                Binding->Type = RR_BINDING_TYPE_STORAGE_BUFFER;
+            }
+            else
+            {
+                RR_LOG_ERROR(
+                    "Couldn't determine buffer type for binding %d!",
+                    BindingIndex);
+            }
+        }
+        break;
+        case RR_SPIRV_OP_TYPE_IMAGE:
+        {
+            switch (TypeOp->Union.Image.Sampled)
+            {
+                case 1:
+                {
+                    Binding->Type = RR_BINDING_TYPE_SAMPLED_IMAGE;
+                }
+                break;
+                case 2:
+                {
+                    Binding->Type = RR_BINDING_TYPE_STORAGE_IMAGE;
+                }
+                break;
+                default:
+                {
+                    RR_LOG_ERROR(
+                        "Incorrect SPIRV decoration for binding %d!",
+                        BindingIndex);
+                }
+                break;
+            }
+        }
+        break;
+        case RR_SPIRV_OP_TYPE_SAMPLER:
+        {
+            Binding->Type = RR_BINDING_TYPE_SAMPLER;
+        }
+        break;
+        case RR_SPIRV_OP_TYPE_SAMPLED_IMAGE:
+        {
+            /* This is apparently a combined image sampler... */
+            Binding->Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER;
+        }
+        break;
+        default:
+        {
+            RR_LOG_ERROR(
+                "Incorrect type OpCode %d for binding %d!",
+                TypeOp->OpCode,
+                BindingIndex);
+        }
+        break;
+    }
+}
+
+size_t Rr_GetBindingsFromSPIRV(
+    Rr_ShaderInfo const *ShaderInfo,
+    Rr_ShaderStage ShaderStage,
+    Rr_BindingArray BindingArrays[RR_MAX_SETS],
+    Rr_Arena *Arena)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
+
+    uint32_t const *Data = ShaderInfo->SPVData;
+
+    /* TODO: Allocate fewer ops but add bounds checking. */
+    Rr_SPIRVOp *SPIRVOps = RR_ALLOC(sizeof(Rr_SPIRVOp) * 4096, Scratch.Arena);
     RR_ARRAY(uint32_t) BindingIndices = { 0 };
     RR_RESERVE_ARRAY(&BindingIndices, RR_MAX_BINDINGS, Scratch.Arena);
 
-    Rr_SPIRVHeader const *Header = (Rr_SPIRVHeader const *)Data;
-    RR_LOG_INFO("Parsing SPIRV (size: %d)", Size);
-    RR_LOG_INFO("Magic: %d", Header->Magic);
-    RR_LOG_INFO("Version: %d", Header->Version);
-
-#define STORAGE_CLASS_UNIFORM_CONSTANT 0U
-#define STORAGE_CLASS_INPUT            1U
-#define STORAGE_CLASS_UNIFORM          2U
-#define STORAGE_CLASS_STORAGE_BUFFER   12U
-
-#define DECORATION_BLOCK          2U
-#define DECORATION_BUFFER_BLOCK   3U
-#define DECORATION_BINDING        33U
-#define DECORATION_DESCRIPTOR_SET 34U
-
-#define OP_DECORATE           71U
-#define OP_VARIABLE           59U
-#define OP_TYPE_INT           21U
-#define OP_TYPE_FLOAT         22U
-#define OP_TYPE_VECTOR        23U
-#define OP_TYPE_MATRIX        24U
-#define OP_TYPE_IMAGE         25U
-#define OP_TYPE_SAMPLER       26U
-#define OP_TYPE_SAMPLED_IMAGE 27U
-#define OP_TYPE_ARRAY         28U
-#define OP_TYPE_RUNTIME_ARRAY 29U
-#define OP_TYPE_STRUCT        30U
-#define OP_TYPE_OPAQUE        31U
-#define OP_TYPE_POINTER       32U
-#define OP_CONSTANT           43U
+    Rr_SPIRVHeader const *Header = (Rr_SPIRVHeader const *)ShaderInfo->SPVData;
+    assert(Header->Magic == 0x07230203);
 
     uint32_t Offset = sizeof(Rr_SPIRVHeader) / sizeof(uint32_t);
-    while (Offset < Size)
+    while (Offset < ShaderInfo->SPVSize)
     {
         uint32_t Instruction = Data[Offset];
 
@@ -128,22 +250,22 @@ void Rr_CreatePipelineLayoutInfoFromSPIRV(
         }
         uint16_t OpCode = Instruction & 0x0FFFFU;
 
-        if (OpCode == OP_DECORATE)
+        if (OpCode == RR_SPIRV_OP_DECORATE)
         {
             uint32_t ID = Data[Offset + 1];
             uint32_t Decoration = Data[Offset + 2];
 
-            if (Decoration == DECORATION_BLOCK)
+            if (Decoration == RR_SPIRV_DECORATION_BLOCK)
             {
-                SPIRVOps[ID].Union.Struct.Decoration = DECORATION_BLOCK;
+                SPIRVOps[ID].Union.Struct.Block = true;
             }
 
-            if (Decoration == DECORATION_BUFFER_BLOCK)
+            if (Decoration == RR_SPIRV_DECORATION_BUFFER_BLOCK)
             {
-                SPIRVOps[ID].Union.Struct.Decoration = DECORATION_BUFFER_BLOCK;
+                SPIRVOps[ID].Union.Struct.BufferBlock = true;
             }
 
-            if (Decoration == DECORATION_BINDING)
+            if (Decoration == RR_SPIRV_DECORATION_BINDING)
             {
                 uint32_t Binding = Data[Offset + 3];
                 SPIRVOps[ID].Union.Variable.Binding = (uint8_t)Binding;
@@ -151,7 +273,7 @@ void Rr_CreatePipelineLayoutInfoFromSPIRV(
                 *RR_PUSH_INTO_ARRAY(&BindingIndices, Scratch.Arena) = ID;
             }
 
-            if (Decoration == DECORATION_DESCRIPTOR_SET)
+            if (Decoration == RR_SPIRV_DECORATION_DESCRIPTOR_SET)
             {
                 uint32_t Set = Data[Offset + 3];
                 SPIRVOps[ID].Union.Variable.DescriptorSet = (uint8_t)Set;
@@ -160,7 +282,7 @@ void Rr_CreatePipelineLayoutInfoFromSPIRV(
             SPIRVOps[ID].OpCode = OpCode;
         }
 
-        if (OpCode == OP_VARIABLE)
+        if (OpCode == RR_SPIRV_OP_VARIABLE)
         {
             uint32_t ResultTypeID = Data[Offset + 1];
             uint32_t ResultID = Data[Offset + 2];
@@ -173,7 +295,7 @@ void Rr_CreatePipelineLayoutInfoFromSPIRV(
             SPIRVOps[ResultID].OpCode = OpCode;
         }
 
-        if (OpCode == OP_TYPE_POINTER)
+        if (OpCode == RR_SPIRV_OP_TYPE_POINTER)
         {
             uint32_t ResultID = Data[Offset + 1];
             uint32_t StorageClass = Data[Offset + 2];
@@ -186,11 +308,11 @@ void Rr_CreatePipelineLayoutInfoFromSPIRV(
             SPIRVOps[ResultID].OpCode = OpCode;
         }
 
-        if (OpCode >= OP_TYPE_INT && OpCode <= OP_TYPE_OPAQUE)
+        if (OpCode >= RR_SPIRV_OP_TYPE_INT && OpCode <= RR_SPIRV_OP_TYPE_OPAQUE)
         {
             uint32_t ResultID = Data[Offset + 1];
 
-            if (OpCode == OP_TYPE_IMAGE)
+            if (OpCode == RR_SPIRV_OP_TYPE_IMAGE)
             {
                 SPIRVOps[ResultID].Union.Image.Dimension =
                     (uint8_t)Data[Offset + 3];
@@ -200,7 +322,7 @@ void Rr_CreatePipelineLayoutInfoFromSPIRV(
                     (uint8_t)Data[Offset + 7];
             }
 
-            if (OpCode == OP_TYPE_ARRAY)
+            if (OpCode == RR_SPIRV_OP_TYPE_ARRAY)
             {
                 SPIRVOps[ResultID].Union.Array.ElementTypeID = Data[Offset + 2];
                 SPIRVOps[ResultID].Union.Array.LengthID = Data[Offset + 3];
@@ -209,7 +331,7 @@ void Rr_CreatePipelineLayoutInfoFromSPIRV(
             SPIRVOps[ResultID].OpCode = OpCode;
         }
 
-        if (OpCode == OP_CONSTANT)
+        if (OpCode == RR_SPIRV_OP_CONSTANT)
         {
             uint32_t ResultID = Data[Offset + 2];
 
@@ -222,48 +344,56 @@ void Rr_CreatePipelineLayoutInfoFromSPIRV(
         Offset += Length;
     }
 
-    RR_LOG_INFO("Found %d bindings...", BindingIndices.Count);
+    uint32_t MinimumSetCount = 0;
     for (uint32_t Index = 0; Index < BindingIndices.Count; ++Index)
     {
         uint32_t VariableID = BindingIndices.Data[Index];
         Rr_SPIRVVariable *Variable = &SPIRVOps[VariableID].Union.Variable;
         uint32_t VariableStorageClass = Variable->StorageClass;
-        uint8_t Binding = Variable->Binding;
-        uint8_t DescriptorSet = Variable->DescriptorSet;
+        uint8_t BindingIndex = Variable->Binding;
+        uint8_t SetIndex = Variable->DescriptorSet;
+        if (SetIndex >= RR_MAX_SETS)
+        {
+            RR_LOG_ERROR(
+                "Binding wants set index %d but maximum set index is %d!",
+                SetIndex,
+                RR_MAX_SETS - 1);
+        }
+        MinimumSetCount = RR_MAX(MinimumSetCount, SetIndex + 1U);
         Rr_SPIRVPointer *Pointer = &SPIRVOps[Variable->PointerID].Union.Pointer;
-        uint32_t PointerStorageClass = Pointer->StorageClass;
+        /* uint32_t PointerStorageClass = Pointer->StorageClass; */
         Rr_SPIRVOp *PointerTypeOp = &SPIRVOps[Pointer->TypeID];
 
-        if (PointerTypeOp->OpCode == OP_TYPE_ARRAY)
+        if (PointerTypeOp->OpCode == RR_SPIRV_OP_TYPE_ARRAY)
         {
             Rr_SPIRVArray *Array = &PointerTypeOp->Union.Array;
             Rr_SPIRVOp *ArrayElementTypeOp = &SPIRVOps[Array->ElementTypeID];
             Rr_SPIRVConstant *ArrayLengthConstant =
                 &SPIRVOps[Array->LengthID].Union.Constant;
-            RR_LOG_INFO(
-                "%d) Binding %d, Set %d, Type %d, Count %d, VSC %d, PSC %d",
-                Index,
-                Binding,
-                DescriptorSet,
-                ArrayElementTypeOp->OpCode,
+
+            Rr_AddSPIRVBinding(
+                BindingIndex,
                 ArrayLengthConstant->Value,
+                ArrayElementTypeOp,
                 VariableStorageClass,
-                PointerStorageClass);
+                ShaderStage,
+                &BindingArrays[SetIndex],
+                Arena);
         }
         else
         {
-            RR_LOG_INFO(
-                "%d) Binding %d, Set %d, Type %d, VSC %d, PSC %d",
-                Index,
-                Binding,
-                DescriptorSet,
-                PointerTypeOp->OpCode,
+            Rr_AddSPIRVBinding(
+                BindingIndex,
+                1,
+                PointerTypeOp,
                 VariableStorageClass,
-                PointerStorageClass);
+                ShaderStage,
+                &BindingArrays[SetIndex],
+                Arena);
         }
     }
 
-    RR_LOG_INFO("Ending SPIRV...");
-
     Rr_DestroyScratch(Scratch);
+
+    return MinimumSetCount;
 }

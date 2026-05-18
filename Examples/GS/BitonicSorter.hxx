@@ -19,7 +19,6 @@ struct SSortList
 
     uint32_t ThreadsPerWorkgroup{};
 
-    Rr_PipelineLayout *Layout;
     Rr_ComputePipeline *Pipeline;
     Rr_Buffer *UniformBuffer;
     Rr_Buffer *IndirectBuffer;
@@ -31,34 +30,6 @@ struct SSortList
         {
             ThreadsPerWorkgroup = Rr_NextPowerOfTwo(ThreadsPerWorkgroup) / 2;
         }
-
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 2,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 3,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array BindingSets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        Layout =
-            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
 
         std::array Specializations = {
             Rr_PipelineSpecialization{
@@ -76,7 +47,7 @@ struct SSortList
             .Specializations = Specializations.data(),
         };
 
-        Pipeline = Rr_CreateComputePipeline(&ShaderInfo, Layout);
+        Pipeline = Rr_CreateComputePipeline(&ShaderInfo);
 
         UniformBuffer = Rr_CreateBuffer(
             sizeof(SUniformData),
@@ -93,7 +64,6 @@ struct SSortList
     ~SSortList()
     {
         Rr_ReleaseComputePipeline(Pipeline);
-        Rr_ReleasePipelineLayout(Layout);
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseBuffer(IndirectBuffer);
     }
@@ -175,7 +145,6 @@ struct SBitonicSorter
     Rr_Renderer *Renderer;
     SSortList SortList;
     uint32_t ThreadsPerWorkgroup{};
-    Rr_PipelineLayout *Layout;
     Rr_ComputePipeline *Pipeline;
     Rr_Buffer *UniformBuffer;
     uint32_t AliveCount;
@@ -223,32 +192,6 @@ struct SBitonicSorter
 
         /* Create compute pipeline. */
 
-        std::array Bindings0 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array Bindings1 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array BindingSets = {
-            Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
-            Rr_BindingSet{ Bindings1.size(), Bindings1.data() },
-        };
-        Layout =
-            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
-
         std::array Specializations = {
             Rr_PipelineSpecialization{
                 .ConstantID = 0,
@@ -266,7 +209,7 @@ struct SBitonicSorter
             .Specializations = Specializations.data(),
         };
 
-        Pipeline = Rr_CreateComputePipeline(&ShaderInfo, Layout);
+        Pipeline = Rr_CreateComputePipeline(&ShaderInfo);
 
         UniformBuffer = Rr_CreateBuffer(
             RR_ALIGN_POW2(sizeof(SGPUSortInfo), Rr_GetUniformAlignment()) *
@@ -278,7 +221,6 @@ struct SBitonicSorter
     ~SBitonicSorter()
     {
         Rr_ReleaseComputePipeline(Pipeline);
-        Rr_ReleasePipelineLayout(Layout);
         Rr_ReleaseBuffer(UniformBuffer);
     }
 

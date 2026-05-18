@@ -18,35 +18,11 @@ struct SValidator
 {
     Rr_Renderer *Renderer;
     uint32_t DispatchSize;
-    Rr_PipelineLayout *Layout;
     Rr_ComputePipeline *Pipeline;
     Rr_Image2D *ResultImage;
 
     explicit SValidator()
     {
-        std::array Bindings = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 1,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-            Rr_Binding{
-                .Index = 2,
-                .Type = RR_BINDING_TYPE_STORAGE_IMAGE,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array BindingSets = {
-            Rr_BindingSet{ Bindings.size(), Bindings.data() },
-        };
-        Layout =
-            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
-
         uint32_t LocalSize = std::sqrt(Rr_GetMaxComputeWorkgroupInvocations());
         DispatchSize = COUNT_SQRT / LocalSize;
 
@@ -76,7 +52,7 @@ struct SValidator
             .Specializations = Specializations.data(),
         };
 
-        Pipeline = Rr_CreateComputePipeline(&ShaderInfo, Layout);
+        Pipeline = Rr_CreateComputePipeline(&ShaderInfo);
 
         ResultImage = Rr_CreateImage2D(
             { COUNT_SQRT, COUNT_SQRT },
@@ -87,7 +63,6 @@ struct SValidator
     ~SValidator()
     {
         Rr_ReleaseComputePipeline(Pipeline);
-        Rr_ReleasePipelineLayout(Layout);
         Rr_ReleaseImage(ResultImage);
     }
 
@@ -136,7 +111,6 @@ struct SBitonicSorter
     };
 
     uint32_t ThreadsPerWorkgroup;
-    Rr_PipelineLayout *Layout;
     Rr_ComputePipeline *Pipeline;
     Rr_Buffer *UniformBuffer;
 
@@ -144,27 +118,6 @@ struct SBitonicSorter
         : ThreadsPerWorkgroup(
               Rr_NextPowerOfTwo(Rr_GetMaxComputeWorkgroupInvocations()) / 2)
     {
-        std::array Bindings0 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array Bindings1 = {
-            Rr_Binding{
-                .Index = 0,
-                .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-                .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-            },
-        };
-        std::array BindingSets = {
-            Rr_BindingSet{ Bindings0.size(), Bindings0.data() },
-            Rr_BindingSet{ Bindings1.size(), Bindings1.data() },
-        };
-        Layout =
-            Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
-
         std::array Specializations = {
             Rr_PipelineSpecialization{
                 .ConstantID = 0,
@@ -182,7 +135,7 @@ struct SBitonicSorter
             .Specializations = Specializations.data(),
         };
 
-        Pipeline = Rr_CreateComputePipeline(&ShaderInfo, Layout);
+        Pipeline = Rr_CreateComputePipeline(&ShaderInfo);
 
         UniformBuffer = Rr_CreateBuffer(
             sizeof(uint32_t) * 1024,
@@ -193,7 +146,6 @@ struct SBitonicSorter
     ~SBitonicSorter()
     {
         Rr_ReleaseComputePipeline(Pipeline);
-        Rr_ReleasePipelineLayout(Layout);
         Rr_ReleaseBuffer(UniformBuffer);
     }
 

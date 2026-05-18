@@ -15,8 +15,6 @@
       "hidden": true,
       "generator": "Ninja",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
         "RR_C_FLAGS": "-Wall;-Wextra;-Wpedantic;-Wno-missing-format-attribute;-Wno-format-nonliteral;-Wno-missing-braces;-Wno-unused-parameter;-Wno-unused-function;-Wno-unused-variable;-Wconversion;-Wsign-conversion;-Wcast-qual;-Wformat=2;-Wundef;-Wshadow;-Wcast-align;-Wunused;-Wnull-dereference;-Wimplicit-fallthrough",
         "RR_CXX_FLAGS": "-Wall;-Wextra;-Wpedantic;-Wno-missing-format-attribute;-Wno-format-nonliteral;-Wno-missing-braces;-Wno-unused-parameter;-Wno-unused-function;-Wno-unused-variable;-Wsign-conversion;-Wcast-qual;-Wformat=2;-Wundef;-Wshadow;-Wcast-align;-Wunused;-Wnull-dereference;-Wimplicit-fallthrough;-Woverloaded-virtual;-Wnon-virtual-dtor;-Wold-style-cast"
       }

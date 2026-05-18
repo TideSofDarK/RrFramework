@@ -22,7 +22,6 @@
 
 #include <Rr/Rr_Pipeline.h>
 
-#include "Rr_Descriptor.h"
 #include "Rr_Vulkan.h"
 
 #include <Rr/Rr_Platform.h>
@@ -30,8 +29,8 @@
 typedef struct Rr_DescriptorSetLayoutKey Rr_DescriptorSetLayoutKey;
 struct Rr_DescriptorSetLayoutKey
 {
-    uint32_t TotalBindingCount;
-    Rr_Binding Bindings[RR_MAX_BINDINGS];
+    uint32_t BindingCount;
+    Rr_VulkanBinding Bindings[RR_MAX_BINDINGS];
 };
 
 typedef struct Rr_DescriptorSetLayout Rr_DescriptorSetLayout;
@@ -91,6 +90,12 @@ struct Rr_PipelineLayoutStorage
     Rr_PipelineLayout *Map;
     Rr_PipelineLayoutHive Hive;
 };
+
+typedef RR_ARRAY(Rr_Binding) Rr_BindingArray;
+
+extern Rr_PipelineLayout *Rr_GetPipelineLayout(
+    size_t BindingSetCount,
+    Rr_BindingSet const *BindingSets);
 
 extern void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout);
 

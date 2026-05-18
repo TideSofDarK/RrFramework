@@ -97,6 +97,16 @@ static const Rr_SyncState RR_EMPTY_SYNC = {
     .QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 };
 
+typedef struct Rr_VulkanBinding Rr_VulkanBinding;
+struct Rr_VulkanBinding
+{
+    uint32_t Index;
+    VkDescriptorType Type;
+    VkPipelineStageFlags Stages;
+    uint32_t Count;
+    VkFormat ImageFormat;
+};
+
 typedef struct Rr_Queue Rr_Queue;
 struct Rr_Queue
 {
@@ -899,4 +909,26 @@ static inline Rr_PresentMode Rr_ToPresentMode(
             Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid present mode!");
     }
     return 0;
+}
+
+static inline void Rr_ToVulkanBindings(
+    size_t BindingCount,
+    Rr_Binding const *Bindings,
+    Rr_VulkanBinding *OutVulkanBindings)
+{
+    for (size_t Index = 0; Index < BindingCount; ++Index)
+    {
+        Rr_Binding const *Binding = &Bindings[Index];
+        if (Binding->Type != RR_BINDING_TYPE_INVALID)
+        {
+            Rr_VulkanBinding *VulkanBinding = &OutVulkanBindings[Index];
+            VulkanBinding->Index = Binding->Index;
+            VulkanBinding->Type = Rr_ToVulkanDescriptorType(Binding->Type);
+            VulkanBinding->Stages =
+                Rr_ToVulkanShaderStageFlags(Binding->Stages);
+            VulkanBinding->Count = Binding->Count ? Binding->Count : 1;
+            VulkanBinding->ImageFormat =
+                Rr_ToVulkanImageFormat(Binding->ImageFormat);
+        }
+    }
 }

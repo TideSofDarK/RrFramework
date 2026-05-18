@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <vector>
 
-static Rr_PipelineLayout *Layout;
 static Rr_ComputePipeline *Pipeline;
 static Rr_Buffer *InputBuffer;
 static Rr_Buffer *OutputBuffer;
@@ -43,33 +42,6 @@ static uint32_t GetDispatchSize()
 
 static void Init()
 {
-    std::array Bindings = {
-        Rr_Binding{
-            .Index = 0,
-            .Type = RR_BINDING_TYPE_UNIFORM_BUFFER,
-            .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-        },
-        Rr_Binding{
-            .Index = 1,
-            .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-            .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-        },
-        Rr_Binding{
-            .Index = 2,
-            .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-            .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-        },
-        Rr_Binding{
-            .Index = 3,
-            .Type = RR_BINDING_TYPE_STORAGE_BUFFER,
-            .Stages = RR_SHADER_STAGE_COMPUTE_BIT,
-        },
-    };
-    std::array BindingSets = {
-        Rr_BindingSet{ Bindings.size(), Bindings.data() },
-    };
-    Layout = Rr_CreatePipelineLayout(BindingSets.size(), BindingSets.data());
-
     ThreadsPerWorkgroup = Rr_GetMaxComputeWorkgroupInvocations();
     std::array Specializations = {
         Rr_PipelineSpecialization{ 0,
@@ -85,7 +57,7 @@ static void Init()
         .Specializations = Specializations.data(),
     };
 
-    Pipeline = Rr_CreateComputePipeline(&ShaderInfo, Layout);
+    Pipeline = Rr_CreateComputePipeline(&ShaderInfo);
 
     Numbers.resize(COUNT);
     std::iota(Numbers.begin(), Numbers.end(), 0);
@@ -153,7 +125,6 @@ static void Cleanup()
     Rr_ReleaseBuffer(WorkgroupBuffer);
     Rr_ReleaseBuffer(UniformBuffer);
     Rr_ReleaseComputePipeline(Pipeline);
-    Rr_ReleasePipelineLayout(Layout);
 }
 
 int main()

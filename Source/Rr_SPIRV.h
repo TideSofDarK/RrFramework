@@ -22,6 +22,8 @@
 
 #include "Rr_Pipeline.h"
 
-RR_EXTERN void Rr_CreatePipelineLayoutInfoFromSPIRV(
-    size_t Size,
-    uint32_t const *Data);
+extern size_t Rr_GetBindingsFromSPIRV(
+    Rr_ShaderInfo const *ShaderInfo,
+    Rr_ShaderStage ShaderStage,
+    Rr_BindingArray BindingArrays[RR_MAX_SETS],
+    Rr_Arena *Arena);
