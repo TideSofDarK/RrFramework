@@ -8345,6 +8345,9 @@ bool Rr_UISliderInt(char const *Title, int32_t *Value, int32_t Min, int32_t Max)
     int Length = snprintf(Buffer, sizeof(Buffer), "%d", *Value);
 
     float FloatRange = (float)(Max - Min);
+    FloatRange = RR_MAX(1.0f, FloatRange);
+
+    float HandleSizeRatio = 1.0f / (FloatRange + 1);
 
     int32_t In = *Value;
     int32_t Clamped = RR_CLAMP(Min, *Value, Max);
@@ -8354,7 +8357,7 @@ bool Rr_UISliderInt(char const *Title, int32_t *Value, int32_t Min, int32_t Max)
         InNormalized,
         Buffer,
         (size_t)Length,
-        1.0f / FloatRange);
+        HandleSizeRatio);
     OutNormalized = roundf(OutNormalized * FloatRange) / FloatRange;
     int32_t Out = (int32_t)(OutNormalized * FloatRange) + Min;
     *Value = Out;

@@ -5,7 +5,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../Vendor/stb/stb_image.h"
 
-#include <array>
 #include <atomic>
 #include <cassert>
 #include <condition_variable>
@@ -295,6 +294,15 @@ struct STransferThreadApp
                 &CurrentImageIndex,
                 0,
                 Images.size() - 1);
+        }
+        if (Images.size() > 0 && Rr_UIButton("Reset"))
+        {
+            for (auto Image : Images)
+            {
+                Rr_ReleaseImage(Image);
+            }
+
+            Images.clear();
         }
         Rr_UIEndWindow();
 

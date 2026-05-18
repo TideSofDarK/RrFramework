@@ -51,24 +51,25 @@ struct Rr_ImageViewKey
     VkFormat Format;
 };
 
-typedef struct Rr_ImageViewMap Rr_ImageViewMap;
-struct Rr_ImageViewMap
+typedef struct Rr_ImageView Rr_ImageView;
+struct Rr_ImageView
 {
-    Rr_ImageViewMap *Children[4];
     Rr_ImageViewKey Key;
-    VkImageView Value;
+    Rr_ImageView *Children[4];
+
+    VkImageView Handle;
 };
 
-#define RR_HIVE_TYPE      Rr_ImageViewMap
-#define RR_HIVE_TYPE_NAME ImageViewMap
+#define RR_HIVE_TYPE      Rr_ImageView
+#define RR_HIVE_TYPE_NAME ImageView
 #define RR_HIVE_PREFIX    Rr_
 #include "Rr_Hive.h"
 
 typedef struct Rr_ImageViewStorage Rr_ImageViewStorage;
 struct Rr_ImageViewStorage
 {
-    Rr_ImageViewMapHive Hive;
-    Rr_ImageViewMap *Map;
+    Rr_ImageViewHive Hive;
+    Rr_ImageView *Map;
     Rr_Spinlock Lock;
 };
 
