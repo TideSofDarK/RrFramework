@@ -302,6 +302,8 @@ static Rr_Image *Rr_CreateImage(
         &gRenderer->Lock);
     Rr_Image *Image = It.Element;
 
+    Rr_UnlockSpinlock(&gRenderer->ImagesLock);
+
     uint32_t LevelCount = 1;
     if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_MIP_MAPPED_BIT))
     {
@@ -309,8 +311,6 @@ static Rr_Image *Rr_CreateImage(
             (uint32_t)floorf(logf((float)RR_MAX(Extent.Width, Extent.Height))) +
             1;
     }
-
-    Rr_UnlockSpinlock(&gRenderer->ImagesLock);
 
     *Image = (Rr_Image){
         .Flags = Flags,

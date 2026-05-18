@@ -27,7 +27,12 @@
 
 Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
 {
-    assert(Size > 0 && "Buffer size is zero!");
+    if (Size == 0)
+    {
+        Rr_LogWarning(RR_LOG_CATEGORY_RENDERER, "Buffer size can't be zero!");
+
+        return NULL;
+    }
 
     Rr_LockSpinlock(&gRenderer->BuffersLock);
 
