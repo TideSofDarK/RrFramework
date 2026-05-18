@@ -43,8 +43,6 @@ Rr_Graph *Rr_BeginGraph(Rr_QueueType QueueType)
 {
     assert(Rr_HasQueue(QueueType));
 
-    Rr_Device *Device = &gRenderer->Device;
-
     Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
     assert(ThreadContext && "Call Rr_InitThreadContext first!");
     assert(
@@ -276,7 +274,6 @@ static inline bool Rr_AddNodeDependency(
         }
     }
 
-    Rr_Graph *Graph = Node->Graph;
     Rr_Arena *Arena = Node->Graph->Arena;
 
     Rr_GraphHandle CurrentHandle = *Handle;
@@ -856,7 +853,6 @@ static void Rr_ExecuteComputeNode(
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Device *Device = &gRenderer->Device;
-    Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     Rr_DescriptorsState DescriptorsState =
         Rr_MakeDescriptorsState(Graph, CommandBuffer);
@@ -938,7 +934,6 @@ static void Rr_ExecuteGraphicsNode(
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Device *Device = &gRenderer->Device;
-    Rr_Frame *Frame = Rr_GetCurrentFrame();
 
     /* TODO: See if it's possible to skip minimum viewport calculation. */
     Rr_IntVec4 Viewport = {
@@ -949,7 +944,7 @@ static void Rr_ExecuteGraphicsNode(
     uint32_t AttachmentCount =
         Node->ColorTargetCount * 2 + (Node->DepthTarget ? 1 : 0);
 
-    Rr_RenderPassMapKey RenderPassKey = {
+    Rr_RenderPassKey RenderPassKey = {
         .ColorAttachmentCount = (uint8_t)Node->ColorTargetCount,
         .DepthStencil = Node->DepthTarget != NULL,
     };
@@ -1087,7 +1082,7 @@ static void Rr_ExecuteGraphicsNode(
 
     VkRenderPass RenderPass = Rr_GetVulkanRenderPass(&RenderPassKey);
 
-    Rr_FramebufferMapKey FramebufferKey = {
+    Rr_FramebufferKey FramebufferKey = {
         .Extent =
             (VkExtent3D){
                 .width = (uint32_t)Viewport.Width,
@@ -2467,7 +2462,7 @@ void Rr_TransferBufferData(
     Rr_Buffer *DstBuffer,
     uint64_t DstOffset)
 {
-    Rr_GraphNode *Node = (Rr_GraphNode *)TransferNode;
+    Rr_GraphNode *Node = (void *)TransferNode;
 
     Rr_GraphBuffer *SrcBufferHandle =
         Rr_GetGraphBufferHandle(Node->Graph, SrcBuffer);

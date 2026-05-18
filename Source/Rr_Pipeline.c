@@ -37,7 +37,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
     Rr_DepthStencil const *DepthStencil,
     uint32_t SampleCount)
 {
-    Rr_RenderPassMapKey Key = {
+    Rr_RenderPassKey Key = {
         .ColorAttachmentCount = (uint8_t)ColorTargetCount,
         .DepthStencil = DepthStencil->EnableDepthTest ||
                         DepthStencil->EnableStencilTest ||

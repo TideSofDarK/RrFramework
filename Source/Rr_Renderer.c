@@ -714,12 +714,11 @@ void Rr_CleanupRenderer(void)
      * For now, we don't care for destroying render passes unless it's
      * application shutdown. */
 
-    for (Rr_RenderPassMapHiveIterator It =
-             gRenderer->RenderPassStorage.Hive.Begin;
+    for (Rr_RenderPassHiveIterator It = gRenderer->RenderPassStorage.Hive.Begin;
          It.Element != gRenderer->RenderPassStorage.Hive.End.Element;)
     {
-        Device->DestroyRenderPass(Device->Handle, It.Element->Value, NULL);
-        Rr_AdvanceRenderPassMapHiveIterator(&It);
+        Device->DestroyRenderPass(Device->Handle, It.Element->Handle, NULL);
+        Rr_AdvanceRenderPassHiveIterator(&It);
     }
 
     for (Rr_DescriptorPoolList *List = gRenderer->DescriptorPoolList; List;
@@ -1186,7 +1185,7 @@ bool Rr_SetPresentMode(Rr_PresentMode PresentMode)
     return true;
 }
 
-VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassMapKey *Key)
+VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassKey *Key)
 {
     VkRenderPass *RenderPassRef = NULL;
 
@@ -1196,29 +1195,29 @@ VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassMapKey *Key)
         (uint32_t)(Key->ColorAttachmentCount + Key->ResolveAttachmentCount +
                    Key->DepthStencil);
 
-    size_t HashSize = offsetof(Rr_RenderPassMapKey, Attachments) +
+    size_t HashSize = offsetof(Rr_RenderPassKey, Attachments) +
                       AttachmentCount * sizeof(Rr_RenderPassAttachment);
 
-    Rr_RenderPassMap **MapRef = &gRenderer->RenderPassStorage.Map;
+    Rr_RenderPass **MapRef = &gRenderer->RenderPassStorage.Map;
     for (uint64_t Hash = XXH64(Key, HashSize, 0); *MapRef; Hash <<= 2)
     {
         if (memcmp(Key, &(*MapRef)->Key, HashSize) == 0)
         {
-            RenderPassRef = &(*MapRef)->Value;
+            RenderPassRef = &(*MapRef)->Handle;
 
             goto Found;
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
-    *MapRef = Rr_PushRenderPassMapIntoHiveLocked(
+    *MapRef = Rr_PushRenderPassIntoHiveLocked(
                   &gRenderer->RenderPassStorage.Hive,
                   gRenderer->Arena,
                   &gRenderer->Lock)
                   .Element;
     (*MapRef)->Key = *Key;
-    (*MapRef)->Value = VK_NULL_HANDLE;
+    (*MapRef)->Handle = VK_NULL_HANDLE;
     RR_ZERO((*MapRef)->Children);
-    RenderPassRef = &(*MapRef)->Value;
+    RenderPassRef = &(*MapRef)->Handle;
 
 Found:
 
@@ -1350,7 +1349,7 @@ Found:
 
 VkFramebuffer Rr_GetVulkanFramebuffer(
     VkRenderPass RenderPass,
-    Rr_FramebufferMapKey *Key)
+    Rr_FramebufferKey *Key)
 {
     VkFramebuffer *FramebufferRef = NULL;
 
@@ -1360,36 +1359,36 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
         (uint32_t)(Key->ColorAttachmentCount + Key->ResolveAttachmentCount +
                    Key->DepthStencil);
 
-    size_t HashSize = offsetof(Rr_FramebufferMapKey, ImageViews) +
+    size_t HashSize = offsetof(Rr_FramebufferKey, ImageViews) +
                       AttachmentCount * sizeof(VkImageView);
 
-    Rr_FramebufferMap **MapRef = &gRenderer->FramebufferStorage.Map;
+    Rr_Framebuffer **MapRef = &gRenderer->FramebufferStorage.Map;
     for (uint64_t Hash = XXH64(Key, HashSize, 0); *MapRef; Hash <<= 2)
     {
-        if ((*MapRef)->Value == VK_NULL_HANDLE)
+        if ((*MapRef)->Handle == VK_NULL_HANDLE)
         {
             (*MapRef)->Key = *Key;
-            FramebufferRef = &(*MapRef)->Value;
+            FramebufferRef = &(*MapRef)->Handle;
 
             goto Found;
         }
         if (memcmp(Key, &(*MapRef)->Key, HashSize) == 0)
         {
-            FramebufferRef = &(*MapRef)->Value;
+            FramebufferRef = &(*MapRef)->Handle;
 
             goto Found;
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
-    *MapRef = Rr_PushFramebufferMapIntoHiveLocked(
+    *MapRef = Rr_PushFramebufferIntoHiveLocked(
                   &gRenderer->FramebufferStorage.Hive,
                   gRenderer->Arena,
                   &gRenderer->Lock)
                   .Element;
     (*MapRef)->Key = *Key;
-    (*MapRef)->Value = VK_NULL_HANDLE;
+    (*MapRef)->Handle = VK_NULL_HANDLE;
     RR_ZERO((*MapRef)->Children);
-    FramebufferRef = &(*MapRef)->Value;
+    FramebufferRef = &(*MapRef)->Handle;
 
 Found:
 
@@ -1424,12 +1423,12 @@ void Rr_DestroyVulkanFramebuffers(VkImageView ImageView)
 
     Rr_LockSpinlock(&gRenderer->FramebufferStorageLock);
 
-    for (Rr_FramebufferMapHiveIterator It =
+    for (Rr_FramebufferHiveIterator It =
              gRenderer->FramebufferStorage.Hive.Begin;
          It.Element != gRenderer->FramebufferStorage.Hive.End.Element;)
     {
-        Rr_FramebufferMap *Map = It.Element;
-        if (Map->Value != VK_NULL_HANDLE)
+        Rr_Framebuffer *Map = It.Element;
+        if (Map->Handle != VK_NULL_HANDLE)
         {
             bool Destroy = false;
             size_t Boundary = Map->Key.ColorAttachmentCount +
@@ -1446,12 +1445,12 @@ void Rr_DestroyVulkanFramebuffers(VkImageView ImageView)
 
             if (Destroy)
             {
-                Device->DestroyFramebuffer(Device->Handle, Map->Value, NULL);
-                Map->Value = VK_NULL_HANDLE;
+                Device->DestroyFramebuffer(Device->Handle, Map->Handle, NULL);
+                Map->Handle = VK_NULL_HANDLE;
             }
         }
 
-        Rr_AdvanceFramebufferMapHiveIterator(&It);
+        Rr_AdvanceFramebufferHiveIterator(&It);
     }
 
     Rr_UnlockSpinlock(&gRenderer->FramebufferStorageLock);

@@ -85,8 +85,8 @@ struct Rr_Frame
  * 3) Depth/stencil attachment
  * M must be less or equal to N. Depth/stencil attachment may not be present. */
 
-typedef struct Rr_FramebufferMapKey Rr_FramebufferMapKey;
-struct Rr_FramebufferMapKey
+typedef struct Rr_FramebufferKey Rr_FramebufferKey;
+struct Rr_FramebufferKey
 {
     VkExtent3D Extent;
     uint8_t ColorAttachmentCount;
@@ -96,29 +96,30 @@ struct Rr_FramebufferMapKey
     VkImageView ImageViews[RR_MAX_COLOR_ATTACHMENTS * 2 + 1];
 };
 
-typedef struct Rr_FramebufferMap Rr_FramebufferMap;
-struct Rr_FramebufferMap
+typedef struct Rr_Framebuffer Rr_Framebuffer;
+struct Rr_Framebuffer
 {
-    Rr_FramebufferMapKey Key;
-    VkFramebuffer Value;
-    Rr_FramebufferMap *Children[4];
+    Rr_FramebufferKey Key;
+    Rr_Framebuffer *Children[4];
+
+    VkFramebuffer Handle;
 };
 
-#define RR_HIVE_TYPE      Rr_FramebufferMap
-#define RR_HIVE_TYPE_NAME FramebufferMap
+#define RR_HIVE_TYPE      Rr_Framebuffer
+#define RR_HIVE_TYPE_NAME Framebuffer
 #define RR_HIVE_PREFIX    Rr_
 #include "Rr_Hive.h"
 
 typedef struct Rr_FramebufferStorage Rr_FramebufferStorage;
 struct Rr_FramebufferStorage
 {
-    Rr_FramebufferMap *Map;
-    Rr_FramebufferMapHive Hive;
+    Rr_Framebuffer *Map;
+    Rr_FramebufferHive Hive;
 };
 
 extern VkFramebuffer Rr_GetVulkanFramebuffer(
     VkRenderPass RenderPass,
-    Rr_FramebufferMapKey *Key);
+    Rr_FramebufferKey *Key);
 
 extern void Rr_DestroyVulkanFramebuffers(VkImageView ImageView);
 
@@ -131,8 +132,8 @@ struct Rr_RenderPassAttachment
     VkAttachmentStoreOp StoreOp;
 };
 
-typedef struct Rr_RenderPassMapKey Rr_RenderPassMapKey;
-struct Rr_RenderPassMapKey
+typedef struct Rr_RenderPassKey Rr_RenderPassKey;
+struct Rr_RenderPassKey
 {
     uint8_t ColorAttachmentCount;
     uint8_t ResolveAttachmentCount;
@@ -141,27 +142,28 @@ struct Rr_RenderPassMapKey
     Rr_RenderPassAttachment Attachments[RR_MAX_COLOR_ATTACHMENTS * 2 + 1];
 };
 
-typedef struct Rr_RenderPassMap Rr_RenderPassMap;
-struct Rr_RenderPassMap
+typedef struct Rr_RenderPass Rr_RenderPass;
+struct Rr_RenderPass
 {
-    Rr_RenderPassMapKey Key;
-    VkRenderPass Value;
-    Rr_RenderPassMap *Children[4];
+    Rr_RenderPassKey Key;
+    Rr_RenderPass *Children[4];
+
+    VkRenderPass Handle;
 };
 
-#define RR_HIVE_TYPE      Rr_RenderPassMap
-#define RR_HIVE_TYPE_NAME RenderPassMap
+#define RR_HIVE_TYPE      Rr_RenderPass
+#define RR_HIVE_TYPE_NAME RenderPass
 #define RR_HIVE_PREFIX    Rr_
 #include "Rr_Hive.h"
 
 typedef struct Rr_RenderPassStorage Rr_RenderPassStorage;
 struct Rr_RenderPassStorage
 {
-    Rr_RenderPassMap *Map;
-    Rr_RenderPassMapHive Hive;
+    Rr_RenderPass *Map;
+    Rr_RenderPassHive Hive;
 };
 
-extern VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassMapKey *Key);
+extern VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassKey *Key);
 
 struct Rr_Renderer
 {

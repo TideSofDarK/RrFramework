@@ -3,6 +3,12 @@
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_SPIRV
 #include "Rr_LogMacro.h"
 
+#if defined(__x86_64__) && !defined(__APPLE__)
+#include <xxHash/xxh_x86dispatch.h>
+#else
+#include <xxHash/xxhash.h>
+#endif
+
 typedef struct Rr_SPIRVHeader Rr_SPIRVHeader;
 struct Rr_SPIRVHeader
 {
@@ -75,6 +81,15 @@ struct Rr_SPIRVOp
     uint16_t OpCode;
 };
 
+typedef struct Rr_SPIRVOpMap Rr_SPIRVOpMap;
+struct Rr_SPIRVOpMap
+{
+    uint32_t Key;
+    Rr_SPIRVOpMap *Children[4];
+
+    Rr_SPIRVOp SPIRVOp;
+};
+
 enum
 {
     RR_SPIRV_STORAGE_CLASS_UNIFORM_CONSTANT = 0U,
@@ -93,8 +108,6 @@ enum
 
 enum
 {
-    RR_SPIRV_OP_DECORATE = 71U,
-    RR_SPIRV_OP_VARIABLE = 59U,
     RR_SPIRV_OP_TYPE_INT = 21U,
     RR_SPIRV_OP_TYPE_FLOAT = 22U,
     RR_SPIRV_OP_TYPE_VECTOR = 23U,
@@ -108,6 +121,9 @@ enum
     RR_SPIRV_OP_TYPE_OPAQUE = 31U,
     RR_SPIRV_OP_TYPE_POINTER = 32U,
     RR_SPIRV_OP_CONSTANT = 43U,
+    RR_SPIRV_OP_FUNCTION = 54U,
+    RR_SPIRV_OP_VARIABLE = 59U,
+    RR_SPIRV_OP_DECORATE = 71U,
 };
 
 static inline bool Rr_FindOrAddBinding(
@@ -121,11 +137,13 @@ static inline bool Rr_FindOrAddBinding(
         if (Binding->Index == BindingIndex)
         {
             *OutBinding = Binding;
+
             return true;
         }
     }
 
     *OutBinding = RR_PUSH_INTO_ARRAY(BindingArray, NULL);
+
     return false;
 }
 
@@ -220,6 +238,26 @@ static inline void Rr_AddSPIRVBinding(
     }
 }
 
+static inline Rr_SPIRVOp *Rr_UpsertSPIRVOp(
+    Rr_SPIRVOpMap **Map,
+    uint32_t Key,
+    Rr_Arena *Arena)
+{
+    for (uint64_t Hash = XXH64(&Key, sizeof(Key), 0); *Map; Hash <<= 2)
+    {
+        if (Key == (*Map)->Key)
+        {
+            return &(*Map)->SPIRVOp;
+        }
+        Map = &(*Map)->Children[Hash >> 62];
+    }
+
+    *Map = RR_ALLOC_TYPE(Rr_SPIRVOpMap, Arena);
+    (*Map)->Key = Key;
+
+    return &(*Map)->SPIRVOp;
+}
+
 size_t Rr_GetBindingsFromSPIRV(
     Rr_ShaderInfo const *ShaderInfo,
     Rr_ShaderStage ShaderStage,
@@ -230,8 +268,8 @@ size_t Rr_GetBindingsFromSPIRV(
 
     uint32_t const *Data = ShaderInfo->SPVData;
 
-    /* TODO: Allocate fewer ops but add bounds checking. */
-    Rr_SPIRVOp *SPIRVOps = RR_ALLOC(sizeof(Rr_SPIRVOp) * 4096, Scratch.Arena);
+    Rr_SPIRVOpMap *SPIRVOpMap = NULL;
+
     RR_ARRAY(uint32_t) BindingIndices = { 0 };
     RR_RESERVE_ARRAY(&BindingIndices, RR_MAX_BINDINGS, Scratch.Arena);
 
@@ -255,20 +293,23 @@ size_t Rr_GetBindingsFromSPIRV(
             uint32_t ID = Data[Offset + 1];
             uint32_t Decoration = Data[Offset + 2];
 
+            Rr_SPIRVOp *SPIRVOp =
+                Rr_UpsertSPIRVOp(&SPIRVOpMap, ID, Scratch.Arena);
+
             if (Decoration == RR_SPIRV_DECORATION_BLOCK)
             {
-                SPIRVOps[ID].Union.Struct.Block = true;
+                SPIRVOp->Union.Struct.Block = true;
             }
 
             if (Decoration == RR_SPIRV_DECORATION_BUFFER_BLOCK)
             {
-                SPIRVOps[ID].Union.Struct.BufferBlock = true;
+                SPIRVOp->Union.Struct.BufferBlock = true;
             }
 
             if (Decoration == RR_SPIRV_DECORATION_BINDING)
             {
                 uint32_t Binding = Data[Offset + 3];
-                SPIRVOps[ID].Union.Variable.Binding = (uint8_t)Binding;
+                SPIRVOp->Union.Variable.Binding = (uint8_t)Binding;
 
                 *RR_PUSH_INTO_ARRAY(&BindingIndices, Scratch.Arena) = ID;
             }
@@ -276,10 +317,10 @@ size_t Rr_GetBindingsFromSPIRV(
             if (Decoration == RR_SPIRV_DECORATION_DESCRIPTOR_SET)
             {
                 uint32_t Set = Data[Offset + 3];
-                SPIRVOps[ID].Union.Variable.DescriptorSet = (uint8_t)Set;
+                SPIRVOp->Union.Variable.DescriptorSet = (uint8_t)Set;
             }
 
-            SPIRVOps[ID].OpCode = OpCode;
+            SPIRVOp->OpCode = OpCode;
         }
 
         if (OpCode == RR_SPIRV_OP_VARIABLE)
@@ -288,11 +329,13 @@ size_t Rr_GetBindingsFromSPIRV(
             uint32_t ResultID = Data[Offset + 2];
             uint32_t StorageClass = Data[Offset + 3];
 
-            SPIRVOps[ResultID].Union.Variable.StorageClass =
-                (uint16_t)StorageClass;
-            SPIRVOps[ResultID].Union.Variable.PointerID = ResultTypeID;
+            Rr_SPIRVOp *SPIRVOp =
+                Rr_UpsertSPIRVOp(&SPIRVOpMap, ResultID, Scratch.Arena);
 
-            SPIRVOps[ResultID].OpCode = OpCode;
+            SPIRVOp->Union.Variable.StorageClass = (uint16_t)StorageClass;
+            SPIRVOp->Union.Variable.PointerID = ResultTypeID;
+
+            SPIRVOp->OpCode = OpCode;
         }
 
         if (OpCode == RR_SPIRV_OP_TYPE_POINTER)
@@ -301,44 +344,49 @@ size_t Rr_GetBindingsFromSPIRV(
             uint32_t StorageClass = Data[Offset + 2];
             uint32_t TypeID = Data[Offset + 3];
 
-            SPIRVOps[ResultID].Union.Pointer.StorageClass =
-                (uint16_t)StorageClass;
-            SPIRVOps[ResultID].Union.Pointer.TypeID = TypeID;
+            Rr_SPIRVOp *SPIRVOp =
+                Rr_UpsertSPIRVOp(&SPIRVOpMap, ResultID, Scratch.Arena);
 
-            SPIRVOps[ResultID].OpCode = OpCode;
+            SPIRVOp->Union.Pointer.StorageClass = (uint16_t)StorageClass;
+            SPIRVOp->Union.Pointer.TypeID = TypeID;
+
+            SPIRVOp->OpCode = OpCode;
         }
 
         if (OpCode >= RR_SPIRV_OP_TYPE_INT && OpCode <= RR_SPIRV_OP_TYPE_OPAQUE)
         {
             uint32_t ResultID = Data[Offset + 1];
 
+            Rr_SPIRVOp *SPIRVOp =
+                Rr_UpsertSPIRVOp(&SPIRVOpMap, ResultID, Scratch.Arena);
+
             if (OpCode == RR_SPIRV_OP_TYPE_IMAGE)
             {
-                SPIRVOps[ResultID].Union.Image.Dimension =
-                    (uint8_t)Data[Offset + 3];
-                SPIRVOps[ResultID].Union.Image.Arrayed =
-                    (uint8_t)Data[Offset + 5];
-                SPIRVOps[ResultID].Union.Image.Sampled =
-                    (uint8_t)Data[Offset + 7];
+                SPIRVOp->Union.Image.Dimension = (uint8_t)Data[Offset + 3];
+                SPIRVOp->Union.Image.Arrayed = (uint8_t)Data[Offset + 5];
+                SPIRVOp->Union.Image.Sampled = (uint8_t)Data[Offset + 7];
             }
 
             if (OpCode == RR_SPIRV_OP_TYPE_ARRAY)
             {
-                SPIRVOps[ResultID].Union.Array.ElementTypeID = Data[Offset + 2];
-                SPIRVOps[ResultID].Union.Array.LengthID = Data[Offset + 3];
+                SPIRVOp->Union.Array.ElementTypeID = Data[Offset + 2];
+                SPIRVOp->Union.Array.LengthID = Data[Offset + 3];
             }
 
-            SPIRVOps[ResultID].OpCode = OpCode;
+            SPIRVOp->OpCode = OpCode;
         }
 
         if (OpCode == RR_SPIRV_OP_CONSTANT)
         {
             uint32_t ResultID = Data[Offset + 2];
 
-            SPIRVOps[ResultID].Union.Constant.TypeID = Data[Offset + 1];
-            SPIRVOps[ResultID].Union.Constant.Value = Data[Offset + 3];
+            Rr_SPIRVOp *SPIRVOp =
+                Rr_UpsertSPIRVOp(&SPIRVOpMap, ResultID, Scratch.Arena);
 
-            SPIRVOps[ResultID].OpCode = OpCode;
+            SPIRVOp->Union.Constant.TypeID = Data[Offset + 1];
+            SPIRVOp->Union.Constant.Value = Data[Offset + 3];
+
+            SPIRVOp->OpCode = OpCode;
         }
 
         Offset += Length;
@@ -348,7 +396,8 @@ size_t Rr_GetBindingsFromSPIRV(
     for (uint32_t Index = 0; Index < BindingIndices.Count; ++Index)
     {
         uint32_t VariableID = BindingIndices.Data[Index];
-        Rr_SPIRVVariable *Variable = &SPIRVOps[VariableID].Union.Variable;
+        Rr_SPIRVVariable *Variable =
+            &Rr_UpsertSPIRVOp(&SPIRVOpMap, VariableID, NULL)->Union.Variable;
         uint32_t VariableStorageClass = Variable->StorageClass;
         uint8_t BindingIndex = Variable->Binding;
         uint8_t SetIndex = Variable->DescriptorSet;
@@ -360,16 +409,21 @@ size_t Rr_GetBindingsFromSPIRV(
                 RR_MAX_SETS - 1);
         }
         MinimumSetCount = RR_MAX(MinimumSetCount, SetIndex + 1U);
-        Rr_SPIRVPointer *Pointer = &SPIRVOps[Variable->PointerID].Union.Pointer;
+        Rr_SPIRVPointer *Pointer =
+            &Rr_UpsertSPIRVOp(&SPIRVOpMap, Variable->PointerID, NULL)
+                 ->Union.Pointer;
         /* uint32_t PointerStorageClass = Pointer->StorageClass; */
-        Rr_SPIRVOp *PointerTypeOp = &SPIRVOps[Pointer->TypeID];
+        Rr_SPIRVOp *PointerTypeOp =
+            Rr_UpsertSPIRVOp(&SPIRVOpMap, Pointer->TypeID, NULL);
 
         if (PointerTypeOp->OpCode == RR_SPIRV_OP_TYPE_ARRAY)
         {
             Rr_SPIRVArray *Array = &PointerTypeOp->Union.Array;
-            Rr_SPIRVOp *ArrayElementTypeOp = &SPIRVOps[Array->ElementTypeID];
+            Rr_SPIRVOp *ArrayElementTypeOp =
+                Rr_UpsertSPIRVOp(&SPIRVOpMap, Array->ElementTypeID, NULL);
             Rr_SPIRVConstant *ArrayLengthConstant =
-                &SPIRVOps[Array->LengthID].Union.Constant;
+                &Rr_UpsertSPIRVOp(&SPIRVOpMap, Array->LengthID, NULL)
+                     ->Union.Constant;
 
             Rr_AddSPIRVBinding(
                 BindingIndex,
