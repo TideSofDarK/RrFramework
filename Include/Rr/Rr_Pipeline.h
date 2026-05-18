@@ -241,13 +241,6 @@ struct Rr_BindingSet
     Rr_Binding *Bindings;
 };
 
-/* RR_EXTERN Rr_PipelineLayout *Rr_CreatePipelineLayout( */
-/*     size_t BindingSetCount, */
-/*     Rr_BindingSet const *BindingSets); */
-
-/* RR_EXTERN void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout);
- */
-
 RR_EXTERN Rr_ComputePipeline *Rr_CreateComputePipeline(
     Rr_ShaderInfo const *ShaderInfo);
 

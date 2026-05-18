@@ -217,8 +217,6 @@ struct Rr_Renderer
 
     Rr_PipelineLayoutStorage PipelineLayoutStorage;
     Rr_Spinlock PipelineLayoutStorageLock;
-    Rr_HandleHive ReleasedPipelineLayouts;
-    Rr_Spinlock ReleasedPipelineLayoutsLock;
 
     Rr_ComputePipelineHive ComputePipelines;
     Rr_Spinlock ComputePipelinesLock;

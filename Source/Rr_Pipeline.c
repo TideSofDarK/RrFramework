@@ -173,7 +173,6 @@ FoundEmpty:
         PipelineLayout->SetLayouts,
         DescriptorSetLayouts,
         sizeof(void *) * PipelineLayout->SetLayoutCount);
-    PipelineLayout->Name[0] = '\0';
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -192,71 +191,11 @@ FoundEmpty:
         &PipelineLayout->Handle);
     assert(Result == VK_SUCCESS);
 
-    Rr_SetVulkanObjectName(
-        VK_OBJECT_TYPE_PIPELINE_LAYOUT,
-        (uint64_t)PipelineLayout->Handle,
-        PipelineLayout->Name);
+    Rr_UnlockSpinlock(&gRenderer->PipelineLayoutStorageLock);
 
     Rr_DestroyScratch(Scratch);
 
-    Rr_UnlockSpinlock(&gRenderer->PipelineLayoutStorageLock);
-
     return PipelineLayout;
-}
-
-Rr_PipelineLayout *Rr_CreatePipelineLayout(
-    size_t BindingSetCount,
-    Rr_BindingSet const *BindingSets)
-{
-    Rr_LogError(
-        RR_LOG_CATEGORY_VULKAN,
-        "Creating layouts by hand is not implemented!");
-
-    return NULL;
-}
-
-void Rr_ReleasePipelineLayout(Rr_PipelineLayout *PipelineLayout)
-{
-    Rr_LogError(
-        RR_LOG_CATEGORY_VULKAN,
-        "Releasing layouts by hand is not implemented!");
-
-    /*
-    if (PipelineLayout == NULL)
-    {
-        return;
-    }
-
-    Rr_LockSpinlock(&gRenderer->ReleasedPipelineLayoutsLock);
-
-    *Rr_PushHandleIntoHiveLocked(
-         &gRenderer->ReleasedPipelineLayouts,
-         gRenderer->Arena,
-         &gRenderer->Lock)
-         .Element = PipelineLayout;
-
-    Rr_UnlockSpinlock(&gRenderer->ReleasedPipelineLayoutsLock);
-    */
-}
-
-void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout)
-{
-    assert(PipelineLayout && PipelineLayout->Handle != VK_NULL_HANDLE);
-
-    Rr_PrintDestroyMessage(
-        "Rr_PipelineLayout",
-        PipelineLayout->Name,
-        PipelineLayout);
-
-    Rr_Device *Device = &gRenderer->Device;
-
-    Device->DestroyPipelineLayout(Device->Handle, PipelineLayout->Handle, NULL);
-
-    Rr_LockSpinlock(&gRenderer->PipelineLayoutStorageLock);
-
-    PipelineLayout->Handle = VK_NULL_HANDLE;
-
-    Rr_UnlockSpinlock(&gRenderer->PipelineLayoutStorageLock);
 }
 
 static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
@@ -394,8 +333,6 @@ Rr_ComputePipeline *Rr_CreateComputePipelineWithLayout(
 
         Rr_UnlockSpinlock(&gRenderer->ComputePipelinesLock);
 
-        Rr_IncrementAtomicRelaxed(&PipelineLayout->RefCount);
-
         *ComputePipeline = (Rr_ComputePipeline){
             .Layout = PipelineLayout,
             .Handle = Handle,
@@ -453,8 +390,6 @@ void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
     Rr_Device *Device = &gRenderer->Device;
 
     Device->DestroyPipeline(Device->Handle, ComputePipeline->Handle, NULL);
-
-    Rr_DecrementAtomicRelaxed(&ComputePipeline->Layout->RefCount);
 
     Rr_LockSpinlock(&gRenderer->ComputePipelinesLock);
 
@@ -549,6 +484,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
             &ShaderModuleCreateInfo,
             NULL,
             &VertModule);
+        assert(Result == VK_SUCCESS);
 
         VkPipelineShaderStageCreateInfo *PipelineShaderStageCreateInfo =
             RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena);
@@ -584,6 +520,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
             &ShaderModuleCreateInfo,
             NULL,
             &FragModule);
+        assert(Result == VK_SUCCESS);
 
         VkPipelineShaderStageCreateInfo *PipelineShaderStageCreateInfo =
             RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena);
@@ -830,8 +767,6 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
 
         Rr_UnlockSpinlock(&gRenderer->GraphicsPipelinesLock);
 
-        Rr_IncrementAtomicRelaxed(&PipelineLayout->RefCount);
-
         *GraphicsPipeline = (Rr_GraphicsPipeline){
             .Layout = PipelineLayout,
             .HasDepthStencil = HasDepthStencil,
@@ -896,8 +831,6 @@ void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
     Rr_Device *Device = &gRenderer->Device;
 
     Device->DestroyPipeline(Device->Handle, GraphicsPipeline->Handle, NULL);
-
-    Rr_DecrementAtomicRelaxed(&GraphicsPipeline->Layout->RefCount);
 
     Rr_LockSpinlock(&gRenderer->GraphicsPipelinesLock);
 
@@ -984,9 +917,9 @@ FoundEmpty:
         NULL,
         &DescriptorSetLayout->Handle);
 
-    Rr_DestroyScratch(Scratch);
-
     Rr_UnlockSpinlock(&gRenderer->DescriptorSetLayoutStorageLock);
+
+    Rr_DestroyScratch(Scratch);
 
     return *MapRef;
 }

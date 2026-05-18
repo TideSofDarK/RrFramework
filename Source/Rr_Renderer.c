@@ -196,7 +196,7 @@ static bool Rr_InitSwapchain(void)
         &FormatCount,
         SurfaceFormats);
 
-    VkSurfaceFormatKHR *PrefferedFormat = NULL;
+    VkSurfaceFormatKHR *PreferredFormat = NULL;
     VkSurfaceFormatKHR *FallbackFormat = SurfaceFormats;
     for (uint32_t Index = 0; Index < FormatCount; Index++)
     {
@@ -206,12 +206,12 @@ static bool Rr_InitSwapchain(void)
             SurfaceFormat->format == VK_FORMAT_R8G8B8A8_SRGB ||
             SurfaceFormat->format == VK_FORMAT_A8B8G8R8_SRGB_PACK32)
         {
-            PrefferedFormat = SurfaceFormat;
+            PreferredFormat = SurfaceFormat;
             break;
         }
     }
     VkSurfaceFormatKHR *SelectedFormat =
-        PrefferedFormat ? PrefferedFormat : FallbackFormat;
+        PreferredFormat ? PreferredFormat : FallbackFormat;
     if (!SelectedFormat)
     {
         RR_LOG_ABORT("No suitable surface format found!");
@@ -673,24 +673,6 @@ static inline void Rr_DestroyReleasedObjects(void)
         }
     }
     Rr_UnlockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
-
-    Rr_LockSpinlock(&gRenderer->ReleasedPipelineLayoutsLock);
-    for (Rr_HandleHiveIterator It = gRenderer->ReleasedPipelineLayouts.Begin;
-         It.Element != gRenderer->ReleasedPipelineLayouts.End.Element;)
-    {
-        Rr_PipelineLayout *PipelineLayout = *(Rr_PipelineLayout **)It.Element;
-        if (!Rr_LoadAtomicRelaxed(&PipelineLayout->RefCount))
-        {
-            Rr_DestroyPipelineLayout(PipelineLayout);
-            Rr_RemoveFromHandleHive(&gRenderer->ReleasedPipelineLayouts, &It);
-        }
-        else
-        {
-            Rr_AdvanceHandleHiveIterator(&It);
-        }
-    }
-
-    Rr_UnlockSpinlock(&gRenderer->ReleasedPipelineLayoutsLock);
 }
 
 void Rr_CleanupRenderer(void)
@@ -870,7 +852,6 @@ void Rr_NewFrame(void)
         if (!Rr_RecreateSwapchainIfNeeded())
         {
             RR_LOG_ABORT("Couldn't recreate swapchain!");
-            return;
         }
         Result = Device->AcquireNextImageKHR(
             Device->Handle,
@@ -1392,7 +1373,7 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
 
             goto Found;
         }
-        else if (memcmp(Key, &(*MapRef)->Key, HashSize) == 0)
+        if (memcmp(Key, &(*MapRef)->Key, HashSize) == 0)
         {
             FramebufferRef = &(*MapRef)->Value;
 

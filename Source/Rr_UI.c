@@ -558,7 +558,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
 
         FontRange->First = (uint32_t)CodepointRange->First;
         FontRange->Last = (uint32_t)CodepointRange->Last;
-        FontRange->Glyphs = (Rr_UIGlyph *)(((char *)Font) + GlyphsOffset);
+        FontRange->Glyphs = (void *)((char *)Font + GlyphsOffset);
 
         PackRanges[Index] = (stbtt_pack_range){
             .first_unicode_codepoint_in_range = CodepointRange->First,
@@ -7777,11 +7777,13 @@ static inline void Rr_UIColorPickerPopup(
         if (ChannelCount == 3)
         {
             NewColor <<= 8;
-            *(Rr_Vec3 *)Channels = Rr_U32ToRGB(NewColor);
+            Rr_Vec3 RGB = Rr_U32ToRGB(NewColor);
+            memcpy(Channels, &RGB, sizeof(RGB));
         }
         else if (ChannelCount == 4)
         {
-            *(Rr_Vec4 *)Channels = Rr_U32ToRGBA(NewColor);
+            Rr_Vec4 RGBA = Rr_U32ToRGBA(NewColor);
+            memcpy(Channels, &RGBA, sizeof(RGBA));
         }
 
         HSVChanged = false;
@@ -8904,11 +8906,6 @@ static inline void Rr_UIDrawWindow(
               (int32_t)ceilf(ClipRect->Rect.Extent.Height) },
         };
 
-        if (IntRect.Extent.Width <= 0 || IntRect.Extent.Height <= 0)
-        {
-            continue;
-        }
-
         if (IntRect.Offset.X < 0)
         {
             IntRect.Extent.Width += IntRect.Offset.X;
@@ -8918,6 +8915,11 @@ static inline void Rr_UIDrawWindow(
         {
             IntRect.Extent.Height += IntRect.Offset.Y;
             IntRect.Offset.Y = 0;
+        }
+
+        if (IntRect.Extent.Width <= 0 || IntRect.Extent.Height <= 0)
+        {
+            continue;
         }
 
         if (ClipRect->ForceLinearPipeline)

@@ -73,10 +73,6 @@ struct Rr_PipelineLayout
     Rr_DescriptorSetLayout *SetLayouts[RR_MAX_SETS];
 
     VkPipelineLayout Handle;
-
-    char Name[RR_MAX_OBJECT_NAME_LENGTH];
-
-    Rr_AtomicInt RefCount;
 };
 
 #define RR_HIVE_TYPE      Rr_PipelineLayout
@@ -96,8 +92,6 @@ typedef RR_ARRAY(Rr_Binding) Rr_BindingArray;
 extern Rr_PipelineLayout *Rr_GetPipelineLayout(
     size_t BindingSetCount,
     Rr_BindingSet const *BindingSets);
-
-extern void Rr_DestroyPipelineLayout(Rr_PipelineLayout *PipelineLayout);
 
 struct Rr_ComputePipeline
 {
