@@ -38,6 +38,9 @@
          SSE anyway */
 #ifdef __SSE__ /* they #define __SSE__ if it's supported */
 #define RR_MATH__USE_SSE 1
+#ifdef __SSE4_1__
+#define RR_MATH__USE_SSE4_1 1
+#endif /*  __SSE4_1_ */
 #endif /*  __SSE__ */
 #endif /* not _MSC_VER */
 #ifdef __ARM_NEON
@@ -53,6 +56,10 @@
 
 #ifdef RR_MATH__USE_SSE
 #include <xmmintrin.h>
+#endif
+
+#ifdef RR_MATH__USE_SSE4_1
+#include <smmintrin.h>
 #endif
 
 #ifdef RR_MATH__USE_NEON
@@ -154,6 +161,8 @@ extern "C" {
 
 typedef union Rr_Vec2
 {
+    float Elements[2];
+
     struct
     {
         float X, Y;
@@ -169,8 +178,6 @@ typedef union Rr_Vec2
         float Width, Height;
     };
 
-    float Elements[2];
-
 #ifdef __cplusplus
     inline float &operator[](int32_t Index)
     {
@@ -185,19 +192,11 @@ typedef union Rr_Vec2
 
 typedef union Rr_Vec3
 {
+    float Elements[3];
+
     struct
     {
         float X, Y, Z;
-    };
-
-    struct
-    {
-        float U, V, W;
-    };
-
-    struct
-    {
-        float R, G, B;
     };
 
     struct
@@ -224,7 +223,15 @@ typedef union Rr_Vec3
         Rr_Vec2 VW;
     };
 
-    float Elements[3];
+    struct
+    {
+        float R, G, B;
+    };
+
+    struct
+    {
+        float U, V, W;
+    };
 
 #ifdef __cplusplus
     inline float &operator[](int32_t Index)
@@ -240,64 +247,57 @@ typedef union Rr_Vec3
 
 typedef union Rr_Vec4
 {
+    float Elements[4];
+
     struct
     {
-        union
-        {
-            Rr_Vec3 XYZ;
-            struct
-            {
-                float X, Y;
-                union
-                {
-                    float Z;
-                    float Width;
-                };
-            };
-        };
-
-        union
-        {
-            float W;
-            float Height;
-        };
+        float X, Y, Z, W;
     };
+
     struct
     {
-        union
-        {
-            Rr_Vec3 RGB;
-            struct
-            {
-                float R, G, B;
-            };
-        };
-
-        float A;
+        Rr_Vec3 XYZ;
+        float _Ignored0;
     };
 
     struct
     {
         Rr_Vec2 XY;
-        float _Ignored0;
         float _Ignored1;
-    };
-
-    struct
-    {
         float _Ignored2;
-        Rr_Vec2 YZ;
-        float _Ignored3;
     };
 
     struct
     {
+        float _Ignored3;
+        Rr_Vec2 YZ;
         float _Ignored4;
+    };
+
+    struct
+    {
         float _Ignored5;
+        float _Ignored6;
         Rr_Vec2 ZW;
     };
 
-    float Elements[4];
+    struct
+    {
+        float _Ignored7;
+        float _Ignored8;
+        float Width, Height;
+    };
+
+    struct
+    {
+        float R, G, B, A;
+    };
+
+    struct
+    {
+        Rr_Vec3 RGB;
+        int32_t _Ignored9;
+    };
 
 #ifdef RR_MATH__USE_SSE
     __m128 SSE;
@@ -321,6 +321,8 @@ typedef union Rr_Vec4
 
 typedef union Rr_IntVec2
 {
+    int32_t Elements[2];
+
     struct
     {
         int32_t X, Y;
@@ -328,10 +330,13 @@ typedef union Rr_IntVec2
 
     struct
     {
-        int32_t Width, Height;
+        int32_t R, G;
     };
 
-    int32_t Elements[2];
+    struct
+    {
+        int32_t Width, Height;
+    };
 
 #ifdef __cplusplus
     inline int32_t &operator[](int32_t Index)
@@ -347,19 +352,11 @@ typedef union Rr_IntVec2
 
 typedef union Rr_IntVec3
 {
+    int32_t Elements[3];
+
     struct
     {
         int32_t X, Y, Z;
-    };
-
-    struct
-    {
-        int32_t R, G, B;
-    };
-
-    struct
-    {
-        int32_t Width, Height, Depth;
     };
 
     struct
@@ -386,7 +383,15 @@ typedef union Rr_IntVec3
         Rr_IntVec2 VW;
     };
 
-    int32_t Elements[3];
+    struct
+    {
+        int32_t Width, Height, Depth;
+    };
+
+    struct
+    {
+        int32_t R, G, B;
+    };
 
 #ifdef __cplusplus
     inline int32_t &operator[](int32_t Index)
@@ -402,67 +407,57 @@ typedef union Rr_IntVec3
 
 typedef union Rr_IntVec4
 {
+    int32_t Elements[4];
+
     struct
     {
-        union
-        {
-            Rr_IntVec3 XYZ;
-            struct
-            {
-                struct
-                {
-                    int32_t X, Y;
-                };
-                union
-                {
-                    int32_t Z;
-                    int32_t Width;
-                };
-            };
-        };
-
-        union
-        {
-            int32_t W;
-            int32_t Height;
-        };
+        int32_t X, Y, Z, W;
     };
+
     struct
     {
-        union
-        {
-            Rr_IntVec3 RGB;
-            struct
-            {
-                int32_t R, G, B;
-            };
-        };
-
-        int32_t A;
+        Rr_IntVec3 XYZ;
+        int32_t _Ignored0;
     };
 
     struct
     {
         Rr_IntVec2 XY;
-        int32_t _Ignored0;
         int32_t _Ignored1;
-    };
-
-    struct
-    {
         int32_t _Ignored2;
-        Rr_IntVec2 YZ;
-        int32_t _Ignored3;
     };
 
     struct
     {
+        int32_t _Ignored3;
+        Rr_IntVec2 YZ;
         int32_t _Ignored4;
+    };
+
+    struct
+    {
         int32_t _Ignored5;
+        int32_t _Ignored6;
         Rr_IntVec2 ZW;
     };
 
-    int32_t Elements[4];
+    struct
+    {
+        int32_t _Ignored7;
+        int32_t _Ignored8;
+        int32_t Width, Height;
+    };
+
+    struct
+    {
+        int32_t R, G, B, A;
+    };
+
+    struct
+    {
+        Rr_IntVec3 RGB;
+        int32_t _Ignored9;
+    };
 
 #ifdef __cplusplus
     inline int32_t &operator[](int32_t Index)
@@ -479,6 +474,7 @@ typedef union Rr_IntVec4
 typedef union Rr_Mat2
 {
     float Elements[2][2];
+
     Rr_Vec2 Columns[2];
 
 #ifdef __cplusplus
@@ -496,6 +492,7 @@ typedef union Rr_Mat2
 typedef union Rr_Mat3
 {
     float Elements[3][3];
+
     Rr_Vec3 Columns[3];
 
 #ifdef __cplusplus
@@ -513,6 +510,7 @@ typedef union Rr_Mat3
 typedef union Rr_Mat4
 {
     float Elements[4][4];
+
     Rr_Vec4 Columns[4];
 
 #ifdef __cplusplus
@@ -529,21 +527,39 @@ typedef union Rr_Mat4
 
 typedef union Rr_Quat
 {
+    float Elements[4];
+
     struct
     {
-        union
-        {
-            Rr_Vec3 XYZ;
-            struct
-            {
-                float X, Y, Z;
-            };
-        };
-
-        float W;
+        float X, Y, Z, W;
     };
 
-    float Elements[4];
+    struct
+    {
+        Rr_Vec3 XYZ;
+        float _Ignored0;
+    };
+
+    struct
+    {
+        Rr_Vec2 XY;
+        float _Ignored1;
+        float _Ignored2;
+    };
+
+    struct
+    {
+        float _Ignored3;
+        Rr_Vec2 YZ;
+        float _Ignored4;
+    };
+
+    struct
+    {
+        float _Ignored5;
+        float _Ignored6;
+        Rr_Vec2 ZW;
+    };
 
 #ifdef RR_MATH__USE_SSE
     __m128 SSE;
@@ -1227,10 +1243,16 @@ static inline Rr_Vec4 Rr_FloorV4(Rr_Vec4 A)
 {
     Rr_Vec4 Result;
 
+#ifdef RR_MATH__USE_SSE4_1
+    Result.SSE = _mm_floor_ps(A.SSE);
+#elif defined(__ARM_FEATURE_DIRECTED_ROUNDING)
+    Result.NEON = vrndmq_f32(A.NEON);
+#else
     Result.X = floorf(A.X);
     Result.Y = floorf(A.Y);
     Result.Z = floorf(A.Z);
     Result.W = floorf(A.W);
+#endif
 
     return Result;
 }
@@ -1260,10 +1282,16 @@ static inline Rr_Vec4 Rr_MinV4(Rr_Vec4 A, Rr_Vec4 B)
 {
     Rr_Vec4 Result;
 
+#ifdef RR_MATH__USE_SSE
+    Result.SSE = _mm_min_ps(A.SSE, B.SSE);
+#elif defined(RR_MATH__USE_NEON)
+    Result.NEON = vminq_f32(A.NEON, B.NEON);
+#else
     Result.X = RR_MIN(A.X, B.X);
     Result.Y = RR_MIN(A.Y, B.Y);
     Result.Z = RR_MIN(A.Z, B.Z);
     Result.W = RR_MIN(A.W, B.W);
+#endif
 
     return Result;
 }
@@ -1293,10 +1321,55 @@ static inline Rr_Vec4 Rr_MaxV4(Rr_Vec4 A, Rr_Vec4 B)
 {
     Rr_Vec4 Result;
 
+#ifdef RR_MATH__USE_SSE
+    Result.SSE = _mm_max_ps(A.SSE, B.SSE);
+#elif defined(RR_MATH__USE_NEON)
+    Result.NEON = vmaxq_f32(A.NEON, B.NEON);
+#else
     Result.X = RR_MAX(A.X, B.X);
     Result.Y = RR_MAX(A.Y, B.Y);
     Result.Z = RR_MAX(A.Z, B.Z);
     Result.W = RR_MAX(A.W, B.W);
+#endif
+
+    return Result;
+}
+
+static inline Rr_Vec2 Rr_FracV2(Rr_Vec2 A)
+{
+    Rr_Vec2 Result;
+
+    Result.X = Result.X - floorf(A.X);
+    Result.Y = Result.Y - floorf(A.Y);
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_FracV3(Rr_Vec3 A)
+{
+    Rr_Vec3 Result;
+
+    Result.X = Result.X - floorf(A.X);
+    Result.Y = Result.Y - floorf(A.Y);
+    Result.Z = Result.Z - floorf(A.Z);
+
+    return Result;
+}
+
+static inline Rr_Vec4 Rr_FracV4(Rr_Vec4 A)
+{
+    Rr_Vec4 Result;
+
+#ifdef RR_MATH__USE_SSE4_1
+    Result.SSE = _mm_sub_ps(A.SSE, _mm_floor_ps(A.SSE));
+#elif defined(__ARM_FEATURE_DIRECTED_ROUNDING)
+    Result.NEON = vsubq_f32(A.NEON, vrndmq_f32(A.NEON));
+#else
+    Result.X = Result.X - floorf(A.X);
+    Result.Y = Result.Y - floorf(A.Y);
+    Result.Z = Result.Z - floorf(A.Z);
+    Result.W = Result.W - floorf(A.W);
+#endif
 
     return Result;
 }
