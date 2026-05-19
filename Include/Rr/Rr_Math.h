@@ -453,6 +453,14 @@ typedef union Rr_IntVec4
         int32_t _Ignored9;
     };
 
+#ifdef RR_MATH__USE_SSE
+    __m128i SSE;
+#endif
+
+#ifdef RR_MATH__USE_NEON
+    int32x4_t NEON;
+#endif
+
 #ifdef __cplusplus
     inline int32_t &operator[](int32_t Index)
     {
@@ -775,6 +783,15 @@ static inline Rr_Vec2 Rr_V2F(float X)
     return Result;
 }
 
+static inline Rr_Vec2 Rr_ToV2(Rr_IntVec2 A)
+{
+    Rr_Vec2 Result;
+    Result.X = (float)A.X;
+    Result.Y = (float)A.Y;
+
+    return Result;
+}
+
 static inline Rr_Vec3 Rr_V3(float X, float Y, float Z)
 {
     Rr_Vec3 Result;
@@ -795,6 +812,16 @@ static inline Rr_Vec3 Rr_V3F(float X)
     return Result;
 }
 
+static inline Rr_Vec3 Rr_ToV3(Rr_IntVec3 A)
+{
+    Rr_Vec3 Result;
+    Result.X = (float)A.X;
+    Result.Y = (float)A.Y;
+    Result.Z = (float)A.Z;
+
+    return Result;
+}
+
 static inline Rr_Vec4 Rr_V4(float X, float Y, float Z, float W)
 {
     Rr_Vec4 Result;
@@ -802,8 +829,8 @@ static inline Rr_Vec4 Rr_V4(float X, float Y, float Z, float W)
 #ifdef RR_MATH__USE_SSE
     Result.SSE = _mm_setr_ps(X, Y, Z, W);
 #elif defined(RR_MATH__USE_NEON)
-    float32x4_t v = { X, Y, Z, W };
-    Result.NEON = v;
+    float32x4_t V = { X, Y, Z, W };
+    Result.NEON = V;
 #else
     Result.X = X;
     Result.Y = Y;
@@ -839,14 +866,126 @@ static inline Rr_Vec4 Rr_V4V(Rr_Vec3 Vector, float W)
 #ifdef RR_MATH__USE_SSE
     Result.SSE = _mm_setr_ps(Vector.X, Vector.Y, Vector.Z, W);
 #elif defined(RR_MATH__USE_NEON)
-    float32x4_t v = { Vector.X, Vector.Y, Vector.Z, W };
-    Result.NEON = v;
+    float32x4_t V = { Vector.X, Vector.Y, Vector.Z, W };
+    Result.NEON = V;
 #else
     Result.XYZ = Vector;
     Result.W = W;
 #endif
 
     return Result;
+}
+
+static inline Rr_Vec4 Rr_ToV4(Rr_IntVec4 A)
+{
+    return Rr_V4((float)A.X, (float)A.Y, (float)A.Z, (float)A.W);
+}
+
+static inline Rr_IntVec2 Rr_IntV2(int32_t X, int32_t Y)
+{
+    Rr_IntVec2 Result;
+    Result.X = X;
+    Result.Y = Y;
+
+    return Result;
+}
+
+static inline Rr_IntVec2 Rr_IntV2I(int32_t X)
+{
+    Rr_IntVec2 Result;
+    Result.X = X;
+    Result.Y = X;
+
+    return Result;
+}
+
+static inline Rr_IntVec2 Rr_CastIntV2(Rr_Vec2 A)
+{
+    return Rr_IntV2((int32_t)A.X, (int32_t)A.Y);
+}
+
+static inline Rr_IntVec3 Rr_IntV3(int32_t X, int32_t Y, int32_t Z)
+{
+    Rr_IntVec3 Result;
+    Result.X = X;
+    Result.Y = Y;
+    Result.Z = Z;
+
+    return Result;
+}
+
+static inline Rr_IntVec3 Rr_IntV3I(int32_t X)
+{
+    Rr_IntVec3 Result;
+    Result.X = X;
+    Result.Y = X;
+    Result.Z = X;
+
+    return Result;
+}
+
+static inline Rr_IntVec3 Rr_CastIntV3(Rr_Vec3 A)
+{
+    return Rr_IntV3((int32_t)A.X, (int32_t)A.Y, (int32_t)A.Z);
+}
+
+static inline Rr_IntVec4 Rr_IntV4(int32_t X, int32_t Y, int32_t Z, int32_t W)
+{
+    Rr_IntVec4 Result;
+
+#ifdef RR_MATH__USE_SSE
+    Result.SSE = _mm_setr_epi32(X, Y, Z, W);
+#elif defined(RR_MATH__USE_NEON)
+    int32x4_t V = { X, Y, Z, W };
+    Result.NEON = V;
+#else
+    Result.X = X;
+    Result.Y = Y;
+    Result.Z = Z;
+    Result.W = W;
+#endif
+
+    return Result;
+}
+
+static inline Rr_IntVec4 Rr_IntV4I(int32_t X)
+{
+    Rr_IntVec4 Result;
+
+#ifdef RR_MATH__USE_SSE
+    Result.SSE = _mm_set1_epi32(X);
+#elif defined(RR_MATH__USE_NEON)
+    Result.NEON = vdupq_n_s32(X);
+#else
+    Result.X = X;
+    Result.Y = X;
+    Result.Z = X;
+    Result.W = X;
+#endif
+
+    return Result;
+}
+
+static inline Rr_IntVec4 Rr_IntV4V(Rr_IntVec3 IntVector, int32_t W)
+{
+    Rr_IntVec4 Result;
+
+#ifdef RR_MATH__USE_SSE
+    Result.SSE = _mm_setr_epi32(IntVector.X, IntVector.Y, IntVector.Z, W);
+#elif defined(RR_MATH__USE_NEON)
+    int32x4_t V = { IntVector.X, IntVector.Y, IntVector.Z, W };
+    Result.NEON = V;
+#else
+    Result.XYZ = IntVector;
+    Result.W = W;
+#endif
+
+    return Result;
+}
+
+static inline Rr_IntVec4 Rr_CastIntV4(Rr_Vec4 A)
+{
+    return Rr_IntV4((int32_t)A.X, (int32_t)A.Y, (int32_t)A.Z, (int32_t)A.W);
 }
 
 /*
