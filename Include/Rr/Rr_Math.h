@@ -776,20 +776,12 @@ static inline Rr_Vec2 Rr_V2(float X, float Y)
 
 static inline Rr_Vec2 Rr_V2F(float X)
 {
-    Rr_Vec2 Result;
-    Result.X = X;
-    Result.Y = X;
-
-    return Result;
+    return Rr_V2(X, X);
 }
 
-static inline Rr_Vec2 Rr_ToV2(Rr_IntVec2 A)
+static inline Rr_Vec2 Rr_CastV2(Rr_IntVec2 A)
 {
-    Rr_Vec2 Result;
-    Result.X = (float)A.X;
-    Result.Y = (float)A.Y;
-
-    return Result;
+    return Rr_V2((float)A.X, (float)A.Y);
 }
 
 static inline Rr_Vec3 Rr_V3(float X, float Y, float Z)
@@ -804,22 +796,12 @@ static inline Rr_Vec3 Rr_V3(float X, float Y, float Z)
 
 static inline Rr_Vec3 Rr_V3F(float X)
 {
-    Rr_Vec3 Result;
-    Result.X = X;
-    Result.Y = X;
-    Result.Z = X;
-
-    return Result;
+    return Rr_V3(X, X, X);
 }
 
-static inline Rr_Vec3 Rr_ToV3(Rr_IntVec3 A)
+static inline Rr_Vec3 Rr_CastV3(Rr_IntVec3 A)
 {
-    Rr_Vec3 Result;
-    Result.X = (float)A.X;
-    Result.Y = (float)A.Y;
-    Result.Z = (float)A.Z;
-
-    return Result;
+    return Rr_V3((float)A.X, (float)A.Y, (float)A.Z);
 }
 
 static inline Rr_Vec4 Rr_V4(float X, float Y, float Z, float W)
@@ -876,7 +858,7 @@ static inline Rr_Vec4 Rr_V4V(Rr_Vec3 Vector, float W)
     return Result;
 }
 
-static inline Rr_Vec4 Rr_ToV4(Rr_IntVec4 A)
+static inline Rr_Vec4 Rr_CastV4(Rr_IntVec4 A)
 {
     return Rr_V4((float)A.X, (float)A.Y, (float)A.Z, (float)A.W);
 }
@@ -892,11 +874,7 @@ static inline Rr_IntVec2 Rr_IntV2(int32_t X, int32_t Y)
 
 static inline Rr_IntVec2 Rr_IntV2I(int32_t X)
 {
-    Rr_IntVec2 Result;
-    Result.X = X;
-    Result.Y = X;
-
-    return Result;
+    return Rr_IntV2(X, X);
 }
 
 static inline Rr_IntVec2 Rr_CastIntV2(Rr_Vec2 A)
@@ -916,12 +894,7 @@ static inline Rr_IntVec3 Rr_IntV3(int32_t X, int32_t Y, int32_t Z)
 
 static inline Rr_IntVec3 Rr_IntV3I(int32_t X)
 {
-    Rr_IntVec3 Result;
-    Result.X = X;
-    Result.Y = X;
-    Result.Z = X;
-
-    return Result;
+    return Rr_IntV3(X, X, X);
 }
 
 static inline Rr_IntVec3 Rr_CastIntV3(Rr_Vec3 A)
