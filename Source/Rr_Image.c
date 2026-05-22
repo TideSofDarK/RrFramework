@@ -167,7 +167,7 @@ void Rr_DestroyImageViewStorage(
         {
             if (DestroyFramebuffers)
             {
-                Rr_DestroyVulkanFramebuffers(Map->Handle);
+                Rr_DestroyFramebuffers(Map->Handle);
             }
             Device->DestroyImageView(Device->Handle, Map->Handle, NULL);
             Map->Handle = VK_NULL_HANDLE;

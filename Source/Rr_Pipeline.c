@@ -85,7 +85,7 @@ static VkRenderPass Rr_GetCompatibleRenderPass(
             VK_ATTACHMENT_STORE_OP_DONT_CARE;
     }
 
-    return Rr_GetVulkanRenderPass(&Key);
+    return Rr_GetRenderPass(&Key);
 }
 
 static inline int Rr_BindingSort(void const *A, void const *B)
@@ -112,7 +112,6 @@ Rr_PipelineLayout *Rr_GetPipelineLayout(
 {
     assert(BindingSetCount <= RR_MAX_SETS);
 
-    Rr_DescriptorSetLayout *DescriptorSetLayouts[RR_MAX_SETS] = { 0 };
     Rr_PipelineLayoutKey PipelineLayoutKey = {
         .DescriptorSetLayoutCount = (uint32_t)BindingSetCount,
     };
@@ -127,10 +126,8 @@ Rr_PipelineLayout *Rr_GetPipelineLayout(
         Key.BindingCount = (uint32_t)BindingCount;
         Rr_ToVulkanBindings(BindingCount, Bindings, Key.Bindings);
 
-        DescriptorSetLayouts[SetIndex] = Rr_GetDescriptorSetLayout(&Key);
-
         PipelineLayoutKey.DescriptorSetLayouts[SetIndex] =
-            DescriptorSetLayouts[SetIndex]->Handle;
+            Rr_GetDescriptorSetLayout(&Key);
     }
 
     size_t HashSize = sizeof(Rr_PipelineLayoutKey);
@@ -168,20 +165,23 @@ Rr_PipelineLayout *Rr_GetPipelineLayout(
 FoundEmpty:
 
     PipelineLayout->Key = PipelineLayoutKey;
-    PipelineLayout->SetLayoutCount = PipelineLayoutKey.DescriptorSetLayoutCount;
-    memcpy(
-        PipelineLayout->SetLayouts,
-        DescriptorSetLayouts,
-        sizeof(void *) * PipelineLayout->SetLayoutCount);
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Device *Device = &gRenderer->Device;
 
+    VkDescriptorSetLayout VulkanDescriptorSetLayouts[RR_MAX_SETS];
+    for (size_t Index = 0; Index < PipelineLayoutKey.DescriptorSetLayoutCount;
+         ++Index)
+    {
+        VulkanDescriptorSetLayouts[Index] =
+            PipelineLayoutKey.DescriptorSetLayouts[Index]->Handle;
+    }
+
     VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = PipelineLayoutKey.DescriptorSetLayoutCount,
-        .pSetLayouts = PipelineLayoutKey.DescriptorSetLayouts,
+        .pSetLayouts = VulkanDescriptorSetLayouts,
     };
 
     VkResult Result = Device->CreatePipelineLayout(
@@ -845,12 +845,12 @@ void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
     Rr_DescriptorSetLayoutKey const *Key)
 {
+    Rr_LockSpinlock(&gRenderer->DescriptorSetLayoutStorageLock);
+
     size_t HashSize = sizeof(Rr_DescriptorSetLayoutKey);
     Rr_DescriptorSetLayout **MapRef =
         &gRenderer->DescriptorSetLayoutStorage.Map;
     Rr_DescriptorSetLayout *DescriptorSetLayout = NULL;
-
-    Rr_LockSpinlock(&gRenderer->DescriptorSetLayoutStorageLock);
 
     for (uint64_t Hash = XXH64(Key, HashSize, 0); *MapRef; Hash <<= 2)
     {

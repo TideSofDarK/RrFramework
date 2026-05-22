@@ -117,11 +117,11 @@ struct Rr_FramebufferStorage
     Rr_FramebufferHive Hive;
 };
 
-extern VkFramebuffer Rr_GetVulkanFramebuffer(
+extern VkFramebuffer Rr_GetFramebuffer(
     VkRenderPass RenderPass,
     Rr_FramebufferKey *Key);
 
-extern void Rr_DestroyVulkanFramebuffers(VkImageView ImageView);
+extern void Rr_DestroyFramebuffers(VkImageView ImageView);
 
 typedef struct Rr_RenderPassAttachment Rr_RenderPassAttachment;
 struct Rr_RenderPassAttachment
@@ -163,7 +163,7 @@ struct Rr_RenderPassStorage
     Rr_RenderPassHive Hive;
 };
 
-extern VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassKey *Key);
+extern VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey *Key);
 
 struct Rr_Renderer
 {

@@ -160,8 +160,9 @@ void Rr_InvalidateDescriptorsState(
         for (; Index < RR_MAX_SETS; ++Index)
         {
             Rr_DescriptorSetLayout *OldLayout =
-                State->Layout->SetLayouts[Index];
-            Rr_DescriptorSetLayout *NewLayout = Layout->SetLayouts[Index];
+                State->Layout->Key.DescriptorSetLayouts[Index];
+            Rr_DescriptorSetLayout *NewLayout =
+                Layout->Key.DescriptorSetLayouts[Index];
             if (OldLayout != NewLayout)
             {
                 break;
@@ -169,9 +170,10 @@ void Rr_InvalidateDescriptorsState(
         }
     }
 
-    for (; Index < Layout->SetLayoutCount; ++Index)
+    for (; Index < Layout->Key.DescriptorSetLayoutCount; ++Index)
     {
-        Rr_DescriptorSetLayout *NewLayout = Layout->SetLayouts[Index];
+        Rr_DescriptorSetLayout *NewLayout =
+            Layout->Key.DescriptorSetLayouts[Index];
         State->Sets[Index] =
             NewLayout->Key.BindingCount ? NULL : State->EmptyDescriptorSet;
     }
@@ -233,7 +235,7 @@ static inline VkDescriptorSet Rr_GetDescriptorSet(
         Rr_AllocateDescriptorSets(
             State->DescriptorPoolList,
             1,
-            &State->Layout->SetLayouts[SetIndex]->Handle,
+            &State->Layout->Key.DescriptorSetLayouts[SetIndex]->Handle,
             &State->Sets[SetIndex]);
 
         if (OldSet)
@@ -242,7 +244,7 @@ static inline VkDescriptorSet Rr_GetDescriptorSet(
                 State->Sets[SetIndex],
                 OldSet,
                 State->Device,
-                State->Layout->SetLayouts[SetIndex]);
+                State->Layout->Key.DescriptorSetLayouts[SetIndex]);
         }
 
         State->Dirty[SetIndex] = true;

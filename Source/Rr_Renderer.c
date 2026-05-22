@@ -1185,27 +1185,21 @@ bool Rr_SetPresentMode(Rr_PresentMode PresentMode)
     return true;
 }
 
-VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassKey *Key)
+VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey *Key)
 {
-    VkRenderPass *RenderPassRef = NULL;
-
     Rr_LockSpinlock(&gRenderer->RenderPassStorageLock);
 
-    uint32_t AttachmentCount =
-        (uint32_t)(Key->ColorAttachmentCount + Key->ResolveAttachmentCount +
-                   Key->DepthStencil);
-
-    size_t HashSize = offsetof(Rr_RenderPassKey, Attachments) +
-                      AttachmentCount * sizeof(Rr_RenderPassAttachment);
-
+    size_t HashSize = sizeof(Rr_RenderPassKey);
     Rr_RenderPass **MapRef = &gRenderer->RenderPassStorage.Map;
+    Rr_RenderPass *RenderPass = NULL;
+
     for (uint64_t Hash = XXH64(Key, HashSize, 0); *MapRef; Hash <<= 2)
     {
         if (memcmp(Key, &(*MapRef)->Key, HashSize) == 0)
         {
-            RenderPassRef = &(*MapRef)->Handle;
+            Rr_UnlockSpinlock(&gRenderer->RenderPassStorageLock);
 
-            goto Found;
+            return (*MapRef)->Handle;
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
@@ -1214,25 +1208,19 @@ VkRenderPass Rr_GetVulkanRenderPass(Rr_RenderPassKey *Key)
                   gRenderer->Arena,
                   &gRenderer->Lock)
                   .Element;
+    RenderPass = *MapRef;
+    RR_ZERO_PTR(RenderPass);
     (*MapRef)->Key = *Key;
-    (*MapRef)->Handle = VK_NULL_HANDLE;
-    RR_ZERO((*MapRef)->Children);
-    RenderPassRef = &(*MapRef)->Handle;
-
-Found:
-
-    Rr_UnlockSpinlock(&gRenderer->RenderPassStorageLock);
-
-    if (*RenderPassRef != VK_NULL_HANDLE)
-    {
-        return *RenderPassRef;
-    }
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     VkAttachmentReference *ColorReferences = NULL;
     VkAttachmentReference *ResolveReferences = NULL;
     VkAttachmentReference *DepthReference = NULL;
+
+    uint32_t AttachmentCount =
+        (uint32_t)(Key->ColorAttachmentCount + Key->ResolveAttachmentCount +
+                   Key->DepthStencil);
 
     VkAttachmentDescription *Descriptions = RR_ALLOC_TYPE_COUNT(
         VkAttachmentDescription,
@@ -1340,43 +1328,36 @@ Found:
         Device->Handle,
         &RenderPassCreateInfo,
         NULL,
-        RenderPassRef);
+        &RenderPass->Handle);
+
+    Rr_UnlockSpinlock(&gRenderer->RenderPassStorageLock);
 
     Rr_DestroyScratch(Scratch);
 
-    return *RenderPassRef;
+    return RenderPass->Handle;
 }
 
-VkFramebuffer Rr_GetVulkanFramebuffer(
-    VkRenderPass RenderPass,
-    Rr_FramebufferKey *Key)
+VkFramebuffer Rr_GetFramebuffer(VkRenderPass RenderPass, Rr_FramebufferKey *Key)
 {
-    VkFramebuffer *FramebufferRef = NULL;
-
     Rr_LockSpinlock(&gRenderer->FramebufferStorageLock);
 
-    uint32_t AttachmentCount =
-        (uint32_t)(Key->ColorAttachmentCount + Key->ResolveAttachmentCount +
-                   Key->DepthStencil);
-
-    size_t HashSize = offsetof(Rr_FramebufferKey, ImageViews) +
-                      AttachmentCount * sizeof(VkImageView);
-
+    size_t HashSize = sizeof(Rr_FramebufferKey);
     Rr_Framebuffer **MapRef = &gRenderer->FramebufferStorage.Map;
+    Rr_Framebuffer *Framebuffer = NULL;
+
     for (uint64_t Hash = XXH64(Key, HashSize, 0); *MapRef; Hash <<= 2)
     {
         if ((*MapRef)->Handle == VK_NULL_HANDLE)
         {
-            (*MapRef)->Key = *Key;
-            FramebufferRef = &(*MapRef)->Handle;
+            Framebuffer = *MapRef;
 
-            goto Found;
+            goto FoundEmpty;
         }
         if (memcmp(Key, &(*MapRef)->Key, HashSize) == 0)
         {
-            FramebufferRef = &(*MapRef)->Handle;
+            Rr_UnlockSpinlock(&gRenderer->FramebufferStorageLock);
 
-            goto Found;
+            return (*MapRef)->Handle;
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
@@ -1385,19 +1366,16 @@ VkFramebuffer Rr_GetVulkanFramebuffer(
                   gRenderer->Arena,
                   &gRenderer->Lock)
                   .Element;
+    Framebuffer = *MapRef;
+    RR_ZERO_PTR(Framebuffer);
+
+FoundEmpty:
+
     (*MapRef)->Key = *Key;
-    (*MapRef)->Handle = VK_NULL_HANDLE;
-    RR_ZERO((*MapRef)->Children);
-    FramebufferRef = &(*MapRef)->Handle;
 
-Found:
-
-    Rr_UnlockSpinlock(&gRenderer->FramebufferStorageLock);
-
-    if (*FramebufferRef != VK_NULL_HANDLE)
-    {
-        return *FramebufferRef;
-    }
+    uint32_t AttachmentCount =
+        (uint32_t)(Key->ColorAttachmentCount + Key->ResolveAttachmentCount +
+                   Key->DepthStencil);
 
     VkFramebufferCreateInfo CreateInfo = {
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -1411,13 +1389,18 @@ Found:
 
     Rr_Device *Device = &gRenderer->Device;
 
-    Device
-        ->CreateFramebuffer(Device->Handle, &CreateInfo, NULL, FramebufferRef);
+    Device->CreateFramebuffer(
+        Device->Handle,
+        &CreateInfo,
+        NULL,
+        &Framebuffer->Handle);
 
-    return *FramebufferRef;
+    Rr_UnlockSpinlock(&gRenderer->FramebufferStorageLock);
+
+    return Framebuffer->Handle;
 }
 
-void Rr_DestroyVulkanFramebuffers(VkImageView ImageView)
+void Rr_DestroyFramebuffers(VkImageView ImageView)
 {
     Rr_Device *Device = &gRenderer->Device;
 

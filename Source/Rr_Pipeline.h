@@ -61,16 +61,13 @@ typedef struct Rr_PipelineLayoutKey Rr_PipelineLayoutKey;
 struct Rr_PipelineLayoutKey
 {
     uint32_t DescriptorSetLayoutCount;
-    VkDescriptorSetLayout DescriptorSetLayouts[RR_MAX_SETS];
+    Rr_DescriptorSetLayout *DescriptorSetLayouts[RR_MAX_SETS];
 };
 
 struct Rr_PipelineLayout
 {
     Rr_PipelineLayoutKey Key;
     Rr_PipelineLayout *Children[4];
-
-    uint32_t SetLayoutCount;
-    Rr_DescriptorSetLayout *SetLayouts[RR_MAX_SETS];
 
     VkPipelineLayout Handle;
 };

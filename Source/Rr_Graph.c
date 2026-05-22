@@ -701,7 +701,7 @@ static inline VkFormat Rr_GetImageFormatForBinding(
 {
     Rr_PipelineLayout *Layout = State->Layout;
     assert(Layout);
-    Rr_DescriptorSetLayout *SetLayout = Layout->SetLayouts[Set];
+    Rr_DescriptorSetLayout *SetLayout = Layout->Key.DescriptorSetLayouts[Set];
     assert(SetLayout);
     return (VkFormat)SetLayout->Key.Bindings[Binding].ImageFormat;
 }
@@ -1080,7 +1080,7 @@ static void Rr_ExecuteGraphicsNode(
 
     /* Begin render pass. */
 
-    VkRenderPass RenderPass = Rr_GetVulkanRenderPass(&RenderPassKey);
+    VkRenderPass RenderPass = Rr_GetRenderPass(&RenderPassKey);
 
     Rr_FramebufferKey FramebufferKey = {
         .Extent =
@@ -1098,8 +1098,7 @@ static void Rr_ExecuteGraphicsNode(
         ImageViews,
         AttachmentCount * sizeof(VkImageView));
 
-    VkFramebuffer Framebuffer =
-        Rr_GetVulkanFramebuffer(RenderPass, &FramebufferKey);
+    VkFramebuffer Framebuffer = Rr_GetFramebuffer(RenderPass, &FramebufferKey);
 
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -3375,7 +3374,7 @@ static inline VkPipelineStageFlags Rr_GetVulkanPipelineStageMaskForSetBinding(
     VkPipelineStageFlags StageMask = 0;
     VkShaderStageFlags ShaderMask = 0;
     Rr_DescriptorSetLayoutKey const *Key =
-        &Node->CurrentLayout->SetLayouts[SetIndex]->Key;
+        &Node->CurrentLayout->Key.DescriptorSetLayouts[SetIndex]->Key;
     for (uint32_t Index = 0; Index < Key->BindingCount; ++Index)
     {
         Rr_VulkanBinding const *VulkanBinding = &Key->Bindings[Index];
