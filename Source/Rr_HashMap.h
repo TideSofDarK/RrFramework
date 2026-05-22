@@ -128,12 +128,14 @@ static inline void RR_HASH_MAP_REHASH_NAME(
     size_t Steps,
     Rr_Arena *Arena);
 
-#define RR_HASH_MAP_INIT_NAME \
-    RR_HASH_MAP_EXPAND_CONCAT(  \
-        RR_HASH_MAP_PREFIX,     \
+#define RR_HASH_MAP_INIT_NAME  \
+    RR_HASH_MAP_EXPAND_CONCAT( \
+        RR_HASH_MAP_PREFIX,    \
         RR_HASH_MAP_EXPAND_CONCAT(Init, RR_HASH_MAP_NAME))
 
-static inline void RR_HASH_MAP_INIT_NAME(RR_HASH_MAP_MAP_TYPE *Map, Rr_Arena *Arena)
+static inline void RR_HASH_MAP_INIT_NAME(
+    RR_HASH_MAP_MAP_TYPE *Map,
+    Rr_Arena *Arena)
 {
     size_t NodeSize =
         sizeof(RR_HASH_MAP_NODE_TYPE) +
@@ -194,7 +196,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_BEGIN_NAME(
 
 static inline bool RR_HASH_MAP_IS_END_NAME(RR_HASH_MAP_ITERATOR_TYPE It)
 {
-    RR_HASH_MAP_NODE_TYPE *Node = (RR_HASH_MAP_NODE_TYPE *)It.Metadata;
+    RR_HASH_MAP_NODE_TYPE *Node = It.Metadata;
     RR_HASH_MAP_MAP_TYPE *Map = Node->Map;
     size_t IndexInNode = (size_t)(It.Data - Node->Buckets);
     return (uintptr_t)It.Metadata == (uintptr_t)Map->Last &&
@@ -252,6 +254,9 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_ERASE_ITERATOR_NAME(
     RR_HASH_MAP_ITERATOR_TYPE It)
 {
     It.Data->Occupied = false;
+    RR_HASH_MAP_NODE_TYPE *Node = It.Metadata;
+    RR_HASH_MAP_MAP_TYPE *Map = Node->Map;
+    Map->Size--;
     return RR_HASH_MAP_NEXT_NAME(It);
 }
 
@@ -386,7 +391,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_NAME(
     RR_HASH_MAP_VALUE_TYPE const *Value,
     Rr_Arena *Arena)
 {
-    uint64_t Hash = XXH64(&Key, sizeof(*Key), 0);
+    uint64_t Hash = XXH64(Key, sizeof(*Key), 0);
 
     return RR_HASH_MAP_INSERT_WITH_HASH_NAME(Map, Key, Value, Hash, Arena);
 }
@@ -400,7 +405,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_NAME(
     RR_HASH_MAP_MAP_TYPE *Map,
     RR_HASH_MAP_KEY_TYPE const *Key)
 {
-    uint64_t Hash = XXH64(&Key, sizeof(*Key), 0);
+    uint64_t Hash = XXH64(Key, sizeof(*Key), 0);
     size_t Mod = Hash % Map->Capacity;
     size_t QuadraticProber = 1;
 

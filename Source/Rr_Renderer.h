@@ -93,38 +93,17 @@ struct Rr_FramebufferKey
     uint8_t ResolveAttachmentCount;
     uint8_t DepthStencil;
     uint8_t Padding;
+    VkRenderPass RenderPass;
     VkImageView ImageViews[RR_MAX_COLOR_ATTACHMENTS * 2 + 1];
 };
 
-typedef struct Rr_Framebuffer Rr_Framebuffer;
-struct Rr_Framebuffer
-{
-    Rr_FramebufferKey Key;
-    Rr_Framebuffer *Children[4];
+#define RR_HASH_MAP_PREFIX     Rr_
+#define RR_HASH_MAP_NAME       FramebufferMap
+#define RR_HASH_MAP_KEY_TYPE   Rr_FramebufferKey
+#define RR_HASH_MAP_VALUE_TYPE VkFramebuffer
+#include "Rr_HashMap.h"
 
-    VkFramebuffer Handle;
-};
-
-#define RR_HIVE_TYPE      Rr_Framebuffer
-#define RR_HIVE_TYPE_NAME Framebuffer
-#define RR_HIVE_PREFIX    Rr_
-#include "Rr_Hive.h"
-
-typedef struct Rr_FramebufferStorage Rr_FramebufferStorage;
-struct Rr_FramebufferStorage
-{
-    Rr_Framebuffer *Map;
-    Rr_FramebufferHive Hive;
-};
-
-/* #define RR_HASH_MAP_NAME       _Map */
-/* #define RR_HASH_MAP_KEY_TYPE   _MapKey */
-/* #define RR_HASH_MAP_VALUE_TYPE _MapValue */
-/* #include "Rr_HashMap.h" */
-
-extern VkFramebuffer Rr_GetFramebuffer(
-    VkRenderPass RenderPass,
-    Rr_FramebufferKey *Key);
+extern VkFramebuffer Rr_GetFramebuffer(Rr_FramebufferKey *Key);
 
 extern void Rr_DestroyFramebuffers(VkImageView ImageView);
 
@@ -147,26 +126,11 @@ struct Rr_RenderPassKey
     Rr_RenderPassAttachment Attachments[RR_MAX_COLOR_ATTACHMENTS * 2 + 1];
 };
 
-typedef struct Rr_RenderPass Rr_RenderPass;
-struct Rr_RenderPass
-{
-    Rr_RenderPassKey Key;
-    Rr_RenderPass *Children[4];
-
-    VkRenderPass Handle;
-};
-
-#define RR_HIVE_TYPE      Rr_RenderPass
-#define RR_HIVE_TYPE_NAME RenderPass
-#define RR_HIVE_PREFIX    Rr_
-#include "Rr_Hive.h"
-
-typedef struct Rr_RenderPassStorage Rr_RenderPassStorage;
-struct Rr_RenderPassStorage
-{
-    Rr_RenderPass *Map;
-    Rr_RenderPassHive Hive;
-};
+#define RR_HASH_MAP_PREFIX     Rr_
+#define RR_HASH_MAP_NAME       RenderPassMap
+#define RR_HASH_MAP_KEY_TYPE   Rr_RenderPassKey
+#define RR_HASH_MAP_VALUE_TYPE VkRenderPass
+#include "Rr_HashMap.h"
 
 extern VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey *Key);
 
@@ -216,8 +180,8 @@ struct Rr_Renderer
     Rr_Spinlock ReleasedImagesLock;
     RR_FREE_LIST(Rr_ImageViewStorage) ImageViewStorage;
     Rr_Spinlock ImageViewStorageLock;
-    Rr_FramebufferStorage FramebufferStorage;
-    Rr_Spinlock FramebufferStorageLock;
+    Rr_FramebufferMap FramebufferMap;
+    Rr_Spinlock FramebufferMapLock;
 
     Rr_DescriptorSetLayoutStorage DescriptorSetLayoutStorage;
     Rr_Spinlock DescriptorSetLayoutStorageLock;
@@ -240,8 +204,8 @@ struct Rr_Renderer
     Rr_HandleHive ReleasedSamplers;
     Rr_Spinlock ReleasedSamplersLock;
 
-    Rr_RenderPassStorage RenderPassStorage;
-    Rr_Spinlock RenderPassStorageLock;
+    Rr_RenderPassMap RenderPassMap;
+    Rr_Spinlock RenderPassMapLock;
 
     Rr_DescriptorPoolList *DescriptorPoolList;
     Rr_Spinlock DescriptorPoolListLock;

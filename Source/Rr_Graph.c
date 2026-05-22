@@ -1092,13 +1092,14 @@ static void Rr_ExecuteGraphicsNode(
         .ColorAttachmentCount = RenderPassKey.ColorAttachmentCount,
         .ResolveAttachmentCount = RenderPassKey.ResolveAttachmentCount,
         .DepthStencil = RenderPassKey.DepthStencil,
+        .RenderPass = RenderPass,
     };
     memcpy(
         FramebufferKey.ImageViews,
         ImageViews,
         AttachmentCount * sizeof(VkImageView));
 
-    VkFramebuffer Framebuffer = Rr_GetFramebuffer(RenderPass, &FramebufferKey);
+    VkFramebuffer Framebuffer = Rr_GetFramebuffer(&FramebufferKey);
 
     VkRenderPassBeginInfo RenderPassBeginInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
