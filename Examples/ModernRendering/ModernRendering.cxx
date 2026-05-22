@@ -1615,6 +1615,7 @@ struct SModernRenderingApp
 
     void UI()
     {
+        Rr_UIDebugOverlay();
         Rr_UIBeginWindowEx("ModernRendering.cxx", NULL, 0);
         {
             if (Rr_UIBeginTree("General"))

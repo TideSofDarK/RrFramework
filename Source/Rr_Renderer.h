@@ -117,6 +117,11 @@ struct Rr_FramebufferStorage
     Rr_FramebufferHive Hive;
 };
 
+/* #define RR_HASH_MAP_NAME       _Map */
+/* #define RR_HASH_MAP_KEY_TYPE   _MapKey */
+/* #define RR_HASH_MAP_VALUE_TYPE _MapValue */
+/* #include "Rr_HashMap.h" */
+
 extern VkFramebuffer Rr_GetFramebuffer(
     VkRenderPass RenderPass,
     Rr_FramebufferKey *Key);
