@@ -9309,11 +9309,11 @@ void Rr_UIDebugOverlay(void)
                 gRenderer->Samplers.Capacity);
             Rr_UITextF(
                 "Render Passes: %zu/%zu",
-                gRenderer->RenderPassMap.Size,
+                gRenderer->RenderPassMap.Count,
                 gRenderer->RenderPassMap.Capacity);
             Rr_UITextF(
                 "Framebuffers: %zu/%zu",
-                gRenderer->FramebufferMap.Size,
+                gRenderer->FramebufferMap.Count,
                 gRenderer->FramebufferMap.Capacity);
             Rr_UITextF(
                 "SwapchainImages: %zu",

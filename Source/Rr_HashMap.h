@@ -22,7 +22,6 @@
 #define RR_HASH_MAP_H
 
 #include "Rr_Memory.h"
-#include "Rr_Platform.h"
 
 #if defined(__x86_64__) && !defined(__APPLE__)
 #include <xxHash/xxh_x86dispatch.h>
@@ -31,6 +30,25 @@
 #endif
 
 #include <string.h>
+
+#if defined(__BMI__)
+#include <immintrin.h>
+#elif defined(_MSC_VER)
+#include <intrin.h>
+#endif
+
+static inline uint64_t Rr_HashMapLog2(uint64_t Value)
+{
+    return 63 -
+#if defined(__BMI__)
+           (uint64_t)_lzcnt_u64(Value)
+#elif defined(_MSC_VER)
+           (uint64_t)__lzcnt64(Value)
+#else
+           (uint64_t)__builtin_clzl(Value)
+#endif
+        ;
+}
 
 #define RR_HASH_MAP_CONCAT(A, B)        A##B
 #define RR_HASH_MAP_EXPAND_CONCAT(A, B) RR_HASH_MAP_CONCAT(A, B)
@@ -59,11 +77,10 @@
 #define RR_HASH_MAP_INITIAL_CAPACITY 8
 #endif
 
-#define RR_HASH_MAP_STEPS \
-    Rr_CountLeadingZeroes(RR_HASH_MAP_INITIAL_CAPACITY) - 1U
+#define RR_HASH_MAP_STEPS Rr_HashMapLog2(RR_HASH_MAP_INITIAL_CAPACITY) - 1U
 
 #ifndef RR_HASH_MAP_LOAD_FACTOR
-#define RR_HASH_MAP_LOAD_FACTOR 0.75f
+#define RR_HASH_MAP_LOAD_FACTOR 0.75
 #endif
 
 #define RR_HASH_MAP_MAP_TYPE \
@@ -114,8 +131,8 @@ struct RR_HASH_MAP_MAP_TYPE
 {
     RR_HASH_MAP_NODE_TYPE *First;
     RR_HASH_MAP_NODE_TYPE *Last;
+    size_t Count;
     size_t Capacity;
-    size_t Size;
 };
 
 #define RR_HASH_MAP_REHASH_NAME \
@@ -192,7 +209,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_BEGIN_NAME(
         RR_HASH_MAP_PREFIX,        \
         RR_HASH_MAP_EXPAND_CONCAT( \
             Is,                    \
-            RR_HASH_MAP_EXPAND_CONCAT(RR_HASH_MAP_NAME, IteratorEnd)))
+            RR_HASH_MAP_EXPAND_CONCAT(RR_HASH_MAP_NAME, End)))
 
 static inline bool RR_HASH_MAP_IS_END_NAME(RR_HASH_MAP_ITERATOR_TYPE It)
 {
@@ -245,18 +262,18 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_NEXT_NAME(
     };
 }
 
-#define RR_HASH_MAP_ERASE_ITERATOR_NAME \
-    RR_HASH_MAP_EXPAND_CONCAT(          \
-        RR_HASH_MAP_PREFIX,             \
-        RR_HASH_MAP_EXPAND_CONCAT(EraseIteratorIn, RR_HASH_MAP_NAME))
+#define RR_HASH_MAP_ERASE_NAME \
+    RR_HASH_MAP_EXPAND_CONCAT( \
+        RR_HASH_MAP_PREFIX,    \
+        RR_HASH_MAP_EXPAND_CONCAT(EraseFrom, RR_HASH_MAP_NAME))
 
-static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_ERASE_ITERATOR_NAME(
+static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_ERASE_NAME(
     RR_HASH_MAP_ITERATOR_TYPE It)
 {
     It.Data->Occupied = false;
     RR_HASH_MAP_NODE_TYPE *Node = It.Metadata;
     RR_HASH_MAP_MAP_TYPE *Map = Node->Map;
-    Map->Size--;
+    Map->Count--;
     return RR_HASH_MAP_NEXT_NAME(It);
 }
 
@@ -275,7 +292,7 @@ static inline void RR_HASH_MAP_RESERVE_NAME(
         return;
     }
 
-    float Load = (float)Size / (float)Map->Capacity;
+    double Load = (double)Size / (double)Map->Capacity;
     if (Load >= RR_HASH_MAP_LOAD_FACTOR)
     {
         size_t Capacity = Map->Capacity;
@@ -305,7 +322,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_BUCKET_NAME(
     }
     else
     {
-        Steps = Rr_CountLeadingZeroes(BucketIndex);
+        Steps = Rr_HashMapLog2(BucketIndex);
         Steps -= RR_MIN(Steps, RR_HASH_MAP_STEPS);
     }
     RR_HASH_MAP_NODE_TYPE *Node = Map->First;
@@ -336,7 +353,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_WITH_HASH_NAME(
     uint64_t Hash,
     Rr_Arena *Arena)
 {
-    float Load = (float)Map->Size / (float)Map->Capacity;
+    double Load = (double)Map->Count / (double)Map->Capacity;
     if (Load >= RR_HASH_MAP_LOAD_FACTOR)
     {
         RR_HASH_MAP_REHASH_NAME(Map, 1, Arena);
@@ -374,7 +391,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_WITH_HASH_NAME(
             Bucket->Value = *Value;
             Bucket->Hash = Hash;
             Bucket->Occupied = true;
-            Map->Size++;
+            Map->Count++;
             return It;
         }
     }
@@ -461,7 +478,7 @@ static inline void RR_HASH_MAP_REHASH_NAME(
     };
 
     RR_ARRAY(TempBucket) OldBuckets = { 0 };
-    RR_RESERVE_ARRAY(&OldBuckets, Map->Size, Scratch.Arena);
+    RR_RESERVE_ARRAY(&OldBuckets, Map->Count, Scratch.Arena);
 
     RR_HASH_MAP_NODE_TYPE *Node = Map->First;
     while (Node)
@@ -495,7 +512,7 @@ static inline void RR_HASH_MAP_REHASH_NAME(
         Map->Last = NewNode;
         Map->Capacity += NewNode->Capacity;
     }
-    Map->Size = 0;
+    Map->Count = 0;
 
     for (size_t Index = 0; Index < OldBuckets.Count; ++Index)
     {
@@ -528,7 +545,7 @@ static inline void RR_HASH_MAP_REHASH_NAME(
 #undef RR_HASH_MAP_BEGIN_NAME
 #undef RR_HASH_MAP_IS_END_NAME
 #undef RR_HASH_MAP_NEXT_NAME
-#undef RR_HASH_MAP_ERASE_ITERATOR_NAME
+#undef RR_HASH_MAP_ERASE_NAME
 #undef RR_HASH_MAP_RESERVE_NAME
 #undef RR_HASH_MAP_FIND_BUCKET_NAME
 #undef RR_HASH_MAP_INSERT_WITH_HASH_NAME

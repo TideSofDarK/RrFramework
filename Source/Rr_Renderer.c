@@ -719,7 +719,7 @@ void Rr_CleanupRenderer(void)
 
     for (Rr_RenderPassMapIterator It =
              Rr_BeginInRenderPassMap(&gRenderer->RenderPassMap);
-         !Rr_IsRenderPassMapIteratorEnd(It);
+         !Rr_IsRenderPassMapEnd(It);
          It = Rr_NextInRenderPassMap(It))
     {
         Device->DestroyRenderPass(Device->Handle, It.Data->Value, NULL);
@@ -1195,7 +1195,7 @@ VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey *Key)
 
     Rr_RenderPassMapIterator It =
         Rr_FindInRenderPassMap(&gRenderer->RenderPassMap, Key);
-    if (!Rr_IsRenderPassMapIteratorEnd(It))
+    if (!Rr_IsRenderPassMapEnd(It))
     {
         Rr_UnlockSpinlock(&gRenderer->RenderPassMapLock);
 
@@ -1346,7 +1346,7 @@ VkFramebuffer Rr_GetFramebuffer(Rr_FramebufferKey *Key)
 
     Rr_FramebufferMapIterator It =
         Rr_FindInFramebufferMap(&gRenderer->FramebufferMap, Key);
-    if (!Rr_IsFramebufferMapIteratorEnd(It))
+    if (!Rr_IsFramebufferMapEnd(It))
     {
         Rr_UnlockSpinlock(&gRenderer->FramebufferMapLock);
 
@@ -1397,7 +1397,7 @@ void Rr_DestroyFramebuffers(VkImageView ImageView)
 
     Rr_FramebufferMapIterator It =
         Rr_BeginInFramebufferMap(&gRenderer->FramebufferMap);
-    while (!Rr_IsFramebufferMapIteratorEnd(It))
+    while (!Rr_IsFramebufferMapEnd(It))
     {
         Rr_FramebufferKey *Key = &It.Data->Key;
         bool Destroy = false;
@@ -1416,7 +1416,7 @@ void Rr_DestroyFramebuffers(VkImageView ImageView)
         if (Destroy)
         {
             Device->DestroyFramebuffer(Device->Handle, It.Data->Value, NULL);
-            It = Rr_EraseIteratorInFramebufferMap(It);
+            It = Rr_EraseFromFramebufferMap(It);
         }
         else
         {

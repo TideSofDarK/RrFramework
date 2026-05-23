@@ -38,10 +38,10 @@
 
 typedef uint16_t Rr_HiveSkipType;
 
-#endif
-
 #define RR_HIVE_CONCAT(a, b)        a##b
 #define RR_HIVE_EXPAND_CONCAT(a, b) RR_HIVE_CONCAT(a, b)
+
+#endif
 
 #ifndef RR_HIVE_PREFIX
 #define RR_HIVE_PREFIX

@@ -104,14 +104,3 @@ extern void Rr_UnlockSpinlock(Rr_Spinlock *Spinlock);
 extern void Rr_SleepNS(uint64_t Nanoseconds);
 
 extern Rr_Platform *gPlatform;
-
-static inline uint64_t Rr_CountLeadingZeroes(uint64_t Value)
-{
-    return 63 -
-#ifdef _MSC_VER
-           __lzcnt64((uint64_t)Value)
-#else
-           (size_t)__builtin_clzl((uint64_t)Value)
-#endif
-        ;
-}
