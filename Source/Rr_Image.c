@@ -240,7 +240,7 @@ VkImageView Rr_GetVulkanImageView(
 
         Rr_SetVulkanObjectName(
             VK_OBJECT_TYPE_IMAGE_VIEW,
-            (uint64_t)*ImageViewRef,
+            (uint64_t)Handle,
             NameBuffer);
     }
 #endif

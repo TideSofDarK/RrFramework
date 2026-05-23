@@ -30,22 +30,21 @@
 
 #include <stdlib.h>
 
-static Rr_PlatformInfo PlatformInfo;
-
-bool Rr_InitPlatform(void)
+void Rr_InitPlatform(void)
 {
-    PlatformInfo.PageSize = getpagesize();
-    PlatformInfo.AllocationGranularity = PlatformInfo.PageSize;
+    Rr_PlatformInfo *PlatformInfo = Rr_GetPlatformInfo();
+    if (PlatformInfo->Initialized)
+    {
+        return;
+    }
+
+    PlatformInfo->PageSize = getpagesize();
+    PlatformInfo->AllocationGranularity = PlatformInfo->PageSize;
 
     struct timespec Timespec;
     assert(clock_gettime(CLOCK_MONOTONIC_RAW, &Timespec) == 0);
 
-    return true;
-}
-
-Rr_PlatformInfo *Rr_GetPlatformInfo(void)
-{
-    return &PlatformInfo;
+    PlatformInfo->Initialized = true;
 }
 
 uint64_t Rr_GetPerformanceCounter(void)

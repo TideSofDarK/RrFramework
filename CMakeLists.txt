@@ -106,7 +106,7 @@ endfunction()
 # Add library
 #
 
-add_library(${PROJECT_NAME} OBJECT ${RR_SOURCES})
+add_library(${PROJECT_NAME} OBJECT)
 
 target_compile_features(${PROJECT_NAME} PRIVATE c_std_99)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
@@ -269,4 +269,13 @@ if (RR_EXAMPLES)
     add_subdirectory(Examples/ModernRendering)
     add_subdirectory(Examples/UITest)
     add_subdirectory(Examples/Readback)
+endif ()
+
+#
+# Tests
+#
+
+option(RR_TESTS "Build included tests" OFF)
+if (RR_TESTS)
+    add_subdirectory(Test)
 endif ()

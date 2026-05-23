@@ -141,6 +141,8 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_InitPlatform();
     Rr_InitPlatformLibrary(Config);
 
+    Rr_Platform *Platform = Rr_GetPlatform();
+
     Rr_InitThreadContext();
 
     Rr_Arena *Arena = ThreadContext->Arena;
@@ -178,11 +180,11 @@ void Rr_Run(Rr_AppConfig *Config)
         Rr_DispatchEvents(Config);
 
         Rr_Vec2 MousePosition = Rr_GetMousePosition();
-        gPlatform->MousePositionDelta =
-            Rr_SubV2(MousePosition, gPlatform->LastMousePosition);
-        gPlatform->LastMousePosition = MousePosition;
+        Platform->MousePositionDelta =
+            Rr_SubV2(MousePosition, Platform->LastMousePosition);
+        Platform->LastMousePosition = MousePosition;
 
-        Rr_DestroyScratch(gPlatform->EventScratch);
+        Rr_DestroyScratch(Platform->EventScratch);
 
         Rr_BeginUI();
 

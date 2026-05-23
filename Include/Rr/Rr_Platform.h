@@ -23,15 +23,7 @@
 
 #include <Rr/Rr_Math.h>
 
-typedef struct Rr_PlatformInfo Rr_PlatformInfo;
-struct Rr_PlatformInfo
-{
-    int PageSize;
-    int AllocationGranularity;
-    uint64_t PerformanceFrequency;
-};
-
-RR_EXTERN Rr_PlatformInfo *Rr_GetPlatformInfo(void);
+RR_EXTERN void Rr_InitPlatform(void);
 
 RR_EXTERN uint64_t Rr_GetPerformanceCounter(void);
 
@@ -177,8 +169,6 @@ RR_EXTERN Rr_Vec2 Rr_GetMousePosition(void);
 RR_EXTERN Rr_Vec2 Rr_GetMousePositionDelta(void);
 
 RR_EXTERN Rr_MouseButtonFlags Rr_GetMouseState(void);
-
-typedef struct Rr_Platform Rr_Platform;
 
 typedef enum
 {

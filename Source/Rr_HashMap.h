@@ -370,9 +370,16 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_WITH_HASH_NAME(
         if (Bucket->Occupied)
         {
             bool EqualHash = Hash == Bucket->Hash;
-            bool EqualKey =
-                EqualHash &&
-                memcmp(Key, &Bucket->Key, sizeof(RR_HASH_MAP_KEY_TYPE)) == 0;
+            bool EqualKey = EqualHash &&
+#ifdef RR_HASH_MAP_COMPARE_NAME
+                            RR_HASH_MAP_COMPARE_NAME(Key, &Bucket->Key)
+#else
+                            memcmp(
+                                Key,
+                                &Bucket->Key,
+                                sizeof(RR_HASH_MAP_KEY_TYPE)) == 0
+#endif
+                ;
             if (EqualKey)
             {
                 Bucket->Value = *Value;
@@ -434,9 +441,16 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_NAME(
         if (Bucket->Occupied)
         {
             bool EqualHash = Hash == Bucket->Hash;
-            bool EqualKey =
-                EqualHash &&
-                memcmp(Key, &Bucket->Key, sizeof(RR_HASH_MAP_KEY_TYPE)) == 0;
+            bool EqualKey = EqualHash &&
+#ifdef RR_HASH_MAP_COMPARE_NAME
+                            RR_HASH_MAP_COMPARE_NAME(Key, &Bucket->Key)
+#else
+                            memcmp(
+                                Key,
+                                &Bucket->Key,
+                                sizeof(RR_HASH_MAP_KEY_TYPE)) == 0
+#endif
+                ;
             if (EqualKey)
             {
                 return It;
@@ -467,7 +481,7 @@ static inline void RR_HASH_MAP_REHASH_NAME(
         return;
     }
 
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+    Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     typedef struct TempBucket TempBucket;
     struct TempBucket
@@ -551,6 +565,7 @@ static inline void RR_HASH_MAP_CLEAR_NAME(RR_HASH_MAP_MAP_TYPE *Map)
 #undef RR_HASH_MAP_INITIAL_CAPACITY
 #undef RR_HASH_MAP_STEPS
 #undef RR_HASH_MAP_LOAD_FACTOR
+#undef RR_HASH_MAP_COMPARE_NAME
 #undef RR_HASH_MAP_MAP_TYPE
 #undef RR_HASH_MAP_BUCKET_TYPE
 #undef RR_HASH_MAP_ITERATOR_TYPE

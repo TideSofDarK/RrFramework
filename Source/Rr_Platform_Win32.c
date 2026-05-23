@@ -23,25 +23,24 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-static Rr_PlatformInfo PlatformInfo;
-
-bool Rr_InitPlatform()
+void Rr_InitPlatform()
 {
+    Rr_PlatformInfo *PlatformInfo = Rr_GetPlatformInfo();
+    if (PlatformInfo->Initialized)
+    {
+        return;
+    }
+
     SYSTEM_INFO SystemInfo;
     GetSystemInfo(&SystemInfo);
-    PlatformInfo.PageSize = SystemInfo.dwPageSize;
-    PlatformInfo.AllocationGranularity = SystemInfo.dwAllocationGranularity;
+    PlatformInfo->PageSize = SystemInfo.dwPageSize;
+    PlatformInfo->AllocationGranularity = SystemInfo.dwAllocationGranularity;
 
     LARGE_INTEGER Frequency;
     QueryPerformanceFrequency(&Frequency);
-    PlatformInfo.PerformanceFrequency = (uint64_t)Frequency.QuadPart;
+    PlatformInfo->PerformanceFrequency = (uint64_t)Frequency.QuadPart;
 
-    return true;
-}
-
-Rr_PlatformInfo *Rr_GetPlatformInfo()
-{
-    return &PlatformInfo;
+    PlatformInfo->Initialized = true;
 }
 
 uint64_t Rr_GetPerformanceCounter(void)

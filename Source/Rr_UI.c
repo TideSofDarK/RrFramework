@@ -9271,7 +9271,7 @@ void Rr_UIDebugOverlay(void)
                 Rr_UIDebugOverlayArena(Frame->Arena, FrameString);
             }
             Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
-            Rr_UIDebugOverlayArena(gPlatform->Arena, "Window");
+            Rr_UIDebugOverlayArena(Rr_GetPlatform()->Arena, "Window");
         }
         Rr_UIEndWindow();
 

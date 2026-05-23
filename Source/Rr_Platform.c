@@ -20,11 +20,25 @@
 
 #include "Rr_Platform.h"
 
-Rr_Platform *gPlatform = NULL;
+Rr_PlatformInfo *Rr_GetPlatformInfo(void)
+{
+    static Rr_PlatformInfo PlatformInfo = { 0 };
+
+    return &PlatformInfo;
+}
+
+Rr_Platform *Rr_GetPlatform(void)
+{
+    static Rr_Platform Platform = { 0 };
+
+    return &Platform;
+}
 
 Rr_Vec2 Rr_GetMousePositionDelta(void)
 {
-    return gPlatform->MousePositionDelta;
+    Rr_Platform *Platform = Rr_GetPlatform();
+
+    return Platform->MousePositionDelta;
 }
 
 void Rr_ToggleWindowFullscreen(void)

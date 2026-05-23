@@ -33,7 +33,8 @@
 
 bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
 {
-    assert(gPlatform == NULL);
+    Rr_Platform *Platform = Rr_GetPlatform();
+    assert(!Platform->Initialized);
 
     RR_LOG_INFO("Using SDL platform library");
 
@@ -56,17 +57,16 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
         SDLWindowFlags |= SDL_WINDOW_RESIZABLE;
     }
     Rr_Arena *Arena = Rr_CreateDefaultArena();
-    gPlatform = RR_ALLOC_TYPE(Rr_Platform, Arena);
-    gPlatform->Arena = Arena;
-    gPlatform->EventScratch =
+    Platform->Arena = Arena;
+    Platform->EventScratch =
         (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };
-    gPlatform->Window = SDL_CreateWindow(Config->Title, 0, 0, SDLWindowFlags);
-    if (!gPlatform->Window)
+    Platform->Window = SDL_CreateWindow(Config->Title, 0, 0, SDLWindowFlags);
+    if (!Platform->Window)
     {
         RR_LOG_ERROR("%s", SDL_GetError());
     }
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
-    SDL_StartTextInput(gPlatform->Window);
+    SDL_StartTextInput(Platform->Window);
     Rr_IntVec2 WindowSize = Rr_GetDisplaySize();
     WindowSize.X = (int32_t)((float)WindowSize.X * RR_WINDOWED_RATIO);
     WindowSize.Y = (int32_t)((float)WindowSize.Y * RR_WINDOWED_RATIO);
@@ -78,9 +78,9 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     WindowSize.X = (int32_t)((float)UsableBounds.w * RR_WINDOWED_RATIO);
     WindowSize.Y = (int32_t)((float)UsableBounds.h * RR_WINDOWED_RATIO);
 #endif
-    SDL_SetWindowSize(gPlatform->Window, WindowSize.X, WindowSize.Y);
+    SDL_SetWindowSize(Platform->Window, WindowSize.X, WindowSize.Y);
     SDL_SetWindowPosition(
-        gPlatform->Window,
+        Platform->Window,
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED);
 
@@ -88,16 +88,21 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     sprintf(DoubleClickTimeString, "%d", RR_DOUBLE_CLICK_TIME_MS);
     SDL_SetHint(SDL_HINT_MOUSE_DOUBLE_CLICK_TIME, DoubleClickTimeString);
 
+    Platform->Initialized = true;
+
     return true;
 }
 
-bool Rr_CleanupPlatformLibrary(void)
+void Rr_CleanupPlatformLibrary(void)
 {
-    SDL_DestroyWindow(gPlatform->Window);
+    Rr_Platform *Platform = Rr_GetPlatform();
+    assert(Platform->Initialized);
 
+    SDL_DestroyWindow(Platform->Window);
     SDL_Quit();
 
-    return true;
+    Rr_DestroyArena(Platform->Arena);
+    RR_ZERO_PTR(Platform);
 }
 
 void (*Rr_GetVkGetInstanceProcAddr(void))(void)
@@ -112,8 +117,10 @@ const char *const *Rr_GetVulkanExtensions(uint32_t *Count)
 
 bool Rr_CreateVulkanSurface(void *Instance, void **Surface)
 {
+    Rr_Platform *Platform = Rr_GetPlatform();
+
     return SDL_Vulkan_CreateSurface(
-        gPlatform->Window,
+        Platform->Window,
         (VkInstance)Instance,
         NULL,
         (VkSurfaceKHR *)Surface);
@@ -126,12 +133,14 @@ bool Rr_IsScancodePressed(Rr_Scancode Scancode)
 
 static inline Rr_Vec2 Rr_SDLConvertMousePosition(Rr_Vec2 Scaled)
 {
+    Rr_Platform *Platform = Rr_GetPlatform();
+
     Rr_IntVec2 WindowSize;
-    SDL_GetWindowSize(gPlatform->Window, &WindowSize.X, &WindowSize.Y);
+    SDL_GetWindowSize(Platform->Window, &WindowSize.X, &WindowSize.Y);
 
     Rr_IntVec2 WindowSizeInPixels;
     SDL_GetWindowSizeInPixels(
-        gPlatform->Window,
+        Platform->Window,
         &WindowSizeInPixels.X,
         &WindowSizeInPixels.Y);
 
@@ -159,6 +168,8 @@ Rr_MouseButtonFlags Rr_GetMouseState(void)
 
 bool Rr_PollPlatformEvent(Rr_Event *Event)
 {
+    Rr_Platform *Platform = Rr_GetPlatform();
+
     static SDL_Event SDLEvent;
     SDL_PollEvent(&SDLEvent);
 
@@ -171,7 +182,7 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
         case SDL_EVENT_TEXT_INPUT:
         {
             size_t Length = strlen(SDLEvent.text.text);
-            char *Buffer = RR_ALLOC_NO_ZERO(Length + 1, gPlatform->Arena);
+            char *Buffer = RR_ALLOC_NO_ZERO(Length + 1, Platform->Arena);
             memcpy(Buffer, SDLEvent.text.text, Length + 1);
 
             Event->Type = RR_EVENT_TYPE_TEXT_INPUT;
@@ -290,53 +301,70 @@ bool Rr_PollPlatformEvent(Rr_Event *Event)
 
 void Rr_ShowWindow(void)
 {
-    SDL_ShowWindow(gPlatform->Window);
+    Rr_Platform *Platform = Rr_GetPlatform();
+
+    SDL_ShowWindow(Platform->Window);
 }
 
 bool Rr_IsWindowMinimized(void)
 {
-    return SDL_GetWindowFlags(gPlatform->Window) & SDL_WINDOW_MINIMIZED;
+    Rr_Platform *Platform = Rr_GetPlatform();
+
+    return SDL_GetWindowFlags(Platform->Window) & SDL_WINDOW_MINIMIZED;
 }
 
 bool Rr_IsWindowFullscreen(void)
 {
-    return (SDL_GetWindowFlags(gPlatform->Window) & SDL_WINDOW_FULLSCREEN) != 0;
+    Rr_Platform *Platform = Rr_GetPlatform();
+
+    return (SDL_GetWindowFlags(Platform->Window) & SDL_WINDOW_FULLSCREEN) != 0;
 }
 
 void Rr_SetWindowFullscreen(bool Fullscreen)
 {
-    SDL_SetWindowFullscreen(gPlatform->Window, Fullscreen);
+    Rr_Platform *Platform = Rr_GetPlatform();
+
+    SDL_SetWindowFullscreen(Platform->Window, Fullscreen);
 }
 
 void Rr_SetRelativeMouseMode(bool Relative)
 {
-    SDL_SetWindowRelativeMouseMode(gPlatform->Window, Relative);
+    Rr_Platform *Platform = Rr_GetPlatform();
+
+    SDL_SetWindowRelativeMouseMode(Platform->Window, Relative);
 }
 
 float Rr_GetDisplayRefreshRate(void)
 {
-    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(gPlatform->Window);
+    Rr_Platform *Platform = Rr_GetPlatform();
+
+    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Platform->Window);
     const SDL_DisplayMode *Mode = SDL_GetDesktopDisplayMode(DisplayID);
     return Mode->refresh_rate;
 }
 
 Rr_IntVec2 Rr_GetWindowSize(void)
 {
+    Rr_Platform *Platform = Rr_GetPlatform();
+
     Rr_IntVec2 Size;
-    SDL_GetWindowSizeInPixels(gPlatform->Window, &Size.X, &Size.Y);
+    SDL_GetWindowSizeInPixels(Platform->Window, &Size.X, &Size.Y);
     return Size;
 }
 
 void Rr_SetWindowTitle(const char *Title)
 {
-    SDL_SetWindowTitle(gPlatform->Window, Title);
+    Rr_Platform *Platform = Rr_GetPlatform();
+
+    SDL_SetWindowTitle(Platform->Window, Title);
 }
 
 Rr_IntVec2 Rr_GetDisplaySize(void)
 {
-    assert(gPlatform && gPlatform->Window);
-    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(gPlatform->Window);
-    float Scale = SDL_GetWindowPixelDensity(gPlatform->Window);
+    Rr_Platform *Platform = Rr_GetPlatform();
+
+    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Platform->Window);
+    float Scale = SDL_GetWindowPixelDensity(Platform->Window);
     SDL_Rect Rect;
     SDL_GetDisplayBounds(DisplayID, &Rect);
     return (Rr_IntVec2){
@@ -347,14 +375,18 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
 
 float Rr_GetWindowContentsScale(void)
 {
-    return SDL_GetWindowDisplayScale(gPlatform->Window);
+    Rr_Platform *Platform = Rr_GetPlatform();
+
+    return SDL_GetWindowDisplayScale(Platform->Window);
 }
 
 void Rr_SetWindowSize(Rr_IntVec2 Size)
 {
-    float Scale = SDL_GetWindowDisplayScale(gPlatform->Window);
+    Rr_Platform *Platform = Rr_GetPlatform();
+
+    float Scale = SDL_GetWindowDisplayScale(Platform->Window);
     SDL_SetWindowSize(
-        gPlatform->Window,
+        Platform->Window,
         (int32_t)((float)Size.Width / Scale),
         (int32_t)((float)Size.Height / Scale));
 }

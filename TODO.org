@@ -44,6 +44,7 @@
 - [ ] Public API should use const where applicable.
 - [ ] Does PushXXXIntoHive need to return iterator?
 - [ ] Releasing same resource (buffer, image, etc) twice leads to annoying bugs.
+- [ ] Locking gRenderer->Arena is annoying...
 
 * Features
 

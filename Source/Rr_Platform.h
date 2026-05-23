@@ -32,8 +32,21 @@
 
 #define RR_WINDOWED_RATIO 0.85f
 
+struct Rr_AppConfig;
+
+typedef struct Rr_PlatformInfo Rr_PlatformInfo;
+struct Rr_PlatformInfo
+{
+    bool Initialized;
+    int PageSize;
+    int AllocationGranularity;
+    uint64_t PerformanceFrequency;
+};
+
+typedef struct Rr_Platform Rr_Platform;
 struct Rr_Platform
 {
+    bool Initialized;
     void *Window;
     bool WindowScaled;
     bool Wayland;
@@ -46,13 +59,13 @@ struct Rr_Platform
     Rr_Arena *Arena;
 };
 
-struct Rr_AppConfig;
+extern Rr_PlatformInfo *Rr_GetPlatformInfo(void);
 
-extern bool Rr_InitPlatform(void);
+extern Rr_Platform *Rr_GetPlatform(void);
 
 extern bool Rr_InitPlatformLibrary(struct Rr_AppConfig *Config);
 
-extern bool Rr_CleanupPlatformLibrary(void);
+extern void Rr_CleanupPlatformLibrary(void);
 
 extern void (*Rr_GetVkGetInstanceProcAddr(void))(void);
 
@@ -102,5 +115,3 @@ extern bool Rr_TryLockSpinlock(Rr_Spinlock *Spinlock);
 extern void Rr_UnlockSpinlock(Rr_Spinlock *Spinlock);
 
 extern void Rr_SleepNS(uint64_t Nanoseconds);
-
-extern Rr_Platform *gPlatform;

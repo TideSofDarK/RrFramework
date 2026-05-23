@@ -33,10 +33,8 @@ Rr_Arena *Rr_CreateArena(size_t ReserveSize, size_t CommitSize)
     ReserveSize = RR_ALIGN_POW2(ReserveSize, PageSize);
     CommitSize = RR_ALIGN_POW2(CommitSize, PageSize);
 
-    char *Data = Rr_ReserveMemory(ReserveSize);
-    Rr_CommitMemory(Data, CommitSize);
-
-    Rr_Arena *Arena = (Rr_Arena *)Data;
+    Rr_Arena *Arena = Rr_ReserveMemory(ReserveSize);
+    Rr_CommitMemory(Arena, CommitSize);
     *Arena = (Rr_Arena){
         .Position = sizeof(Rr_Arena),
         .ReserveSize = ReserveSize,
@@ -67,6 +65,7 @@ void Rr_DestroyArena(Rr_Arena *Arena)
     {
         return;
     }
+
     Rr_ReleaseMemory((void *)Arena, Arena->ReserveSize);
 }
 
