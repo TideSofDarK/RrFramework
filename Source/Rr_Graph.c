@@ -230,7 +230,7 @@ static inline Rr_GraphNode *Rr_AddGraphNode(
 static inline bool Rr_AddNodeDependency(
     Rr_GraphNode *Node,
     Rr_NodeDependencyArray *Deps,
-    Rr_Map **WriteToNode,
+    Rr_HashTrie **WriteToNode,
     Rr_GraphHandle *Handle,
     Rr_SyncState *State,
     bool AllowMultipleWrites,
@@ -279,7 +279,7 @@ static inline bool Rr_AddNodeDependency(
     Rr_GraphHandle CurrentHandle = *Handle;
 
     Rr_GraphNode **NodeInMap =
-        RR_GET_MAP_VALUE(WriteToNode, Handle->Hash, Arena);
+        RR_FIND_IN_HASH_TRIE(WriteToNode, Handle->Hash, Arena);
 
     /* Treat any image read as a write for now due to layout transitions. */
 
@@ -387,7 +387,7 @@ static inline void Rr_ProcessDependencies(
     uint32_t Index,
     Rr_GraphNode *Node,
     Rr_NodeDependencyArray *Deps,
-    Rr_Map **WriteToNode,
+    Rr_HashTrie **WriteToNode,
     Rr_Arena *Arena)
 {
     for (size_t DepIndex = 0; DepIndex < Deps->Count; ++DepIndex)
@@ -396,8 +396,10 @@ static inline void Rr_ProcessDependencies(
 
         /* Artifical "read-before-write" dependency. */
 
-        Rr_GraphNode *Writer =
-            RR_GET_MAP_VALUE_DEREF(WriteToNode, Dependency->Handle.Hash, Arena);
+        Rr_GraphNode *Writer = RR_FIND_IN_HASH_TRIE_DEREF(
+            WriteToNode,
+            Dependency->Handle.Hash,
+            Arena);
         if (Writer != NULL && Writer != Node)
         {
             *RR_PUSH_INTO_ARRAY(&AdjacencyList[Writer->OriginalIndex], Arena) =
@@ -414,7 +416,7 @@ static inline void Rr_ProcessDependencies(
             Rr_GraphHandle Handle = Dependency->Handle;
             Handle.Values.Generation--;
             Rr_GraphNode *Producer =
-                RR_GET_MAP_VALUE_DEREF(WriteToNode, Handle.Hash, Arena);
+                RR_FIND_IN_HASH_TRIE_DEREF(WriteToNode, Handle.Hash, Arena);
             if (Producer != NULL)
             {
                 *RR_PUSH_INTO_ARRAY(&AdjacencyList[Index], Arena) =
@@ -1876,7 +1878,7 @@ void Rr_ExecuteGraph(
                 }
             }
 
-            Rr_BufferMemoryBarrier **BufferBarrierRef = RR_GET_MAP_VALUE(
+            Rr_BufferMemoryBarrier **BufferBarrierRef = RR_FIND_IN_HASH_TRIE(
                 &BarrierBatch.VulkanHandleToBarrier,
                 Buffer,
                 Scratch.Arena);
@@ -1960,7 +1962,7 @@ void Rr_ExecuteGraph(
                 }
             }
 
-            Rr_ImageMemoryBarrier **ImageBarrierRef = RR_GET_MAP_VALUE(
+            Rr_ImageMemoryBarrier **ImageBarrierRef = RR_FIND_IN_HASH_TRIE(
                 &BarrierBatch.VulkanHandleToBarrier,
                 Image,
                 Scratch.Arena);
@@ -2198,14 +2200,14 @@ void Rr_FinalizeGraph(Rr_Graph *Graph)
 static inline Rr_GraphImage *Rr_GetGraphHandle(
     Rr_Graph *Graph,
     Rr_GraphResourceArray *ResourceArray,
-    Rr_Map **Handles,
+    Rr_HashTrie **Handles,
     void *Container,
     Rr_AtomicInt *RefCount)
 {
     assert(Container != NULL);
 
     Rr_GraphHandle **GraphHandle =
-        RR_GET_MAP_VALUE(Handles, (Rr_MapKey)Container, Graph->Arena);
+        RR_FIND_IN_HASH_TRIE(Handles, (Rr_HashTrieKey)Container, Graph->Arena);
     if (*GraphHandle == NULL)
     {
         Rr_GraphImage Handle = {

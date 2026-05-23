@@ -62,17 +62,17 @@ void Rr_GrowArray(void *Array, size_t Size, size_t MinCount, Rr_Arena *Arena)
     memcpy(Array, &Replica, sizeof(Replica));
 }
 
-void **Rr_GetMapValue(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena)
+void **Rr_FindInHashTrie(Rr_HashTrie **Map, Rr_HashTrieKey Key, Rr_Arena *Arena)
 {
     if (*Map != NULL)
     {
-        for (Rr_MapKey Hash = Key; *Map; Hash <<= 2)
+        for (Rr_HashTrieKey Hash = Key; *Map; Hash <<= 2)
         {
             if (Key == (*Map)->Key)
             {
                 return &(*Map)->Value;
             }
-            static const int Shift = (sizeof(Rr_MapKey) * CHAR_BIT) - 2;
+            static const int Shift = (sizeof(Rr_HashTrieKey) * CHAR_BIT) - 2;
             Map = &(*Map)->Child[Hash >> Shift];
         }
     }
@@ -80,7 +80,7 @@ void **Rr_GetMapValue(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena)
     {
         return NULL;
     }
-    *Map = (Rr_Map *)RR_ALLOC(sizeof(Rr_Map), Arena);
+    *Map = (Rr_HashTrie *)RR_ALLOC(sizeof(Rr_HashTrie), Arena);
     (*Map)->Key = Key;
     return &(*Map)->Value;
 }
@@ -97,7 +97,7 @@ bool Rr_AddHandleToSet(Rr_HandleSet *Set, Rr_Handle Handle, Rr_Arena *Arena)
             {
                 return false;
             }
-            static const int Shift = (sizeof(Rr_MapKey) * CHAR_BIT) - 2;
+            static const int Shift = (sizeof(Rr_HashTrieKey) * CHAR_BIT) - 2;
             Trie = &(*Trie)->Children[Hash >> Shift];
         }
     }

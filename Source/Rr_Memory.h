@@ -28,13 +28,10 @@ extern "C" {
 
 /*
  * Dynamic Array
+ *
+ * Grow discards previous allocation so it's mostly
+ * useful with scratch arenas.
  */
-
-extern void Rr_GrowArray(
-    void *Array,
-    size_t Size,
-    size_t MinCount,
-    Rr_Arena *Arena);
 
 #define RR_ARRAY(Type)   \
     struct               \
@@ -43,6 +40,12 @@ extern void Rr_GrowArray(
         size_t Count;    \
         size_t Capacity; \
     }
+
+extern void Rr_GrowArray(
+    void *Array,
+    size_t Size,
+    size_t MinCount,
+    Rr_Arena *Arena);
 
 #define RR_RESERVE_ARRAY(Array, ElementCount, Arena)          \
     do                                                        \
@@ -112,26 +115,33 @@ extern void Rr_GrowArray(
         memcpy((Dst)->Data, (Src)->Data, sizeof(*(Dst)->Data) * (Src)->Count)
 
 /*
- * Hashmap
+ * Hash Trie
+ *
+ * Adapted from https://nullprogram.com/blog/2023/09/30/
+ * A bit like hash map but doesn't support deletion.
+ * On the upside, pointers to nodes remain stable.
  */
 
-typedef uint64_t Rr_MapKey;
+typedef uint64_t Rr_HashTrieKey;
 
-typedef struct Rr_Map Rr_Map;
-struct Rr_Map
+typedef struct Rr_HashTrie Rr_HashTrie;
+struct Rr_HashTrie
 {
-    Rr_Map *Child[4];
-    Rr_MapKey Key;
+    Rr_HashTrie *Child[4];
+    Rr_HashTrieKey Key;
     void *Value;
 };
 
-extern void **Rr_GetMapValue(Rr_Map **Map, Rr_MapKey Key, Rr_Arena *Arena);
+extern void **Rr_FindInHashTrie(
+    Rr_HashTrie **Map,
+    Rr_HashTrieKey Key,
+    Rr_Arena *Arena);
 
-#define RR_GET_MAP_VALUE(Map, Key, Arena) \
-    ((void *)Rr_GetMapValue((Map), (uintptr_t)Key, Arena))
+#define RR_FIND_IN_HASH_TRIE(Map, Key, Arena) \
+    ((void *)Rr_FindInHashTrie((Map), (Rr_HashTrieKey)Key, Arena))
 
-#define RR_GET_MAP_VALUE_DEREF(Map, Key, Arena) \
-    (*(void **)Rr_GetMapValue((Map), (uintptr_t)Key, Arena))
+#define RR_FIND_IN_HASH_TRIE_DEREF(Map, Key, Arena) \
+    (*(void **)Rr_FindInHashTrie((Map), (Rr_HashTrieKey)Key, Arena))
 
 /*
  * Handle Hive

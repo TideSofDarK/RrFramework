@@ -80,7 +80,7 @@ struct Rr_BarrierBatch
 {
     RR_ARRAY(Rr_ImageMemoryBarrier) ImageBarriers;
     RR_ARRAY(Rr_BufferMemoryBarrier) BufferBarriers;
-    Rr_Map *VulkanHandleToBarrier;
+    Rr_HashTrie *VulkanHandleToBarrier;
 };
 
 typedef struct Rr_SyncState Rr_SyncState;

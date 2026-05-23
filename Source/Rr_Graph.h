@@ -41,7 +41,7 @@ union Rr_GraphHandle
         uint32_t Index;
         uint32_t Generation;
     } Values;
-    Rr_MapKey Hash;
+    Rr_HashTrieKey Hash;
 };
 
 typedef enum Rr_GraphNodeType
@@ -373,11 +373,11 @@ struct Rr_Graph
     RR_ARRAY(Rr_GraphNode *) Nodes;
 
     Rr_GraphResourceArray BufferResources;
-    Rr_Map *BufferWriteToNode;
-    Rr_Map *BufferHandles;
+    Rr_HashTrie *BufferWriteToNode;
+    Rr_HashTrie *BufferHandles;
     Rr_GraphResourceArray ImageResources;
-    Rr_Map *ImageWriteToNode;
-    Rr_Map *ImageHandles;
+    Rr_HashTrie *ImageWriteToNode;
+    Rr_HashTrie *ImageHandles;
 
     Rr_GraphImage *SwapchainImageHandle;
 

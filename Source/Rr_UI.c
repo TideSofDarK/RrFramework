@@ -117,7 +117,7 @@ struct Rr_UIWindow
     float MaxFlexibleWidgetWidth;
     float MaxRigidWidth;
 
-    Rr_Map *WidgetMap;
+    Rr_HashTrie *WidgetMap;
 
     Rr_UIWindow *TopLevelParent;
 };
@@ -221,7 +221,7 @@ struct Rr_UIContext
     Rr_UIColors Colors;
     Rr_UIStyle Style;
 
-    Rr_Map *WindowMap;
+    Rr_HashTrie *WindowMap;
     int32_t TotalWindowCount;
     RR_ARRAY(Rr_UILayout *) ActiveLayouts;
     Rr_UIWindow *HoveredWindow;
@@ -366,7 +366,7 @@ static inline Rr_UIStorage *Rr_UIGetStorage(
     Rr_UIStorageType Type)
 {
     Rr_UIStorage **StorageRef =
-        RR_GET_MAP_VALUE(&Window->WidgetMap, Hash, gUIContext->Arena);
+        RR_FIND_IN_HASH_TRIE(&Window->WidgetMap, Hash, gUIContext->Arena);
     if (*StorageRef == NULL)
     {
         /* TODO: Storages could be allocated from a hive. */
@@ -4273,8 +4273,10 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
     {
         ParentWindow = ParentLayout->Window;
     }
-    WindowRef =
-        RR_GET_MAP_VALUE(&gUIContext->WindowMap, TitleHash, gUIContext->Arena);
+    WindowRef = RR_FIND_IN_HASH_TRIE(
+        &gUIContext->WindowMap,
+        TitleHash,
+        gUIContext->Arena);
     Window = *WindowRef;
     if (Window == NULL)
     {
