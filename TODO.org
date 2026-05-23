@@ -34,6 +34,7 @@
 - [X] Refactor Rr_AddXXXNode functions to ensure better type safety.
 - [X] See if it's possible to get rid of descriptor allocator arenas.
 - [X] Make locking more granular. gRenderer->Lock should only be locked when allocating.
+- [X] Framebuffers/SyncStates require different hash table implementation. Current implementation is a mess...
 - [ ] Minimal error handling pass.
       Implement Rr_GetErrorString().
   1) Image/buffer creation.
@@ -43,7 +44,6 @@
 - [ ] Public API should use const where applicable.
 - [ ] Does PushXXXIntoHive need to return iterator?
 - [ ] Releasing same resource (buffer, image, etc) twice leads to annoying bugs.
-- [ ] Framebuffers/SyncStates require different hash table implementation. Current implementation is a mess...
 
 * Features
 

@@ -528,6 +528,22 @@ static inline void RR_HASH_MAP_REHASH_NAME(
     Rr_DestroyScratch(Scratch);
 }
 
+#define RR_HASH_MAP_CLEAR_NAME \
+    RR_HASH_MAP_EXPAND_CONCAT( \
+        RR_HASH_MAP_PREFIX,    \
+        RR_HASH_MAP_EXPAND_CONCAT(Clear, RR_HASH_MAP_NAME))
+
+static inline void RR_HASH_MAP_CLEAR_NAME(RR_HASH_MAP_MAP_TYPE *Map)
+{
+    RR_HASH_MAP_NODE_TYPE *Node = Map->First;
+    while (Node)
+    {
+        memset(Node->Buckets, 0, sizeof(*Node->Buckets) * Node->Capacity);
+        Node = Node->Next;
+    }
+    Map->Count = 0;
+}
+
 #undef RR_HASH_MAP_PREFIX
 #undef RR_HASH_MAP_KEY_TYPE
 #undef RR_HASH_MAP_VALUE_TYPE
@@ -552,3 +568,4 @@ static inline void RR_HASH_MAP_REHASH_NAME(
 #undef RR_HASH_MAP_INSERT_NAME
 #undef RR_HASH_MAP_FIND_NAME
 #undef RR_HASH_MAP_REHASH_NAME
+#undef RR_HASH_MAP_CLEAR_NAME

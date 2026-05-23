@@ -136,97 +136,65 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
     Rr_UnlockSpinlock(&gRenderer->SamplersLock);
 }
 
-Rr_ImageViewStorage *Rr_CreateImageViewStorage(void)
+Rr_ImageViewMap *Rr_CreateImageViewMap(void)
 {
-    Rr_LockSpinlock(&gRenderer->ImageViewStorageLock);
+    Rr_LockSpinlock(&gRenderer->ImageViewMapsLock);
     Rr_LockSpinlock(&gRenderer->Lock);
 
-    Rr_ImageViewStorage *ViewStorage =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->ImageViewStorage, gRenderer->Arena);
+    Rr_ImageViewMap *ImageViewMap =
+        RR_GET_FREE_LIST_ITEM(&gRenderer->ImageViewMaps, gRenderer->Arena);
+    if (!ImageViewMap->Capacity)
+    {
+        Rr_InitImageViewMap(ImageViewMap, gRenderer->Arena);
+    }
 
     Rr_UnlockSpinlock(&gRenderer->Lock);
-    Rr_UnlockSpinlock(&gRenderer->ImageViewStorageLock);
+    Rr_UnlockSpinlock(&gRenderer->ImageViewMapsLock);
 
-    ViewStorage->Map = NULL;
-    Rr_ClearImageViewHive(&ViewStorage->Hive);
-
-    return ViewStorage;
+    return ImageViewMap;
 }
 
-void Rr_DestroyImageViewStorage(
-    Rr_ImageViewStorage *ViewStorage,
+void Rr_DestroyImageViewMap(
+    Rr_ImageViewMap *ImageViewMap,
     bool DestroyFramebuffers)
 {
     Rr_Device *Device = &gRenderer->Device;
 
-    for (Rr_ImageViewHiveIterator It = ViewStorage->Hive.Begin;
-         It.Element != ViewStorage->Hive.End.Element;)
+    Rr_ImageViewMapIterator It = Rr_BeginInImageViewMap(ImageViewMap);
+    while (!Rr_IsImageViewMapEnd(It))
     {
-        Rr_ImageView *Map = It.Element;
-        if (Map->Handle != VK_NULL_HANDLE)
+        VkImageView Handle = It.Data->Value;
+        if (DestroyFramebuffers)
         {
-            if (DestroyFramebuffers)
-            {
-                Rr_DestroyFramebuffers(Map->Handle);
-            }
-            Device->DestroyImageView(Device->Handle, Map->Handle, NULL);
-            Map->Handle = VK_NULL_HANDLE;
+            Rr_DestroyFramebuffers(Handle);
         }
-        Rr_AdvanceImageViewHiveIterator(&It);
+        Device->DestroyImageView(Device->Handle, Handle, NULL);
+        It = Rr_EraseFromImageViewMap(It);
     }
 
-    Rr_LockSpinlock(&gRenderer->ImageViewStorageLock);
+    Rr_LockSpinlock(&gRenderer->ImageViewMapsLock);
 
-    RR_RETURN_FREE_LIST_ITEM(&gRenderer->ImageViewStorage, ViewStorage);
+    RR_RETURN_FREE_LIST_ITEM(&gRenderer->ImageViewMaps, ImageViewMap);
 
-    Rr_UnlockSpinlock(&gRenderer->ImageViewStorageLock);
+    Rr_UnlockSpinlock(&gRenderer->ImageViewMapsLock);
 }
 
 VkImageView Rr_GetVulkanImageView(
     Rr_AllocatedImage *AllocatedImage,
-    Rr_ImageViewKey *Key)
+    Rr_ImageViewKey const *Key)
 {
-    VkImageView *ImageViewRef = NULL;
+    Rr_LockSpinlock(&AllocatedImage->ImageViewMapLock);
 
-    Rr_LockSpinlock(&AllocatedImage->ViewStorage->Lock);
-
-    Rr_ImageView **MapRef = &AllocatedImage->ViewStorage->Map;
-    for (uint64_t Hash = XXH64(Key, sizeof(Rr_ImageViewKey), 0); *MapRef;
-         Hash <<= 2)
+    Rr_ImageViewMapIterator It =
+        Rr_FindInImageViewMap(AllocatedImage->ImageViewMap, Key);
+    if (!Rr_IsImageViewMapEnd(It))
     {
-        if ((*MapRef)->Handle == VK_NULL_HANDLE)
-        {
-            (*MapRef)->Key = *Key;
-            ImageViewRef = &(*MapRef)->Handle;
+        Rr_UnlockSpinlock(&AllocatedImage->ImageViewMapLock);
 
-            goto Found;
-        }
-        else if (memcmp(&(*MapRef)->Key, Key, sizeof(Rr_ImageViewKey)) == 0)
-        {
-            ImageViewRef = &(*MapRef)->Handle;
-
-            goto Found;
-        }
-        MapRef = &(*MapRef)->Children[Hash >> 62];
+        return It.Data->Value;
     }
-    *MapRef = Rr_PushImageViewIntoHiveLocked(
-                  &AllocatedImage->ViewStorage->Hive,
-                  gRenderer->Arena,
-                  &gRenderer->Lock)
-                  .Element;
-    (*MapRef)->Key = *Key;
-    (*MapRef)->Handle = VK_NULL_HANDLE;
-    RR_ZERO((*MapRef)->Children);
-    ImageViewRef = &(*MapRef)->Handle;
 
-Found:
-
-    Rr_UnlockSpinlock(&AllocatedImage->ViewStorage->Lock);
-
-    if (*ImageViewRef != VK_NULL_HANDLE)
-    {
-        return *ImageViewRef;
-    }
+    Rr_UnlockSpinlock(&AllocatedImage->ImageViewMapLock);
 
     Rr_Device *Device = &gRenderer->Device;
 
@@ -240,11 +208,12 @@ Found:
         .subresourceRange = Key->SubresourceRange,
     };
 
+    VkImageView Handle = VK_NULL_HANDLE;
     VkResult Result = Device->CreateImageView(
         Device->Handle,
         &ImageViewCreateInfo,
         NULL,
-        ImageViewRef);
+        &Handle);
     assert(Result == VK_SUCCESS);
 
 #ifdef RR_DEBUG
@@ -276,7 +245,19 @@ Found:
     }
 #endif
 
-    return *ImageViewRef;
+    Rr_LockSpinlock(&AllocatedImage->ImageViewMapLock);
+    Rr_LockSpinlock(&gRenderer->Lock);
+
+    Rr_InsertIntoImageViewMap(
+        AllocatedImage->ImageViewMap,
+        Key,
+        &Handle,
+        gRenderer->Arena);
+
+    Rr_UnlockSpinlock(&gRenderer->Lock);
+    Rr_UnlockSpinlock(&AllocatedImage->ImageViewMapLock);
+
+    return Handle;
 }
 
 static inline VkSampleCountFlagBits Rr_ToVulkanSampleCountFlagBits(
@@ -417,7 +398,7 @@ static Rr_Image *Rr_CreateImage(
             NULL);
         assert(Result == VK_SUCCESS);
 
-        AllocatedImage->ViewStorage = Rr_CreateImageViewStorage();
+        AllocatedImage->ImageViewMap = Rr_CreateImageViewMap();
 
 #ifdef RR_USE_GPU_DEBUG_UTILS
         char ObjectName[RR_MAX_OBJECT_NAME_LENGTH];
@@ -471,8 +452,8 @@ void Rr_DestroyImage(Rr_Image *Image)
     {
         Rr_AllocatedImage *AllocatedImage = &Image->AllocatedImages[Index];
 
-        Rr_DestroyImageViewStorage(
-            AllocatedImage->ViewStorage,
+        Rr_DestroyImageViewMap(
+            AllocatedImage->ImageViewMap,
             DestroyFramebuffers);
 
         vmaDestroyImage(

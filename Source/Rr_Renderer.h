@@ -178,8 +178,8 @@ struct Rr_Renderer
     Rr_Spinlock ImagesLock;
     Rr_HandleHive ReleasedImages;
     Rr_Spinlock ReleasedImagesLock;
-    RR_FREE_LIST(Rr_ImageViewStorage) ImageViewStorage;
-    Rr_Spinlock ImageViewStorageLock;
+    RR_FREE_LIST(Rr_ImageViewMap) ImageViewMaps;
+    Rr_Spinlock ImageViewMapsLock;
     Rr_FramebufferMap FramebufferMap;
     Rr_Spinlock FramebufferMapLock;
 

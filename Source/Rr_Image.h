@@ -51,39 +51,24 @@ struct Rr_ImageViewKey
     VkFormat Format;
 };
 
-typedef struct Rr_ImageView Rr_ImageView;
-struct Rr_ImageView
-{
-    Rr_ImageViewKey Key;
-    Rr_ImageView *Children[4];
+#define RR_HASH_MAP_PREFIX     Rr_
+#define RR_HASH_MAP_NAME       ImageViewMap
+#define RR_HASH_MAP_KEY_TYPE   Rr_ImageViewKey
+#define RR_HASH_MAP_VALUE_TYPE VkImageView
+#include "Rr_HashMap.h"
 
-    VkImageView Handle;
-};
+extern Rr_ImageViewMap *Rr_CreateImageViewMap(void);
 
-#define RR_HIVE_TYPE      Rr_ImageView
-#define RR_HIVE_TYPE_NAME ImageView
-#define RR_HIVE_PREFIX    Rr_
-#include "Rr_Hive.h"
-
-typedef struct Rr_ImageViewStorage Rr_ImageViewStorage;
-struct Rr_ImageViewStorage
-{
-    Rr_ImageViewHive Hive;
-    Rr_ImageView *Map;
-    Rr_Spinlock Lock;
-};
-
-extern Rr_ImageViewStorage *Rr_CreateImageViewStorage(void);
-
-extern void Rr_DestroyImageViewStorage(
-    Rr_ImageViewStorage *ViewStorage,
+extern void Rr_DestroyImageViewMap(
+    Rr_ImageViewMap *ImageViewMap,
     bool DestroyFramebuffers);
 
 typedef struct Rr_AllocatedImage Rr_AllocatedImage;
 struct Rr_AllocatedImage
 {
     VkImage Handle;
-    Rr_ImageViewStorage *ViewStorage;
+    Rr_ImageViewMap *ImageViewMap;
+    Rr_Spinlock ImageViewMapLock;
     VmaAllocation Allocation;
     struct Rr_Image *Container;
     Rr_SyncState SyncState;
@@ -91,7 +76,7 @@ struct Rr_AllocatedImage
 
 extern VkImageView Rr_GetVulkanImageView(
     Rr_AllocatedImage *AllocatedImage,
-    Rr_ImageViewKey *Key);
+    Rr_ImageViewKey const *Key);
 
 struct Rr_Image
 {

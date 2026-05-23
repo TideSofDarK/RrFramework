@@ -47,9 +47,9 @@ static inline void Rr_DestroySwapchainImage(Rr_SwapchainImage *SwapchainImage)
     Rr_AllocatedImage *AllocatedImage =
         SwapchainImage->Container.AllocatedImages;
 
-    if (AllocatedImage->ViewStorage)
+    if (AllocatedImage->ImageViewMap)
     {
-        Rr_DestroyImageViewStorage(AllocatedImage->ViewStorage, true);
+        Rr_DestroyImageViewMap(AllocatedImage->ImageViewMap, true);
     }
 
     if (SwapchainImage->EarlySemaphore)
@@ -335,7 +335,7 @@ static bool Rr_InitSwapchain(void)
             .AllocatedImages[0] =
                 (Rr_AllocatedImage){
                     .Handle = ImageHandles[Index],
-                    .ViewStorage = Rr_CreateImageViewStorage(),
+                    .ImageViewMap = Rr_CreateImageViewMap(),
                     .Container = &Image->Container,
                     .SyncState = RR_EMPTY_SYNC,
                 },
