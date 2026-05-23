@@ -23,33 +23,22 @@
 
 #include <Rr/Rr_Defines.h>
 
-/* let's figure out if SSE is really available (unless disabled anyway)
-   (it isn't on non-x86/x86_64 platforms or even x86 without explicit SSE
-   support)
-   => only use "#ifdef RR_MATH__USE_SSE" to check for SSE support below this
-   block! */
 #ifndef RR_MATH_NO_SIMD
-#ifdef _MSC_VER /* MSVC supports SSE in amd64 mode or _M_IX86_FP >= 1 (2 means \
-                   SSE2) */
-#if defined(_M_AMD64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 1)
+#if defined(_MSC_VER) && defined(_M_X64)
 #define RR_MATH__USE_SSE 1
-#endif
-#else /* not MSVC, probably GCC, clang, icc or something that doesn't support \
-         SSE anyway */
-#ifdef __SSE__ /* they #define __SSE__ if it's supported */
+#elif defined(__SSE2__)
 #define RR_MATH__USE_SSE 1
 #ifdef __SSE4_1__
 #define RR_MATH__USE_SSE4_1 1
-#endif /*  __SSE4_1_ */
-#endif /*  __SSE__ */
-#endif /* not _MSC_VER */
-#ifdef __ARM_NEON
+#endif
+#elif defined(__ARM_NEON)
 #define RR_MATH__USE_NEON 1
-#endif /* NEON Supported */
-#endif /* #ifndef RR_MATH_NO_SIMD */
+#endif
+#endif
 
 #ifdef RR_MATH__USE_SSE
 #include <xmmintrin.h>
+#include <emmintrin.h>
 #endif
 
 #ifdef RR_MATH__USE_SSE4_1

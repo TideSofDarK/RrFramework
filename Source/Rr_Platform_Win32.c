@@ -47,12 +47,15 @@ uint64_t Rr_GetPerformanceCounter(void)
 {
     LARGE_INTEGER Counter;
     QueryPerformanceCounter(&Counter);
+
     return (uint64_t)Counter.QuadPart;
 }
 
 uint64_t Rr_GetPerformanceFrequency(void)
 {
-    return PlatformInfo.PerformanceFrequency;
+    Rr_PlatformInfo *PlatformInfo = Rr_GetPlatformInfo();
+
+    return PlatformInfo->PerformanceFrequency;
 }
 
 void *Rr_ReserveMemory(size_t Size)
@@ -125,6 +128,7 @@ static HANDLE Rr_GetWaitableEvent(void)
     {
         Event = CreateEvent(NULL, FALSE, FALSE, NULL);
     }
+
     return Event;
 }
 
@@ -143,6 +147,7 @@ static HANDLE Rr_GetWaitableTimer(void)
             CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
             TIMER_ALL_ACCESS);
     }
+
     return Timer;
 }
 
@@ -158,6 +163,7 @@ void Rr_SleepNS(uint64_t Nanoseconds)
         {
             WaitForSingleObject(Timer, INFINITE);
         }
+
         return;
     }
 
@@ -172,6 +178,7 @@ void Rr_SleepNS(uint64_t Nanoseconds)
     if (Event)
     {
         WaitForSingleObjectEx(Event, Delay, FALSE);
+
         return;
     }
 
