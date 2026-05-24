@@ -28,6 +28,9 @@
 
 Rr_App *gApp = NULL;
 
+static RR_THREAD_LOCAL Rr_ThreadContext *ThreadContext = NULL;
+static RR_THREAD_LOCAL bool IsMainThread = false;
+
 static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
 {
     FrameTime->Last = FrameTime->Now;
@@ -75,33 +78,34 @@ static void Rr_InitFrameTime(Rr_FrameTime *FrameTime)
     FrameTime->QPCToNS = 1000000000 / Rr_GetPerformanceFrequency();
 }
 
-static inline bool Rr_PollEvent(Rr_Event *Event)
+static inline void Rr_HandleEvent(Rr_Event const *Event)
 {
-    if (Rr_PollPlatformEvent(Event))
+    if (Event->Type == RR_EVENT_TYPE_QUIT)
     {
-        return true;
+        /* TODO: Should have an option to ignore it. */
+
+        Rr_Quit();
     }
 
-    for (Rr_EventHiveIterator It = gApp->EventHive.Begin;
-         It.Element != gApp->EventHive.End.Element;)
-    {
-        memcpy(Event, It.Element, sizeof(Rr_Event));
-        Rr_RemoveFromEventHive(&gApp->EventHive, &It);
-        return true;
-    }
+    Rr_ProcessUIEvent(Event);
 
-    return false;
+    if (gApp->EventFunc != NULL)
+    {
+        gApp->EventFunc(Event);
+    }
 }
 
-static inline void Rr_DispatchEvents(Rr_AppConfig *Config)
+static inline void Rr_DispatchEvents(void)
 {
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
     Rr_Event Event;
 
     if (gRenderer->Swapchain.RecreateEventPending)
     {
         Event.Type = RR_EVENT_TYPE_SWAPCHAIN_CREATED;
 
-        if (Config->EventFunc != NULL)
+        if (gApp->EventFunc != NULL)
         {
             gApp->EventFunc(&Event);
         }
@@ -109,26 +113,21 @@ static inline void Rr_DispatchEvents(Rr_AppConfig *Config)
         gRenderer->Swapchain.RecreateEventPending = false;
     }
 
-    while (Rr_PollEvent(&Event))
+    while (Rr_PollPlatformEvent(&Event, Scratch.Arena))
     {
-        if (Event.Type == RR_EVENT_TYPE_QUIT)
-        {
-            /* TODO: Should have an option to ignore it. */
-
-            Rr_Quit();
-        }
-
-        Rr_ProcessUIEvent(&Event);
-
-        if (Config->EventFunc != NULL)
-        {
-            gApp->EventFunc(&Event);
-        }
+        Rr_HandleEvent(&Event);
     }
-}
 
-static RR_THREAD_LOCAL Rr_ThreadContext *ThreadContext = NULL;
-static RR_THREAD_LOCAL bool IsMainThread = false;
+    for (Rr_EventHiveIterator It = gApp->EventHive.Begin;
+         It.Element != gApp->EventHive.End.Element;
+         Rr_AdvanceEventHiveIterator(&It))
+    {
+        Rr_HandleEvent(It.Element);
+    }
+    Rr_ClearEventHive(&gApp->EventHive);
+
+    Rr_DestroyScratch(Scratch);
+}
 
 void Rr_Run(Rr_AppConfig *Config)
 {
@@ -138,10 +137,8 @@ void Rr_Run(Rr_AppConfig *Config)
 
     IsMainThread = true;
 
-    Rr_InitPlatform();
-    Rr_InitPlatformLibrary(Config);
-
-    Rr_Platform *Platform = Rr_GetPlatform();
+    Rr_InitSystem();
+    Rr_InitPlatform(Config);
 
     Rr_InitThreadContext();
 
@@ -160,9 +157,9 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_NewFrame();
     Rr_BeginFrameSection("Rr.MainLoop");
 
-    /* NOTE: Order is very important! UI initialization will create GPU
-     * resources so it must have access to the graph. User provided Init
-     * function also must have access. */
+    /* NOTE: Order is important! UI initialization will create GPU
+     * resources so it must have access to the graph.
+     * User-provided 'InitFunc' also must have access. */
 
     Rr_InitUI();
 
@@ -177,14 +174,9 @@ void Rr_Run(Rr_AppConfig *Config)
 
     while (true)
     {
-        Rr_DispatchEvents(Config);
+        Rr_NewPlatformFrame();
 
-        Rr_Vec2 MousePosition = Rr_GetMousePosition();
-        Platform->MousePositionDelta =
-            Rr_SubV2(MousePosition, Platform->LastMousePosition);
-        Platform->LastMousePosition = MousePosition;
-
-        Rr_DestroyScratch(Platform->EventScratch);
+        Rr_DispatchEvents();
 
         Rr_BeginUI();
 
@@ -239,7 +231,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_CleanupThreadContext();
 
-    Rr_CleanupPlatformLibrary();
+    Rr_CleanupPlatform();
 }
 
 void Rr_InitThreadContext(void)

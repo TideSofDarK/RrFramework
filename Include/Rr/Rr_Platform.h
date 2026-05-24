@@ -23,20 +23,6 @@
 
 #include <Rr/Rr_Math.h>
 
-RR_EXTERN void Rr_InitPlatform(void);
-
-RR_EXTERN uint64_t Rr_GetPerformanceCounter(void);
-
-RR_EXTERN uint64_t Rr_GetPerformanceFrequency(void);
-
-RR_EXTERN void *Rr_ReserveMemory(size_t Size);
-
-RR_EXTERN void Rr_ReleaseMemory(void *Data, size_t Size);
-
-RR_EXTERN bool Rr_CommitMemory(void *Data, size_t Size);
-
-RR_EXTERN void Rr_DecommitMemory(void *Data, size_t Size);
-
 /* NOTE: These come from SDL3. */
 typedef enum Rr_Scancode
 {
@@ -177,7 +163,11 @@ typedef enum
 } Rr_WindowFlagsBits;
 typedef uint32_t Rr_WindowFlags;
 
-RR_EXTERN void Rr_ToggleWindowFullscreen(void);
+RR_EXTERN bool Rr_IsWindowMinimized(void);
+
+RR_EXTERN bool Rr_IsWindowFullscreen(void);
+
+RR_EXTERN void Rr_SetWindowFullscreen(bool Fullscreen);
 
 RR_EXTERN Rr_IntVec2 Rr_GetWindowSize(void);
 
@@ -257,6 +247,7 @@ typedef struct Rr_TextInputEvent Rr_TextInputEvent;
 struct Rr_TextInputEvent
 {
     const char *CString;
+    size_t Length;
 };
 
 typedef struct Rr_DropFileEvent Rr_DropFileEvent;

@@ -37,8 +37,8 @@
 #endif
 
 #ifdef RR_MATH__USE_SSE
-#include <xmmintrin.h>
 #include <emmintrin.h>
+#include <xmmintrin.h>
 #endif
 
 #ifdef RR_MATH__USE_SSE4_1

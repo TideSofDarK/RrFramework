@@ -18,7 +18,7 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#include "Rr_Platform.h"
+#include "Rr_System.h"
 
 #define __USE_POSIX199309
 #include <assert.h>
@@ -30,21 +30,21 @@
 
 #include <stdlib.h>
 
-void Rr_InitPlatform(void)
+void Rr_InitSystem(void)
 {
-    Rr_PlatformInfo *PlatformInfo = Rr_GetPlatformInfo();
-    if (PlatformInfo->Initialized)
+    Rr_System *System = Rr_GetSystem();
+    if (System->Initialized)
     {
         return;
     }
 
-    PlatformInfo->PageSize = getpagesize();
-    PlatformInfo->AllocationGranularity = PlatformInfo->PageSize;
+    System->PageSize = getpagesize();
+    System->AllocationGranularity = System->PageSize;
 
     struct timespec Timespec;
     assert(clock_gettime(CLOCK_MONOTONIC_RAW, &Timespec) == 0);
 
-    PlatformInfo->Initialized = true;
+    System->Initialized = true;
 }
 
 uint64_t Rr_GetPerformanceCounter(void)
@@ -89,46 +89,6 @@ void Rr_DecommitMemory(void *Data, size_t Size)
 {
     madvise(Data, Size, MADV_DONTNEED);
     mprotect(Data, Size, PROT_NONE);
-}
-
-void *Rr_AlignedAlloc(size_t Size, size_t Alignment)
-{
-    return aligned_alloc(Alignment, Size);
-}
-
-void Rr_AlignedFree(void *Ptr)
-{
-    free(Ptr);
-}
-
-int Rr_LoadAtomicRelaxed(Rr_AtomicInt *AtomicInt)
-{
-    return __atomic_load_n(&AtomicInt->Value, __ATOMIC_RELAXED);
-}
-
-int Rr_ExchangeAtomicAcquire(Rr_AtomicInt *AtomicInt, int Value)
-{
-    return __atomic_exchange_n(&AtomicInt->Value, Value, __ATOMIC_ACQUIRE);
-}
-
-void Rr_StoreAtomicRelease(Rr_AtomicInt *AtomicInt, int Value)
-{
-    __atomic_store_n(&AtomicInt->Value, Value, __ATOMIC_RELEASE);
-}
-
-void Rr_StoreAtomicRelaxed(Rr_AtomicInt *AtomicInt, int Value)
-{
-    __atomic_store_n(&AtomicInt->Value, Value, __ATOMIC_RELAXED);
-}
-
-int Rr_IncrementAtomicRelaxed(Rr_AtomicInt *AtomicInt)
-{
-    return __atomic_fetch_add(&AtomicInt->Value, 1, __ATOMIC_RELAXED);
-}
-
-int Rr_DecrementAtomicRelaxed(Rr_AtomicInt *AtomicInt)
-{
-    return __atomic_fetch_sub(&AtomicInt->Value, 1, __ATOMIC_RELAXED);
 }
 
 void Rr_SleepNS(uint64_t Nanoseconds)

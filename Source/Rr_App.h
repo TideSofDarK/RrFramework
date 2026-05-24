@@ -22,7 +22,7 @@
 
 #include <Rr/Rr_App.h>
 
-#include "Rr_Platform.h"
+#include "Rr_System.h"
 
 struct Rr_Renderer;
 

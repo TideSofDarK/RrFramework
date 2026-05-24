@@ -1568,7 +1568,7 @@ struct SModernRenderingApp
 
                 if (Event->Key.Scancode == RR_SCANCODE_F11 && Event->Key.Down)
                 {
-                    Rr_ToggleWindowFullscreen();
+                    Rr_SetWindowFullscreen(!Rr_IsWindowFullscreen());
                 }
                 return;
             }

@@ -18,29 +18,29 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#include "Rr_Platform.h"
+#include "Rr_System.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-void Rr_InitPlatform()
+void Rr_InitSystem()
 {
-    Rr_PlatformInfo *PlatformInfo = Rr_GetPlatformInfo();
-    if (PlatformInfo->Initialized)
+    Rr_System *System = Rr_GetSystem();
+    if (System->Initialized)
     {
         return;
     }
 
     SYSTEM_INFO SystemInfo;
     GetSystemInfo(&SystemInfo);
-    PlatformInfo->PageSize = SystemInfo.dwPageSize;
-    PlatformInfo->AllocationGranularity = SystemInfo.dwAllocationGranularity;
+    System->PageSize = SystemInfo.dwPageSize;
+    System->AllocationGranularity = SystemInfo.dwAllocationGranularity;
 
     LARGE_INTEGER Frequency;
     QueryPerformanceFrequency(&Frequency);
-    PlatformInfo->PerformanceFrequency = (uint64_t)Frequency.QuadPart;
+    System->PerformanceFrequency = (uint64_t)Frequency.QuadPart;
 
-    PlatformInfo->Initialized = true;
+    System->Initialized = true;
 }
 
 uint64_t Rr_GetPerformanceCounter(void)
@@ -76,49 +76,6 @@ bool Rr_CommitMemory(void *Data, size_t Size)
 void Rr_DecommitMemory(void *Data, size_t Size)
 {
     VirtualFree(Data, Size, MEM_DECOMMIT);
-}
-
-void *Rr_AlignedAlloc(size_t Size, size_t Alignment)
-{
-    return _aligned_malloc(Size, Alignment);
-}
-
-void Rr_AlignedFree(void *Ptr)
-{
-    _aligned_free(Ptr);
-}
-
-/* TODO: Figure out *NoFence functions. */
-
-int Rr_LoadAtomicRelaxed(Rr_AtomicInt *AtomicInt)
-{
-    /* return _InterlockedOr((long *)&AtomicInt->Value, 0); */
-    return AtomicInt->Value;
-}
-
-int Rr_ExchangeAtomicAcquire(Rr_AtomicInt *AtomicInt, int Value)
-{
-    return _InterlockedExchange(&AtomicInt->Value, Value);
-}
-
-void Rr_StoreAtomicRelease(Rr_AtomicInt *AtomicInt, int Value)
-{
-    _InterlockedExchange(&AtomicInt->Value, Value);
-}
-
-void Rr_StoreAtomicRelaxed(Rr_AtomicInt *AtomicInt, int Value)
-{
-    AtomicInt->Value = Value;
-}
-
-int Rr_IncrementAtomicRelaxed(Rr_AtomicInt *AtomicInt)
-{
-    return _InterlockedIncrement(&AtomicInt->Value);
-}
-
-int Rr_DecrementAtomicRelaxed(Rr_AtomicInt *AtomicInt)
-{
-    return _InterlockedDecrement(&AtomicInt->Value);
 }
 
 static HANDLE Rr_GetWaitableEvent(void)

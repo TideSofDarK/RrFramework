@@ -18,8 +18,6 @@ include(CPM)
 
 find_package(Vulkan REQUIRED)
 
-set(RR_PLATFORM_LIBRARY "GLFW" CACHE STRING "Platform library (either SDL or GLFW)")
-
 #
 # Pre-C23 asset embedding support
 #
@@ -144,12 +142,12 @@ target_sources(
     Source/Rr_Memory.c
     Source/Rr_SPIRV.c
     Source/Rr_Pipeline.c
-    Source/Rr_Platform.c
     Source/Rr_Profiler.c
     Source/Rr_Renderer.c
     Source/Rr_Serialization.c
     Source/Rr_UI.c
     Source/Rr_Vulkan.c
+    Source/Rr_System.c
     Vendor/xxHash/xxhash.c
     PUBLIC
     FILE_SET HEADERS
@@ -179,35 +177,46 @@ if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_UNIX.c)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_MACOS)
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_System_UNIX.c)
     target_link_libraries(${PROJECT_NAME} PUBLIC -lc++)
     target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Vulkan)
     target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Metal" "-framework MetalKit" "-framework Cocoa")
     target_link_libraries(${PROJECT_NAME} PRIVATE "${Vulkan_MoltenVK_LIBRARY}")
+    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_SYSTEM_MACOS)
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_UNIX.c)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_LINUX)
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_System_UNIX.c)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_SYSTEM_LINUX)
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_Win32.c)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_WIN32)
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_System_Win32.c)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_SYSTEM_WIN32)
 endif ()
 
-if (RR_PLATFORM_LIBRARY STREQUAL "GLFW")
+set(RR_PLATFORM "GLFW" CACHE STRING "Either SDL, GLFW or XCB (Linux-only)")
+
+if (RR_PLATFORM STREQUAL "XCB")
+    find_package(X11 REQUIRED)
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE X11::xcb)
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_XCB.c)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_XCB)
+endif ()
+
+if (RR_PLATFORM STREQUAL "GLFW")
     set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
     set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
     CPMAddPackage("gh:glfw/glfw#master")
 
-    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_GLFW.c)
     target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_GLFW.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_GLFW)
 endif ()
 
-if (RR_PLATFORM_LIBRARY STREQUAL "SDL")
+if (RR_PLATFORM STREQUAL "SDL")
+    set(SDL_AUDIO OFF CACHE BOOL "" FORCE)
     set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
     set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
     set(SDL_MISC OFF CACHE BOOL "" FORCE)
@@ -222,8 +231,8 @@ if (RR_PLATFORM_LIBRARY STREQUAL "SDL")
     set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
     CPMAddPackage("gh:libsdl-org/SDL#main")
 
-    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_SDL.c)
     target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_SDL.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_SDL)
 endif ()
 

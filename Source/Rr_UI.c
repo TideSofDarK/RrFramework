@@ -8700,7 +8700,7 @@ void Rr_CleanupUI(void)
     gUIContext = NULL;
 }
 
-void Rr_ProcessUIEvent(Rr_Event *Event)
+void Rr_ProcessUIEvent(Rr_Event const *Event)
 {
     if (gUIContext == NULL)
     {
@@ -8726,7 +8726,7 @@ void Rr_ProcessUIEvent(Rr_Event *Event)
         break;
         case RR_EVENT_TYPE_TEXT_INPUT:
         {
-            size_t Length = strlen(Event->Text.CString);
+            size_t Length = Event->Text.Length;
             char *Text = RR_ALLOC_NO_ZERO(Length + 1, gUIContext->FrameArena);
             memcpy(Text, Event->Text.CString, Length + 1);
             *RR_PUSH_INTO_ARRAY(
@@ -9189,7 +9189,7 @@ void Rr_UIDebugOverlay(void)
 
             if (Rr_UIButton("Toggle Fullscreen"))
             {
-                Rr_ToggleWindowFullscreen();
+                Rr_SetWindowFullscreen(!Rr_IsWindowFullscreen());
             }
         }
         Rr_UIEndWindow();
@@ -9271,7 +9271,7 @@ void Rr_UIDebugOverlay(void)
                 Rr_UIDebugOverlayArena(Frame->Arena, FrameString);
             }
             Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
-            Rr_UIDebugOverlayArena(Rr_GetPlatform()->Arena, "Window");
+            /* Rr_UIDebugOverlayArena(Rr_GetPlatform()->Arena, "Window"); */
         }
         Rr_UIEndWindow();
 

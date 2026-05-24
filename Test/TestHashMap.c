@@ -43,7 +43,7 @@ int main(int ArgCount, char **Args)
 {
     srand(time(NULL));
 
-    Rr_InitPlatform();
+    Rr_InitSystem();
     Rr_InitThreadContext();
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);

@@ -28,7 +28,7 @@ extern void Rr_InitUI(void);
 
 extern void Rr_CleanupUI(void);
 
-extern void Rr_ProcessUIEvent(Rr_Event *Event);
+extern void Rr_ProcessUIEvent(Rr_Event const *Event);
 
 extern void Rr_NewUIFrame(void);
 

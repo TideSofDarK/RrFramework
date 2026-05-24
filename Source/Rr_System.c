@@ -18,32 +18,11 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#pragma once
+#include "Rr_System.h"
 
-#include <Rr/Rr_Platform.h>
+static Rr_System gSystem;
 
-#include <Rr/Rr_Arena.h>
-
-#define RR_WINDOWED_RATIO 0.85f
-
-struct Rr_AppConfig;
-
-typedef struct Rr_Platform Rr_Platform;
-
-extern bool Rr_InitPlatform(struct Rr_AppConfig *Config);
-
-extern void Rr_CleanupPlatform(void);
-
-extern void (*Rr_GetVkGetInstanceProcAddr(void))(void);
-
-extern const char *const *Rr_GetVulkanExtensions(uint32_t *Count);
-
-extern bool Rr_CreateVulkanSurface(void *Instance, void **Surface);
-
-extern void Rr_NewPlatformFrame(void);
-
-extern bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena);
-
-extern void Rr_ShowWindow(void);
-
-extern float Rr_GetDisplayRefreshRate(void);
+Rr_System *Rr_GetSystem(void)
+{
+    return &gSystem;
+}

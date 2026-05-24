@@ -120,4 +120,4 @@
 - [ ] Replace VMA with custom allocator (i.e. TLSF algorithm).
 - [ ] Own implementation of Windows/Linux platform layers.
 - [ ] Macro-based stuff should probably be internal.
-      The goal is clean and minimal API that's 99% accessible from other languages.
+      The goal is API that's 100% accessible from other languages.

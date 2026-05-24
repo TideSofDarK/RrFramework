@@ -20,7 +20,7 @@
 
 #include "Rr_Platform.h"
 
-#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_VULKAN
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_PLATFORM
 #include "Rr_LogMacro.h"
 
 #include <Rr/Rr_App.h>
@@ -31,12 +31,24 @@
 #include <assert.h>
 #include <stdio.h>
 
-bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
+static struct Rr_Platform_SDL
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-    assert(!Platform->Initialized);
+    bool Initialized;
+    SDL_Window *Window;
+    bool WindowScaled;
+    Rr_Vec2 WindowScale;
+    Rr_IntVec2 WindowedOffset;
+    Rr_IntVec2 WindowedExtent;
+    Rr_Vec2 MousePositionDelta;
+    bool RelativeMouseMode;
+    Rr_Vec2 RelativeMouseModePosition;
+} gPlatform;
 
-    RR_LOG_INFO("Using SDL platform library");
+bool Rr_InitPlatform(Rr_AppConfig *Config)
+{
+    assert(!gPlatform.Initialized);
+
+    RR_LOG_INFO("Using SDL3");
 
 #if defined(__linux__)
     SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
@@ -56,17 +68,13 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     {
         SDLWindowFlags |= SDL_WINDOW_RESIZABLE;
     }
-    Rr_Arena *Arena = Rr_CreateDefaultArena();
-    Platform->Arena = Arena;
-    Platform->EventScratch =
-        (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };
-    Platform->Window = SDL_CreateWindow(Config->Title, 0, 0, SDLWindowFlags);
-    if (!Platform->Window)
+    gPlatform.Window = SDL_CreateWindow(Config->Title, 0, 0, SDLWindowFlags);
+    if (!gPlatform.Window)
     {
         RR_LOG_ERROR("%s", SDL_GetError());
     }
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
-    SDL_StartTextInput(Platform->Window);
+    SDL_StartTextInput(gPlatform.Window);
     Rr_IntVec2 WindowSize = Rr_GetDisplaySize();
     WindowSize.X = (int32_t)((float)WindowSize.X * RR_WINDOWED_RATIO);
     WindowSize.Y = (int32_t)((float)WindowSize.Y * RR_WINDOWED_RATIO);
@@ -78,9 +86,9 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     WindowSize.X = (int32_t)((float)UsableBounds.w * RR_WINDOWED_RATIO);
     WindowSize.Y = (int32_t)((float)UsableBounds.h * RR_WINDOWED_RATIO);
 #endif
-    SDL_SetWindowSize(Platform->Window, WindowSize.X, WindowSize.Y);
+    SDL_SetWindowSize(gPlatform.Window, WindowSize.X, WindowSize.Y);
     SDL_SetWindowPosition(
-        Platform->Window,
+        gPlatform.Window,
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED);
 
@@ -88,21 +96,19 @@ bool Rr_InitPlatformLibrary(Rr_AppConfig *Config)
     sprintf(DoubleClickTimeString, "%d", RR_DOUBLE_CLICK_TIME_MS);
     SDL_SetHint(SDL_HINT_MOUSE_DOUBLE_CLICK_TIME, DoubleClickTimeString);
 
-    Platform->Initialized = true;
+    gPlatform.Initialized = true;
 
     return true;
 }
 
-void Rr_CleanupPlatformLibrary(void)
+void Rr_CleanupPlatform(void)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-    assert(Platform->Initialized);
+    assert(gPlatform.Initialized);
 
-    SDL_DestroyWindow(Platform->Window);
+    SDL_DestroyWindow(gPlatform.Window);
     SDL_Quit();
 
-    Rr_DestroyArena(Platform->Arena);
-    RR_ZERO_PTR(Platform);
+    RR_ZERO(gPlatform);
 }
 
 void (*Rr_GetVkGetInstanceProcAddr(void))(void)
@@ -117,10 +123,8 @@ const char *const *Rr_GetVulkanExtensions(uint32_t *Count)
 
 bool Rr_CreateVulkanSurface(void *Instance, void **Surface)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-
     return SDL_Vulkan_CreateSurface(
-        Platform->Window,
+        gPlatform.Window,
         (VkInstance)Instance,
         NULL,
         (VkSurfaceKHR *)Surface);
@@ -133,14 +137,12 @@ bool Rr_IsScancodePressed(Rr_Scancode Scancode)
 
 static inline Rr_Vec2 Rr_SDLConvertMousePosition(Rr_Vec2 Scaled)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-
     Rr_IntVec2 WindowSize;
-    SDL_GetWindowSize(Platform->Window, &WindowSize.X, &WindowSize.Y);
+    SDL_GetWindowSize(gPlatform.Window, &WindowSize.X, &WindowSize.Y);
 
     Rr_IntVec2 WindowSizeInPixels;
     SDL_GetWindowSizeInPixels(
-        Platform->Window,
+        gPlatform.Window,
         &WindowSizeInPixels.X,
         &WindowSizeInPixels.Y);
 
@@ -161,210 +163,235 @@ Rr_Vec2 Rr_GetMousePosition(void)
     return Rr_SDLConvertMousePosition(MousePosition);
 }
 
+Rr_Vec2 Rr_GetMousePositionDelta(void)
+{
+    return gPlatform.MousePositionDelta;
+}
+
 Rr_MouseButtonFlags Rr_GetMouseState(void)
 {
     return SDL_GetMouseState(NULL, NULL);
 }
 
-bool Rr_PollPlatformEvent(Rr_Event *Event)
+void Rr_NewPlatformFrame(void)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
+    gPlatform.MousePositionDelta = Rr_V2F(0.0f);
+}
 
+bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
+{
     static SDL_Event SDLEvent;
-    SDL_PollEvent(&SDLEvent);
 
-    switch (SDLEvent.type)
+    while (SDL_PollEvent(&SDLEvent))
     {
-        case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+        switch (SDLEvent.type)
         {
-            return false;
-        }
-        case SDL_EVENT_TEXT_INPUT:
-        {
-            size_t Length = strlen(SDLEvent.text.text);
-            char *Buffer = RR_ALLOC_NO_ZERO(Length + 1, Platform->Arena);
-            memcpy(Buffer, SDLEvent.text.text, Length + 1);
+            case SDL_EVENT_TEXT_INPUT:
+            {
+                size_t Length = strlen(SDLEvent.text.text);
+                char *Buffer = RR_ALLOC_NO_ZERO(Length + 1, Arena);
+                memcpy(Buffer, SDLEvent.text.text, Length + 1);
 
-            Event->Type = RR_EVENT_TYPE_TEXT_INPUT;
-            Event->Text.CString = Buffer;
-            return true;
-        }
-        case SDL_EVENT_KEY_DOWN:
-        case SDL_EVENT_KEY_UP:
-        {
-            Event->Type = SDLEvent.type == SDL_EVENT_KEY_DOWN
-                              ? RR_EVENT_TYPE_KEY_DOWN
-                              : RR_EVENT_TYPE_KEY_UP;
-            Event->Key.Down = SDLEvent.key.down;
-            Event->Key.Scancode = (Rr_Scancode)SDLEvent.key.scancode;
-            Event->Key.Keymod = 0;
-            if ((SDLEvent.key.mod & SDL_KMOD_LCTRL) ||
-                (SDLEvent.key.mod & SDL_KMOD_RCTRL) ||
-                (SDLEvent.key.mod & SDL_KMOD_CTRL))
-            {
-                Event->Key.Keymod |= RR_KEYMOD_CTRL;
+                Event->Type = RR_EVENT_TYPE_TEXT_INPUT;
+                Event->Text.Length = Length;
+                Event->Text.CString = Buffer;
+                return true;
             }
-            if ((SDLEvent.key.mod & SDL_KMOD_LSHIFT) ||
-                (SDLEvent.key.mod & SDL_KMOD_RSHIFT) ||
-                (SDLEvent.key.mod & SDL_KMOD_SHIFT))
+            case SDL_EVENT_KEY_DOWN:
+            case SDL_EVENT_KEY_UP:
             {
-                Event->Key.Keymod |= RR_KEYMOD_SHIFT;
+                Event->Type = SDLEvent.type == SDL_EVENT_KEY_DOWN
+                                  ? RR_EVENT_TYPE_KEY_DOWN
+                                  : RR_EVENT_TYPE_KEY_UP;
+                Event->Key.Down = SDLEvent.key.down;
+                Event->Key.Scancode = (Rr_Scancode)SDLEvent.key.scancode;
+                Event->Key.Keymod = 0;
+                if ((SDLEvent.key.mod & SDL_KMOD_LCTRL) ||
+                    (SDLEvent.key.mod & SDL_KMOD_RCTRL) ||
+                    (SDLEvent.key.mod & SDL_KMOD_CTRL))
+                {
+                    Event->Key.Keymod |= RR_KEYMOD_CTRL;
+                }
+                if ((SDLEvent.key.mod & SDL_KMOD_LSHIFT) ||
+                    (SDLEvent.key.mod & SDL_KMOD_RSHIFT) ||
+                    (SDLEvent.key.mod & SDL_KMOD_SHIFT))
+                {
+                    Event->Key.Keymod |= RR_KEYMOD_SHIFT;
+                }
+                if ((SDLEvent.key.mod & SDL_KMOD_LALT) ||
+                    (SDLEvent.key.mod & SDL_KMOD_RALT) ||
+                    (SDLEvent.key.mod & SDL_KMOD_ALT))
+                {
+                    Event->Key.Keymod |= RR_KEYMOD_ALT;
+                }
+                if ((SDLEvent.key.mod & SDL_KMOD_LGUI) ||
+                    (SDLEvent.key.mod & SDL_KMOD_RGUI) ||
+                    (SDLEvent.key.mod & SDL_KMOD_GUI))
+                {
+                    Event->Key.Keymod |= RR_KEYMOD_GUI;
+                }
+                return true;
             }
-            if ((SDLEvent.key.mod & SDL_KMOD_LALT) ||
-                (SDLEvent.key.mod & SDL_KMOD_RALT) ||
-                (SDLEvent.key.mod & SDL_KMOD_ALT))
+            case SDL_EVENT_MOUSE_MOTION:
             {
-                Event->Key.Keymod |= RR_KEYMOD_ALT;
+                Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
+                Event->MouseMotion.Position = Rr_SDLConvertMousePosition(
+                    (Rr_Vec2){ SDLEvent.motion.x, SDLEvent.motion.y });
+
+                gPlatform.MousePositionDelta = Rr_AddV2(
+                    gPlatform.MousePositionDelta,
+                    (Rr_Vec2){ SDLEvent.motion.xrel, SDLEvent.motion.yrel });
+
+                return true;
             }
-            if ((SDLEvent.key.mod & SDL_KMOD_LGUI) ||
-                (SDLEvent.key.mod & SDL_KMOD_RGUI) ||
-                (SDLEvent.key.mod & SDL_KMOD_GUI))
+            case SDL_EVENT_MOUSE_WHEEL:
             {
-                Event->Key.Keymod |= RR_KEYMOD_GUI;
+                Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
+                Event->Wheel.Position = Rr_SDLConvertMousePosition((
+                    Rr_Vec2){ SDLEvent.wheel.mouse_x, SDLEvent.wheel.mouse_y });
+                Event->Wheel.Amount =
+                    (Rr_Vec2){ SDLEvent.wheel.x, SDLEvent.wheel.y };
+                return true;
             }
-            return true;
-        }
-        case SDL_EVENT_MOUSE_MOTION:
-        {
-            Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
-            Event->MouseMotion.Position = Rr_SDLConvertMousePosition(
-                (Rr_Vec2){ SDLEvent.motion.x, SDLEvent.motion.y });
-            return true;
-        }
-        case SDL_EVENT_MOUSE_WHEEL:
-        {
-            Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
-            Event->Wheel.Position = Rr_SDLConvertMousePosition(
-                (Rr_Vec2){ SDLEvent.wheel.mouse_x, SDLEvent.wheel.mouse_y });
-            Event->Wheel.Amount =
-                (Rr_Vec2){ SDLEvent.wheel.x, SDLEvent.wheel.y };
-            return true;
-        }
-        case SDL_EVENT_MOUSE_BUTTON_UP:
-        case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        {
-            Event->Type = SDLEvent.type == SDL_EVENT_MOUSE_BUTTON_UP
-                              ? RR_EVENT_TYPE_MOUSE_BUTTON_UP
-                              : RR_EVENT_TYPE_MOUSE_BUTTON_DOWN;
-            Event->MouseButton.Position =
-                (Rr_Vec2){ SDLEvent.button.x, SDLEvent.button.y };
-            if (SDLEvent.button.button == SDL_BUTTON_LEFT)
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
             {
-                Event->MouseButton.Button = RR_MOUSE_BUTTON_LEFT;
+                Event->Type = SDLEvent.type == SDL_EVENT_MOUSE_BUTTON_UP
+                                  ? RR_EVENT_TYPE_MOUSE_BUTTON_UP
+                                  : RR_EVENT_TYPE_MOUSE_BUTTON_DOWN;
+                Event->MouseButton.Position =
+                    (Rr_Vec2){ SDLEvent.button.x, SDLEvent.button.y };
+                if (SDLEvent.button.button == SDL_BUTTON_LEFT)
+                {
+                    Event->MouseButton.Button = RR_MOUSE_BUTTON_LEFT;
+                }
+                else if (SDLEvent.button.button == SDL_BUTTON_RIGHT)
+                {
+                    Event->MouseButton.Button = RR_MOUSE_BUTTON_RIGHT;
+                }
+                else if (SDLEvent.button.button == SDL_BUTTON_MIDDLE)
+                {
+                    Event->MouseButton.Button = RR_MOUSE_BUTTON_MIDDLE;
+                }
+                else if (SDLEvent.button.button == SDL_BUTTON_X1)
+                {
+                    Event->MouseButton.Button = RR_MOUSE_BUTTON_X1;
+                }
+                else if (SDLEvent.button.button == SDL_BUTTON_X2)
+                {
+                    Event->MouseButton.Button = RR_MOUSE_BUTTON_X2;
+                }
+                Event->MouseButton.Clicks = SDLEvent.button.clicks;
+                return true;
             }
-            else if (SDLEvent.button.button == SDL_BUTTON_RIGHT)
+            case SDL_EVENT_DROP_FILE:
             {
-                Event->MouseButton.Button = RR_MOUSE_BUTTON_RIGHT;
+                Event->Type = RR_EVENT_TYPE_DROP_FILE;
+                Event->DropFile.Path = SDLEvent.drop.data;
+                return true;
             }
-            else if (SDLEvent.button.button == SDL_BUTTON_MIDDLE)
+            case SDL_EVENT_QUIT:
             {
-                Event->MouseButton.Button = RR_MOUSE_BUTTON_MIDDLE;
+                Event->Type = RR_EVENT_TYPE_QUIT;
+                return true;
             }
-            else if (SDLEvent.button.button == SDL_BUTTON_X1)
+            case SDL_EVENT_WINDOW_FOCUS_GAINED:
             {
-                Event->MouseButton.Button = RR_MOUSE_BUTTON_X1;
+                Event->Type = RR_EVENT_TYPE_FOCUS;
+                Event->Focus.Focused = true;
+                return true;
             }
-            else if (SDLEvent.button.button == SDL_BUTTON_X2)
+            case SDL_EVENT_WINDOW_FOCUS_LOST:
             {
-                Event->MouseButton.Button = RR_MOUSE_BUTTON_X2;
+                Event->Type = RR_EVENT_TYPE_FOCUS;
+                Event->Focus.Focused = false;
+                return true;
             }
-            Event->MouseButton.Clicks = SDLEvent.button.clicks;
-            return true;
+            default:
+                break;
         }
-        case SDL_EVENT_DROP_FILE:
-        {
-            Event->Type = RR_EVENT_TYPE_DROP_FILE;
-            Event->DropFile.Path = SDLEvent.drop.data;
-            return true;
-        }
-        case SDL_EVENT_QUIT:
-        {
-            Event->Type = RR_EVENT_TYPE_QUIT;
-            return true;
-        }
-        case SDL_EVENT_WINDOW_FOCUS_GAINED:
-        {
-            Event->Type = RR_EVENT_TYPE_FOCUS;
-            Event->Focus.Focused = true;
-            return true;
-        }
-        case SDL_EVENT_WINDOW_FOCUS_LOST:
-        {
-            Event->Type = RR_EVENT_TYPE_FOCUS;
-            Event->Focus.Focused = false;
-            return true;
-        }
-        default:
-            return false;
     }
+
+    return false;
 }
 
 void Rr_ShowWindow(void)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-
-    SDL_ShowWindow(Platform->Window);
+    SDL_ShowWindow(gPlatform.Window);
 }
 
 bool Rr_IsWindowMinimized(void)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-
-    return SDL_GetWindowFlags(Platform->Window) & SDL_WINDOW_MINIMIZED;
+    return SDL_GetWindowFlags(gPlatform.Window) & SDL_WINDOW_MINIMIZED;
 }
 
 bool Rr_IsWindowFullscreen(void)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-
-    return (SDL_GetWindowFlags(Platform->Window) & SDL_WINDOW_FULLSCREEN) != 0;
+    return (SDL_GetWindowFlags(gPlatform.Window) & SDL_WINDOW_FULLSCREEN) != 0;
 }
 
 void Rr_SetWindowFullscreen(bool Fullscreen)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-
-    SDL_SetWindowFullscreen(Platform->Window, Fullscreen);
+    SDL_SetWindowFullscreen(gPlatform.Window, Fullscreen);
 }
 
 void Rr_SetRelativeMouseMode(bool Relative)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
+    if (Relative == gPlatform.RelativeMouseMode)
+    {
+        return;
+    }
 
-    SDL_SetWindowRelativeMouseMode(Platform->Window, Relative);
+    gPlatform.RelativeMouseMode = Relative;
+
+    if (Relative)
+    {
+        /* SDL_CaptureMouse(true); */
+        /* SDL_SetWindowMouseGrab(gPlatform.Window, true); */
+        SDL_GetMouseState(
+            &gPlatform.RelativeMouseModePosition.X,
+            &gPlatform.RelativeMouseModePosition.Y);
+        SDL_Rect Rect = {
+            .x = (int)gPlatform.RelativeMouseModePosition.X,
+            .y = (int)gPlatform.RelativeMouseModePosition.Y,
+            .w = 1,
+            .h = 1,
+        };
+        SDL_SetWindowMouseRect(gPlatform.Window, &Rect);
+        SDL_SetWindowRelativeMouseMode(gPlatform.Window, true);
+    }
+    else
+    {
+        /* SDL_CaptureMouse(false); */
+        /* SDL_SetWindowMouseGrab(gPlatform.Window, false); */
+        SDL_SetWindowMouseRect(gPlatform.Window, NULL);
+        SDL_SetWindowRelativeMouseMode(gPlatform.Window, false);
+    }
 }
 
 float Rr_GetDisplayRefreshRate(void)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-
-    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Platform->Window);
+    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(gPlatform.Window);
     const SDL_DisplayMode *Mode = SDL_GetDesktopDisplayMode(DisplayID);
     return Mode->refresh_rate;
 }
 
 Rr_IntVec2 Rr_GetWindowSize(void)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-
     Rr_IntVec2 Size;
-    SDL_GetWindowSizeInPixels(Platform->Window, &Size.X, &Size.Y);
+    SDL_GetWindowSizeInPixels(gPlatform.Window, &Size.X, &Size.Y);
     return Size;
 }
 
 void Rr_SetWindowTitle(const char *Title)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-
-    SDL_SetWindowTitle(Platform->Window, Title);
+    SDL_SetWindowTitle(gPlatform.Window, Title);
 }
 
 Rr_IntVec2 Rr_GetDisplaySize(void)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-
-    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(Platform->Window);
-    float Scale = SDL_GetWindowPixelDensity(Platform->Window);
+    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(gPlatform.Window);
+    float Scale = SDL_GetWindowPixelDensity(gPlatform.Window);
     SDL_Rect Rect;
     SDL_GetDisplayBounds(DisplayID, &Rect);
     return (Rr_IntVec2){
@@ -375,18 +402,14 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
 
 float Rr_GetWindowContentsScale(void)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-
-    return SDL_GetWindowDisplayScale(Platform->Window);
+    return SDL_GetWindowDisplayScale(gPlatform.Window);
 }
 
 void Rr_SetWindowSize(Rr_IntVec2 Size)
 {
-    Rr_Platform *Platform = Rr_GetPlatform();
-
-    float Scale = SDL_GetWindowDisplayScale(Platform->Window);
+    float Scale = SDL_GetWindowDisplayScale(gPlatform.Window);
     SDL_SetWindowSize(
-        Platform->Window,
+        gPlatform.Window,
         (int32_t)((float)Size.Width / Scale),
         (int32_t)((float)Size.Height / Scale));
 }

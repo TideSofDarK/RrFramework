@@ -33,6 +33,24 @@
 #include <limits.h>
 #include <string.h>
 
+void *Rr_AlignedAlloc(size_t Size, size_t Alignment)
+{
+#ifdef _MSC_VER
+    return _aligned_malloc(Size, Alignment);
+#else
+    return aligned_alloc(Alignment, Size);
+#endif
+}
+
+void Rr_AlignedFree(void *Ptr)
+{
+#ifdef _MSC_VER
+    _aligned_free(Ptr);
+#else
+    free(Ptr);
+#endif
+}
+
 void Rr_GrowArray(void *Array, size_t Size, size_t MinCount, Rr_Arena *Arena)
 {
     assert(Array != NULL && "Attempt to grow an array but it's NULL!");

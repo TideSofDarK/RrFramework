@@ -22,14 +22,16 @@
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_VULKAN
 #include "Rr_LogMacro.h"
-#include "Rr_Platform.h"
+#include "Rr_System.h"
+
+#include <Rr/Rr_Math.h>
 
 #include <assert.h>
 #include <string.h>
 
 Rr_Arena *Rr_CreateArena(size_t ReserveSize, size_t CommitSize)
 {
-    size_t PageSize = (size_t)Rr_GetPlatformInfo()->PageSize;
+    size_t PageSize = (size_t)Rr_GetSystem()->PageSize;
     ReserveSize = RR_ALIGN_POW2(ReserveSize, PageSize);
     CommitSize = RR_ALIGN_POW2(CommitSize, PageSize);
 
