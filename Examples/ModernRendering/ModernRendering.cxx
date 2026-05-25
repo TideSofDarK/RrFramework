@@ -1557,11 +1557,6 @@ struct SModernRenderingApp
                 InitCamera();
                 return;
             }
-            case RR_EVENT_TYPE_KEY_REPEAT:
-            {
-                std::printf("REPEAT\n");
-            }
-            break;
             case RR_EVENT_TYPE_KEY_DOWN:
             {
                 if (Event->Key.Scancode == RR_SCANCODE_F11)

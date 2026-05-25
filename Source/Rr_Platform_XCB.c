@@ -93,8 +93,12 @@ static struct Rr_Platform_XCB
     Rr_IntVec2 WindowedExtent;
     bool PointerGrabbed;
     Rr_Vec2 MousePosition;
+    Rr_Vec2 MousePositionVirtual;
     Rr_Vec2 MousePositionDelta;
-    Rr_Vec2 RestoreMousePosition;
+    int16_t MouseRestoreX;
+    int16_t MouseRestoreY;
+    int16_t MouseWarpX;
+    int16_t MouseWarpY;
     Rr_MouseButtonFlags MouseState;
 
     struct xkb_context *XKBContext;
@@ -469,6 +473,22 @@ static inline bool Rr_InitXKB(void)
     }
 
     return true;
+}
+
+static inline void Rr_WarpPointer(int16_t X, int16_t Y)
+{
+    gPlatform.MouseWarpX = X;
+    gPlatform.MouseWarpY = Y;
+    xcb_warp_pointer(
+        gPlatform.Connection,
+        XCB_NONE,
+        gPlatform.Window,
+        0,
+        0,
+        0,
+        0,
+        X,
+        Y);
 }
 
 bool Rr_ProcessXKBEvent(xkb_generic_event_t *Event)
@@ -1018,22 +1038,46 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
                 xcb_motion_notify_event_t *MotionEvent =
                     (xcb_motion_notify_event_t *)XCBEvent;
 
-                Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
-                Event->MouseMotion.Position = (Rr_Vec2){
-                    (float)MotionEvent->event_x,
-                    (float)MotionEvent->event_y,
-                };
+                if (MotionEvent->event_x != gPlatform.MouseWarpX ||
+                    MotionEvent->event_y != gPlatform.MouseWarpY)
+                {
+                    Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
+                    if (gPlatform.PointerGrabbed)
+                    {
+                        gPlatform.MousePositionVirtual = Rr_AddV2(
+                            gPlatform.MousePositionVirtual,
+                            Rr_V2(
+                                (float)MotionEvent->event_x -
+                                    (float)gPlatform.MouseRestoreX,
+                                (float)MotionEvent->event_y -
+                                    (float)gPlatform.MouseRestoreY));
 
-                gPlatform.MousePositionDelta = Rr_AddV2(
-                    gPlatform.MousePositionDelta,
-                    Rr_SubV2(
+                        Event->MouseMotion.Position =
+                            gPlatform.MousePositionVirtual;
+
+                        Rr_WarpPointer(
+                            gPlatform.MouseRestoreX,
+                            gPlatform.MouseRestoreY);
+                    }
+                    else
+                    {
+                        Event->MouseMotion.Position = Rr_V2(
+                            (float)MotionEvent->event_x,
+                            (float)MotionEvent->event_y);
+                    }
+
+                    gPlatform.MousePositionDelta = Rr_SubV2(
                         Event->MouseMotion.Position,
-                        gPlatform.MousePosition));
+                        gPlatform.MousePosition);
 
-                gPlatform.MousePosition = Event->MouseMotion.Position;
+                    gPlatform.MousePosition = Event->MouseMotion.Position;
 
-                goto Translated;
+                    goto Translated;
+                }
+
+                free(XCBEvent);
             }
+            break;
             case XCB_ENTER_NOTIFY:
             {
                 xcb_enter_notify_event_t *EnterEvent =
@@ -1232,7 +1276,10 @@ static inline void Rr_GrabPointer(void)
 
     if (GrabPointerReply->status == XCB_GRAB_STATUS_SUCCESS)
     {
-        gPlatform.RestoreMousePosition = gPlatform.MousePosition;
+        gPlatform.MousePositionDelta = Rr_V2F(0.0f);
+        gPlatform.MousePositionVirtual = gPlatform.MousePosition;
+        gPlatform.MouseRestoreX = (int16_t)gPlatform.MousePosition.X;
+        gPlatform.MouseRestoreY = (int16_t)gPlatform.MousePosition.Y;
         gPlatform.PointerGrabbed = true;
     }
 
@@ -1247,16 +1294,8 @@ static inline void Rr_UngrabPointer(void)
     }
 
     xcb_ungrab_pointer(gPlatform.Connection, XCB_TIME_CURRENT_TIME);
-    xcb_warp_pointer(
-        gPlatform.Connection,
-        XCB_NONE,
-        gPlatform.Window,
-        0,
-        0,
-        0,
-        0,
-        (int16_t)gPlatform.RestoreMousePosition.X,
-        (int16_t)gPlatform.RestoreMousePosition.Y);
+
+    Rr_WarpPointer(gPlatform.MouseRestoreX, gPlatform.MouseRestoreY);
 
     gPlatform.PointerGrabbed = false;
 }
