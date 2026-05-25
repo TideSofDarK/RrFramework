@@ -14,10 +14,7 @@
 #include "tinyexr.h"
 
 #include <algorithm>
-#include <array>
 #include <print>
-
-using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
 
 Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
 {
@@ -169,8 +166,6 @@ struct SPrerenderedDepthApp
     Rr_Image2D *BackgroundColorImage;
     Rr_Image2D *BackgroundDepthImage;
     Rr_IntVec2 BackgroundExtent;
-
-    UScancodes Scancodes{};
 
     void InitPipeline()
     {

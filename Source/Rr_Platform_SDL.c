@@ -121,7 +121,7 @@ const char *const *Rr_GetVulkanExtensions(uint32_t *Count)
     return SDL_Vulkan_GetInstanceExtensions(Count);
 }
 
-bool Rr_CreateVulkanSurface(void *Instance, void **Surface)
+bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface)
 {
     return SDL_Vulkan_CreateSurface(
         gPlatform.Window,
@@ -195,41 +195,50 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
                 Event->Type = RR_EVENT_TYPE_TEXT_INPUT;
                 Event->Text.Length = Length;
                 Event->Text.CString = Buffer;
+
                 return true;
             }
             case SDL_EVENT_KEY_DOWN:
             case SDL_EVENT_KEY_UP:
             {
-                Event->Type = SDLEvent.type == SDL_EVENT_KEY_DOWN
-                                  ? RR_EVENT_TYPE_KEY_DOWN
-                                  : RR_EVENT_TYPE_KEY_UP;
-                Event->Key.Down = SDLEvent.key.down;
+                if (SDLEvent.key.repeat)
+                {
+                    Event->Type = RR_EVENT_TYPE_KEY_REPEAT;
+                }
+                else
+                {
+                    Event->Type = SDLEvent.type == SDL_EVENT_KEY_DOWN
+                                      ? RR_EVENT_TYPE_KEY_DOWN
+                                      : RR_EVENT_TYPE_KEY_UP;
+                }
+                Event->Key.Down = Event->Type != RR_EVENT_TYPE_KEY_UP;
                 Event->Key.Scancode = (Rr_Scancode)SDLEvent.key.scancode;
                 Event->Key.Keymod = 0;
-                if ((SDLEvent.key.mod & SDL_KMOD_LCTRL) ||
-                    (SDLEvent.key.mod & SDL_KMOD_RCTRL) ||
-                    (SDLEvent.key.mod & SDL_KMOD_CTRL))
+                if (SDLEvent.key.mod & SDL_KMOD_LCTRL ||
+                    SDLEvent.key.mod & SDL_KMOD_RCTRL ||
+                    SDLEvent.key.mod & SDL_KMOD_CTRL)
                 {
                     Event->Key.Keymod |= RR_KEYMOD_CTRL;
                 }
-                if ((SDLEvent.key.mod & SDL_KMOD_LSHIFT) ||
-                    (SDLEvent.key.mod & SDL_KMOD_RSHIFT) ||
-                    (SDLEvent.key.mod & SDL_KMOD_SHIFT))
+                if (SDLEvent.key.mod & SDL_KMOD_LSHIFT ||
+                    SDLEvent.key.mod & SDL_KMOD_RSHIFT ||
+                    SDLEvent.key.mod & SDL_KMOD_SHIFT)
                 {
                     Event->Key.Keymod |= RR_KEYMOD_SHIFT;
                 }
-                if ((SDLEvent.key.mod & SDL_KMOD_LALT) ||
-                    (SDLEvent.key.mod & SDL_KMOD_RALT) ||
-                    (SDLEvent.key.mod & SDL_KMOD_ALT))
+                if (SDLEvent.key.mod & SDL_KMOD_LALT ||
+                    SDLEvent.key.mod & SDL_KMOD_RALT ||
+                    SDLEvent.key.mod & SDL_KMOD_ALT)
                 {
                     Event->Key.Keymod |= RR_KEYMOD_ALT;
                 }
-                if ((SDLEvent.key.mod & SDL_KMOD_LGUI) ||
-                    (SDLEvent.key.mod & SDL_KMOD_RGUI) ||
-                    (SDLEvent.key.mod & SDL_KMOD_GUI))
+                if (SDLEvent.key.mod & SDL_KMOD_LGUI ||
+                    SDLEvent.key.mod & SDL_KMOD_RGUI ||
+                    SDLEvent.key.mod & SDL_KMOD_GUI)
                 {
                     Event->Key.Keymod |= RR_KEYMOD_GUI;
                 }
+
                 return true;
             }
             case SDL_EVENT_MOUSE_MOTION:
@@ -251,6 +260,7 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
                     Rr_Vec2){ SDLEvent.wheel.mouse_x, SDLEvent.wheel.mouse_y });
                 Event->Wheel.Amount =
                     (Rr_Vec2){ SDLEvent.wheel.x, SDLEvent.wheel.y };
+
                 return true;
             }
             case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -282,29 +292,40 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
                     Event->MouseButton.Button = RR_MOUSE_BUTTON_X2;
                 }
                 Event->MouseButton.Clicks = SDLEvent.button.clicks;
+                if (SDLEvent.type == SDL_EVENT_MOUSE_BUTTON_UP)
+                {
+                    /* Set to 1 to be compatible with GLFW. */
+
+                    Event->MouseButton.Clicks = 1;
+                }
+
                 return true;
             }
             case SDL_EVENT_DROP_FILE:
             {
                 Event->Type = RR_EVENT_TYPE_DROP_FILE;
                 Event->DropFile.Path = SDLEvent.drop.data;
+
                 return true;
             }
             case SDL_EVENT_QUIT:
             {
                 Event->Type = RR_EVENT_TYPE_QUIT;
+
                 return true;
             }
             case SDL_EVENT_WINDOW_FOCUS_GAINED:
             {
                 Event->Type = RR_EVENT_TYPE_FOCUS;
                 Event->Focus.Focused = true;
+
                 return true;
             }
             case SDL_EVENT_WINDOW_FOCUS_LOST:
             {
                 Event->Type = RR_EVENT_TYPE_FOCUS;
                 Event->Focus.Focused = false;
+
                 return true;
             }
             default:

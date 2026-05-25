@@ -189,6 +189,36 @@ static uint32_t Rr_UTF8Decode(Rr_UTF8Decoder *Decoder)
     }
 }
 
+static inline void Rr_CodepointToUTF8(uint32_t Codepoint, char Buffer[5])
+{
+    if (Codepoint < 0x80)
+    {
+        Buffer[0] = (char)Codepoint;
+        Buffer[1] = '\0';
+    }
+    else if (Codepoint < 0x800)
+    {
+        Buffer[0] = (char)(0xC0 | (Codepoint >> 6));
+        Buffer[1] = (char)(0x80 | (Codepoint & 0x3f));
+        Buffer[2] = '\0';
+    }
+    else if (Codepoint < 0x10000)
+    {
+        Buffer[0] = (char)(0xE0 | (Codepoint >> 12));
+        Buffer[1] = (char)(0x80 | ((Codepoint >> 6) & 0x3f));
+        Buffer[2] = (char)(0x80 | (Codepoint & 0x3f));
+        Buffer[3] = '\0';
+    }
+    else if (Codepoint < 0x200000)
+    {
+        Buffer[0] = (char)(0xF0 | (Codepoint >> 18));
+        Buffer[1] = (char)(0x80 | ((Codepoint >> 12) & 0x3f));
+        Buffer[2] = (char)(0x80 | ((Codepoint >> 6) & 0x3f));
+        Buffer[3] = (char)(0x80 | (Codepoint & 0x3f));
+        Buffer[4] = '\0';
+    }
+}
+
 static size_t Rr_PreviousUTF8CodepointOffset(
     const char *CString,
     size_t CurrentOffset)

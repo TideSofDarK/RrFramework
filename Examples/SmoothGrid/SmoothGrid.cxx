@@ -2,10 +2,6 @@
 
 #include <Rr/Rr.h>
 
-#include <array>
-
-using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
-
 constexpr float NEAR_PLANE = 0.1f;
 constexpr float FAR_PLANE = 100.0f;
 
@@ -44,7 +40,7 @@ struct SCamera
         return Rr_Norm(Transform.Columns[0].XYZ);
     }
 
-    void Update(const UScancodes &Scancodes)
+    void Update()
     {
         float DeltaTime = Rr_GetDeltaSeconds();
 
@@ -57,19 +53,19 @@ struct SCamera
             constexpr float CameraSpeed = 5.0f;
             Rr_Vec3 CameraForward = GetForwardVector();
             Rr_Vec3 CameraLeft = GetRightVector();
-            if (Scancodes[RR_SCANCODE_W])
+            if (Rr_IsScancodePressed(RR_SCANCODE_W))
             {
                 Position -= CameraForward * CameraSpeed * DeltaTime;
             }
-            if (Scancodes[RR_SCANCODE_A])
+            if (Rr_IsScancodePressed(RR_SCANCODE_A))
             {
                 Position -= CameraLeft * CameraSpeed * DeltaTime;
             }
-            if (Scancodes[RR_SCANCODE_S])
+            if (Rr_IsScancodePressed(RR_SCANCODE_S))
             {
                 Position += CameraForward * CameraSpeed * DeltaTime;
             }
-            if (Scancodes[RR_SCANCODE_D])
+            if (Rr_IsScancodePressed(RR_SCANCODE_D))
             {
                 Position += CameraLeft * CameraSpeed * DeltaTime;
             }
@@ -114,8 +110,6 @@ struct SSmoothGridApp
     Rr_Buffer *UniformBuffer{};
 
     SCamera Camera;
-
-    UScancodes Scancodes{};
 
     void InitPipeline()
     {
@@ -192,12 +186,6 @@ struct SSmoothGridApp
                 InitCamera();
                 return;
             }
-            case RR_EVENT_TYPE_KEY_DOWN:
-            case RR_EVENT_TYPE_KEY_UP:
-            {
-                Scancodes[Event->Key.Scancode] = Event->Key.Down;
-                return;
-            }
             default:
                 return;
         }
@@ -209,7 +197,7 @@ struct SSmoothGridApp
 
         Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
 
-        Camera.Update(Scancodes);
+        Camera.Update();
 
         SGPUUniform Uniform = {
             .View = Camera.GetViewMatrix(),

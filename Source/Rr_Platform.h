@@ -38,7 +38,7 @@ extern void (*Rr_GetVkGetInstanceProcAddr(void))(void);
 
 extern const char *const *Rr_GetVulkanExtensions(uint32_t *Count);
 
-extern bool Rr_CreateVulkanSurface(void *Instance, void **Surface);
+extern bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface);
 
 extern void Rr_NewPlatformFrame(void);
 

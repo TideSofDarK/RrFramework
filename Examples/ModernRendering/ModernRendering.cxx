@@ -7,8 +7,6 @@
 #include <functional>
 #include <vector>
 
-using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
-
 constexpr Rr_Mat4 FLIP_Y_MATRIX = { 1.0f, 0.0f,  0.0f, 0.0f,
                                     0.0f, -1.0f, 0.0f, 0.0f, //
                                     0.0f, 0.0f,  1.0f, 0.0f, //
@@ -53,7 +51,7 @@ struct SCamera
         return Rr_Norm(Transform.Columns[0].XYZ);
     }
 
-    void Update(const UScancodes &Scancodes)
+    void Update()
     {
         float DeltaTime = Rr_GetDeltaSeconds();
 
@@ -66,19 +64,19 @@ struct SCamera
             constexpr float CameraSpeed = 5.0f;
             Rr_Vec3 CameraForward = GetForwardVector();
             Rr_Vec3 CameraLeft = GetRightVector();
-            if (Scancodes[RR_SCANCODE_W])
+            if (Rr_IsScancodePressed(RR_SCANCODE_W))
             {
                 Position -= CameraForward * CameraSpeed * DeltaTime;
             }
-            if (Scancodes[RR_SCANCODE_A])
+            if (Rr_IsScancodePressed(RR_SCANCODE_A))
             {
                 Position -= CameraLeft * CameraSpeed * DeltaTime;
             }
-            if (Scancodes[RR_SCANCODE_S])
+            if (Rr_IsScancodePressed(RR_SCANCODE_S))
             {
                 Position += CameraForward * CameraSpeed * DeltaTime;
             }
-            if (Scancodes[RR_SCANCODE_D])
+            if (Rr_IsScancodePressed(RR_SCANCODE_D))
             {
                 Position += CameraLeft * CameraSpeed * DeltaTime;
             }
@@ -1271,8 +1269,6 @@ struct SModernRenderingApp
     };
     std::uint32_t MSAAOptionIndex = 0;
 
-    UScancodes Scancodes{};
-
     SFullscreenBlit FullscreenBlit;
 
     SCamera Camera;
@@ -1561,12 +1557,14 @@ struct SModernRenderingApp
                 InitCamera();
                 return;
             }
-            case RR_EVENT_TYPE_KEY_DOWN:
-            case RR_EVENT_TYPE_KEY_UP:
+            case RR_EVENT_TYPE_KEY_REPEAT:
             {
-                Scancodes[Event->Key.Scancode] = Event->Key.Down;
-
-                if (Event->Key.Scancode == RR_SCANCODE_F11 && Event->Key.Down)
+                std::printf("REPEAT\n");
+            }
+            break;
+            case RR_EVENT_TYPE_KEY_DOWN:
+            {
+                if (Event->Key.Scancode == RR_SCANCODE_F11)
                 {
                     Rr_SetWindowFullscreen(!Rr_IsWindowFullscreen());
                 }
@@ -1652,9 +1650,9 @@ struct SModernRenderingApp
 
         Rr_BeginGraphLabel(Graph, "ModernRendering");
 
-        Camera.Update(Scancodes);
+        Camera.Update();
 
-        if (!Scancodes[RR_SCANCODE_SPACE])
+        if (!Rr_IsScancodePressed(RR_SCANCODE_SPACE))
         {
             Lighting.PointLights[0].Position.X =
                 std::cosf(Rr_GetTimeSeconds()) / 2.0f;

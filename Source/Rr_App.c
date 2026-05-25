@@ -20,6 +20,8 @@
 
 #include "Rr_App.h"
 
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_APP
+#include "Rr_LogMacro.h"
 #include "Rr_Platform.h"
 #include "Rr_Renderer.h"
 #include "Rr_UI.h"
@@ -138,7 +140,11 @@ void Rr_Run(Rr_AppConfig *Config)
     IsMainThread = true;
 
     Rr_InitSystem();
-    Rr_InitPlatform(Config);
+
+    if (!Rr_InitPlatform(Config))
+    {
+        RR_LOG_ABORT("Failed to initialize platform!");
+    }
 
     Rr_InitThreadContext();
 

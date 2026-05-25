@@ -8,8 +8,6 @@
 #include <cmath>
 #include <vector>
 
-using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
-
 constexpr float NEAR_PLANE = 0.1f;
 constexpr float FAR_PLANE = 100.0f;
 
@@ -55,7 +53,7 @@ struct SCamera
         return Rr_Norm(Transform.Columns[0].XYZ);
     }
 
-    void Update(const UScancodes &Scancodes)
+    void Update()
     {
         float DeltaTime = Rr_GetDeltaSeconds();
 
@@ -68,19 +66,19 @@ struct SCamera
             constexpr float CameraSpeed = 5.0f;
             Rr_Vec3 CameraForward = GetForwardVector();
             Rr_Vec3 CameraLeft = GetRightVector();
-            if (Scancodes[RR_SCANCODE_W])
+            if (Rr_IsScancodePressed(RR_SCANCODE_W))
             {
                 Position += CameraForward * CameraSpeed * DeltaTime;
             }
-            if (Scancodes[RR_SCANCODE_A])
+            if (Rr_IsScancodePressed(RR_SCANCODE_A))
             {
                 Position -= CameraLeft * CameraSpeed * DeltaTime;
             }
-            if (Scancodes[RR_SCANCODE_S])
+            if (Rr_IsScancodePressed(RR_SCANCODE_S))
             {
                 Position -= CameraForward * CameraSpeed * DeltaTime;
             }
-            if (Scancodes[RR_SCANCODE_D])
+            if (Rr_IsScancodePressed(RR_SCANCODE_D))
             {
                 Position += CameraLeft * CameraSpeed * DeltaTime;
             }
@@ -155,8 +153,6 @@ struct SGSApp
     };
 
     SCamera Camera;
-
-    UScancodes Scancodes{};
 
     size_t AliveCount{};
     size_t AlignedCount{};
@@ -327,12 +323,6 @@ struct SGSApp
                     Rr_GetImage2DExtent(Rr_GetSwapchainImage()));
             }
             break;
-            case RR_EVENT_TYPE_KEY_DOWN:
-            case RR_EVENT_TYPE_KEY_UP:
-            {
-                Scancodes[Event->Key.Scancode] = Event->Key.Down;
-                return;
-            }
             default:
                 return;
         }
@@ -340,7 +330,7 @@ struct SGSApp
 
     void Iterate()
     {
-        Camera.Update(Scancodes);
+        Camera.Update();
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 

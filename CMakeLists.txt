@@ -200,7 +200,16 @@ set(RR_PLATFORM "GLFW" CACHE STRING "Either SDL, GLFW or XCB (Linux-only)")
 if (RR_PLATFORM STREQUAL "XCB")
     find_package(X11 REQUIRED)
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE X11::xcb)
+    target_link_libraries(
+        ${PROJECT_NAME}
+        PRIVATE
+        X11::xkbcommon
+        X11::xkbcommon_X11
+        X11::xcb
+        X11::xcb_cursor
+        X11::xcb_xfixes
+        X11::xcb_xkb
+        X11::xcb_randr)
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_XCB.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_XCB)
 endif ()

@@ -25,6 +25,8 @@
 #include "Rr_LogMacro.h"
 #include "Rr_Vulkan.h"
 
+#include <Rr/Rr_Utility.h>
+
 #include <GLFW/glfw3.h>
 
 static struct Rr_Platform_GLFW
@@ -79,8 +81,6 @@ static void Rr_GLFWCursorCallback(GLFWwindow *Window, double X, double Y)
     Rr_Event *Event = Rr_AddEvent();
     Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
 
-    Rr_Vec2 LastMousePosition = gPlatform.LastMousePosition;
-
     if (gPlatform.WindowScaled)
     {
         Event->MouseMotion.Position =
@@ -94,7 +94,7 @@ static void Rr_GLFWCursorCallback(GLFWwindow *Window, double X, double Y)
 
     gPlatform.MousePositionDelta = Rr_AddV2(
         gPlatform.MousePositionDelta,
-        Rr_SubV2(Event->MouseMotion.Position, LastMousePosition));
+        Rr_SubV2(Event->MouseMotion.Position, gPlatform.LastMousePosition));
 
     gPlatform.LastMousePosition = Event->MouseMotion.Position;
 }
@@ -141,7 +141,18 @@ static const Rr_Scancode GLFWScancodes[GLFW_KEY_LAST + 1] = {
     [GLFW_KEY_BACKSPACE] = RR_SCANCODE_BACKSPACE,
     [GLFW_KEY_TAB] = RR_SCANCODE_TAB,
     [GLFW_KEY_SPACE] = RR_SCANCODE_SPACE,
-    [GLFW_KEY_CAPS_LOCK] = RR_SCANCODE_CAPSLOCK,
+    [GLFW_KEY_MINUS] = RR_SCANCODE_MINUS,
+    [GLFW_KEY_EQUAL] = RR_SCANCODE_EQUALS,
+    [GLFW_KEY_LEFT_BRACKET] = RR_SCANCODE_LEFT_BRACKET,
+    [GLFW_KEY_RIGHT_BRACKET] = RR_SCANCODE_RIGHT_BRACKET,
+    [GLFW_KEY_BACKSLASH] = RR_SCANCODE_BACKSLASH,
+    [GLFW_KEY_SEMICOLON] = RR_SCANCODE_SEMICOLON,
+    [GLFW_KEY_APOSTROPHE] = RR_SCANCODE_APOSTROPHE,
+    [GLFW_KEY_GRAVE_ACCENT] = RR_SCANCODE_GRAVE_TILDE,
+    [GLFW_KEY_COMMA] = RR_SCANCODE_COMMA,
+    [GLFW_KEY_PERIOD] = RR_SCANCODE_PERIOD,
+    [GLFW_KEY_SLASH] = RR_SCANCODE_SLASH,
+    [GLFW_KEY_CAPS_LOCK] = RR_SCANCODE_CAPS_LOCK,
     [GLFW_KEY_F1] = RR_SCANCODE_F1,
     [GLFW_KEY_F2] = RR_SCANCODE_F2,
     [GLFW_KEY_F3] = RR_SCANCODE_F3,
@@ -154,16 +165,20 @@ static const Rr_Scancode GLFWScancodes[GLFW_KEY_LAST + 1] = {
     [GLFW_KEY_F10] = RR_SCANCODE_F10,
     [GLFW_KEY_F11] = RR_SCANCODE_F11,
     [GLFW_KEY_F12] = RR_SCANCODE_F12,
+    [GLFW_KEY_PRINT_SCREEN] = RR_SCANCODE_PRINT_SCREEN,
+    [GLFW_KEY_SCROLL_LOCK] = RR_SCANCODE_SCROLL_LOCK,
+    [GLFW_KEY_PAUSE] = RR_SCANCODE_PAUSE,
+    [GLFW_KEY_INSERT] = RR_SCANCODE_INSERT,
     [GLFW_KEY_HOME] = RR_SCANCODE_HOME,
-    [GLFW_KEY_PAGE_UP] = RR_SCANCODE_PAGEUP,
+    [GLFW_KEY_PAGE_UP] = RR_SCANCODE_PAGE_UP,
     [GLFW_KEY_DELETE] = RR_SCANCODE_DELETE,
     [GLFW_KEY_END] = RR_SCANCODE_END,
-    [GLFW_KEY_PAGE_DOWN] = RR_SCANCODE_PAGEDOWN,
+    [GLFW_KEY_PAGE_DOWN] = RR_SCANCODE_PAGE_DOWN,
     [GLFW_KEY_RIGHT] = RR_SCANCODE_RIGHT,
     [GLFW_KEY_LEFT] = RR_SCANCODE_LEFT,
     [GLFW_KEY_DOWN] = RR_SCANCODE_DOWN,
     [GLFW_KEY_UP] = RR_SCANCODE_UP,
-    [GLFW_KEY_NUM_LOCK] = RR_SCANCODE_NUMLOCKCLEAR,
+    [GLFW_KEY_NUM_LOCK] = RR_SCANCODE_NUMLOCK_CLEAR,
     [GLFW_KEY_KP_DIVIDE] = RR_SCANCODE_KP_DIVIDE,
     [GLFW_KEY_KP_MULTIPLY] = RR_SCANCODE_KP_MULTIPLY,
     [GLFW_KEY_KP_SUBTRACT] = RR_SCANCODE_KP_MINUS,
@@ -179,14 +194,29 @@ static const Rr_Scancode GLFWScancodes[GLFW_KEY_LAST + 1] = {
     [GLFW_KEY_KP_8] = RR_SCANCODE_KP_8,
     [GLFW_KEY_KP_9] = RR_SCANCODE_KP_9,
     [GLFW_KEY_KP_0] = RR_SCANCODE_KP_0,
-    [GLFW_KEY_KP_DECIMAL] = RR_SCANCODE_KP_PERIOD,
-    [GLFW_KEY_LEFT_SHIFT] = RR_SCANCODE_LSHIFT,
+    [GLFW_KEY_KP_DECIMAL] = RR_SCANCODE_KP_PERIOD_DELETE,
+    [GLFW_KEY_WORLD_1] = RR_SCANCODE_ISO_BACKSLASH,
+    [GLFW_KEY_KP_EQUAL] = RR_SCANCODE_KP_EQUALS,
+    [GLFW_KEY_F13] = RR_SCANCODE_F13,
+    [GLFW_KEY_F14] = RR_SCANCODE_F14,
+    [GLFW_KEY_F15] = RR_SCANCODE_F15,
+    [GLFW_KEY_F16] = RR_SCANCODE_F16,
+    [GLFW_KEY_F17] = RR_SCANCODE_F17,
+    [GLFW_KEY_F18] = RR_SCANCODE_F18,
+    [GLFW_KEY_F19] = RR_SCANCODE_F19,
+    [GLFW_KEY_F20] = RR_SCANCODE_F20,
+    [GLFW_KEY_F21] = RR_SCANCODE_F21,
+    [GLFW_KEY_F22] = RR_SCANCODE_F22,
+    [GLFW_KEY_F23] = RR_SCANCODE_F23,
+    [GLFW_KEY_F24] = RR_SCANCODE_F24,
+    [GLFW_KEY_MENU] = RR_SCANCODE_MENU,
     [GLFW_KEY_LEFT_CONTROL] = RR_SCANCODE_LCTRL,
+    [GLFW_KEY_LEFT_SHIFT] = RR_SCANCODE_LSHIFT,
     [GLFW_KEY_LEFT_ALT] = RR_SCANCODE_LALT,
     [GLFW_KEY_LEFT_SUPER] = RR_SCANCODE_LSUPER,
     [GLFW_KEY_RIGHT_SHIFT] = RR_SCANCODE_RSHIFT,
-    [GLFW_KEY_RIGHT_CONTROL] = RR_SCANCODE_RCTRL,
     [GLFW_KEY_RIGHT_ALT] = RR_SCANCODE_RALT,
+    [GLFW_KEY_RIGHT_CONTROL] = RR_SCANCODE_RCTRL,
     [GLFW_KEY_RIGHT_SUPER] = RR_SCANCODE_RSUPER,
 };
 
@@ -198,9 +228,21 @@ static void Rr_GLFWKeyCallback(
     int Mods)
 {
     Rr_Event *Event = Rr_AddEvent();
-    Event->Type =
-        Action == GLFW_PRESS ? RR_EVENT_TYPE_KEY_DOWN : RR_EVENT_TYPE_KEY_UP;
-    Event->Key.Down = Action == GLFW_PRESS || Action == GLFW_REPEAT;
+    switch (Action)
+    {
+        case GLFW_PRESS:
+            Event->Type = RR_EVENT_TYPE_KEY_DOWN;
+            break;
+        case GLFW_RELEASE:
+            Event->Type = RR_EVENT_TYPE_KEY_UP;
+            break;
+        case GLFW_REPEAT:
+            Event->Type = RR_EVENT_TYPE_KEY_REPEAT;
+            break;
+        default:
+            return;
+    }
+    Event->Key.Down = Event->Type != RR_EVENT_TYPE_KEY_UP;
     Event->Key.Scancode = GLFWScancodes[Key];
     Event->Key.Keymod = 0;
     if (Mods & GLFW_MOD_CONTROL)
@@ -308,36 +350,6 @@ static void Rr_GLFWMouseButtonCallback(
     else
     {
         Event->MouseButton.Clicks = 1;
-    }
-}
-
-static inline void Rr_CodepointToUTF8(uint32_t Codepoint, char Buffer[5])
-{
-    if (Codepoint < 0x80)
-    {
-        Buffer[0] = (char)Codepoint;
-        Buffer[1] = '\0';
-    }
-    else if (Codepoint < 0x800)
-    {
-        Buffer[0] = (char)(0xC0 | (Codepoint >> 6));
-        Buffer[1] = (char)(0x80 | (Codepoint & 0x3f));
-        Buffer[2] = '\0';
-    }
-    else if (Codepoint < 0x10000)
-    {
-        Buffer[0] = (char)(0xE0 | (Codepoint >> 12));
-        Buffer[1] = (char)(0x80 | ((Codepoint >> 6) & 0x3f));
-        Buffer[2] = (char)(0x80 | (Codepoint & 0x3f));
-        Buffer[3] = '\0';
-    }
-    else if (Codepoint < 0x200000)
-    {
-        Buffer[0] = (char)(0xF0 | (Codepoint >> 18));
-        Buffer[1] = (char)(0x80 | ((Codepoint >> 12) & 0x3f));
-        Buffer[2] = (char)(0x80 | ((Codepoint >> 6) & 0x3f));
-        Buffer[3] = (char)(0x80 | (Codepoint & 0x3f));
-        Buffer[4] = '\0';
     }
 }
 
@@ -535,7 +547,7 @@ const char *const *Rr_GetVulkanExtensions(uint32_t *Count)
     return glfwGetRequiredInstanceExtensions(Count);
 }
 
-bool Rr_CreateVulkanSurface(void *Instance, void **Surface)
+bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface)
 {
     return glfwCreateWindowSurface(
                (VkInstance)Instance,

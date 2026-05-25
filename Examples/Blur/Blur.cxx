@@ -10,8 +10,6 @@
 
 static constexpr std::int32_t MAX_IMAGE_SIZE = 4096;
 
-using UScancodes = std::array<bool, RR_SCANCODE_COUNT>;
-
 struct SCamera
 {
     float FOVDegrees = 90.0f;
@@ -34,7 +32,7 @@ struct SCamera
         return Rr_InvGeneral(Transform);
     }
 
-    void Update(const UScancodes &Scancodes)
+    void Update()
     {
         float DeltaTime = Rr_GetDeltaSeconds();
 
@@ -752,7 +750,6 @@ struct SBlurApp
     std::int32_t BlurCubePasses = 4;
     SBoxBlurCube BoxBlurCube;
 
-    UScancodes Scancodes{};
     EBlurType Type = EBlurType::DUAL_KAWASE_2D;
 
     void InitUniformBuffer()
@@ -974,13 +971,6 @@ struct SBlurApp
                 return;
             }
             break;
-            case RR_EVENT_TYPE_KEY_DOWN:
-            case RR_EVENT_TYPE_KEY_UP:
-            {
-                Scancodes[Event->Key.Scancode] = Event->Key.Down;
-                return;
-            }
-            break;
             default:
                 return;
         }
@@ -1064,7 +1054,7 @@ struct SBlurApp
     {
         Rr_BeginGraphLabel(Graph, "DrawBlurCube");
 
-        Camera.Update(Scancodes);
+        Camera.Update();
 
         SGPUUniform Uniform = {
             .View = Camera.GetViewMatrix(),

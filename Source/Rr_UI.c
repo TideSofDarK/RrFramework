@@ -26,7 +26,7 @@
 
 #include "Rr_BuiltinAssets.inc"
 
-#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_VULKAN
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_UI
 #include "Rr_App.h"
 #include "Rr_Image.h"
 #include "Rr_LogMacro.h"

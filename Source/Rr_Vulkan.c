@@ -80,6 +80,11 @@ void Rr_InitInstance(
     char const *const *PlatformExtensions =
         Rr_GetVulkanExtensions(&PlatformExtensionCount);
 
+    for (size_t Index = 0; Index < PlatformExtensionCount; ++Index)
+    {
+        RR_LOG_INFO("Required extension: %s", PlatformExtensions[Index]);
+    }
+
     uint32_t ExtensionCount = PlatformExtensionCount + InstanceExtensionCount;
 
     char const **Extensions =
@@ -124,7 +129,12 @@ void Rr_InitInstance(
     InstanceCreateInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 #endif
 
-    Loader->CreateInstance(&InstanceCreateInfo, NULL, &Instance->Handle);
+    VkResult Result =
+        Loader->CreateInstance(&InstanceCreateInfo, NULL, &Instance->Handle);
+    if (Result != VK_SUCCESS)
+    {
+        RR_LOG_ABORT("Failed to create Vulkan instance!");
+    }
 
     /* Vulkan 1.0 */
 
@@ -577,7 +587,8 @@ void Rr_SelectPhysicalDevice(
 
 void Rr_InitSurface(Rr_Instance *Instance, VkSurfaceKHR *Surface)
 {
-    if (Rr_CreateVulkanSurface(Instance->Handle, (void *)Surface) != true)
+    if (Rr_CreateVulkanSurface((uint64_t)Instance->Handle, (void *)Surface) !=
+        true)
     {
         RR_LOG_ABORT("Failed to create Vulkan surface!");
     }
