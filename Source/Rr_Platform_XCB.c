@@ -1146,10 +1146,8 @@ bool Rr_IsWindowFullscreen(void)
         0,
         1024);
 
-    xcb_get_property_reply_t *GetPropertyReply = xcb_get_property_reply(
-        gPlatform.Connection,
-        GetPropertyCookie,
-        NULL);
+    xcb_get_property_reply_t *GetPropertyReply =
+        xcb_get_property_reply(gPlatform.Connection, GetPropertyCookie, NULL);
     if (!GetPropertyReply)
     {
         return false;
@@ -1275,29 +1273,30 @@ void Rr_SetRelativeMouseMode(bool Relative)
     }
 }
 
+static inline float Rr_GetXCBScreenRefreshRate(void)
+{
+    xcb_randr_get_screen_info_cookie_t GetScreenInfoCookie =
+        xcb_randr_get_screen_info_unchecked(
+            gPlatform.Connection,
+            gPlatform.Window);
+    xcb_randr_get_screen_info_reply_t *GetScreenInfoReply =
+        xcb_randr_get_screen_info_reply(
+            gPlatform.Connection,
+            GetScreenInfoCookie,
+            NULL);
+
+    float Result = (float)GetScreenInfoReply->rate;
+
+    free(GetScreenInfoReply);
+
+    return Result;
+}
+
 float Rr_GetDisplayRefreshRate(void)
 {
-    float Result;
-
     if (!gPlatform.UseRandr)
     {
-    Fallback:
-
-        xcb_randr_get_screen_info_cookie_t GetScreenInfoCookie =
-            xcb_randr_get_screen_info_unchecked(
-                gPlatform.Connection,
-                gPlatform.Window);
-        xcb_randr_get_screen_info_reply_t *GetScreenInfoReply =
-            xcb_randr_get_screen_info_reply(
-                gPlatform.Connection,
-                GetScreenInfoCookie,
-                NULL);
-
-        Result = (float)GetScreenInfoReply->rate;
-
-        free(GetScreenInfoReply);
-
-        return Result;
+        return Rr_GetXCBScreenRefreshRate();
     }
 
     xcb_randr_get_output_primary_cookie_t GetOutputPrimaryCookie =
@@ -1311,7 +1310,7 @@ float Rr_GetDisplayRefreshRate(void)
             NULL);
     if (!GetOutputPrimaryReply)
     {
-        goto Fallback;
+        return Rr_GetXCBScreenRefreshRate();
     }
     xcb_randr_output_t PrimaryOutput = GetOutputPrimaryReply->output;
     free(GetOutputPrimaryReply);
@@ -1361,8 +1360,8 @@ float Rr_GetDisplayRefreshRate(void)
         xcb_randr_mode_info_t *ModeInfo = ModeInfos + Index;
         if (ModeInfo->id == Mode)
         {
-            Result = (float)ModeInfo->dot_clock /
-                     (float)(ModeInfo->htotal * ModeInfo->vtotal);
+            float Result = (float)ModeInfo->dot_clock /
+                           (float)(ModeInfo->htotal * ModeInfo->vtotal);
 
             free(GetScreenResourcesCurrentReply);
 
@@ -1372,7 +1371,7 @@ float Rr_GetDisplayRefreshRate(void)
 
     free(GetScreenResourcesCurrentReply);
 
-    goto Fallback;
+    return Rr_GetXCBScreenRefreshRate();
 }
 
 Rr_IntVec2 Rr_GetWindowSize(void)
