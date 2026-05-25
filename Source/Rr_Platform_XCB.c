@@ -133,7 +133,7 @@ static inline xcb_atom_t Rr_GetXCBAtom(const char *CString)
         (uint16_t)strlen(CString),
         CString);
     xcb_intern_atom_reply_t *Reply =
-        xcb_intern_atom_reply(gPlatform.Connection, Cookie, nullptr);
+        xcb_intern_atom_reply(gPlatform.Connection, Cookie, NULL);
     if (!Reply)
     {
         return XCB_NONE;
@@ -333,7 +333,7 @@ static inline bool Rr_UpdateXKBKeymap(void)
         xkb_keymap_unref(gPlatform.XKBKeymap);
         gPlatform.XKBKeymap = NULL;
         xkb_state_unref(gPlatform.XKBState);
-        gPlatform.XKBState = nullptr;
+        gPlatform.XKBState = NULL;
 
         return false;
     }
@@ -1149,7 +1149,7 @@ bool Rr_IsWindowFullscreen(void)
     xcb_get_property_reply_t *GetPropertyReply = xcb_get_property_reply(
         gPlatform.Connection,
         GetPropertyCookie,
-        nullptr);
+        NULL);
     if (!GetPropertyReply)
     {
         return false;
