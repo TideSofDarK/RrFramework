@@ -142,6 +142,7 @@ target_sources(
     Source/Rr_Memory.c
     Source/Rr_SPIRV.c
     Source/Rr_Pipeline.c
+    Source/Rr_Platform.c
     Source/Rr_Profiler.c
     Source/Rr_Renderer.c
     Source/Rr_Serialization.c

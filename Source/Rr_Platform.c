@@ -18,38 +18,40 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#pragma once
+#include "Rr_Platform.h"
 
-#include <Rr/Rr_Platform.h>
+#include <Rr/Rr_App.h>
 
-#include <Rr/Rr_Arena.h>
-
-#define RR_WINDOWED_RATIO 0.85f
-
-struct Rr_AppConfig;
-
-typedef struct Rr_Platform Rr_Platform;
-
-extern bool Rr_InitPlatform(struct Rr_AppConfig *Config);
-
-extern void Rr_CleanupPlatform(void);
-
-extern void (*Rr_GetVkGetInstanceProcAddr(void))(void);
-
-extern const char *const *Rr_GetVulkanExtensions(uint32_t *Count);
-
-extern bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface);
-
-extern void Rr_NewPlatformFrame(void);
-
-extern bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena);
-
-extern void Rr_ShowWindow(void);
-
-extern float Rr_GetDisplayRefreshRate(void);
-
-extern void Rr_SetMouseButtonEvent(
+void Rr_SetMouseButtonEvent(
     bool Down,
     Rr_Vec2 Position,
     Rr_MouseButton Button,
-    Rr_Event *Event);
+    Rr_Event *Event)
+{
+    Event->Type =
+        Down ? RR_EVENT_TYPE_MOUSE_BUTTON_DOWN : RR_EVENT_TYPE_MOUSE_BUTTON_UP;
+    Event->MouseButton.Position = Position;
+    Event->MouseButton.Button = (uint8_t)Button;
+
+    static uint64_t LastClickTime[RR_MOUSE_BUTTON_COUNT] = { 0 };
+    static uint8_t Clicks[RR_MOUSE_BUTTON_COUNT] = { 0 };
+    if (Down)
+    {
+        uint64_t Now = Rr_GetTimeMS();
+        uint64_t Diff = Now - LastClickTime[Event->MouseButton.Button];
+        if (Diff < RR_DOUBLE_CLICK_TIME_MS)
+        {
+            Clicks[Event->MouseButton.Button]++;
+        }
+        else
+        {
+            Clicks[Event->MouseButton.Button] = 0;
+        }
+        Event->MouseButton.Clicks = Clicks[Event->MouseButton.Button] + 1;
+        LastClickTime[Event->MouseButton.Button] = Now;
+    }
+    else
+    {
+        Event->MouseButton.Clicks = 1;
+    }
+}

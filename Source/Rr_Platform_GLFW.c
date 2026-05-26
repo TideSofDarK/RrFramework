@@ -305,53 +305,26 @@ static void Rr_GLFWMouseButtonCallback(
     int Action,
     int Mods)
 {
+    if (Button >= RR_MOUSE_BUTTON_COUNT)
+    {
+        return;
+    }
+
+    if (Button == GLFW_MOUSE_BUTTON_MIDDLE)
+    {
+        Button = GLFW_MOUSE_BUTTON_RIGHT;
+    }
+    else if (Button == GLFW_MOUSE_BUTTON_RIGHT)
+    {
+        Button = GLFW_MOUSE_BUTTON_MIDDLE;
+    }
+
     Rr_Event *Event = Rr_AddEvent();
-    Event->Type = Action == GLFW_RELEASE ? RR_EVENT_TYPE_MOUSE_BUTTON_UP
-                                         : RR_EVENT_TYPE_MOUSE_BUTTON_DOWN;
-    Event->MouseButton.Position = Rr_GetGLFWCursorPos();
-    switch (Button)
-    {
-        case GLFW_MOUSE_BUTTON_1:
-            Event->MouseButton.Button = RR_MOUSE_BUTTON_LEFT;
-            break;
-        case GLFW_MOUSE_BUTTON_2:
-            Event->MouseButton.Button = RR_MOUSE_BUTTON_RIGHT;
-            break;
-        case GLFW_MOUSE_BUTTON_3:
-            Event->MouseButton.Button = RR_MOUSE_BUTTON_MIDDLE;
-            break;
-        case GLFW_MOUSE_BUTTON_4:
-            Event->MouseButton.Button = RR_MOUSE_BUTTON_X1;
-            break;
-        case GLFW_MOUSE_BUTTON_5:
-            Event->MouseButton.Button = RR_MOUSE_BUTTON_X2;
-            break;
-        default:
-            Event->MouseButton.Button = UINT8_MAX;
-            break;
-    }
-    /* For each mouse button. */
-    static uint64_t LastClickTime[5] = { 0 };
-    static uint8_t Clicks[5] = { 0 };
-    if (Action == GLFW_PRESS)
-    {
-        uint64_t Now = Rr_GetTimeMS();
-        uint64_t Diff = Now - LastClickTime[Event->MouseButton.Button];
-        if (Diff < RR_DOUBLE_CLICK_TIME_MS)
-        {
-            Clicks[Event->MouseButton.Button]++;
-        }
-        else
-        {
-            Clicks[Event->MouseButton.Button] = 0;
-        }
-        Event->MouseButton.Clicks = Clicks[Event->MouseButton.Button] + 1;
-        LastClickTime[Event->MouseButton.Button] = Now;
-    }
-    else
-    {
-        Event->MouseButton.Clicks = 1;
-    }
+    Rr_SetMouseButtonEvent(
+        Action == GLFW_PRESS,
+        Rr_GetGLFWCursorPos(),
+        (Rr_MouseButton)Button,
+        Event);
 }
 
 static void Rr_GLFWCharCallback(GLFWwindow *Window, uint32_t Codepoint)

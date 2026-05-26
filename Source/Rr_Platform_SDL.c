@@ -266,38 +266,11 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
             case SDL_EVENT_MOUSE_BUTTON_UP:
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
             {
-                Event->Type = SDLEvent.type == SDL_EVENT_MOUSE_BUTTON_UP
-                                  ? RR_EVENT_TYPE_MOUSE_BUTTON_UP
-                                  : RR_EVENT_TYPE_MOUSE_BUTTON_DOWN;
-                Event->MouseButton.Position =
-                    (Rr_Vec2){ SDLEvent.button.x, SDLEvent.button.y };
-                if (SDLEvent.button.button == SDL_BUTTON_LEFT)
-                {
-                    Event->MouseButton.Button = RR_MOUSE_BUTTON_LEFT;
-                }
-                else if (SDLEvent.button.button == SDL_BUTTON_RIGHT)
-                {
-                    Event->MouseButton.Button = RR_MOUSE_BUTTON_RIGHT;
-                }
-                else if (SDLEvent.button.button == SDL_BUTTON_MIDDLE)
-                {
-                    Event->MouseButton.Button = RR_MOUSE_BUTTON_MIDDLE;
-                }
-                else if (SDLEvent.button.button == SDL_BUTTON_X1)
-                {
-                    Event->MouseButton.Button = RR_MOUSE_BUTTON_X1;
-                }
-                else if (SDLEvent.button.button == SDL_BUTTON_X2)
-                {
-                    Event->MouseButton.Button = RR_MOUSE_BUTTON_X2;
-                }
-                Event->MouseButton.Clicks = SDLEvent.button.clicks;
-                if (SDLEvent.type == SDL_EVENT_MOUSE_BUTTON_UP)
-                {
-                    /* Set to 1 to be compatible with GLFW. */
-
-                    Event->MouseButton.Clicks = 1;
-                }
+                Rr_SetMouseButtonEvent(
+                    SDLEvent.type == SDL_EVENT_MOUSE_BUTTON_DOWN,
+                    Rr_V2(SDLEvent.button.x, SDLEvent.button.y),
+                    SDLEvent.button.button - 1,
+                    Event);
 
                 return true;
             }

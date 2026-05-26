@@ -18,10 +18,10 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#include "Rr_App.h"
 #include "Rr_Platform.h"
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_PLATFORM
+#include "Rr_App.h"
 #include "Rr_LogMacro.h"
 #include "Rr_Vulkan.h"
 
@@ -1002,17 +1002,61 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
                 xcb_button_press_event_t *ButtonPressEvent =
                     (xcb_button_press_event_t *)XCBEvent;
 
-                Event->Type = RR_EVENT_TYPE_MOUSE_BUTTON_DOWN;
-                Event->MouseButton.Clicks = 1;
-                Event->MouseButton.Button =
-                    (uint8_t)(ButtonPressEvent->detail - 1);
-                Event->MouseButton.Position = (Rr_Vec2){
-                    (float)ButtonPressEvent->event_x,
-                    (float)ButtonPressEvent->event_y,
-                };
+                if (ButtonPressEvent->detail == 4)
+                {
+                    Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
+                    Event->Wheel.Amount = Rr_V2(0.0f, 1.0f);
+                    Event->Wheel.Position = (Rr_Vec2){
+                        (float)ButtonPressEvent->event_x,
+                        (float)ButtonPressEvent->event_y,
+                    };
+                }
+                else if (ButtonPressEvent->detail == 5)
+                {
+                    Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
+                    Event->Wheel.Amount = Rr_V2(0.0f, -1.0f);
+                    Event->Wheel.Position = (Rr_Vec2){
+                        (float)ButtonPressEvent->event_x,
+                        (float)ButtonPressEvent->event_y,
+                    };
+                }
+                else if (ButtonPressEvent->detail == 6)
+                {
+                    Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
+                    Event->Wheel.Amount = Rr_V2(-1.0f, 0.0f);
+                    Event->Wheel.Position = (Rr_Vec2){
+                        (float)ButtonPressEvent->event_x,
+                        (float)ButtonPressEvent->event_y,
+                    };
+                }
+                else if (ButtonPressEvent->detail == 7)
+                {
+                    Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
+                    Event->Wheel.Amount = Rr_V2(1.0f, 0.0f);
+                    Event->Wheel.Position = (Rr_Vec2){
+                        (float)ButtonPressEvent->event_x,
+                        (float)ButtonPressEvent->event_y,
+                    };
+                }
+                else
+                {
+                    Rr_MouseButton Button =
+                        (Rr_MouseButton)(ButtonPressEvent->detail - 1);
+                    if (ButtonPressEvent->detail > 7)
+                    {
+                        Button -= 4;
+                    }
+                    Rr_SetMouseButtonEvent(
+                        true,
+                        Rr_V2(
+                            (float)ButtonPressEvent->event_x,
+                            (float)ButtonPressEvent->event_y),
+                        Button,
+                        Event);
 
-                gPlatform.MouseState |=
-                    (Rr_MouseButtonFlags)(1 << Event->MouseButton.Button);
+                    gPlatform.MouseState |=
+                        (Rr_MouseButtonFlags)(1 << Event->MouseButton.Button);
+                }
 
                 goto Translated;
             }
@@ -1021,14 +1065,13 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
                 xcb_button_release_event_t *ButtonReleaseEvent =
                     (xcb_button_release_event_t *)XCBEvent;
 
-                Event->Type = RR_EVENT_TYPE_MOUSE_BUTTON_UP;
-                Event->MouseButton.Clicks = 1;
-                Event->MouseButton.Button =
-                    (uint8_t)(ButtonReleaseEvent->detail - 1);
-                Event->MouseButton.Position = (Rr_Vec2){
-                    (float)ButtonReleaseEvent->event_x,
-                    (float)ButtonReleaseEvent->event_y,
-                };
+                Rr_SetMouseButtonEvent(
+                    false,
+                    Rr_V2(
+                        (float)ButtonReleaseEvent->event_x,
+                        (float)ButtonReleaseEvent->event_y),
+                    (Rr_MouseButton)(ButtonReleaseEvent->detail - 1),
+                    Event);
 
                 gPlatform.MouseState &=
                     (Rr_MouseButtonFlags) ~(1 << Event->MouseButton.Button);

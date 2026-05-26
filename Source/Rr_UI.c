@@ -28,10 +28,10 @@
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_UI
 #include "Rr_App.h"
+#include "Rr_Hash.h"
 #include "Rr_Image.h"
 #include "Rr_LogMacro.h"
 #include "Rr_Renderer.h"
-#include "Rr_Hash.h"
 
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Platform.h>
@@ -4232,7 +4232,7 @@ static bool Rr_UIBeginDockedChildWindow(
     Window->Flags |= CHILD_FLAGS;
     Window->Child = true;
     Window->Rect.Offset = ParentLayout->Cursor;
-    Window->Z = ParentWindow->Z;
+    Window->Z = ParentWindow->Z + 1;
     Window->TopLevelParent = ParentWindow->TopLevelParent;
 
     if (ParentLayout->SkipItems)
@@ -8730,6 +8730,7 @@ void Rr_ProcessUIEvent(Rr_Event const *Event)
         }
         break;
         case RR_EVENT_TYPE_KEY_DOWN:
+        case RR_EVENT_TYPE_KEY_REPEAT:
         case RR_EVENT_TYPE_KEY_UP:
         {
             if (Event->Key.Scancode == RR_SCANCODE_LCTRL ||
