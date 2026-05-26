@@ -474,7 +474,7 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     {
         Rr_IntVec2 WindowSize = {
             (int32_t)((float)DisplaySize.X * RR_WINDOWED_RATIO),
-            (int32_t)((float)DisplaySize.Y * RR_WINDOWED_RATIO)
+            (int32_t)((float)DisplaySize.Y * RR_WINDOWED_RATIO),
         };
         Window = glfwCreateWindow(
             WindowSize.X,

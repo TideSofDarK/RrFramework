@@ -268,20 +268,16 @@ size_t Rr_GetBindingsFromSPIRV(
     RR_ARRAY(uint32_t) BindingIndices = { 0 };
     RR_RESERVE_ARRAY(&BindingIndices, RR_MAX_BINDINGS, Scratch.Arena);
 
-    Rr_SPIRVHeader const *Header = (Rr_SPIRVHeader const *)ShaderInfo->SPVData;
+    Rr_SPIRVHeader const *Header = (Rr_SPIRVHeader const *)Data;
     assert(Header->Magic == 0x07230203);
 
-    uint32_t Offset = sizeof(Rr_SPIRVHeader) / sizeof(uint32_t);
-    while (Offset < ShaderInfo->SPVSize)
+    size_t Offset = sizeof(Rr_SPIRVHeader) / sizeof(uint32_t);
+    size_t End = ShaderInfo->SPVSize / sizeof(uint32_t);
+    while (Offset < End)
     {
         uint32_t Instruction = Data[Offset];
-
         uint16_t Length = (uint16_t)(Instruction >> 16);
-        if (Length == 0)
-        {
-            break;
-        }
-        uint16_t OpCode = Instruction & 0x0FFFFU;
+        uint16_t OpCode = Instruction & 0xFFFFU;
 
         if (OpCode == RR_SPIRV_OP_DECORATE)
         {

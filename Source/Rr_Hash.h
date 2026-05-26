@@ -20,7 +20,8 @@
 
 #pragma once
 
-#if defined(__x86_64__) || defined(__i386__) || defined(_M_IX86) || defined(_M_X64)
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_IX86) || \
+    defined(_M_X64)
 #include <xxHash/xxh_x86dispatch.h>
 #else
 #include <xxHash/xxhash.h>
@@ -31,7 +32,10 @@ static inline uint64_t Rr_Hash64(size_t Size, void const *Data)
     return XXH3_64bits(Data, Size);
 }
 
-static inline uint64_t Rr_Hash64WithSeed(size_t Size, void const *Data, size_t Seed)
+static inline uint64_t Rr_Hash64WithSeed(
+    size_t Size,
+    void const *Data,
+    uint64_t Seed)
 {
     return XXH3_64bits_withSeed(Data, Size, Seed);
 }
