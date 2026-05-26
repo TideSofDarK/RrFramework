@@ -80,11 +80,6 @@ void Rr_InitInstance(
     char const *const *PlatformExtensions =
         Rr_GetVulkanExtensions(&PlatformExtensionCount);
 
-    for (size_t Index = 0; Index < PlatformExtensionCount; ++Index)
-    {
-        RR_LOG_INFO("Required extension: %s", PlatformExtensions[Index]);
-    }
-
     uint32_t ExtensionCount = PlatformExtensionCount + InstanceExtensionCount;
 
     char const **Extensions =

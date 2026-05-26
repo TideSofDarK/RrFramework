@@ -29,31 +29,31 @@ char const *Rr_LogCategoryString(Rr_LogCategory Category)
     switch (Category)
     {
         case RR_LOG_CATEGORY_APP:
-            return "APPL";
+            return "Application";
         case RR_LOG_CATEGORY_SPIRV:
-            return "SPRV";
+            return "SPIR-V";
         case RR_LOG_CATEGORY_VULKAN:
-            return "VULK";
+            return "Vulkan";
         case RR_LOG_CATEGORY_RENDERER:
-            return "REND";
+            return "Renderer";
         case RR_LOG_CATEGORY_IMAGE:
-            return "IMAG";
+            return "Image";
         case RR_LOG_CATEGORY_BUFFER:
-            return "BUFF";
+            return "Buffer";
         case RR_LOG_CATEGORY_GRAPH:
-            return "GRPH";
+            return "Graph";
         case RR_LOG_CATEGORY_DESCRIPTOR:
-            return "DESC";
+            return "Descriptor";
         case RR_LOG_CATEGORY_PLATFORM:
-            return "PLAT";
+            return "Platform";
         case RR_LOG_CATEGORY_UI:
-            return "IMGU";
+            return "UI";
         case RR_LOG_CATEGORY_GLTF:
             return "GLTF";
         case RR_LOG_CATEGORY_ARENA:
-            return "AREN";
+            return "Arena";
         default:
-            return "CUST";
+            return "Custom";
     }
 }
 

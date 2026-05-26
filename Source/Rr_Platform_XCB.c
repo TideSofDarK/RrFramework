@@ -578,6 +578,8 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
 {
     assert(!gPlatform.Initialized);
 
+    RR_LOG_INFO("Using GLFW");
+
     xcb_generic_error_t *XCBError = NULL;
 
     int ScreenID;
@@ -1121,26 +1123,11 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
             break;
             case XCB_SELECTION_NOTIFY:
             {
-                RR_LOG_INFO("SEL NOTIFY");
-
                 free(XCBEvent);
             }
             break;
-            // case XCB_SELECTION_CLEAR:
-            // {
-            //     if (gPlatform.Clipboard)
-            //     {
-            //         free(gPlatform.Clipboard);
-            //         gPlatform.Clipboard = NULL;
-            //     }
-
-            //     free(XCBEvent);
-            // }
-            // break;
             case XCB_SELECTION_REQUEST:
             {
-                RR_LOG_INFO("SEL REQ");
-
                 Rr_ProcessXCBSelectionRequestEvent(
                     (xcb_selection_request_event_t *)XCBEvent);
 
