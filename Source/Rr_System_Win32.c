@@ -53,9 +53,7 @@ uint64_t Rr_GetPerformanceCounter(void)
 
 uint64_t Rr_GetPerformanceFrequency(void)
 {
-    Rr_PlatformInfo *PlatformInfo = Rr_GetPlatformInfo();
-
-    return PlatformInfo->PerformanceFrequency;
+    return Rr_GetSystem()->PerformanceFrequency;
 }
 
 void *Rr_ReserveMemory(size_t Size)
