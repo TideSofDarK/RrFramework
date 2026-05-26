@@ -31,16 +31,11 @@
 #include "Rr_Image.h"
 #include "Rr_LogMacro.h"
 #include "Rr_Renderer.h"
+#include "Rr_Hash.h"
 
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Platform.h>
 #include <Rr/Rr_Utility.h>
-
-#if defined(__x86_64__) && !defined(__APPLE__)
-#include <xxHash/xxh_x86dispatch.h>
-#else
-#include <xxHash/xxhash.h>
-#endif
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #define STBTT_STATIC
@@ -802,7 +797,7 @@ static inline Rr_UIHash Rr_UIGetHash(
     void const *Data,
     Rr_UIHash Seed)
 {
-    return XXH3_64bits_withSeed(Data, Size, ~Seed);
+    return Rr_Hash64WithSeed(Size, Data, ~Seed);
 }
 
 static inline Rr_UIHash Rr_UIGetTitleHash(

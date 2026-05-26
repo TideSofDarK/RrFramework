@@ -29,77 +29,7 @@
 
 #include <GLFW/glfw3.h>
 
-static struct Rr_Platform_GLFW
-{
-    bool Initialized;
-    bool Wayland;
-    GLFWwindow *Window;
-    bool WindowScaled;
-    Rr_Vec2 WindowScale;
-    Rr_IntVec2 WindowedOffset;
-    Rr_IntVec2 WindowedExtent;
-    Rr_Vec2 LastMousePosition;
-    Rr_Vec2 MousePositionDelta;
-    bool RelativeMouseMode;
-} gPlatform;
-
-static inline GLFWmonitor *Rr_GetGLFWMonitor(void)
-{
-    GLFWmonitor *Monitor;
-
-    if (!gPlatform.Window)
-    {
-        Monitor = glfwGetPrimaryMonitor();
-    }
-    else
-    {
-        Monitor = glfwGetWindowMonitor(gPlatform.Window);
-    }
-    if (!Monitor)
-    {
-
-        Monitor = glfwGetPrimaryMonitor();
-    }
-
-    return Monitor;
-}
-
-static inline Rr_Vec2 Rr_GetGLFWCursorPos(void)
-{
-    double MouseX, MouseY;
-    glfwGetCursorPos(gPlatform.Window, &MouseX, &MouseY);
-    if (gPlatform.WindowScaled)
-    {
-        return (Rr_Vec2){ (float)MouseX * gPlatform.WindowScale.X,
-                          (float)MouseY * gPlatform.WindowScale.Y };
-    }
-    return (Rr_Vec2){ (float)MouseX, (float)MouseY };
-}
-
-static void Rr_GLFWCursorCallback(GLFWwindow *Window, double X, double Y)
-{
-    Rr_Event *Event = Rr_AddEvent();
-    Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
-
-    if (gPlatform.WindowScaled)
-    {
-        Event->MouseMotion.Position =
-            (Rr_Vec2){ (float)X * gPlatform.WindowScale.X,
-                       (float)Y * gPlatform.WindowScale.Y };
-    }
-    else
-    {
-        Event->MouseMotion.Position = (Rr_Vec2){ (float)X, (float)Y };
-    }
-
-    gPlatform.MousePositionDelta = Rr_AddV2(
-        gPlatform.MousePositionDelta,
-        Rr_SubV2(Event->MouseMotion.Position, gPlatform.LastMousePosition));
-
-    gPlatform.LastMousePosition = Event->MouseMotion.Position;
-}
-
-static const Rr_Scancode GLFWScancodes[GLFW_KEY_LAST + 1] = {
+static const Rr_Scancode GLFWKeyToScancode[GLFW_KEY_LAST + 1] = {
     [GLFW_KEY_A] = RR_SCANCODE_A,
     [GLFW_KEY_B] = RR_SCANCODE_B,
     [GLFW_KEY_C] = RR_SCANCODE_C,
@@ -220,6 +150,77 @@ static const Rr_Scancode GLFWScancodes[GLFW_KEY_LAST + 1] = {
     [GLFW_KEY_RIGHT_SUPER] = RR_SCANCODE_RSUPER,
 };
 
+static struct Rr_Platform_GLFW
+{
+    bool Initialized;
+    bool Wayland;
+    GLFWwindow *Window;
+    bool WindowScaled;
+    Rr_Vec2 WindowScale;
+    Rr_IntVec2 WindowedOffset;
+    Rr_IntVec2 WindowedExtent;
+    int ScancodeToGLFWKey[RR_SCANCODE_COUNT];
+    Rr_Vec2 LastMousePosition;
+    Rr_Vec2 MousePositionDelta;
+    bool RelativeMouseMode;
+} gPlatform;
+
+static inline GLFWmonitor *Rr_GetGLFWMonitor(void)
+{
+    GLFWmonitor *Monitor;
+
+    if (!gPlatform.Window)
+    {
+        Monitor = glfwGetPrimaryMonitor();
+    }
+    else
+    {
+        Monitor = glfwGetWindowMonitor(gPlatform.Window);
+    }
+    if (!Monitor)
+    {
+
+        Monitor = glfwGetPrimaryMonitor();
+    }
+
+    return Monitor;
+}
+
+static inline Rr_Vec2 Rr_GetGLFWCursorPos(void)
+{
+    double MouseX, MouseY;
+    glfwGetCursorPos(gPlatform.Window, &MouseX, &MouseY);
+    if (gPlatform.WindowScaled)
+    {
+        return (Rr_Vec2){ (float)MouseX * gPlatform.WindowScale.X,
+                          (float)MouseY * gPlatform.WindowScale.Y };
+    }
+    return (Rr_Vec2){ (float)MouseX, (float)MouseY };
+}
+
+static void Rr_GLFWCursorCallback(GLFWwindow *Window, double X, double Y)
+{
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
+
+    if (gPlatform.WindowScaled)
+    {
+        Event->MouseMotion.Position =
+            (Rr_Vec2){ (float)X * gPlatform.WindowScale.X,
+                       (float)Y * gPlatform.WindowScale.Y };
+    }
+    else
+    {
+        Event->MouseMotion.Position = (Rr_Vec2){ (float)X, (float)Y };
+    }
+
+    gPlatform.MousePositionDelta = Rr_AddV2(
+        gPlatform.MousePositionDelta,
+        Rr_SubV2(Event->MouseMotion.Position, gPlatform.LastMousePosition));
+
+    gPlatform.LastMousePosition = Event->MouseMotion.Position;
+}
+
 static void Rr_GLFWKeyCallback(
     GLFWwindow *Window,
     int Key,
@@ -243,7 +244,7 @@ static void Rr_GLFWKeyCallback(
             return;
     }
     Event->Key.Down = Event->Type != RR_EVENT_TYPE_KEY_UP;
-    Event->Key.Scancode = GLFWScancodes[Key];
+    Event->Key.Scancode = GLFWKeyToScancode[Key];
     Event->Key.Keymod = 0;
     if (Mods & GLFW_MOD_CONTROL)
     {
@@ -522,6 +523,12 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
 
     glfwSetInputMode(Window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 
+    for (int GLFWKey = 0; GLFWKey < GLFW_KEY_LAST + 1; ++GLFWKey)
+    {
+        Rr_Scancode Scancode = GLFWKeyToScancode[GLFWKey];
+        gPlatform.ScancodeToGLFWKey[Scancode] = GLFWKey;
+    }
+
     gPlatform.Initialized = true;
 
     return true;
@@ -558,7 +565,7 @@ bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface)
 
 bool Rr_IsScancodePressed(Rr_Scancode Scancode)
 {
-    return glfwGetKey(gPlatform.Window, (int)Scancode);
+    return glfwGetKey(gPlatform.Window, gPlatform.ScancodeToGLFWKey[Scancode]);
 }
 
 Rr_Vec2 Rr_GetMousePosition(void)

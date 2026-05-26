@@ -38,8 +38,8 @@ void Rr_InitSystem(void)
         return;
     }
 
-    System->PageSize = getpagesize();
-    System->AllocationGranularity = System->PageSize;
+    System->PageSize = (size_t)getpagesize();
+    System->AllocationGranularity = (size_t)System->PageSize;
 
     struct timespec Timespec;
     assert(clock_gettime(CLOCK_MONOTONIC_RAW, &Timespec) == 0);

@@ -20,14 +20,10 @@
 
 #include "Rr_Memory.h"
 
+#include "Rr_Hash.h"
+
 #include <Rr/Rr_Math.h>
 #include <Rr/Rr_Platform.h>
-
-#if defined(__x86_64__) && !defined(__APPLE__)
-#include <xxHash/xxh_x86dispatch.h>
-#else
-#include <xxHash/xxhash.h>
-#endif
 
 #include <assert.h>
 #include <limits.h>
@@ -38,7 +34,7 @@ void *Rr_AlignedAlloc(size_t Size, size_t Alignment)
 #ifdef _MSC_VER
     return _aligned_malloc(Size, Alignment);
 #else
-    return aligned_alloc(Alignment, Size);
+    return _mm_malloc(Size, Alignment);
 #endif
 }
 
@@ -47,7 +43,7 @@ void Rr_AlignedFree(void *Ptr)
 #ifdef _MSC_VER
     _aligned_free(Ptr);
 #else
-    free(Ptr);
+    _mm_free(Ptr);
 #endif
 }
 
@@ -108,7 +104,7 @@ bool Rr_AddHandleToSet(Rr_HandleSet *Set, Rr_Handle Handle, Rr_Arena *Arena)
     Rr_HandleTrie **Trie = &Set->Trie;
     if (*Trie != NULL)
     {
-        for (uint64_t Hash = XXH64(&Handle, sizeof(Handle), 0); *Trie;
+        for (uint64_t Hash = Rr_Hash64(sizeof(Handle), &Handle); *Trie;
              Hash <<= 2)
         {
             if (Handle == (*Trie)->Handle)

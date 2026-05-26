@@ -33,8 +33,8 @@ void Rr_InitSystem()
 
     SYSTEM_INFO SystemInfo;
     GetSystemInfo(&SystemInfo);
-    System->PageSize = SystemInfo.dwPageSize;
-    System->AllocationGranularity = SystemInfo.dwAllocationGranularity;
+    System->PageSize = (size_t)SystemInfo.dwPageSize;
+    System->AllocationGranularity = (size_t)SystemInfo.dwAllocationGranularity;
 
     LARGE_INTEGER Frequency;
     QueryPerformanceFrequency(&Frequency);

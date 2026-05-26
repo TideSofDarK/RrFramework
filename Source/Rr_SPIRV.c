@@ -2,12 +2,7 @@
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_SPIRV
 #include "Rr_LogMacro.h"
-
-#if defined(__x86_64__) && !defined(__APPLE__)
-#include <xxHash/xxh_x86dispatch.h>
-#else
-#include <xxHash/xxhash.h>
-#endif
+#include "Rr_Hash.h"
 
 typedef struct Rr_SPIRVHeader Rr_SPIRVHeader;
 struct Rr_SPIRVHeader
@@ -243,7 +238,7 @@ static inline Rr_SPIRVOp *Rr_UpsertSPIRVOp(
     uint32_t Key,
     Rr_Arena *Arena)
 {
-    for (uint64_t Hash = XXH64(&Key, sizeof(Key), 0); *Map; Hash <<= 2)
+    for (uint64_t Hash = Rr_Hash64(sizeof(Key), &Key); *Map; Hash <<= 2)
     {
         if (Key == (*Map)->Key)
         {

@@ -21,12 +21,7 @@
 #include "Rr_Profiler.h"
 
 #include "Rr_Renderer.h"
-
-#if defined(__x86_64__) && !defined(__APPLE__)
-#include <xxHash/xxh_x86dispatch.h>
-#else
-#include <xxHash/xxhash.h>
-#endif
+#include "Rr_Hash.h"
 
 Rr_Profiler *Rr_CreateProfiler(Rr_Arena *Arena)
 {
@@ -40,7 +35,7 @@ static inline Rr_ProfilerSection **Rr_FindSection(
     size_t SectionNameLength,
     const char *SectionName)
 {
-    for (uint64_t Hash = XXH64(SectionName, SectionNameLength, 0); *SectionRef;
+    for (uint64_t Hash = Rr_Hash64(SectionNameLength, SectionName); *SectionRef;
          Hash <<= 2)
     {
         if (strcmp(SectionName, (*SectionRef)->Name) == 0)

@@ -20,16 +20,12 @@
 
 #include "Rr_Pipeline.h"
 
+#include "Rr_Hash.h"
 #include "Rr_Renderer.h"
 #include "Rr_SPIRV.h"
 
 #include <assert.h>
-
-#if defined(__x86_64__) && !defined(__APPLE__)
-#include <xxHash/xxh_x86dispatch.h>
-#else
-#include <xxHash/xxhash.h>
-#endif
+#include <stdlib.h>
 
 static VkRenderPass Rr_GetCompatibleRenderPass(
     uint32_t ColorTargetCount,
@@ -93,17 +89,7 @@ static inline int Rr_BindingSort(void const *A, void const *B)
     Rr_Binding const *BindingA = A;
     Rr_Binding const *BindingB = B;
 
-    if (BindingA->Index > BindingB->Index)
-    {
-        return 1;
-    }
-
-    if (BindingA->Index < BindingB->Index)
-    {
-        return -1;
-    }
-
-    return 0;
+    return (int)((int64_t)BindingA->Index - (int64_t)BindingB->Index);
 }
 
 Rr_PipelineLayout *Rr_GetPipelineLayout(
@@ -136,7 +122,7 @@ Rr_PipelineLayout *Rr_GetPipelineLayout(
 
     Rr_LockSpinlock(&gRenderer->PipelineLayoutStorageLock);
 
-    for (uint64_t Hash = XXH64(&PipelineLayoutKey, HashSize, 0); *MapRef;
+    for (uint64_t Hash = Rr_Hash64(HashSize, &PipelineLayoutKey); *MapRef;
          Hash <<= 2)
     {
         if ((*MapRef)->Handle == VK_NULL_HANDLE)
@@ -852,7 +838,7 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
         &gRenderer->DescriptorSetLayoutStorage.Map;
     Rr_DescriptorSetLayout *DescriptorSetLayout = NULL;
 
-    for (uint64_t Hash = XXH64(Key, HashSize, 0); *MapRef; Hash <<= 2)
+    for (uint64_t Hash = Rr_Hash64(HashSize, Key); *MapRef; Hash <<= 2)
     {
         if ((*MapRef)->Handle == VK_NULL_HANDLE)
         {

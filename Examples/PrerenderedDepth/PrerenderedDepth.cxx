@@ -14,7 +14,6 @@
 #include "tinyexr.h"
 
 #include <algorithm>
-#include <print>
 
 Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
 {
@@ -29,7 +28,7 @@ Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
         Asset.Size);
     if (Result != 0)
     {
-        std::println("Error opening EXR file!");
+        std::abort();
     }
 
     EXRHeader Header;
@@ -41,7 +40,6 @@ Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
         &Error);
     if (Result != 0)
     {
-        std::println("Error opening EXR file: %s", Error);
         std::abort();
     }
 
@@ -56,7 +54,6 @@ Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
         &Error);
     if (Result != 0)
     {
-        std::println("Error opening EXR file: %s", Error);
         std::abort();
     }
 

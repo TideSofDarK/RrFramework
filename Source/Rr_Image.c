@@ -21,6 +21,7 @@
 #include "Rr_Image.h"
 
 #include "Rr_Renderer.h"
+#include "Rr_Hash.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_STATIC
@@ -34,12 +35,6 @@
 #define STBI_NO_TGA
 #define STBI_NO_FAILURE_STRINGS
 #include <stb/stb_image.h>
-
-#if defined(__x86_64__) && !defined(__APPLE__)
-#include <xxHash/xxh_x86dispatch.h>
-#else
-#include <xxHash/xxhash.h>
-#endif
 
 #include <assert.h>
 #include <stdio.h>

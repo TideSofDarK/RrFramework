@@ -22,12 +22,7 @@
 #define RR_HASH_MAP_H
 
 #include "Rr_Memory.h"
-
-#if defined(__x86_64__) && !defined(__APPLE__)
-#include <xxHash/xxh_x86dispatch.h>
-#else
-#include <xxHash/xxhash.h>
-#endif
+#include "Rr_Hash.h"
 
 #include <string.h>
 
@@ -45,7 +40,7 @@ static inline uint64_t Rr_HashMapLog2(uint64_t Value)
 #elif defined(_MSC_VER)
            (uint64_t)__lzcnt64(Value)
 #else
-           (uint64_t)__builtin_clzl(Value)
+           (uint64_t)__builtin_clzll((unsigned long long)Value)
 #endif
         ;
 }
@@ -415,7 +410,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_NAME(
     RR_HASH_MAP_VALUE_TYPE const *Value,
     Rr_Arena *Arena)
 {
-    uint64_t Hash = XXH64(Key, sizeof(*Key), 0);
+    uint64_t Hash = Rr_Hash64(sizeof(*Key), Key);
 
     return RR_HASH_MAP_INSERT_WITH_HASH_NAME(Map, Key, Value, Hash, Arena);
 }
@@ -429,7 +424,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_NAME(
     RR_HASH_MAP_MAP_TYPE *Map,
     RR_HASH_MAP_KEY_TYPE const *Key)
 {
-    uint64_t Hash = XXH64(Key, sizeof(*Key), 0);
+    uint64_t Hash = Rr_Hash64(sizeof(*Key), Key);
     size_t Mod = Hash % Map->Capacity;
     size_t QuadraticProber = 1;
 

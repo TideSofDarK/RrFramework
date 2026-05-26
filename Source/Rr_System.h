@@ -37,8 +37,8 @@ typedef struct Rr_System Rr_System;
 struct Rr_System
 {
     bool Initialized;
-    int PageSize;
-    int AllocationGranularity;
+    size_t PageSize;
+    size_t AllocationGranularity;
     uint64_t PerformanceFrequency;
 };
 

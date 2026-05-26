@@ -172,7 +172,7 @@ target_sources(
     Include/Rr/Rr_Utility.h
 )
 
-if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
     target_sources(${PROJECT_NAME} PRIVATE Vendor/xxHash/xxh_x86dispatch.c)
 endif ()
 

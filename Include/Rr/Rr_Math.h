@@ -1434,8 +1434,8 @@ static inline Rr_Vec2 Rr_FracV2(Rr_Vec2 A)
 {
     Rr_Vec2 Result;
 
-    Result.X = Result.X - floorf(A.X);
-    Result.Y = Result.Y - floorf(A.Y);
+    Result.X = A.X - floorf(A.X);
+    Result.Y = A.Y - floorf(A.Y);
 
     return Result;
 }
@@ -1444,9 +1444,9 @@ static inline Rr_Vec3 Rr_FracV3(Rr_Vec3 A)
 {
     Rr_Vec3 Result;
 
-    Result.X = Result.X - floorf(A.X);
-    Result.Y = Result.Y - floorf(A.Y);
-    Result.Z = Result.Z - floorf(A.Z);
+    Result.X = A.X - floorf(A.X);
+    Result.Y = A.Y - floorf(A.Y);
+    Result.Z = A.Z - floorf(A.Z);
 
     return Result;
 }
@@ -1460,10 +1460,10 @@ static inline Rr_Vec4 Rr_FracV4(Rr_Vec4 A)
 #elif defined(__ARM_FEATURE_DIRECTED_ROUNDING)
     Result.NEON = vsubq_f32(A.NEON, vrndmq_f32(A.NEON));
 #else
-    Result.X = Result.X - floorf(A.X);
-    Result.Y = Result.Y - floorf(A.Y);
-    Result.Z = Result.Z - floorf(A.Z);
-    Result.W = Result.W - floorf(A.W);
+    Result.X = A.X - floorf(A.X);
+    Result.Y = A.Y - floorf(A.Y);
+    Result.Z = A.Z - floorf(A.Z);
+    Result.W = A.W - floorf(A.W);
 #endif
 
     return Result;
