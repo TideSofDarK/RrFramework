@@ -50,7 +50,7 @@ void Rr_ReleaseAllInput(void)
     {
         if (gPlatform.PressedKeys[Scancode])
         {
-            Rr_SetKeyEvent(Scancode, false, NULL);
+            Rr_AddKeyEvent(Scancode, false);
         }
     }
 
@@ -77,27 +77,6 @@ Rr_MouseButtonFlags Rr_GetMouseState(void)
     return gPlatform.MouseState;
 }
 
-bool Rr_IsWindowFullscreen(void)
-{
-    return gPlatform.Fullscreen;
-}
-
-void Rr_SetFocusEvent(bool HasFocus, Rr_Event *Event)
-{
-    if (!Event)
-    {
-        Event = Rr_AddEvent();
-    }
-
-    Event->Type = RR_EVENT_TYPE_FOCUS;
-    Event->Focus.Focused = HasFocus;
-
-    if (!HasFocus)
-    {
-        Rr_ReleaseAllInput();
-    }
-}
-
 static inline void Rr_UpdateKeymodState(Rr_KeymodFlagsBits Bit, bool On)
 {
     if (On)
@@ -110,7 +89,7 @@ static inline void Rr_UpdateKeymodState(Rr_KeymodFlagsBits Bit, bool On)
     }
 }
 
-void Rr_SetKeyEvent(Rr_Scancode Scancode, bool Down, Rr_Event *Event)
+void Rr_AddKeyEvent(Rr_Scancode Scancode, bool Down)
 {
     if (Scancode == RR_SCANCODE_UNKNOWN)
     {
@@ -173,11 +152,7 @@ void Rr_SetKeyEvent(Rr_Scancode Scancode, bool Down, Rr_Event *Event)
         break;
     }
 
-    if (!Event)
-    {
-        Event = Rr_AddEvent();
-    }
-
+    Rr_Event *Event = Rr_AddEvent();
     if (WasDown && Down)
     {
         Event->Type = RR_EVENT_TYPE_KEY_REPEAT;
@@ -206,17 +181,17 @@ void Rr_SetKeyEvent(Rr_Scancode Scancode, bool Down, Rr_Event *Event)
     }
 }
 
-void Rr_SetMouseButtonEvent(
-    bool Down,
-    Rr_Vec2 Position,
-    Rr_MouseButton Button,
-    Rr_Event *Event)
+void Rr_AddMouseWheelEvent(Rr_Vec2 Position, Rr_Vec2 Amount)
 {
-    if (!Event)
-    {
-        Event = Rr_AddEvent();
-    }
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
+    Event->Wheel.Position = Position;
+    Event->Wheel.Amount = Amount;
+}
 
+void Rr_AddMouseButtonEvent(bool Down, Rr_Vec2 Position, Rr_MouseButton Button)
+{
+    Rr_Event *Event = Rr_AddEvent();
     Event->Type =
         Down ? RR_EVENT_TYPE_MOUSE_BUTTON_DOWN : RR_EVENT_TYPE_MOUSE_BUTTON_UP;
     Event->MouseButton.Position = Position;
@@ -245,17 +220,15 @@ void Rr_SetMouseButtonEvent(
     }
 }
 
-void Rr_SetTextInputEventString(
-    char const *CString,
-    size_t Length,
-    Rr_Event *Event)
+void Rr_AddTextInputEventString(char const *CString, size_t Length)
 {
+    Rr_Event *Event = Rr_AddEvent();
     Event->Type = RR_EVENT_TYPE_TEXT_INPUT;
     Event->Text.CString = CString;
     Event->Text.Length = Length;
 }
 
-void Rr_SetTextInputEvent(uint32_t Codepoint, Rr_Event *Event, Rr_Arena *Arena)
+void Rr_AddTextInputEvent(uint32_t Codepoint, Rr_Arena *Arena)
 {
     int SignedCodepoint;
     memcpy(
@@ -267,29 +240,32 @@ void Rr_SetTextInputEvent(uint32_t Codepoint, Rr_Event *Event, Rr_Arena *Arena)
         return;
     }
 
-    if (!Event)
-    {
-        Event = Rr_AddEvent();
-    }
-
     char *Buffer = RR_ALLOC_NO_ZERO(5, Arena);
     Rr_CodepointToUTF8(Codepoint, Buffer);
 
-    Rr_SetTextInputEventString(Buffer, strlen(Buffer), Event);
+    Rr_AddTextInputEventString(Buffer, strlen(Buffer));
 }
 
-void Rr_SetDropFileEvent(char const *Path, Rr_Event *Event)
+void Rr_AddDropFileEvent(char const *Path)
 {
     if (!Path)
     {
         return;
     }
 
-    if (!Event)
-    {
-        Event = Rr_AddEvent();
-    }
-
+    Rr_Event *Event = Rr_AddEvent();
     Event->Type = RR_EVENT_TYPE_DROP_FILE;
     Event->DropFile.Path = Path;
+}
+
+void Rr_AddFocusEvent(bool HasFocus)
+{
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type = RR_EVENT_TYPE_FOCUS;
+    Event->Focus.Focused = HasFocus;
+
+    if (!HasFocus)
+    {
+        Rr_ReleaseAllInput();
+    }
 }

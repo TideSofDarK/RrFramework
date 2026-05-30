@@ -82,6 +82,8 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     if (!SDL_Vulkan_LoadLibrary(NULL))
     {
         RR_LOG_ERROR("%s", SDL_GetError());
+
+        return false;
     }
 
     SDL_WindowFlags SDLWindowFlags =
@@ -153,15 +155,11 @@ bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface)
         (VkSurfaceKHR *)Surface);
 }
 
-void Rr_NewPlatformFrame(void)
+void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
 {
     gPlatform.MousePositionDelta = Rr_V2F(0.0f);
-}
 
-bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
-{
     SDL_Event SDLEvent;
-
     while (SDL_PollEvent(&SDLEvent))
     {
         switch (SDLEvent.type)
@@ -171,25 +169,23 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
                 size_t Length = strlen(SDLEvent.text.text);
                 char *Buffer = RR_ALLOC_NO_ZERO(Length + 1, Arena);
                 memcpy(Buffer, SDLEvent.text.text, Length + 1);
-                Rr_SetTextInputEventString(Buffer, Length, Event);
-
-                return true;
+                Rr_AddTextInputEventString(Buffer, Length);
             }
+            break;
             case SDL_EVENT_KEY_DOWN:
             case SDL_EVENT_KEY_UP:
             {
-                Rr_SetKeyEvent(
+                Rr_AddKeyEvent(
                     (Rr_Scancode)SDLEvent.key.scancode,
-                    SDLEvent.key.down,
-                    Event);
-
-                return true;
+                    SDLEvent.key.down);
             }
+            break;
             case SDL_EVENT_MOUSE_MOTION:
             {
                 gPlatform.MouseState =
                     (Rr_MouseButtonFlags)SDL_GetMouseState(NULL, NULL);
 
+                Rr_Event *Event = Rr_AddEvent();
                 Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
                 Event->MouseMotion.Position = Rr_SDLConvertMousePosition(
                     (Rr_Vec2){ SDLEvent.motion.x, SDLEvent.motion.y });
@@ -197,66 +193,59 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
                 gPlatform.MousePositionDelta = Rr_AddV2(
                     gPlatform.MousePositionDelta,
                     (Rr_Vec2){ SDLEvent.motion.xrel, SDLEvent.motion.yrel });
-
-                return true;
             }
+            break;
             case SDL_EVENT_MOUSE_WHEEL:
             {
-                Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
-                Event->Wheel.Position = Rr_SDLConvertMousePosition((
-                    Rr_Vec2){ SDLEvent.wheel.mouse_x, SDLEvent.wheel.mouse_y });
-                Event->Wheel.Amount =
-                    (Rr_Vec2){ SDLEvent.wheel.x, SDLEvent.wheel.y };
-
-                return true;
+                Rr_AddMouseWheelEvent(
+                    Rr_SDLConvertMousePosition(
+                        (Rr_Vec2){ SDLEvent.wheel.mouse_x,
+                                   SDLEvent.wheel.mouse_y }),
+                    (Rr_Vec2){ SDLEvent.wheel.x, SDLEvent.wheel.y });
             }
+            break;
             case SDL_EVENT_MOUSE_BUTTON_UP:
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
             {
                 gPlatform.MouseState =
                     (Rr_MouseButtonFlags)SDL_GetMouseState(NULL, NULL);
 
-                Rr_SetMouseButtonEvent(
+                Rr_AddMouseButtonEvent(
                     SDLEvent.type == SDL_EVENT_MOUSE_BUTTON_DOWN,
                     Rr_V2(SDLEvent.button.x, SDLEvent.button.y),
-                    SDLEvent.button.button - 1,
-                    Event);
-
-                return true;
+                    SDLEvent.button.button - 1);
             }
+            break;
             case SDL_EVENT_DROP_FILE:
             {
-                Event->Type = RR_EVENT_TYPE_DROP_FILE;
-                Event->DropFile.Path = SDLEvent.drop.data;
-
-                return true;
+                Rr_AddDropFileEvent(RR_ALLOC_COPY(
+                    SDLEvent.drop.data,
+                    strlen(SDLEvent.drop.data) + 1,
+                    Arena));
             }
+            break;
             case SDL_EVENT_QUIT:
             {
+                Rr_Event *Event = Rr_AddEvent();
                 Event->Type = RR_EVENT_TYPE_QUIT;
-
-                return true;
             }
+            break;
             case SDL_EVENT_WINDOW_FOCUS_GAINED:
             {
-                Event->Type = RR_EVENT_TYPE_FOCUS;
-                Event->Focus.Focused = true;
-
-                return true;
+                Rr_AddFocusEvent(true);
             }
+            break;
             case SDL_EVENT_WINDOW_FOCUS_LOST:
             {
-                Event->Type = RR_EVENT_TYPE_FOCUS;
-                Event->Focus.Focused = false;
-
-                return true;
+                Rr_AddFocusEvent(false);
             }
+            break;
             default:
-                break;
+            {
+            }
+            break;
         }
     }
-
-    return false;
 }
 
 void Rr_ShowWindow(void)
@@ -269,11 +258,14 @@ bool Rr_IsWindowMinimized(void)
     return SDL_GetWindowFlags(gSDL.Window) & SDL_WINDOW_MINIMIZED;
 }
 
+bool Rr_IsWindowFullscreen(void)
+{
+    return SDL_GetWindowFlags(gSDL.Window) & SDL_WINDOW_FULLSCREEN;
+}
+
 void Rr_SetWindowFullscreen(bool Fullscreen)
 {
     SDL_SetWindowFullscreen(gSDL.Window, Fullscreen);
-
-    gPlatform.Fullscreen = Fullscreen;
 }
 
 void Rr_SetRelativeMouseMode(bool Relative)
@@ -285,30 +277,23 @@ void Rr_SetRelativeMouseMode(bool Relative)
 
     if (Relative)
     {
-        /* SDL_CaptureMouse(true); */
-        /* SDL_SetWindowMouseGrab(gSDL.Window, true); */
-        float X, Y;
-        SDL_GetMouseState(&X, &Y);
-        gPlatform.RelativeMouseRestorePosition =
-            Rr_IntV2((int32_t)X, (int32_t)Y);
-        SDL_Rect Rect = {
-            .x = (int)X,
-            .y = (int)Y,
-            .w = 1,
-            .h = 1,
-        };
-        SDL_SetWindowMouseRect(gSDL.Window, &Rect);
         SDL_SetWindowRelativeMouseMode(gSDL.Window, true);
+
+        int Width, Height;
+        SDL_GetWindowSize(gSDL.Window, &Width, &Height);
+        SDL_Rect Clip = { (Width / 2) - 1, (Height / 2) - 1, 2, 2 };
+        SDL_SetWindowMouseRect(gSDL.Window, &Clip);
+
+        gPlatform.RelativeMouseMode = true;
     }
     else
     {
-        /* SDL_CaptureMouse(false); */
-        /* SDL_SetWindowMouseGrab(gSDL.Window, false); */
         SDL_SetWindowMouseRect(gSDL.Window, NULL);
-        SDL_SetWindowRelativeMouseMode(gSDL.Window, false);
-    }
 
-    gPlatform.RelativeMouseMode = Relative;
+        SDL_SetWindowRelativeMouseMode(gSDL.Window, false);
+
+        gPlatform.RelativeMouseMode = false;
+    }
 }
 
 double Rr_GetDisplayRefreshRate(void)
@@ -391,6 +376,11 @@ void Rr_SetClipboardText(const char *CString)
 
 char const *Rr_GetClipboardText(Rr_Arena *Arena)
 {
+    if (!Arena)
+    {
+        return NULL;
+    }
+
     char const *SDLClipboard = SDL_GetClipboardText();
 
     size_t Length = strlen(SDLClipboard);

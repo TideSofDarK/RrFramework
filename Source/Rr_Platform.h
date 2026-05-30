@@ -37,8 +37,6 @@ struct Rr_AppConfig;
 typedef struct Rr_Platform Rr_Platform;
 struct Rr_Platform
 {
-    bool Fullscreen;
-
     Rr_CursorType CursorType;
     Rr_MouseButtonFlags MouseState;
     Rr_Vec2 MousePosition;
@@ -55,31 +53,26 @@ struct Rr_Platform
 
 extern Rr_Platform gPlatform;
 
+/* Events */
+
 extern Rr_Event *Rr_AddEvent(void);
 
-extern void Rr_SetFocusEvent(bool HasFocus, Rr_Event *Event);
+extern void Rr_AddKeyEvent(Rr_Scancode Scancode, bool Down);
 
-extern void Rr_SetKeyEvent(Rr_Scancode Scancode, bool Down, Rr_Event *Event);
+extern void Rr_AddMouseWheelEvent(Rr_Vec2 Position, Rr_Vec2 Amount);
 
-extern void Rr_SetMouseButtonEvent(
+extern void Rr_AddMouseButtonEvent(
     bool Down,
     Rr_Vec2 Position,
-    Rr_MouseButton Button,
-    Rr_Event *Event);
+    Rr_MouseButton Button);
 
-extern void Rr_SetTextInputEventString(
-    char const *CString,
-    size_t Length,
-    Rr_Event *Event);
+extern void Rr_AddTextInputEventString(char const *CString, size_t Length);
 
-extern void Rr_SetTextInputEvent(
-    uint32_t Codepoint,
-    Rr_Event *Event,
-    Rr_Arena *Arena);
+extern void Rr_AddTextInputEvent(uint32_t Codepoint, Rr_Arena *Arena);
 
-extern void Rr_SetDropFileEvent(
-    char const *Path,
-    Rr_Event *Event);
+extern void Rr_AddDropFileEvent(char const *Path);
+
+extern void Rr_AddFocusEvent(bool HasFocus);
 
 /* Platform-specific functions. */
 
@@ -93,9 +86,7 @@ extern const char *const *Rr_GetVulkanExtensions(uint32_t *Count);
 
 extern bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface);
 
-extern void Rr_NewPlatformFrame(void);
-
-extern bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena);
+extern void Rr_ProcessPlatformEvents(Rr_Arena *Arena);
 
 extern void Rr_ShowWindow(void);
 

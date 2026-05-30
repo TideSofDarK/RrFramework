@@ -101,26 +101,15 @@ static inline void Rr_DispatchEvents(void)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Event Event;
-
     if (gRenderer->Swapchain.RecreateEventPending)
     {
-        Event.Type = RR_EVENT_TYPE_SWAPCHAIN_CREATED;
-
-        if (gApp->EventFunc != NULL)
-        {
-            gApp->EventFunc(&Event);
-        }
+        Rr_Event *Event = Rr_AddEvent();
+        Event->Type = RR_EVENT_TYPE_SWAPCHAIN_CREATED;
 
         gRenderer->Swapchain.RecreateEventPending = false;
     }
 
-    Rr_NewPlatformFrame();
-
-    while (Rr_PollPlatformEvent(&Event, Scratch.Arena))
-    {
-        Rr_HandleEvent(&Event);
-    }
+    Rr_ProcessPlatformEvents(Scratch.Arena);
 
     for (Rr_EventHiveIterator It = gPlatform.EventHive.Begin;
          It.Element != gPlatform.EventHive.End.Element;

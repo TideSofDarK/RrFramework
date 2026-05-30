@@ -31,7 +31,6 @@
 #include <xcb/xcb_atom.h>
 #include <xcb/xcb_cursor.h>
 #include <xcb/xcb_util.h>
-#include <xcb/xfixes.h>
 #include <xcb/xkb.h>
 #include <xkbcommon/xkbcommon-x11.h>
 
@@ -40,9 +39,6 @@
 #include <dlfcn.h>
 #include <limits.h>
 #include <stdio.h>
-
-/* TODO: Reset state on focus lost. */
-/* TODO: Emit focus events. */
 
 typedef enum
 {
@@ -88,19 +84,6 @@ static struct Rr_Platform_XCB
         xcb_atom_t WMDeleteWindow;
     } Atoms;
     xcb_atom_t Targets[RR_XCB_TARGET_COUNT];
-    bool WindowScaled;
-    Rr_Vec2 WindowScale;
-    Rr_IntVec2 WindowedOffset;
-    Rr_IntVec2 WindowedExtent;
-    bool PointerGrabbed;
-    Rr_Vec2 MousePosition;
-    Rr_Vec2 MousePositionVirtual;
-    Rr_Vec2 MousePositionDelta;
-    int16_t MouseRestoreX;
-    int16_t MouseRestoreY;
-    int16_t MouseWarpX;
-    int16_t MouseWarpY;
-    Rr_MouseButtonFlags MouseState;
 
     struct xkb_context *XKBContext;
     struct xkb_keymap *XKBKeymap;
@@ -108,8 +91,6 @@ static struct Rr_Platform_XCB
     struct xkb_state *XKBStateNone;
     int32_t XKBDeviceID;
     Rr_Scancode XKBKeycodeToScancode[256];
-    bool XKBPressedKeys[256];
-    Rr_Scancode ScancodeToXKBKeycode[256];
 
     bool UseRandr;
 
@@ -118,7 +99,7 @@ static struct Rr_Platform_XCB
     void *VulkanModule;
     PFN_vkGetInstanceProcAddr VkGetInstanceProcAddr;
     PFN_vkCreateXcbSurfaceKHR VkCreateXcbSurfaceKHR;
-} gPlatform;
+} gXCB;
 
 typedef struct xkb_generic_event_t xkb_generic_event_t;
 struct xkb_generic_event_t
@@ -133,12 +114,12 @@ struct xkb_generic_event_t
 static inline xcb_atom_t Rr_GetXCBAtom(const char *CString)
 {
     xcb_intern_atom_cookie_t Cookie = xcb_intern_atom(
-        gPlatform.Connection,
+        gXCB.Connection,
         false,
         (uint16_t)strlen(CString),
         CString);
     xcb_intern_atom_reply_t *Reply =
-        xcb_intern_atom_reply(gPlatform.Connection, Cookie, NULL);
+        xcb_intern_atom_reply(gXCB.Connection, Cookie, NULL);
     if (!Reply)
     {
         return XCB_NONE;
@@ -294,70 +275,62 @@ static inline Rr_Scancode Rr_XCBKeyNameToScancode(char const XCBKeyName[4])
 
 static inline bool Rr_UpdateXKBKeymap(void)
 {
-    if (gPlatform.XKBKeymap)
+    if (gXCB.XKBKeymap)
     {
-        xkb_keymap_unref(gPlatform.XKBKeymap);
+        xkb_keymap_unref(gXCB.XKBKeymap);
     }
-    if (gPlatform.XKBState)
+    if (gXCB.XKBState)
     {
-        xkb_state_unref(gPlatform.XKBState);
+        xkb_state_unref(gXCB.XKBState);
     }
-    if (gPlatform.XKBStateNone)
+    if (gXCB.XKBStateNone)
     {
-        xkb_state_unref(gPlatform.XKBStateNone);
+        xkb_state_unref(gXCB.XKBStateNone);
     }
 
-    gPlatform.XKBKeymap = xkb_x11_keymap_new_from_device(
-        gPlatform.XKBContext,
-        gPlatform.Connection,
-        gPlatform.XKBDeviceID,
+    gXCB.XKBKeymap = xkb_x11_keymap_new_from_device(
+        gXCB.XKBContext,
+        gXCB.Connection,
+        gXCB.XKBDeviceID,
         XKB_KEYMAP_COMPILE_NO_FLAGS);
-    if (!gPlatform.XKBKeymap)
+    if (!gXCB.XKBKeymap)
     {
         return false;
     }
 
-    gPlatform.XKBState = xkb_x11_state_new_from_device(
-        gPlatform.XKBKeymap,
-        gPlatform.Connection,
-        gPlatform.XKBDeviceID);
-    if (!gPlatform.XKBState)
+    gXCB.XKBState = xkb_x11_state_new_from_device(
+        gXCB.XKBKeymap,
+        gXCB.Connection,
+        gXCB.XKBDeviceID);
+    if (!gXCB.XKBState)
     {
-        xkb_keymap_unref(gPlatform.XKBKeymap);
-        gPlatform.XKBKeymap = NULL;
+        xkb_keymap_unref(gXCB.XKBKeymap);
+        gXCB.XKBKeymap = NULL;
 
         return false;
     }
 
-    gPlatform.XKBStateNone = xkb_x11_state_new_from_device(
-        gPlatform.XKBKeymap,
-        gPlatform.Connection,
-        gPlatform.XKBDeviceID);
-    if (!gPlatform.XKBStateNone)
+    gXCB.XKBStateNone = xkb_x11_state_new_from_device(
+        gXCB.XKBKeymap,
+        gXCB.Connection,
+        gXCB.XKBDeviceID);
+    if (!gXCB.XKBStateNone)
     {
-        xkb_keymap_unref(gPlatform.XKBKeymap);
-        gPlatform.XKBKeymap = NULL;
-        xkb_state_unref(gPlatform.XKBState);
-        gPlatform.XKBState = NULL;
+        xkb_keymap_unref(gXCB.XKBKeymap);
+        gXCB.XKBKeymap = NULL;
+        xkb_state_unref(gXCB.XKBState);
+        gXCB.XKBState = NULL;
 
         return false;
     }
-    xkb_layout_index_t Layout =
-        xkb_state_key_get_layout(gPlatform.XKBStateNone, 0);
-    xkb_state_update_mask(
-        gPlatform.XKBStateNone,
-        2,
-        2,
-        2,
-        Layout,
-        Layout,
-        Layout);
+    xkb_layout_index_t Layout = xkb_state_key_get_layout(gXCB.XKBStateNone, 0);
+    xkb_state_update_mask(gXCB.XKBStateNone, 2, 2, 2, Layout, Layout, Layout);
 
     xcb_xkb_get_names_reply_t *GetNamesReply = xcb_xkb_get_names_reply(
-        gPlatform.Connection,
+        gXCB.Connection,
         xcb_xkb_get_names(
-            gPlatform.Connection,
-            (xcb_xkb_device_spec_t)gPlatform.XKBDeviceID,
+            gXCB.Connection,
+            (xcb_xkb_device_spec_t)gXCB.XKBDeviceID,
             XCB_XKB_NAME_DETAIL_KEY_NAMES | XCB_XKB_NAME_DETAIL_KEY_ALIASES |
                 XCB_XKB_NAME_DETAIL_SYMBOLS),
         NULL);
@@ -391,8 +364,7 @@ static inline bool Rr_UpdateXKBKeymap(void)
                 (xcb_keycode_t)(GetNamesReply->firstKey + Index);
 
             Rr_Scancode Scancode = Rr_XCBKeyNameToScancode(KeyName->name);
-            gPlatform.XKBKeycodeToScancode[Keycode] = Scancode;
-            gPlatform.ScancodeToXKBKeycode[Scancode] = Keycode;
+            gXCB.XKBKeycodeToScancode[Keycode] = Scancode;
         }
 
         xcb_xkb_key_name_next(&It);
@@ -406,7 +378,7 @@ static inline bool Rr_UpdateXKBKeymap(void)
 static inline bool Rr_InitXKB(void)
 {
     xcb_xkb_use_extension(
-        gPlatform.Connection,
+        gXCB.Connection,
         XKB_X11_MIN_MAJOR_XKB_VERSION,
         XKB_X11_MIN_MINOR_XKB_VERSION);
     struct xkb_context *Context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
@@ -414,18 +386,17 @@ static inline bool Rr_InitXKB(void)
     {
         return false;
     }
-    gPlatform.XKBContext = Context;
+    gXCB.XKBContext = Context;
 
-    int32_t DeviceID =
-        xkb_x11_get_core_keyboard_device_id(gPlatform.Connection);
+    int32_t DeviceID = xkb_x11_get_core_keyboard_device_id(gXCB.Connection);
     if (DeviceID == -1)
     {
         return false;
     }
-    gPlatform.XKBDeviceID = DeviceID;
+    gXCB.XKBDeviceID = DeviceID;
 
     xcb_xkb_per_client_flags(
-        gPlatform.Connection,
+        gXCB.Connection,
         (xcb_xkb_device_spec_t)DeviceID,
         XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT,
         1,
@@ -452,7 +423,7 @@ static inline bool Rr_InitXKB(void)
         XCB_XKB_EVENT_TYPE_NEW_KEYBOARD_NOTIFY | XCB_XKB_EVENT_TYPE_MAP_NOTIFY |
         XCB_XKB_EVENT_TYPE_STATE_NOTIFY;
     xcb_void_cookie_t SelectEventsCookie = xcb_xkb_select_events_aux_checked(
-        gPlatform.Connection,
+        gXCB.Connection,
         (xcb_xkb_device_spec_t)DeviceID,
         SelectedEvents,
         0,
@@ -461,7 +432,7 @@ static inline bool Rr_InitXKB(void)
         RequiredMapParts,
         &SelectEventsDetails);
     xcb_generic_error_t *SelectEventsError =
-        xcb_request_check(gPlatform.Connection, SelectEventsCookie);
+        xcb_request_check(gXCB.Connection, SelectEventsCookie);
     if (SelectEventsError)
     {
         free(SelectEventsError);
@@ -476,25 +447,23 @@ static inline bool Rr_InitXKB(void)
     return true;
 }
 
-static inline void Rr_WarpPointer(int16_t X, int16_t Y)
+static inline void Rr_WarpPointer(Rr_IntVec2 Position)
 {
-    gPlatform.MouseWarpX = X;
-    gPlatform.MouseWarpY = Y;
     xcb_warp_pointer(
-        gPlatform.Connection,
+        gXCB.Connection,
         XCB_NONE,
-        gPlatform.Window,
+        gXCB.Window,
         0,
         0,
         0,
         0,
-        X,
-        Y);
+        (int16_t)Position.X,
+        (int16_t)Position.Y);
 }
 
 bool Rr_ProcessXKBEvent(xkb_generic_event_t *Event)
 {
-    if (Event->deviceId != gPlatform.XKBDeviceID)
+    if (Event->deviceId != gXCB.XKBDeviceID)
     {
         return false;
     }
@@ -507,19 +476,17 @@ bool Rr_ProcessXKBEvent(xkb_generic_event_t *Event)
                 (xcb_xkb_new_keyboard_notify_event_t *)Event;
             if (NewKeyboardNotifyEvent->changed)
             {
-                if (Rr_UpdateXKBKeymap())
-                {
-                    return true;
-                }
+                Rr_UpdateXKBKeymap();
+
+                return true;
             }
         }
         break;
         case XCB_XKB_MAP_NOTIFY:
         {
-            if (Rr_UpdateXKBKeymap())
-            {
-                return true;
-            }
+            Rr_UpdateXKBKeymap();
+
+            return true;
         }
         break;
         case XCB_XKB_STATE_NOTIFY:
@@ -527,7 +494,7 @@ bool Rr_ProcessXKBEvent(xkb_generic_event_t *Event)
             xcb_xkb_state_notify_event_t *StateNotifyEvent =
                 (xcb_xkb_state_notify_event_t *)Event;
             xkb_state_update_mask(
-                gPlatform.XKBState,
+                gXCB.XKBState,
                 StateNotifyEvent->baseMods,
                 StateNotifyEvent->latchedMods,
                 StateNotifyEvent->lockedMods,
@@ -550,8 +517,8 @@ static inline bool Rr_InitRandr(void)
 {
     xcb_generic_error_t *Error;
     xcb_randr_query_version_cookie_t Cookie =
-        xcb_randr_query_version(gPlatform.Connection, 1, 5);
-    xcb_randr_query_version_reply(gPlatform.Connection, Cookie, &Error);
+        xcb_randr_query_version(gXCB.Connection, 1, 5);
+    xcb_randr_query_version_reply(gXCB.Connection, Cookie, &Error);
     if (Error)
     {
         free(Error);
@@ -559,7 +526,7 @@ static inline bool Rr_InitRandr(void)
         return false;
     }
 
-    xcb_randr_select_input(gPlatform.Connection, gPlatform.Screen->root, true);
+    xcb_randr_select_input(gXCB.Connection, gXCB.Screen->root, true);
 
     return true;
 }
@@ -577,32 +544,32 @@ static inline void *Rr_OpenVulkanModuleLinux(void)
 
 bool Rr_InitPlatform(Rr_AppConfig *Config)
 {
-    assert(!gPlatform.Initialized);
+    assert(!gXCB.Initialized);
 
-    RR_LOG_INFO("Using GLFW");
+    RR_LOG_INFO("Using XCB");
 
     xcb_generic_error_t *XCBError = NULL;
 
-    int ScreenID;
-    xcb_connection_t *Connection = xcb_connect(NULL, &ScreenID);
+    int ScreenIndex;
+    xcb_connection_t *Connection = xcb_connect(NULL, &ScreenIndex);
     if (!Connection)
     {
         return false;
     }
-    gPlatform.Connection = Connection;
+    gXCB.Connection = Connection;
 
     xcb_setup_t const *Setup = xcb_get_setup(Connection);
     if (!Setup)
     {
         return false;
     }
-    gPlatform.Setup = Setup;
+    gXCB.Setup = Setup;
 
     xcb_screen_t *Screen = NULL;
     xcb_screen_iterator_t ScreenIt = xcb_setup_roots_iterator(Setup);
-    for (; ScreenIt.rem; --ScreenID, xcb_screen_next(&ScreenIt))
+    for (; ScreenIt.rem; --ScreenIndex, xcb_screen_next(&ScreenIt))
     {
-        if (ScreenID == 0)
+        if (ScreenIndex == 0)
         {
             Screen = ScreenIt.data;
             break;
@@ -612,7 +579,7 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     {
         return false;
     }
-    gPlatform.Screen = Screen;
+    gXCB.Screen = Screen;
 
     Rr_IntVec2 WindowExtent = {
         (int32_t)((float)Screen->width_in_pixels * RR_WINDOWED_RATIO),
@@ -630,7 +597,8 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
             XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
             XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
             XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_EXPOSURE |
-            XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE
+            XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_FOCUS_CHANGE |
+            XCB_EVENT_MASK_PROPERTY_CHANGE
     };
 
     uint32_t Window = xcb_generate_id(Connection);
@@ -657,32 +625,32 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
 
         return false;
     }
-    gPlatform.Window = Window;
+    gXCB.Window = Window;
 
     if (Rr_InitRandr())
     {
-        gPlatform.UseRandr = true;
+        gXCB.UseRandr = true;
     }
 
-    gPlatform.Atoms.Targets = Rr_GetXCBAtom("TARGETS");
-    gPlatform.Atoms.Clipboard = Rr_GetXCBAtom("CLIPBOARD");
-    gPlatform.Atoms.ClipboardRr = Rr_GetXCBAtom("CLIPBOARD_RR");
-    gPlatform.Atoms.UTF8String = Rr_GetXCBAtom("UTF8_STRING");
-    gPlatform.Atoms.WMProtocols = Rr_GetXCBAtom("WM_PROTOCOLS");
-    gPlatform.Atoms.WMDeleteWindow = Rr_GetXCBAtom("WM_DELETE_WINDOW");
+    gXCB.Atoms.Targets = Rr_GetXCBAtom("TARGETS");
+    gXCB.Atoms.Clipboard = Rr_GetXCBAtom("CLIPBOARD");
+    gXCB.Atoms.ClipboardRr = Rr_GetXCBAtom("CLIPBOARD_RR");
+    gXCB.Atoms.UTF8String = Rr_GetXCBAtom("UTF8_STRING");
+    gXCB.Atoms.WMProtocols = Rr_GetXCBAtom("WM_PROTOCOLS");
+    gXCB.Atoms.WMDeleteWindow = Rr_GetXCBAtom("WM_DELETE_WINDOW");
     xcb_change_property(
-        gPlatform.Connection,
+        gXCB.Connection,
         XCB_PROP_MODE_REPLACE,
-        gPlatform.Window,
-        gPlatform.Atoms.WMProtocols,
+        gXCB.Window,
+        gXCB.Atoms.WMProtocols,
         4,
         32,
         1,
-        &gPlatform.Atoms.WMDeleteWindow);
+        &gXCB.Atoms.WMDeleteWindow);
 
     for (size_t Index = 0; Index < RR_XCB_TARGET_COUNT; ++Index)
     {
-        gPlatform.Targets[Index] = Rr_GetXCBAtom(RR_XCB_TARGETS[Index]);
+        gXCB.Targets[Index] = Rr_GetXCBAtom(RR_XCB_TARGETS[Index]);
     }
 
     xcb_cursor_context_t *CursorContext = NULL;
@@ -694,27 +662,27 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     {
         return false;
     }
-    gPlatform.CursorContext = CursorContext;
-    gPlatform.Cursors[RR_CURSOR_TYPE_NORMAL] =
+    gXCB.CursorContext = CursorContext;
+    gXCB.Cursors[RR_CURSOR_TYPE_NORMAL] =
         xcb_cursor_load_cursor(CursorContext, "default");
-    gPlatform.Cursors[RR_CURSOR_TYPE_RESIZE_EW] =
+    gXCB.Cursors[RR_CURSOR_TYPE_RESIZE_EW] =
         xcb_cursor_load_cursor(CursorContext, "ew-resize");
-    gPlatform.Cursors[RR_CURSOR_TYPE_RESIZE_NS] =
+    gXCB.Cursors[RR_CURSOR_TYPE_RESIZE_NS] =
         xcb_cursor_load_cursor(CursorContext, "ns-resize");
-    gPlatform.Cursors[RR_CURSOR_TYPE_RESIZE_NWSE] =
+    gXCB.Cursors[RR_CURSOR_TYPE_RESIZE_NWSE] =
         xcb_cursor_load_cursor(CursorContext, "nwse-resize");
-    gPlatform.Cursors[RR_CURSOR_TYPE_RESIZE_NESW] =
+    gXCB.Cursors[RR_CURSOR_TYPE_RESIZE_NESW] =
         xcb_cursor_load_cursor(CursorContext, "nesw-resize");
-    gPlatform.Cursors[RR_CURSOR_TYPE_RESIZE_ALL] =
+    gXCB.Cursors[RR_CURSOR_TYPE_RESIZE_ALL] =
         xcb_cursor_load_cursor(CursorContext, "all-scroll");
-    gPlatform.Cursors[RR_CURSOR_TYPE_TEXT] =
+    gXCB.Cursors[RR_CURSOR_TYPE_TEXT] =
         xcb_cursor_load_cursor(CursorContext, "text");
     xcb_pixmap_t Pixmap = xcb_generate_id(Connection);
-    gPlatform.EmptyCursor = xcb_generate_id(Connection);
+    gXCB.EmptyCursor = xcb_generate_id(Connection);
     xcb_create_pixmap(Connection, 1, Pixmap, Screen->root, 1, 1);
     xcb_create_cursor(
         Connection,
-        gPlatform.EmptyCursor,
+        gXCB.EmptyCursor,
         Pixmap,
         Pixmap,
         0,
@@ -729,7 +697,6 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
 
     Rr_SetWindowTitle(Config->Title);
 
-    xcb_map_window(Connection, Window);
     xcb_flush(Connection);
 
     if (!Rr_InitXKB())
@@ -742,55 +709,55 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     {
         return false;
     }
-    gPlatform.VulkanModule = Module;
+    gXCB.VulkanModule = Module;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-    gPlatform.VkGetInstanceProcAddr =
+    gXCB.VkGetInstanceProcAddr =
         (PFN_vkGetInstanceProcAddr)dlsym(Module, "vkGetInstanceProcAddr");
-    if (!gPlatform.VkGetInstanceProcAddr)
+    if (!gXCB.VkGetInstanceProcAddr)
     {
         return false;
     }
-    gPlatform.VkCreateXcbSurfaceKHR = (PFN_vkCreateXcbSurfaceKHR)dlsym(
-        gPlatform.VulkanModule,
+    gXCB.VkCreateXcbSurfaceKHR = (PFN_vkCreateXcbSurfaceKHR)dlsym(
+        gXCB.VulkanModule,
         "vkCreateXcbSurfaceKHR");
-    if (!gPlatform.VkCreateXcbSurfaceKHR)
+    if (!gXCB.VkCreateXcbSurfaceKHR)
     {
         return false;
     }
 #pragma GCC diagnostic pop // Restore diagnostics state
 
-    gPlatform.Initialized = true;
+    gXCB.Initialized = true;
 
     return true;
 }
 
 void Rr_CleanupPlatform(void)
 {
-    assert(gPlatform.Initialized);
+    assert(gXCB.Initialized);
 
     for (int Index = 0; Index < RR_CURSOR_TYPE_COUNT; ++Index)
     {
-        xcb_free_cursor(gPlatform.Connection, gPlatform.Cursors[Index]);
+        xcb_free_cursor(gXCB.Connection, gXCB.Cursors[Index]);
     }
-    xcb_cursor_context_free(gPlatform.CursorContext);
+    xcb_cursor_context_free(gXCB.CursorContext);
 
-    xkb_state_unref(gPlatform.XKBState);
-    xkb_keymap_unref(gPlatform.XKBKeymap);
-    xkb_context_unref(gPlatform.XKBContext);
+    xkb_state_unref(gXCB.XKBState);
+    xkb_keymap_unref(gXCB.XKBKeymap);
+    xkb_context_unref(gXCB.XKBContext);
 
-    xcb_disconnect(gPlatform.Connection);
+    xcb_disconnect(gXCB.Connection);
 
-    dlclose(gPlatform.VulkanModule);
+    dlclose(gXCB.VulkanModule);
 
-    free(gPlatform.Clipboard);
+    free(gXCB.Clipboard);
 
-    RR_ZERO(gPlatform);
+    RR_ZERO(gXCB);
 }
 
 void (*Rr_GetVkGetInstanceProcAddr(void))(void)
 {
-    return (void (*)(void))gPlatform.VkGetInstanceProcAddr;
+    return (void (*)(void))gXCB.VkGetInstanceProcAddr;
 }
 
 const char *const *Rr_GetVulkanExtensions(uint32_t *Count)
@@ -810,152 +777,194 @@ bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface)
 {
     VkXcbSurfaceCreateInfoKHR Info = {
         .sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR,
-        .connection = gPlatform.Connection,
-        .window = gPlatform.Window,
+        .connection = gXCB.Connection,
+        .window = gXCB.Window,
     };
 
-    return gPlatform.VkCreateXcbSurfaceKHR(
+    return gXCB.VkCreateXcbSurfaceKHR(
                (VkInstance)Instance,
                &Info,
                NULL,
                (VkSurfaceKHR *)Surface) == VK_SUCCESS;
 }
 
-bool Rr_IsScancodePressed(Rr_Scancode Scancode)
-{
-    return gPlatform.XKBPressedKeys[gPlatform.ScancodeToXKBKeycode[Scancode]];
-}
-
-Rr_Vec2 Rr_GetMousePosition(void)
-{
-    return gPlatform.MousePosition;
-}
-
-Rr_Vec2 Rr_GetMousePositionDelta(void)
-{
-    return gPlatform.MousePositionDelta;
-}
-
-Rr_MouseButtonFlags Rr_GetMouseState(void)
-{
-    return gPlatform.MouseState;
-}
-
-void Rr_NewPlatformFrame(void)
-{
-    gPlatform.MousePositionDelta = Rr_V2F(0.0f);
-}
-
 static inline void Rr_ProcessXCBKeyEvent(
     xcb_key_press_event_t *XCBEvent,
-    bool Press,
-    Rr_Event *Event,
+    bool Down,
     Rr_Arena *Arena)
 {
-    if (Press && gPlatform.XKBPressedKeys[XCBEvent->detail])
-    {
-        Event->Type = RR_EVENT_TYPE_KEY_REPEAT;
-    }
-    else
-    {
-        Event->Type = Press ? RR_EVENT_TYPE_KEY_DOWN : RR_EVENT_TYPE_KEY_UP;
-        gPlatform.XKBPressedKeys[XCBEvent->detail] = Press;
-    }
-    Event->Key.Down = Event->Type != RR_EVENT_TYPE_KEY_UP;
-    Event->Key.Scancode = gPlatform.XKBKeycodeToScancode[XCBEvent->detail];
-    Event->Key.Keymod = 0;
-    if (RR_HAS_BIT(XCBEvent->state, XCB_MOD_MASK_SHIFT))
-    {
-        Event->Key.Keymod |= RR_KEYMOD_SHIFT;
-    }
-    if (RR_HAS_BIT(XCBEvent->state, XCB_MOD_MASK_CONTROL))
-    {
-        Event->Key.Keymod |= RR_KEYMOD_CTRL;
-    }
-    if (RR_HAS_BIT(XCBEvent->state, XCB_MOD_MASK_1))
-    {
-        Event->Key.Keymod |= RR_KEYMOD_ALT;
-    }
+    Rr_Scancode Scancode = gXCB.XKBKeycodeToScancode[XCBEvent->detail];
 
-    if (Event->Key.Down)
+    Rr_AddKeyEvent(Scancode, Down);
+
+    if (Down)
     {
         uint32_t Codepoint =
-            xkb_state_key_get_utf32(gPlatform.XKBState, XCBEvent->detail);
+            xkb_state_key_get_utf32(gXCB.XKBState, XCBEvent->detail);
         if (!Codepoint)
         {
             return;
         }
 
-        Rr_SetTextInputEvent(Codepoint, NULL, Arena);
+        Rr_AddTextInputEvent(Codepoint, Arena);
     }
 }
 
 static inline void Rr_ProcessXCBSelectionRequestEvent(
-    xcb_selection_request_event_t *XCBEvent)
+    xcb_selection_request_event_t *SelectionRequestEvent)
 {
-    if (XCBEvent->target == gPlatform.Atoms.Targets)
+    if (SelectionRequestEvent->target == gXCB.Atoms.Targets)
     {
         xcb_change_property(
-            gPlatform.Connection,
+            gXCB.Connection,
             XCB_PROP_MODE_REPLACE,
-            XCBEvent->requestor,
-            XCBEvent->property,
+            SelectionRequestEvent->requestor,
+            SelectionRequestEvent->property,
             XCB_ATOM_ATOM,
             sizeof(xcb_atom_t) * 8,
             sizeof(xcb_atom_t) * RR_XCB_TARGET_COUNT,
-            gPlatform.Targets);
+            gXCB.Targets);
+
+        return;
+    }
+
+    xcb_generic_error_t *Error;
+    bool EmptyProperty = SelectionRequestEvent->property == XCB_NONE;
+    bool KnownTarget = false;
+    for (size_t Index = 0; Index < RR_XCB_TARGET_COUNT; ++Index)
+    {
+        if (gXCB.Targets[Index] == SelectionRequestEvent->target)
+        {
+            KnownTarget = true;
+
+            break;
+        }
+    }
+
+    if (!EmptyProperty && KnownTarget && gXCB.Clipboard)
+    {
+        xcb_change_property(
+            gXCB.Connection,
+            XCB_PROP_MODE_REPLACE,
+            SelectionRequestEvent->requestor,
+            SelectionRequestEvent->property,
+            SelectionRequestEvent->target,
+            8,
+            (uint32_t)strlen(gXCB.Clipboard),
+            gXCB.Clipboard);
+        RR_LOG("Sdf");
+
+        xcb_selection_notify_event_t SelectionNotifyEvent = {
+            .response_type = XCB_SELECTION_NOTIFY,
+            .time = SelectionRequestEvent->time,
+            .requestor = SelectionRequestEvent->requestor,
+            .selection = SelectionRequestEvent->selection,
+            .target = SelectionRequestEvent->target,
+            .property = SelectionRequestEvent->property,
+        };
+        Error = xcb_request_check(
+            gXCB.Connection,
+            xcb_send_event(
+                gXCB.Connection,
+                true,
+                SelectionRequestEvent->requestor,
+                XCB_EVENT_MASK_NO_EVENT,
+                (const char *)&SelectionNotifyEvent));
+        if (Error)
+        {
+            free(Error);
+        }
     }
     else
     {
-        bool KnownTarget = false;
-        for (int i = 0; i < RR_XCB_TARGET_COUNT; ++i)
+        xcb_selection_notify_event_t SelectionNotifyEvent = {
+            .response_type = XCB_SELECTION_NOTIFY,
+            .time = SelectionRequestEvent->time,
+            .requestor = SelectionRequestEvent->requestor,
+            .selection = SelectionRequestEvent->selection,
+            .target = SelectionRequestEvent->target,
+            .property = XCB_NONE,
+        };
+        Error = xcb_request_check(
+            gXCB.Connection,
+            xcb_send_event(
+                gXCB.Connection,
+                true,
+                SelectionRequestEvent->requestor,
+                XCB_EVENT_MASK_NO_EVENT,
+                (const char *)&SelectionNotifyEvent));
+        if (Error)
         {
-            if (gPlatform.Targets[i] == XCBEvent->target)
-            {
-                KnownTarget = true;
-
-                break;
-            }
-        }
-        if (KnownTarget)
-        {
-            xcb_change_property(
-                gPlatform.Connection,
-                XCB_PROP_MODE_REPLACE,
-                XCBEvent->requestor,
-                XCBEvent->property,
-                XCBEvent->target,
-                8,
-                (uint32_t)strlen(gPlatform.Clipboard),
-                gPlatform.Clipboard);
+            free(Error);
         }
     }
+    // if (SelectionRequestEvent->target != gPlatform.)
+    // if (XCBEvent->target == gXCB.Atoms.Targets)
+    // {
+    //     xcb_change_property(
+    //         gXCB.Connection,
+    //         XCB_PROP_MODE_REPLACE,
+    //         XCBEvent->requestor,
+    //         XCBEvent->property,
+    //         XCB_ATOM_ATOM,
+    //         sizeof(xcb_atom_t) * 8,
+    //         sizeof(xcb_atom_t) * RR_XCB_TARGET_COUNT,
+    //         gXCB.Targets);
+    // }
+    // else
+    // {
+    //     bool KnownTarget = false;
+    //     for (int i = 0; i < RR_XCB_TARGET_COUNT; ++i)
+    //     {
+    //         if (gXCB.Targets[i] == XCBEvent->target)
+    //         {
+    //             KnownTarget = true;
 
-    xcb_selection_notify_event_t SelectionNotifyEvent = {
-        .response_type = XCB_SELECTION_NOTIFY,
-        .time = XCB_CURRENT_TIME,
-        .requestor = XCBEvent->requestor,
-        .selection = XCBEvent->selection,
-        .target = XCBEvent->target,
-        .property = XCBEvent->property,
-    };
-    xcb_generic_error_t *Error = xcb_request_check(
-        gPlatform.Connection,
-        xcb_send_event(
-            gPlatform.Connection,
-            false,
-            XCBEvent->requestor,
-            XCB_EVENT_MASK_PROPERTY_CHANGE,
-            (const char *)&SelectionNotifyEvent));
-    if (Error)
-    {
-        free(Error);
-    }
+    //             break;
+    //         }
+    //     }
+    //     if (KnownTarget)
+    //     {
+    //         xcb_change_property(
+    //             gXCB.Connection,
+    //             XCB_PROP_MODE_REPLACE,
+    //             XCBEvent->requestor,
+    //             XCBEvent->property,
+    //             XCBEvent->target,
+    //             8,
+    //             (uint32_t)strlen(gXCB.Clipboard),
+    //             gXCB.Clipboard);
+    //     }
+    // }
+
+    // xcb_selection_notify_event_t SelectionNotifyEvent = {
+    //     .response_type = XCB_SELECTION_NOTIFY,
+    //     .time = XCB_CURRENT_TIME,
+    //     .requestor = XCBEvent->requestor,
+    //     .selection = XCBEvent->selection,
+    //     .target = XCBEvent->target,
+    //     .property = XCBEvent->property,
+    // };
+    // xcb_generic_error_t *Error = xcb_request_check(
+    //     gXCB.Connection,
+    //     xcb_send_event(
+    //         gXCB.Connection,
+    //         false,
+    //         XCBEvent->requestor,
+    //         XCB_EVENT_MASK_PROPERTY_CHANGE,
+    //         (const char *)&SelectionNotifyEvent));
+    // if (Error)
+    // {
+    //     free(Error);
+    // }
 }
 
-bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
+void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
 {
-    xcb_connection_t *Connection = gPlatform.Connection;
+    Rr_Vec2 LastMousePosition = gPlatform.MousePosition;
+    gPlatform.MousePositionDelta = Rr_V2F(0.0f);
+
+    xcb_connection_t *Connection = gXCB.Connection;
 
     xcb_generic_event_t *XCBEvent = NULL;
     while ((XCBEvent = xcb_poll_for_event(Connection)))
@@ -975,18 +984,21 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
                 xcb_client_message_event_t *MessageEvent =
                     (xcb_client_message_event_t *)XCBEvent;
 
-                if (MessageEvent->data.data32[0] ==
-                    gPlatform.Atoms.WMDeleteWindow)
+                if (MessageEvent->data.data32[0] == gXCB.Atoms.WMDeleteWindow)
                 {
+                    Rr_Event *Event = Rr_AddEvent();
                     Event->Type = RR_EVENT_TYPE_QUIT;
-
-                    goto Translated;
                 }
             }
             break;
-            case XCB_EXPOSE:
+            case XCB_FOCUS_IN:
             {
-                free(XCBEvent);
+                Rr_AddFocusEvent(true);
+            }
+            break;
+            case XCB_FOCUS_OUT:
+            {
+                Rr_AddFocusEvent(false);
             }
             break;
             case XCB_BUTTON_PRESS:
@@ -994,41 +1006,26 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
                 xcb_button_press_event_t *ButtonPressEvent =
                     (xcb_button_press_event_t *)XCBEvent;
 
+                Rr_Vec2 Position = {
+                    (float)ButtonPressEvent->event_x,
+                    (float)ButtonPressEvent->event_y,
+                };
+
                 if (ButtonPressEvent->detail == 4)
                 {
-                    Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
-                    Event->Wheel.Amount = Rr_V2(0.0f, 1.0f);
-                    Event->Wheel.Position = (Rr_Vec2){
-                        (float)ButtonPressEvent->event_x,
-                        (float)ButtonPressEvent->event_y,
-                    };
+                    Rr_AddMouseWheelEvent(Position, Rr_V2(0.0f, 1.0f));
                 }
                 else if (ButtonPressEvent->detail == 5)
                 {
-                    Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
-                    Event->Wheel.Amount = Rr_V2(0.0f, -1.0f);
-                    Event->Wheel.Position = (Rr_Vec2){
-                        (float)ButtonPressEvent->event_x,
-                        (float)ButtonPressEvent->event_y,
-                    };
+                    Rr_AddMouseWheelEvent(Position, Rr_V2(0.0f, -1.0f));
                 }
                 else if (ButtonPressEvent->detail == 6)
                 {
-                    Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
-                    Event->Wheel.Amount = Rr_V2(-1.0f, 0.0f);
-                    Event->Wheel.Position = (Rr_Vec2){
-                        (float)ButtonPressEvent->event_x,
-                        (float)ButtonPressEvent->event_y,
-                    };
+                    Rr_AddMouseWheelEvent(Position, Rr_V2(-1.0f, 0.0f));
                 }
                 else if (ButtonPressEvent->detail == 7)
                 {
-                    Event->Type = RR_EVENT_TYPE_MOUSE_WHEEL;
-                    Event->Wheel.Amount = Rr_V2(1.0f, 0.0f);
-                    Event->Wheel.Position = (Rr_Vec2){
-                        (float)ButtonPressEvent->event_x,
-                        (float)ButtonPressEvent->event_y,
-                    };
+                    Rr_AddMouseWheelEvent(Position, Rr_V2(1.0f, 0.0f));
                 }
                 else
                 {
@@ -1038,97 +1035,69 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
                     {
                         Button -= 4;
                     }
-                    Rr_SetMouseButtonEvent(
-                        true,
-                        Rr_V2(
-                            (float)ButtonPressEvent->event_x,
-                            (float)ButtonPressEvent->event_y),
-                        Button,
-                        Event);
 
-                    gPlatform.MouseState |=
-                        (Rr_MouseButtonFlags)(1 << Event->MouseButton.Button);
+                    Rr_AddMouseButtonEvent(true, Position, Button);
+
+                    gPlatform.MouseState |= (Rr_MouseButtonFlags)(1 << Button);
                 }
-
-                goto Translated;
             }
+            break;
             case XCB_BUTTON_RELEASE:
             {
                 xcb_button_release_event_t *ButtonReleaseEvent =
                     (xcb_button_release_event_t *)XCBEvent;
 
-                Rr_SetMouseButtonEvent(
-                    false,
-                    Rr_V2(
-                        (float)ButtonReleaseEvent->event_x,
-                        (float)ButtonReleaseEvent->event_y),
-                    (Rr_MouseButton)(ButtonReleaseEvent->detail - 1),
-                    Event);
+                Rr_Vec2 Position = {
+                    (float)ButtonReleaseEvent->event_x,
+                    (float)ButtonReleaseEvent->event_y,
+                };
 
-                gPlatform.MouseState &=
-                    (Rr_MouseButtonFlags) ~(1 << Event->MouseButton.Button);
+                Rr_MouseButton Button =
+                    (Rr_MouseButton)(ButtonReleaseEvent->detail - 1);
+                if (ButtonReleaseEvent->detail > 7)
+                {
+                    Button -= 4;
+                }
 
-                goto Translated;
+                Rr_AddMouseButtonEvent(false, Position, Button);
+
+                gPlatform.MouseState &= (Rr_MouseButtonFlags) ~(1 << Button);
             }
+            break;
             case XCB_MOTION_NOTIFY:
             {
                 xcb_motion_notify_event_t *MotionEvent =
                     (xcb_motion_notify_event_t *)XCBEvent;
 
-                if (MotionEvent->event_x != gPlatform.MouseWarpX ||
-                    MotionEvent->event_y != gPlatform.MouseWarpY)
+                Rr_Vec2 Position = {
+                    (float)MotionEvent->event_x,
+                    (float)MotionEvent->event_y,
+                };
+
+                if (gPlatform.RelativeMouseMode)
                 {
-                    Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
-                    if (gPlatform.PointerGrabbed)
-                    {
-                        gPlatform.MousePositionVirtual = Rr_AddV2(
-                            gPlatform.MousePositionVirtual,
-                            Rr_V2(
-                                (float)MotionEvent->event_x -
-                                    (float)gPlatform.MouseRestoreX,
-                                (float)MotionEvent->event_y -
-                                    (float)gPlatform.MouseRestoreY));
+                    Rr_Vec2 Delta = Rr_SubV2(
+                        Position,
+                        Rr_CastV2(gPlatform.RelativeMouseRestorePosition));
 
-                        Event->MouseMotion.Position =
-                            gPlatform.MousePositionVirtual;
-
-                        Rr_WarpPointer(
-                            gPlatform.MouseRestoreX,
-                            gPlatform.MouseRestoreY);
-                    }
-                    else
+                    if ((int)Delta.X == 0 && (int)Delta.Y == 0)
                     {
-                        Event->MouseMotion.Position = Rr_V2(
-                            (float)MotionEvent->event_x,
-                            (float)MotionEvent->event_y);
+                        break;
                     }
 
-                    gPlatform.MousePositionDelta = Rr_SubV2(
-                        Event->MouseMotion.Position,
-                        gPlatform.MousePosition);
+                    gPlatform.MousePosition =
+                        Rr_AddV2(gPlatform.MousePosition, Delta);
 
-                    gPlatform.MousePosition = Event->MouseMotion.Position;
-
-                    goto Translated;
+                    Rr_WarpPointer(gPlatform.RelativeMouseRestorePosition);
+                }
+                else
+                {
+                    gPlatform.MousePosition = Position;
                 }
 
-                free(XCBEvent);
-            }
-            break;
-            case XCB_ENTER_NOTIFY:
-            {
-                xcb_enter_notify_event_t *EnterEvent =
-                    (xcb_enter_notify_event_t *)XCBEvent;
-
-                free(XCBEvent);
-            }
-            break;
-            case XCB_LEAVE_NOTIFY:
-            {
-                xcb_leave_notify_event_t *LeaveEvent =
-                    (xcb_leave_notify_event_t *)XCBEvent;
-
-                free(XCBEvent);
+                Rr_Event *Event = Rr_AddEvent();
+                Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
+                Event->MouseMotion.Position = gPlatform.MousePosition;
             }
             break;
             case XCB_KEY_PRESS:
@@ -1136,84 +1105,74 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
                 Rr_ProcessXCBKeyEvent(
                     (xcb_key_press_event_t *)XCBEvent,
                     true,
-                    Event,
                     Arena);
-
-                goto Translated;
             }
+            break;
             case XCB_KEY_RELEASE:
             {
                 Rr_ProcessXCBKeyEvent(
                     (xcb_key_press_event_t *)XCBEvent,
                     false,
-                    Event,
                     Arena);
-
-                goto Translated;
             }
+            break;
             case XCB_CONFIGURE_NOTIFY:
             {
-                free(XCBEvent);
             }
             break;
             case XCB_SELECTION_NOTIFY:
             {
-                free(XCBEvent);
+            }
+            break;
+            case XCB_SELECTION_CLEAR:
+            {
+                free(gXCB.Clipboard);
+                gXCB.Clipboard = NULL;
             }
             break;
             case XCB_SELECTION_REQUEST:
             {
                 Rr_ProcessXCBSelectionRequestEvent(
                     (xcb_selection_request_event_t *)XCBEvent);
-
-                free(XCBEvent);
             }
             break;
             default:
             {
-                free(XCBEvent);
             }
             break;
         }
+
+        free(XCBEvent);
     }
 
-    // xcb_aux_sync(gPlatform.Connection);
-    // xcb_flush(gPlatform.Connection);
+    gPlatform.MousePositionDelta =
+        Rr_SubV2(gPlatform.MousePosition, LastMousePosition);
 
-    return false;
-
-Translated:
-
-    free(XCBEvent);
-
-    return true;
+    // xcb_aux_sync(gXCB.Connection);
+    // xcb_flush(gXCB.Connection);
 }
 
 void Rr_ShowWindow(void)
 {
+    xcb_map_window(gXCB.Connection, gXCB.Window);
+    xcb_flush(gXCB.Connection);
 }
 
-bool Rr_IsWindowMinimized(void)
-{
-    return false;
-}
-
-bool Rr_IsWindowFullscreen(void)
+static inline bool Rr_GetWMState(xcb_atom_t StateAtom)
 {
     xcb_atom_t WMState = Rr_GetXCBAtom("_NET_WM_STATE");
-    xcb_atom_t WMStateFullscreen = Rr_GetXCBAtom("_NET_WM_STATE_FULLSCREEN");
 
     xcb_get_property_cookie_t GetPropertyCookie = xcb_get_property(
-        gPlatform.Connection,
+        gXCB.Connection,
         0,
-        gPlatform.Window,
+        gXCB.Window,
         WMState,
         XCB_ATOM_ATOM,
         0,
         1024);
 
     xcb_get_property_reply_t *GetPropertyReply =
-        xcb_get_property_reply(gPlatform.Connection, GetPropertyCookie, NULL);
+        xcb_get_property_reply(gXCB.Connection, GetPropertyCookie, NULL);
     if (!GetPropertyReply)
     {
         return false;
@@ -1223,19 +1182,29 @@ bool Rr_IsWindowFullscreen(void)
                     (int)sizeof(xcb_atom_t);
     xcb_atom_t *Atoms = (xcb_atom_t *)xcb_get_property_value(GetPropertyReply);
 
-    bool IsFullscreen = false;
+    bool State = false;
     for (int i = 0; i < AtomCount; ++i)
     {
-        if (Atoms[i] == WMStateFullscreen)
+        if (Atoms[i] == StateAtom)
         {
-            IsFullscreen = true;
+            State = true;
             break;
         }
     }
 
     free(GetPropertyReply);
 
-    return IsFullscreen;
+    return State;
+}
+
+bool Rr_IsWindowMinimized(void)
+{
+    return Rr_GetWMState(Rr_GetXCBAtom("_NET_WM_STATE_HIDDEN"));
+}
+
+bool Rr_IsWindowFullscreen(void)
+{
+    return Rr_GetWMState(Rr_GetXCBAtom("_NET_WM_STATE_FULLSCREEN"));
 }
 
 void Rr_SetWindowFullscreen(bool Fullscreen)
@@ -1250,7 +1219,7 @@ void Rr_SetWindowFullscreen(bool Fullscreen)
 
     xcb_client_message_event_t Event = {
         .response_type = XCB_CLIENT_MESSAGE,
-        .window = gPlatform.Window,
+        .window = gXCB.Window,
         .type = WMState,
         .format = 32,
         .data.data32[0] = Fullscreen ? 1 : 0,
@@ -1261,88 +1230,69 @@ void Rr_SetWindowFullscreen(bool Fullscreen)
     };
 
     xcb_send_event(
-        gPlatform.Connection,
+        gXCB.Connection,
         0,
-        xcb_setup_roots_iterator(gPlatform.Setup).data->root,
+        xcb_setup_roots_iterator(gXCB.Setup).data->root,
         XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |
             XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
         (void *)&Event);
-    xcb_flush(gPlatform.Connection);
-}
-
-static inline void Rr_GrabPointer(void)
-{
-    if (gPlatform.PointerGrabbed)
-    {
-        return;
-    }
-
-    xcb_grab_pointer_cookie_t GrabPointerCookie = xcb_grab_pointer(
-        gPlatform.Connection,
-        false,
-        gPlatform.Window,
-        XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
-            XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_ENTER_WINDOW |
-            XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_POINTER_MOTION,
-        XCB_GRAB_MODE_ASYNC,
-        XCB_GRAB_MODE_ASYNC,
-        gPlatform.Window,
-        gPlatform.EmptyCursor,
-        XCB_TIME_CURRENT_TIME);
-    xcb_grab_pointer_reply_t *GrabPointerReply =
-        xcb_grab_pointer_reply(gPlatform.Connection, GrabPointerCookie, NULL);
-    if (!GrabPointerReply)
-    {
-        return;
-    }
-
-    if (GrabPointerReply->status == XCB_GRAB_STATUS_SUCCESS)
-    {
-        gPlatform.MousePositionDelta = Rr_V2F(0.0f);
-        gPlatform.MousePositionVirtual = gPlatform.MousePosition;
-        gPlatform.MouseRestoreX = (int16_t)gPlatform.MousePosition.X;
-        gPlatform.MouseRestoreY = (int16_t)gPlatform.MousePosition.Y;
-        gPlatform.PointerGrabbed = true;
-    }
-
-    free(GrabPointerReply);
-}
-
-static inline void Rr_UngrabPointer(void)
-{
-    if (!gPlatform.PointerGrabbed)
-    {
-        return;
-    }
-
-    xcb_ungrab_pointer(gPlatform.Connection, XCB_TIME_CURRENT_TIME);
-
-    Rr_WarpPointer(gPlatform.MouseRestoreX, gPlatform.MouseRestoreY);
-
-    gPlatform.PointerGrabbed = false;
+    xcb_flush(gXCB.Connection);
 }
 
 void Rr_SetRelativeMouseMode(bool Relative)
 {
+    if (gPlatform.RelativeMouseMode == Relative)
+    {
+        return;
+    }
+
     if (Relative)
     {
-        Rr_GrabPointer();
+        xcb_grab_pointer_cookie_t GrabPointerCookie = xcb_grab_pointer(
+            gXCB.Connection,
+            false,
+            gXCB.Window,
+            XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
+                XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_ENTER_WINDOW |
+                XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_POINTER_MOTION,
+            XCB_GRAB_MODE_ASYNC,
+            XCB_GRAB_MODE_ASYNC,
+            gXCB.Window,
+            gXCB.EmptyCursor,
+            XCB_TIME_CURRENT_TIME);
+        xcb_grab_pointer_reply_t *GrabPointerReply =
+            xcb_grab_pointer_reply(gXCB.Connection, GrabPointerCookie, NULL);
+        if (!GrabPointerReply)
+        {
+            return;
+        }
+
+        if (GrabPointerReply->status == XCB_GRAB_STATUS_SUCCESS)
+        {
+            gPlatform.MousePositionDelta = Rr_V2F(0.0f);
+            gPlatform.RelativeMouseRestorePosition =
+                Rr_CastIntV2(gPlatform.MousePosition);
+        }
+
+        free(GrabPointerReply);
     }
     else
     {
-        Rr_UngrabPointer();
+        xcb_ungrab_pointer(gXCB.Connection, XCB_TIME_CURRENT_TIME);
+
+        Rr_WarpPointer(gPlatform.RelativeMouseRestorePosition);
     }
+
+    gPlatform.RelativeMouseMode = Relative;
 }
 
 static inline double Rr_GetXCBScreenRefreshRate(void)
 {
     xcb_randr_get_screen_info_cookie_t GetScreenInfoCookie =
-        xcb_randr_get_screen_info_unchecked(
-            gPlatform.Connection,
-            gPlatform.Window);
+        xcb_randr_get_screen_info_unchecked(gXCB.Connection, gXCB.Window);
     xcb_randr_get_screen_info_reply_t *GetScreenInfoReply =
         xcb_randr_get_screen_info_reply(
-            gPlatform.Connection,
+            gXCB.Connection,
             GetScreenInfoCookie,
             NULL);
 
@@ -1355,18 +1305,16 @@ static inline double Rr_GetXCBScreenRefreshRate(void)
 
 double Rr_GetDisplayRefreshRate(void)
 {
-    if (!gPlatform.UseRandr)
+    if (!gXCB.UseRandr)
     {
         return Rr_GetXCBScreenRefreshRate();
     }
 
     xcb_randr_get_output_primary_cookie_t GetOutputPrimaryCookie =
-        xcb_randr_get_output_primary(
-            gPlatform.Connection,
-            gPlatform.Screen->root);
+        xcb_randr_get_output_primary(gXCB.Connection, gXCB.Screen->root);
     xcb_randr_get_output_primary_reply_t *GetOutputPrimaryReply =
         xcb_randr_get_output_primary_reply(
-            gPlatform.Connection,
+            gXCB.Connection,
             GetOutputPrimaryCookie,
             NULL);
     if (!GetOutputPrimaryReply)
@@ -1378,36 +1326,33 @@ double Rr_GetDisplayRefreshRate(void)
 
     xcb_randr_get_output_info_cookie_t GetPutputInfoCookie =
         xcb_randr_get_output_info(
-            gPlatform.Connection,
+            gXCB.Connection,
             PrimaryOutput,
             XCB_CURRENT_TIME);
     xcb_randr_get_output_info_reply_t *GetOutputInfoReply =
         xcb_randr_get_output_info_reply(
-            gPlatform.Connection,
+            gXCB.Connection,
             GetPutputInfoCookie,
             NULL);
     xcb_randr_crtc_t crtc = GetOutputInfoReply->crtc;
     free(GetOutputInfoReply);
 
     xcb_randr_get_crtc_info_cookie_t GetCRTCInfoCookie =
-        xcb_randr_get_crtc_info(gPlatform.Connection, crtc, 0);
+        xcb_randr_get_crtc_info(gXCB.Connection, crtc, 0);
     xcb_randr_get_crtc_info_reply_t *GetCRTCInfoReply =
-        xcb_randr_get_crtc_info_reply(
-            gPlatform.Connection,
-            GetCRTCInfoCookie,
-            NULL);
+        xcb_randr_get_crtc_info_reply(gXCB.Connection, GetCRTCInfoCookie, NULL);
     xcb_randr_mode_t Mode = GetCRTCInfoReply->mode;
     free(GetCRTCInfoReply);
 
     xcb_randr_get_screen_resources_current_cookie_t
         GetScreenResourceCurrentCookie =
             xcb_randr_get_screen_resources_current_unchecked(
-                gPlatform.Connection,
-                gPlatform.Window);
+                gXCB.Connection,
+                gXCB.Window);
     xcb_randr_get_screen_resources_current_reply_t
         *GetScreenResourcesCurrentReply =
             xcb_randr_get_screen_resources_current_reply(
-                gPlatform.Connection,
+                gXCB.Connection,
                 GetScreenResourceCurrentCookie,
                 NULL);
     size_t ModeInfoCount =
@@ -1438,8 +1383,8 @@ double Rr_GetDisplayRefreshRate(void)
 Rr_IntVec2 Rr_GetWindowSize(void)
 {
     xcb_get_geometry_reply_t *Geometry = xcb_get_geometry_reply(
-        gPlatform.Connection,
-        xcb_get_geometry(gPlatform.Connection, gPlatform.Window),
+        gXCB.Connection,
+        xcb_get_geometry(gXCB.Connection, gXCB.Window),
         NULL);
     Rr_IntVec2 Result = { Geometry->width, Geometry->height };
     free(Geometry);
@@ -1450,9 +1395,9 @@ Rr_IntVec2 Rr_GetWindowSize(void)
 void Rr_SetWindowTitle(const char *Title)
 {
     xcb_change_property(
-        gPlatform.Connection,
+        gXCB.Connection,
         XCB_PROP_MODE_REPLACE,
-        gPlatform.Window,
+        gXCB.Window,
         XCB_ATOM_WM_NAME,
         XCB_ATOM_STRING,
         8,
@@ -1463,12 +1408,60 @@ void Rr_SetWindowTitle(const char *Title)
 Rr_IntVec2 Rr_GetDisplaySize(void)
 {
     return Rr_IntV2(
-        gPlatform.Screen->width_in_pixels,
-        gPlatform.Screen->height_in_pixels);
+        gXCB.Screen->width_in_pixels,
+        gXCB.Screen->height_in_pixels);
 }
 
 float Rr_GetWindowContentsScale(void)
 {
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    xcb_atom_t Atom = Rr_GetXCBAtom("RESOURCE_MANAGER");
+    xcb_get_property_cookie_t Cookie = xcb_get_property(
+        gXCB.Connection,
+        0,
+        gXCB.Screen->root,
+        Atom,
+        XCB_ATOM_ANY,
+        0,
+        1024 * 8);
+    xcb_get_property_reply_t *Reply =
+        xcb_get_property_reply(gXCB.Connection, Cookie, NULL);
+    if (Reply)
+    {
+        size_t Length = (size_t)xcb_get_property_value_length(Reply);
+        char *Buffer = RR_ALLOC_NO_ZERO(Length + 1, Scratch.Arena);
+        memcpy(Buffer, xcb_get_property_value(Reply), Length);
+        Buffer[Length] = '\0';
+
+        char *ValueStart = strstr(Buffer, "Xft.dpi:");
+        if (ValueStart)
+        {
+            ValueStart += sizeof("Xft.dpi:");
+            char *ValueEnd = ValueStart;
+
+            while (*ValueEnd != '\0' && *ValueEnd != '\n')
+            {
+                ValueEnd++;
+            }
+
+            size_t ValueLength = (size_t)(ValueEnd - ValueStart);
+            char *ValueString =
+                RR_ALLOC_NO_ZERO(ValueLength + 1, Scratch.Arena);
+            memcpy(ValueString, ValueStart, ValueLength);
+            ValueString[ValueLength] = '\0';
+            int DensityPerInch = 96;
+            if (sscanf(ValueString, "%d", &DensityPerInch))
+            {
+                return (float)DensityPerInch / 96.0f;
+            }
+        }
+
+        free(Reply);
+    }
+
+    Rr_DestroyScratch(Scratch);
+
     return 1.0f;
 }
 
@@ -1476,127 +1469,97 @@ void Rr_SetWindowSize(Rr_IntVec2 Size)
 {
     uint32_t Values[] = { (uint32_t)Size.X, (uint32_t)Size.Y };
     xcb_configure_window(
-        gPlatform.Connection,
-        gPlatform.Window,
+        gXCB.Connection,
+        gXCB.Window,
         XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
         Values);
-    xcb_flush(gPlatform.Connection);
+    xcb_flush(gXCB.Connection);
 }
 
 void Rr_SetCursor(Rr_CursorType Type)
 {
-    if (gPlatform.CursorType == Type)
+    if (gXCB.CursorType == Type)
     {
         return;
     }
 
     xcb_change_window_attributes(
-        gPlatform.Connection,
-        gPlatform.Window,
+        gXCB.Connection,
+        gXCB.Window,
         XCB_CW_CURSOR,
-        &gPlatform.Cursors[Type]);
+        &gXCB.Cursors[Type]);
 
-    gPlatform.CursorType = Type;
+    gXCB.CursorType = Type;
 }
 
 void Rr_SetClipboardText(const char *CString)
 {
     size_t Length = (size_t)strlen(CString);
-    gPlatform.Clipboard = realloc(gPlatform.Clipboard, Length + 1);
-    strcpy(gPlatform.Clipboard, CString);
-
-    xcb_generic_error_t *Error;
+    gXCB.Clipboard = realloc(gXCB.Clipboard, Length + 1);
+    strcpy(gXCB.Clipboard, CString);
 
     xcb_set_selection_owner(
-        gPlatform.Connection,
-        gPlatform.Window,
-        XCB_ATOM_PRIMARY,
+        gXCB.Connection,
+        gXCB.Window,
+        gXCB.Atoms.Clipboard,
         XCB_CURRENT_TIME);
-    xcb_xfixes_select_selection_input(
-        gPlatform.Connection,
-        gPlatform.Window,
-        XCB_ATOM_PRIMARY,
-        XCB_XFIXES_SELECTION_EVENT_MASK_SET_SELECTION_OWNER);
-    xcb_discard_reply(
-        gPlatform.Connection,
-        xcb_get_selection_owner_reply(
-            gPlatform.Connection,
-            xcb_get_selection_owner(gPlatform.Connection, XCB_ATOM_PRIMARY),
-            &Error)
-            ->sequence);
-    if (Error)
-    {
-        free(Error);
 
-        return;
-    }
-
-    xcb_set_selection_owner(
-        gPlatform.Connection,
-        gPlatform.Window,
-        gPlatform.Atoms.Clipboard,
-        XCB_CURRENT_TIME);
-    xcb_xfixes_select_selection_input(
-        gPlatform.Connection,
-        gPlatform.Window,
-        gPlatform.Atoms.Clipboard,
-        XCB_XFIXES_SELECTION_EVENT_MASK_SET_SELECTION_OWNER);
-    xcb_discard_reply(
-        gPlatform.Connection,
-        xcb_get_selection_owner_reply(
-            gPlatform.Connection,
-            xcb_get_selection_owner(
-                gPlatform.Connection,
-                gPlatform.Atoms.Clipboard),
-            &Error)
-            ->sequence);
-    if (Error)
-    {
-        free(Error);
-
-        return;
-    }
-
-    xcb_flush(gPlatform.Connection);
+    xcb_flush(gXCB.Connection);
 }
 
-const char *Rr_GetClipboardText(void)
+char const *Rr_GetClipboardText(Rr_Arena *Arena)
 {
     xcb_convert_selection(
-        gPlatform.Connection,
-        gPlatform.Window,
-        XCB_ATOM_PRIMARY,
-        gPlatform.Atoms.UTF8String,
-        gPlatform.Atoms.ClipboardRr,
+        gXCB.Connection,
+        gXCB.Window,
+        gXCB.Atoms.Clipboard,
+        gXCB.Atoms.UTF8String,
+        gXCB.Atoms.ClipboardRr,
         XCB_CURRENT_TIME);
-    xcb_flush(gPlatform.Connection);
-    free(xcb_wait_for_event(gPlatform.Connection));
+    xcb_flush(gXCB.Connection);
+
+    xcb_generic_event_t *Event = xcb_wait_for_event(gXCB.Connection);
+    uint32_t EventType = (uint32_t)(Event->response_type & ~0x80);
+    if (EventType == XCB_SELECTION_REQUEST)
+    {
+        Rr_ProcessXCBSelectionRequestEvent(
+            (xcb_selection_request_event_t *)Event);
+    }
+    else
+    {
+        return NULL;
+    }
 
     xcb_get_property_cookie_t GetPropertyCookie = xcb_get_property(
-        gPlatform.Connection,
+        gXCB.Connection,
         0,
-        gPlatform.Window,
-        gPlatform.Atoms.ClipboardRr,
-        gPlatform.Atoms.UTF8String,
+        gXCB.Window,
+        gXCB.Atoms.ClipboardRr,
+        gXCB.Atoms.UTF8String,
         0,
         UINT_MAX / 4);
     xcb_get_property_reply_t *GetPropertyReply =
-        xcb_get_property_reply(gPlatform.Connection, GetPropertyCookie, NULL);
-    if (GetPropertyReply != NULL)
+        xcb_get_property_reply(gXCB.Connection, GetPropertyCookie, NULL);
+    if (GetPropertyReply)
     {
         size_t Length = (size_t)xcb_get_property_value_length(GetPropertyReply);
-        gPlatform.Clipboard = realloc(gPlatform.Clipboard, Length + 1);
-        memcpy(
-            gPlatform.Clipboard,
-            xcb_get_property_value(GetPropertyReply),
-            Length);
-        gPlatform.Clipboard[Length] = '\0';
-        free(GetPropertyReply);
-    }
-    xcb_delete_property(
-        gPlatform.Connection,
-        gPlatform.Window,
-        gPlatform.Atoms.ClipboardRr);
+        char *Clipboard = RR_ALLOC_NO_ZERO(Length + 1, Arena);
+        memcpy(Clipboard, xcb_get_property_value(GetPropertyReply), Length);
+        Clipboard[Length] = '\0';
 
-    return gPlatform.Clipboard;
+        free(GetPropertyReply);
+
+        xcb_delete_property(
+            gXCB.Connection,
+            gXCB.Window,
+            gXCB.Atoms.ClipboardRr);
+
+        return Clipboard;
+    }
+
+    free(GetPropertyReply);
+
+    xcb_delete_property(gXCB.Connection, gXCB.Window, gXCB.Atoms.ClipboardRr);
+
+    return NULL;
 }

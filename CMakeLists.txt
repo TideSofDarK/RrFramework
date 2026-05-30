@@ -220,7 +220,6 @@ if (RR_PLATFORM STREQUAL "XCB")
         X11::xkbcommon_X11
         X11::xcb
         X11::xcb_cursor
-        X11::xcb_xfixes
         X11::xcb_xkb
         X11::xcb_randr)
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_XCB.c)

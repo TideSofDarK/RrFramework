@@ -35,6 +35,8 @@
 
 #include <vulkan/vulkan_win32.h>
 
+/* TODO: Add wheel events! */
+
 #define RR_WIN32_FULLSCREEN_EXSTYLE (WS_EX_APPWINDOW | WS_EX_ACCEPTFILES)
 #define RR_WIN32_FULLSCREEN_STYLE \
     (WS_VISIBLE | WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN)
@@ -778,7 +780,7 @@ void Rr_NewPlatformFrame(void)
 {
 }
 
-bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
+void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
 {
     Rr_Vec2 LastMousePosition = gPlatform.MousePosition;
     gPlatform.MousePositionDelta = Rr_V2F(0.0f);
@@ -802,12 +804,12 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
     if (gPlatform.PressedKeys[RR_SCANCODE_LSHIFT] &&
         !(GetKeyState(VK_LSHIFT) & KF_UP))
     {
-        Rr_SetKeyEvent(RR_SCANCODE_LSHIFT, false, NULL);
+        Rr_AddKeyEvent(RR_SCANCODE_LSHIFT, false);
     }
     if (gPlatform.PressedKeys[RR_SCANCODE_RSHIFT] &&
         !(GetKeyState(VK_RSHIFT) & KF_UP))
     {
-        Rr_SetKeyEvent(RR_SCANCODE_RSHIFT, false, NULL);
+        Rr_AddKeyEvent(RR_SCANCODE_RSHIFT, false);
     }
 
     return false;
@@ -1093,6 +1095,11 @@ void Rr_SetClipboardText(const char *CString)
 
 char const *Rr_GetClipboardText(Rr_Arena *Arena)
 {
+    if (!Arena)
+    {
+        return NULL;
+    }
+
     if (!IsClipboardFormatAvailable(CF_TEXT))
     {
         return NULL;
