@@ -279,9 +279,12 @@ void Rr_SetRelativeMouseMode(bool Relative)
     {
         SDL_SetWindowRelativeMouseMode(gSDL.Window, true);
 
-        int Width, Height;
-        SDL_GetWindowSize(gSDL.Window, &Width, &Height);
-        SDL_Rect Clip = { (Width / 2) - 1, (Height / 2) - 1, 2, 2 };
+        SDL_Rect Clip = {
+            (int)gPlatform.MousePosition.X,
+            (int)gPlatform.MousePosition.Y,
+            2,
+            2,
+        };
         SDL_SetWindowMouseRect(gSDL.Window, &Clip);
 
         gPlatform.RelativeMouseMode = true;

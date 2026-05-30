@@ -40,6 +40,8 @@
 #include <limits.h>
 #include <stdio.h>
 
+/* TODO: Add file drop events! */
+
 typedef enum
 {
     RR_XCB_TARGET_UTF8_STRING,

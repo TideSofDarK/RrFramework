@@ -35,15 +35,13 @@
 
 #include <vulkan/vulkan_win32.h>
 
-/* TODO: Add wheel events! */
-
-#define RR_WIN32_FULLSCREEN_EXSTYLE (WS_EX_APPWINDOW | WS_EX_ACCEPTFILES)
+#define RR_WIN32_FULLSCREEN_EXSTYLE (LONG)(WS_EX_APPWINDOW | WS_EX_ACCEPTFILES)
 #define RR_WIN32_FULLSCREEN_STYLE \
-    (WS_VISIBLE | WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN)
+    (LONG)(WS_VISIBLE | WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN)
 #define RR_WIN32_WINDOWED_EXSTYLE \
-    (WS_EX_APPWINDOW | WS_EX_WINDOWEDGE | WS_EX_ACCEPTFILES)
+    (LONG)(WS_EX_APPWINDOW | WS_EX_WINDOWEDGE | WS_EX_ACCEPTFILES)
 #define RR_WIN32_WINDOWED_STYLE \
-    (WS_VISIBLE | WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN)
+    (LONG)(WS_VISIBLE | WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN)
 
 static struct
 {
@@ -338,7 +336,7 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
                     RR_ALLOC_NO_ZERO(sizeof(WCHAR) * Length, Scratch.Arena);
                 if (DragQueryFileW(Drop, Index, String, Length))
                 {
-                    Rr_SetDropFileEvent(Rr_Win32ToUTF8(String, Arena), NULL);
+                    Rr_AddDropFileEvent(Rr_Win32ToUTF8(String, Arena));
                 }
             }
             DragFinish(Drop);
@@ -368,23 +366,23 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
         {
             if (LOWORD(WParam) == WA_INACTIVE)
             {
-                Rr_SetFocusEvent(false, NULL);
+                Rr_AddFocusEvent(false);
             }
             else
             {
-                Rr_SetFocusEvent(true, NULL);
+                Rr_AddFocusEvent(true);
             }
         }
         break;
         case WM_SETFOCUS:
         {
-            Rr_SetFocusEvent(true, NULL);
+            Rr_AddFocusEvent(true);
 
             return 0;
         }
         case WM_KILLFOCUS:
         {
-            Rr_SetFocusEvent(false, NULL);
+            Rr_AddFocusEvent(false);
 
             return 0;
         }
@@ -411,7 +409,7 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
             gWin32.HighSurrogate = 0;
 
             Rr_Arena *Arena = (void *)GetWindowLongPtrW(Window, GWLP_USERDATA);
-            Rr_SetTextInputEvent(Codepoint, NULL, Arena);
+            Rr_AddTextInputEvent(Codepoint, Arena);
 
             return 0;
         }
@@ -423,7 +421,7 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
             }
 
             Rr_Arena *Arena = (void *)GetWindowLongPtrW(Window, GWLP_USERDATA);
-            Rr_SetTextInputEvent((uint32_t)WParam, NULL, Arena);
+            Rr_AddTextInputEvent((uint32_t)WParam, Arena);
 
             return 0;
         }
@@ -434,7 +432,7 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
         {
             bool Down = (HIWORD(LParam) & KF_UP) == 0;
 
-            Rr_SetKeyEvent(Rr_Win32KeyToScancode(WParam, LParam), Down, NULL);
+            Rr_AddKeyEvent(Rr_Win32KeyToScancode(WParam, LParam), Down);
 
             return 0;
         }
@@ -480,6 +478,20 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
 
             return 0;
         }
+        case WM_MOUSEWHEEL:
+        {
+            Rr_AddMouseWheelEvent(
+                gPlatform.MousePosition,
+                Rr_V2(0.0f, (int)WParam > 0 ? 1.0f : -1.0f));
+        }
+        break;
+        case WM_MOUSEHWHEEL:
+        {
+            Rr_AddMouseWheelEvent(
+                gPlatform.MousePosition,
+                Rr_V2((int)WParam > 0 ? 1.0f : -1.0f, 0.0f));
+        }
+        break;
         case WM_LBUTTONDOWN:
         case WM_LBUTTONUP:
         case WM_MBUTTONDOWN:
@@ -540,12 +552,7 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
                 }
             }
 
-            Rr_Event *Event = Rr_AddEvent();
-            Rr_SetMouseButtonEvent(
-                Down,
-                RR_LPARAM_TO_VEC2(LParam),
-                Button,
-                Event);
+            Rr_AddMouseButtonEvent(Down, RR_LPARAM_TO_VEC2(LParam), Button);
 
             if (gPlatform.RelativeMouseMode)
             {
@@ -637,8 +644,8 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     WindowedRect.bottom = WindowedRect.top + WindowedSize.Y;
     AdjustWindowRect(&WindowedRect, WS_OVERLAPPEDWINDOW, FALSE);
     gWin32.WindowedRect = WindowedRect;
-    UINT ExStyle;
-    UINT Style;
+    LONG ExStyle;
+    LONG Style;
     Rr_IntVec2 WindowSize;
     Rr_IntVec2 WindowPosition;
     if (RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_FULLSCREEN_BIT))
@@ -649,7 +656,6 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
             (int32_t)DeviceMode.dmPelsWidth,
             (int32_t)DeviceMode.dmPelsHeight);
         WindowPosition = Rr_IntV2I(0);
-        gPlatform.Fullscreen = true;
     }
     else
     {
@@ -663,10 +669,10 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
     WCHAR *WindowName = Rr_UTF8ToWin32(Config->Title, Scratch.Arena);
     HWND Window = CreateWindowExW(
-        ExStyle,
+        (DWORD)ExStyle,
         WindowClassEx.lpszClassName,
         WindowName,
-        Style,
+        (DWORD)Style,
         WindowPosition.X,
         WindowPosition.Y,
         WindowSize.X,
@@ -776,10 +782,6 @@ bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface)
                (VkSurfaceKHR *)Surface) == VK_SUCCESS;
 }
 
-void Rr_NewPlatformFrame(void)
-{
-}
-
 void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
 {
     Rr_Vec2 LastMousePosition = gPlatform.MousePosition;
@@ -811,8 +813,6 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
     {
         Rr_AddKeyEvent(RR_SCANCODE_RSHIFT, false);
     }
-
-    return false;
 }
 
 void Rr_ShowWindow(void)
@@ -825,10 +825,18 @@ bool Rr_IsWindowMinimized(void)
     return IsIconic(gWin32.Window);
 }
 
+bool Rr_IsWindowFullscreen(void)
+{
+    return GetWindowLongW(gWin32.Window, GWL_STYLE) ==
+               RR_WIN32_FULLSCREEN_STYLE &&
+           GetWindowLongW(gWin32.Window, GWL_EXSTYLE) ==
+               RR_WIN32_FULLSCREEN_EXSTYLE;
+}
+
 void Rr_SetWindowFullscreen(bool Fullscreen)
 {
-    UINT ExStyle;
-    UINT Style;
+    LONG ExStyle;
+    LONG Style;
     if (Fullscreen)
     {
         ExStyle = RR_WIN32_FULLSCREEN_EXSTYLE;
@@ -840,8 +848,8 @@ void Rr_SetWindowFullscreen(bool Fullscreen)
         Style = RR_WIN32_WINDOWED_STYLE;
     }
 
-    SetWindowLongPtr(gWin32.Window, GWL_EXSTYLE, ExStyle);
-    SetWindowLongPtr(gWin32.Window, GWL_STYLE, Style);
+    SetWindowLongPtrW(gWin32.Window, GWL_EXSTYLE, ExStyle);
+    SetWindowLongPtrW(gWin32.Window, GWL_STYLE, Style);
 
     if (Fullscreen)
     {
@@ -867,8 +875,6 @@ void Rr_SetWindowFullscreen(bool Fullscreen)
             gWin32.WindowedRect.bottom - gWin32.WindowedRect.top,
             SWP_FRAMECHANGED);
     }
-
-    gPlatform.Fullscreen = Fullscreen;
 }
 
 void Rr_SetRelativeMouseMode(bool Relative)
