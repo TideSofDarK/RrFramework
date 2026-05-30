@@ -28,7 +28,7 @@
 
 #include <assert.h>
 
-Rr_App *gApp = NULL;
+static Rr_App *gApp = NULL;
 
 static RR_THREAD_LOCAL Rr_ThreadContext *ThreadContext = NULL;
 static RR_THREAD_LOCAL bool IsMainThread = false;
@@ -115,18 +115,20 @@ static inline void Rr_DispatchEvents(void)
         gRenderer->Swapchain.RecreateEventPending = false;
     }
 
+    Rr_NewPlatformFrame();
+
     while (Rr_PollPlatformEvent(&Event, Scratch.Arena))
     {
         Rr_HandleEvent(&Event);
     }
 
-    for (Rr_EventHiveIterator It = gApp->EventHive.Begin;
-         It.Element != gApp->EventHive.End.Element;
+    for (Rr_EventHiveIterator It = gPlatform.EventHive.Begin;
+         It.Element != gPlatform.EventHive.End.Element;
          Rr_AdvanceEventHiveIterator(&It))
     {
         Rr_HandleEvent(It.Element);
     }
-    Rr_ClearEventHive(&gApp->EventHive);
+    Rr_ClearEventHive(&gPlatform.EventHive);
 
     Rr_DestroyScratch(Scratch);
 }
@@ -141,11 +143,6 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_InitSystem();
 
-    if (!Rr_InitPlatform(Config))
-    {
-        RR_LOG_ABORT("Failed to initialize platform!");
-    }
-
     Rr_InitThreadContext();
 
     Rr_Arena *Arena = ThreadContext->Arena;
@@ -155,6 +152,11 @@ void Rr_Run(Rr_AppConfig *Config)
     gApp->EventFunc = Config->EventFunc;
     gApp->IterateFunc = Config->IterateFunc;
     gApp->CleanupFunc = Config->CleanupFunc;
+
+    if (!Rr_InitPlatform(Config))
+    {
+        RR_LOG_ABORT("Failed to initialize platform!");
+    }
 
     Rr_InitFrameTime(&gApp->FrameTime);
 
@@ -180,8 +182,6 @@ void Rr_Run(Rr_AppConfig *Config)
 
     while (true)
     {
-        Rr_NewPlatformFrame();
-
         Rr_DispatchEvents();
 
         Rr_BeginUI();
@@ -192,9 +192,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
         Rr_DrawFrame();
 
-        bool Minimized = Rr_IsWindowMinimized();
-
-        if (Minimized)
+        if (Rr_IsWindowMinimized())
         {
             Rr_SimulateVSync(
                 &gApp->FrameTime,
@@ -273,6 +271,11 @@ Rr_ThreadContext *Rr_GetThreadContext(void)
     return ThreadContext;
 }
 
+Rr_FrameTime *Rr_GetFrameTime(void)
+{
+    return &gApp->FrameTime;
+}
+
 void Rr_SetTargetFrameRate(uint32_t FramesPerSecond)
 {
     gApp->FrameTime.TargetFrameRate = FramesPerSecond;
@@ -312,11 +315,4 @@ void Rr_Quit(void)
 bool Rr_QuitRequested(void)
 {
     return Rr_LoadAtomicRelaxed(&gApp->QuitRequested);
-}
-
-Rr_Event *Rr_AddEvent(void)
-{
-    Rr_EventHiveIterator It =
-        Rr_PushEventIntoHive(&gApp->EventHive, ThreadContext->Arena);
-    return It.Element;
 }

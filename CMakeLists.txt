@@ -177,6 +177,8 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
     target_sources(${PROJECT_NAME} PRIVATE Vendor/xxHash/xxh_x86dispatch.c)
 endif ()
 
+set(RR_PLATFORM "SDL" CACHE STRING "Which platform backend to use")
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_System_UNIX.c)
     target_link_libraries(${PROJECT_NAME} PUBLIC -lc++)
@@ -184,19 +186,29 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Metal" "-framework MetalKit" "-framework Cocoa")
     target_link_libraries(${PROJECT_NAME} PRIVATE "${Vulkan_MoltenVK_LIBRARY}")
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_SYSTEM_MACOS)
+
+    set_property(CACHE RR_PLATFORM PROPERTY STRINGS "SDL")
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_System_UNIX.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_SYSTEM_LINUX)
+
+    set_property(CACHE RR_PLATFORM PROPERTY STRINGS "SDL" "XCB")
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_System_Win32.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_SYSTEM_WIN32)
+
+    set_property(CACHE RR_PLATFORM PROPERTY STRINGS "SDL" "Win32")
 endif ()
 
-set(RR_PLATFORM "GLFW" CACHE STRING "Either SDL, GLFW or XCB (Linux-only)")
+if (RR_PLATFORM STREQUAL "Win32")
+    target_link_libraries(${PROJECT_NAME} PRIVATE dxgi)
+    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_Win32.c)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_WIN32)
+endif ()
 
 if (RR_PLATFORM STREQUAL "XCB")
     find_package(X11 REQUIRED)
@@ -213,16 +225,6 @@ if (RR_PLATFORM STREQUAL "XCB")
         X11::xcb_randr)
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_XCB.c)
     target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_XCB)
-endif ()
-
-if (RR_PLATFORM STREQUAL "GLFW")
-    set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-    set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
-    CPMAddPackage("gh:glfw/glfw#master")
-
-    target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
-    target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_GLFW.c)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC RR_PLATFORM_GLFW)
 endif ()
 
 if (RR_PLATFORM STREQUAL "SDL")

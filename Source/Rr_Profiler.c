@@ -20,8 +20,8 @@
 
 #include "Rr_Profiler.h"
 
-#include "Rr_Renderer.h"
 #include "Rr_Hash.h"
+#include "Rr_Renderer.h"
 
 Rr_Profiler *Rr_CreateProfiler(Rr_Arena *Arena)
 {

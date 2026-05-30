@@ -21,8 +21,8 @@
 #ifndef RR_HASH_MAP_H
 #define RR_HASH_MAP_H
 
-#include "Rr_Memory.h"
 #include "Rr_Hash.h"
+#include "Rr_Memory.h"
 
 #include <string.h>
 

@@ -21,7 +21,6 @@
 #include "Rr_Image.h"
 
 #include "Rr_Renderer.h"
-#include "Rr_Hash.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_STATIC

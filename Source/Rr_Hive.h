@@ -70,7 +70,7 @@ typedef uint16_t Rr_HiveSkipType;
 #endif
 
 #ifndef RR_HIVE_MIN_BLOCK_CAPACITY
-#define RR_HIVE_MIN_BLOCK_CAPACITY 4
+#define RR_HIVE_MIN_BLOCK_CAPACITY 8
 #endif
 
 #ifndef RR_HIVE_MAX_BLOCK_CAPACITY

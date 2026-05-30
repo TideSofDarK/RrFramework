@@ -1,8 +1,8 @@
 #include "Rr_SPIRV.h"
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_SPIRV
-#include "Rr_LogMacro.h"
 #include "Rr_Hash.h"
+#include "Rr_LogMacro.h"
 
 typedef struct Rr_SPIRVHeader Rr_SPIRVHeader;
 struct Rr_SPIRVHeader

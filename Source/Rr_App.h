@@ -24,6 +24,8 @@
 
 #include "Rr_System.h"
 
+#include <Rr/Rr_Arena.h>
+
 struct Rr_Renderer;
 
 typedef union Rr_Object Rr_Object;
@@ -47,11 +49,6 @@ struct Rr_FrameTime
     uint64_t QPCToNS;
 };
 
-#define RR_HIVE_TYPE      Rr_Event
-#define RR_HIVE_TYPE_NAME Event
-#define RR_HIVE_PREFIX    Rr_
-#include "Rr_Hive.h"
-
 typedef struct Rr_App Rr_App;
 struct Rr_App
 {
@@ -63,8 +60,6 @@ struct Rr_App
     Rr_AtomicInt QuitRequested;
 
     Rr_FrameTime FrameTime;
-
-    Rr_EventHive EventHive;
 };
 
 typedef struct Rr_ThreadContext Rr_ThreadContext;
@@ -77,6 +72,4 @@ struct Rr_ThreadContext
 
 extern Rr_ThreadContext *Rr_GetThreadContext(void);
 
-extern Rr_Event *Rr_AddEvent(void);
-
-extern Rr_App *gApp;
+extern Rr_FrameTime *Rr_GetFrameTime(void);

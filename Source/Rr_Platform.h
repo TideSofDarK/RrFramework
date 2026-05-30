@@ -22,13 +22,66 @@
 
 #include <Rr/Rr_Platform.h>
 
-#include <Rr/Rr_Arena.h>
+#include "Rr_Memory.h"
 
 #define RR_WINDOWED_RATIO 0.85f
 
 struct Rr_AppConfig;
 
+#define RR_HIVE_TYPE               Rr_Event
+#define RR_HIVE_TYPE_NAME          Event
+#define RR_HIVE_PREFIX             Rr_
+#define RR_HIVE_MIN_BLOCK_CAPACITY 32
+#include "Rr_Hive.h"
+
 typedef struct Rr_Platform Rr_Platform;
+struct Rr_Platform
+{
+    bool Fullscreen;
+
+    Rr_CursorType CursorType;
+    Rr_MouseButtonFlags MouseState;
+    Rr_Vec2 MousePosition;
+    Rr_Vec2 MousePositionDelta;
+    bool RelativeMouseMode;
+    Rr_IntVec2 RelativeMouseRestorePosition;
+
+    Rr_KeymodFlags Keymod;
+    uint32_t PressedKeyCount;
+    bool PressedKeys[RR_SCANCODE_COUNT];
+
+    Rr_EventHive EventHive;
+};
+
+extern Rr_Platform gPlatform;
+
+extern Rr_Event *Rr_AddEvent(void);
+
+extern void Rr_SetFocusEvent(bool HasFocus, Rr_Event *Event);
+
+extern void Rr_SetKeyEvent(Rr_Scancode Scancode, bool Down, Rr_Event *Event);
+
+extern void Rr_SetMouseButtonEvent(
+    bool Down,
+    Rr_Vec2 Position,
+    Rr_MouseButton Button,
+    Rr_Event *Event);
+
+extern void Rr_SetTextInputEventString(
+    char const *CString,
+    size_t Length,
+    Rr_Event *Event);
+
+extern void Rr_SetTextInputEvent(
+    uint32_t Codepoint,
+    Rr_Event *Event,
+    Rr_Arena *Arena);
+
+extern void Rr_SetDropFileEvent(
+    char const *Path,
+    Rr_Event *Event);
+
+/* Platform-specific functions. */
 
 extern bool Rr_InitPlatform(struct Rr_AppConfig *Config);
 
@@ -46,10 +99,4 @@ extern bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena);
 
 extern void Rr_ShowWindow(void);
 
-extern float Rr_GetDisplayRefreshRate(void);
-
-extern void Rr_SetMouseButtonEvent(
-    bool Down,
-    Rr_Vec2 Position,
-    Rr_MouseButton Button,
-    Rr_Event *Event);
+extern double Rr_GetDisplayRefreshRate(void);

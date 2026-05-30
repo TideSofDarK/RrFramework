@@ -22,8 +22,17 @@
 #define RR_PLATFORM_H
 
 #include <Rr/Rr_Math.h>
+#include <Rr/Rr_Arena.h>
 
-/* NOTE: These come from SDL3. */
+#define RR_DOUBLE_CLICK_TIME_MS (200)
+
+typedef enum
+{
+    RR_WINDOW_FLAGS_RESIZE_BIT = (1 << 0),
+    RR_WINDOW_FLAGS_FULLSCREEN_BIT = (1 << 1),
+} Rr_WindowFlagsBits;
+typedef uint32_t Rr_WindowFlags;
+
 typedef enum Rr_Scancode
 {
     RR_SCANCODE_UNKNOWN = 0,
@@ -150,71 +159,20 @@ typedef enum Rr_Scancode
 
 typedef enum Rr_KeymodFlagsBits
 {
-    RR_KEYMOD_CTRL = (1 << 0),
-    RR_KEYMOD_SHIFT = (1 << 1),
-    RR_KEYMOD_ALT = (1 << 2),
-    RR_KEYMOD_GUI = (1 << 3),
+    RR_KEYMOD_LCTRL = (1 << 0),
+    RR_KEYMOD_LSHIFT = (1 << 1),
+    RR_KEYMOD_LALT = (1 << 2),
+    RR_KEYMOD_LSUPER = (1 << 3),
+    RR_KEYMOD_RCTRL = (1 << 4),
+    RR_KEYMOD_RSHIFT = (1 << 5),
+    RR_KEYMOD_RALT = (1 << 6),
+    RR_KEYMOD_RSUPER = (1 << 7),
+    RR_KEYMOD_CTRL = (RR_KEYMOD_LCTRL | RR_KEYMOD_RCTRL),
+    RR_KEYMOD_SHIFT = (RR_KEYMOD_LSHIFT | RR_KEYMOD_RSHIFT),
+    RR_KEYMOD_ALT = (RR_KEYMOD_LALT | RR_KEYMOD_RALT),
+    RR_KEYMOD_SUPER = (RR_KEYMOD_LSUPER | RR_KEYMOD_RSUPER),
 } Rr_KeymodFlagsBits;
 typedef uint16_t Rr_KeymodFlags;
-
-typedef enum Rr_MouseButton
-{
-    RR_MOUSE_BUTTON_LEFT,
-    RR_MOUSE_BUTTON_MIDDLE,
-    RR_MOUSE_BUTTON_RIGHT,
-    RR_MOUSE_BUTTON_X1,
-    RR_MOUSE_BUTTON_X2,
-    RR_MOUSE_BUTTON_X3,
-    RR_MOUSE_BUTTON_X4,
-    RR_MOUSE_BUTTON_COUNT,
-} Rr_MouseButton;
-
-typedef enum Rr_MouseButtonFlagsBits
-{
-    RR_MOUSE_BUTTON_LEFT_BIT = (1 << RR_MOUSE_BUTTON_LEFT),
-    RR_MOUSE_BUTTON_MIDDLE_BIT = (1 << RR_MOUSE_BUTTON_MIDDLE),
-    RR_MOUSE_BUTTON_RIGHT_BIT = (1 << RR_MOUSE_BUTTON_RIGHT),
-    RR_MOUSE_BUTTON_X1_BIT = (1 << RR_MOUSE_BUTTON_X1),
-    RR_MOUSE_BUTTON_X2_BIT = (1 << RR_MOUSE_BUTTON_X2),
-    RR_MOUSE_BUTTON_X3_BIT = (1 << RR_MOUSE_BUTTON_X3),
-    RR_MOUSE_BUTTON_X4_BIT = (1 << RR_MOUSE_BUTTON_X4),
-} Rr_MouseButtonFlagsBits;
-typedef uint32_t Rr_MouseButtonFlags;
-
-#define RR_DOUBLE_CLICK_TIME_MS (200)
-
-RR_EXTERN bool Rr_IsScancodePressed(Rr_Scancode Scancode);
-
-RR_EXTERN Rr_Vec2 Rr_GetMousePosition(void);
-
-RR_EXTERN Rr_Vec2 Rr_GetMousePositionDelta(void);
-
-RR_EXTERN Rr_MouseButtonFlags Rr_GetMouseState(void);
-
-typedef enum
-{
-    RR_WINDOW_FLAGS_RESIZE_BIT = (1 << 0),
-    RR_WINDOW_FLAGS_FULLSCREEN_BIT = (1 << 1),
-} Rr_WindowFlagsBits;
-typedef uint32_t Rr_WindowFlags;
-
-RR_EXTERN bool Rr_IsWindowMinimized(void);
-
-RR_EXTERN bool Rr_IsWindowFullscreen(void);
-
-RR_EXTERN void Rr_SetWindowFullscreen(bool Fullscreen);
-
-RR_EXTERN Rr_IntVec2 Rr_GetWindowSize(void);
-
-RR_EXTERN void Rr_SetWindowTitle(const char *Title);
-
-RR_EXTERN Rr_IntVec2 Rr_GetDisplaySize(void);
-
-RR_EXTERN float Rr_GetWindowContentsScale(void);
-
-RR_EXTERN void Rr_SetWindowSize(Rr_IntVec2 Size);
-
-RR_EXTERN void Rr_SetRelativeMouseMode(bool Relative);
 
 typedef enum Rr_CursorType
 {
@@ -228,11 +186,25 @@ typedef enum Rr_CursorType
     RR_CURSOR_TYPE_COUNT,
 } Rr_CursorType;
 
-RR_EXTERN void Rr_SetCursor(Rr_CursorType Type);
+typedef enum Rr_MouseButton
+{
+    RR_MOUSE_BUTTON_LEFT,
+    RR_MOUSE_BUTTON_MIDDLE,
+    RR_MOUSE_BUTTON_RIGHT,
+    RR_MOUSE_BUTTON_X1,
+    RR_MOUSE_BUTTON_X2,
+    RR_MOUSE_BUTTON_COUNT,
+} Rr_MouseButton;
 
-RR_EXTERN void Rr_SetClipboardText(const char *CString);
-
-RR_EXTERN const char *Rr_GetClipboardText(void);
+typedef enum Rr_MouseButtonFlagsBits
+{
+    RR_MOUSE_BUTTON_LEFT_BIT = (1 << RR_MOUSE_BUTTON_LEFT),
+    RR_MOUSE_BUTTON_MIDDLE_BIT = (1 << RR_MOUSE_BUTTON_MIDDLE),
+    RR_MOUSE_BUTTON_RIGHT_BIT = (1 << RR_MOUSE_BUTTON_RIGHT),
+    RR_MOUSE_BUTTON_X1_BIT = (1 << RR_MOUSE_BUTTON_X1),
+    RR_MOUSE_BUTTON_X2_BIT = (1 << RR_MOUSE_BUTTON_X2),
+} Rr_MouseButtonFlagsBits;
+typedef uint32_t Rr_MouseButtonFlags;
 
 typedef enum Rr_EventType
 {
@@ -313,5 +285,39 @@ struct Rr_Event
         Rr_FocusEvent Focus;
     };
 };
+
+RR_EXTERN void Rr_ReleaseAllInput(void);
+
+RR_EXTERN bool Rr_IsScancodePressed(Rr_Scancode Scancode);
+
+RR_EXTERN Rr_Vec2 Rr_GetMousePosition(void);
+
+RR_EXTERN Rr_Vec2 Rr_GetMousePositionDelta(void);
+
+RR_EXTERN Rr_MouseButtonFlags Rr_GetMouseState(void);
+
+RR_EXTERN bool Rr_IsWindowMinimized(void);
+
+RR_EXTERN bool Rr_IsWindowFullscreen(void);
+
+RR_EXTERN void Rr_SetWindowFullscreen(bool Fullscreen);
+
+RR_EXTERN Rr_IntVec2 Rr_GetWindowSize(void);
+
+RR_EXTERN void Rr_SetWindowTitle(const char *Title);
+
+RR_EXTERN Rr_IntVec2 Rr_GetDisplaySize(void);
+
+RR_EXTERN float Rr_GetWindowContentsScale(void);
+
+RR_EXTERN void Rr_SetWindowSize(Rr_IntVec2 Size);
+
+RR_EXTERN void Rr_SetRelativeMouseMode(bool Relative);
+
+RR_EXTERN void Rr_SetCursor(Rr_CursorType Type);
+
+RR_EXTERN void Rr_SetClipboardText(const char *CString);
+
+RR_EXTERN char const *Rr_GetClipboardText(Rr_Arena *Arena);
 
 #endif

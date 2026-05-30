@@ -1214,6 +1214,8 @@ struct SSSAO
     }
 };
 
+#include <cstdio>
+
 struct SModernRenderingApp
 {
     struct SGPUUniform
@@ -1555,18 +1557,20 @@ struct SModernRenderingApp
             {
                 InitAttachments();
                 InitCamera();
-                return;
             }
+            break;
             case RR_EVENT_TYPE_KEY_DOWN:
             {
                 if (Event->Key.Scancode == RR_SCANCODE_F11)
                 {
                     Rr_SetWindowFullscreen(!Rr_IsWindowFullscreen());
                 }
-                return;
             }
+            break;
             default:
-                return;
+            {
+            }
+            break;
         }
     }
 

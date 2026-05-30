@@ -21,7 +21,6 @@
 #include "Rr_Platform.h"
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_PLATFORM
-#include "Rr_App.h"
 #include "Rr_LogMacro.h"
 #include "Rr_Vulkan.h"
 
@@ -38,10 +37,12 @@
 
 #include <vulkan/vulkan_xcb.h>
 
-#include <ctype.h>
 #include <dlfcn.h>
 #include <limits.h>
 #include <stdio.h>
+
+/* TODO: Reset state on focus lost. */
+/* TODO: Emit focus events. */
 
 typedef enum
 {
@@ -782,6 +783,8 @@ void Rr_CleanupPlatform(void)
 
     dlclose(gPlatform.VulkanModule);
 
+    free(gPlatform.Clipboard);
+
     RR_ZERO(gPlatform);
 }
 
@@ -792,9 +795,14 @@ void (*Rr_GetVkGetInstanceProcAddr(void))(void)
 
 const char *const *Rr_GetVulkanExtensions(uint32_t *Count)
 {
-    static char const *Extensions[] = { "VK_KHR_surface",
-                                        "VK_KHR_xcb_surface" };
-    *Count = RR_ARRAY_COUNT(Extensions);
+    static char const *Extensions[] = { VK_KHR_SURFACE_EXTENSION_NAME,
+                                        VK_KHR_XCB_SURFACE_EXTENSION_NAME };
+
+    if (Count)
+    {
+        *Count = RR_ARRAY_COUNT(Extensions);
+    }
+
     return Extensions;
 }
 
@@ -805,13 +813,12 @@ bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface)
         .connection = gPlatform.Connection,
         .window = gPlatform.Window,
     };
-    VkResult Result = gPlatform.VkCreateXcbSurfaceKHR(
-        (VkInstance)Instance,
-        &Info,
-        NULL,
-        (VkSurfaceKHR *)Surface);
 
-    return Result == VK_SUCCESS;
+    return gPlatform.VkCreateXcbSurfaceKHR(
+               (VkInstance)Instance,
+               &Info,
+               NULL,
+               (VkSurfaceKHR *)Surface) == VK_SUCCESS;
 }
 
 bool Rr_IsScancodePressed(Rr_Scancode Scancode)
@@ -878,23 +885,8 @@ static inline void Rr_ProcessXCBKeyEvent(
         {
             return;
         }
-        int SignedCodepoint;
-        memcpy(
-            &SignedCodepoint,
-            &Codepoint,
-            RR_MIN(sizeof(SignedCodepoint), sizeof(Codepoint)));
-        if (iscntrl(SignedCodepoint))
-        {
-            return;
-        }
 
-        char *Buffer = RR_ALLOC_NO_ZERO(5, Arena);
-        Rr_CodepointToUTF8(Codepoint, Buffer);
-
-        Rr_Event *InputEvent = Rr_AddEvent();
-        InputEvent->Type = RR_EVENT_TYPE_TEXT_INPUT;
-        InputEvent->Text.CString = Buffer;
-        InputEvent->Text.Length = strlen(Buffer);
+        Rr_SetTextInputEvent(Codepoint, NULL, Arena);
     }
 }
 
@@ -1342,7 +1334,7 @@ void Rr_SetRelativeMouseMode(bool Relative)
     }
 }
 
-static inline float Rr_GetXCBScreenRefreshRate(void)
+static inline double Rr_GetXCBScreenRefreshRate(void)
 {
     xcb_randr_get_screen_info_cookie_t GetScreenInfoCookie =
         xcb_randr_get_screen_info_unchecked(
@@ -1354,14 +1346,14 @@ static inline float Rr_GetXCBScreenRefreshRate(void)
             GetScreenInfoCookie,
             NULL);
 
-    float Result = (float)GetScreenInfoReply->rate;
+    double Result = (double)GetScreenInfoReply->rate;
 
     free(GetScreenInfoReply);
 
     return Result;
 }
 
-float Rr_GetDisplayRefreshRate(void)
+double Rr_GetDisplayRefreshRate(void)
 {
     if (!gPlatform.UseRandr)
     {
@@ -1429,8 +1421,8 @@ float Rr_GetDisplayRefreshRate(void)
         xcb_randr_mode_info_t *ModeInfo = ModeInfos + Index;
         if (ModeInfo->id == Mode)
         {
-            float Result = (float)ModeInfo->dot_clock /
-                           (float)(ModeInfo->htotal * ModeInfo->vtotal);
+            double Result = (double)ModeInfo->dot_clock /
+                            (double)(ModeInfo->htotal * ModeInfo->vtotal);
 
             free(GetScreenResourcesCurrentReply);
 
@@ -1493,15 +1485,18 @@ void Rr_SetWindowSize(Rr_IntVec2 Size)
 
 void Rr_SetCursor(Rr_CursorType Type)
 {
-    if (gPlatform.CursorType != Type)
+    if (gPlatform.CursorType == Type)
     {
-        xcb_change_window_attributes(
-            gPlatform.Connection,
-            gPlatform.Window,
-            XCB_CW_CURSOR,
-            &gPlatform.Cursors[Type]);
-        gPlatform.CursorType = Type;
+        return;
     }
+
+    xcb_change_window_attributes(
+        gPlatform.Connection,
+        gPlatform.Window,
+        XCB_CW_CURSOR,
+        &gPlatform.Cursors[Type]);
+
+    gPlatform.CursorType = Type;
 }
 
 void Rr_SetClipboardText(const char *CString)

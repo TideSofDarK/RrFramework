@@ -27,7 +27,6 @@
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
 #include "Rr_App.h"
 #include "Rr_LogMacro.h"
-#include "Rr_Hash.h"
 
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Platform.h>
@@ -682,7 +681,12 @@ void Rr_CleanupRenderer(void)
 
     for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
-        Rr_FinalizeGraph(gRenderer->Frames[Index].Graph);
+        Rr_Graph *Graph = gRenderer->Frames[Index].Graph;
+
+        if (Graph)
+        {
+            Rr_FinalizeGraph(Graph);
+        }
     }
 
     Rr_DestroyReleasedObjects();
@@ -830,7 +834,10 @@ void Rr_NewFrame(void)
 
         Rr_ReleaseVulkanFence(Frame->SubmitFence);
         Frame->SubmitFence = VK_NULL_HANDLE;
+    }
 
+    if (Frame->Graph)
+    {
         Rr_FinalizeGraph(Frame->Graph);
     }
 
@@ -844,12 +851,12 @@ void Rr_NewFrame(void)
 
     /* Acquire swapchain image. */
 
-    uint32_t SwapchainImageIndex;
-    while (true)
+    uint32_t SwapchainImageIndex = UINT32_MAX;
+    for (;;)
     {
         if (!Rr_RecreateSwapchainIfNeeded())
         {
-            RR_LOG_ABORT("Couldn't recreate swapchain!");
+            break;
         }
         Result = Device->AcquireNextImageKHR(
             Device->Handle,
@@ -858,7 +865,16 @@ void Rr_NewFrame(void)
             Frame->AcquireSemaphore,
             NULL,
             &SwapchainImageIndex);
-        assert(Result != VK_TIMEOUT && "Swapchain image timeout!");
+        if (Result == VK_TIMEOUT)
+        {
+            RR_LOG_WARNING("Timeout acquiring swapchain image!");
+
+            break;
+        }
+        if (Result == VK_SUCCESS)
+        {
+            break;
+        }
         if (Result == VK_SUBOPTIMAL_KHR)
         {
             Rr_SetSwapchainDirty(true);
@@ -874,15 +890,27 @@ void Rr_NewFrame(void)
             break;
 #endif
         }
-        if (Result == VK_SUCCESS)
-        {
-            break;
-        }
         Rr_SetSwapchainDirty(true);
     }
 
-    Frame->SwapchainImage =
-        &gRenderer->SwapchainImages.Data[SwapchainImageIndex];
+    if (SwapchainImageIndex != UINT32_MAX)
+    {
+        Frame->SwapchainImage =
+            &gRenderer->SwapchainImages.Data[SwapchainImageIndex];
+
+        gRenderer->Swapchain.Unavailable = false;
+    }
+    else
+    {
+        /* HACK: Use whatever swapchain image if for whatever reason the
+         * swapchain is not available. We will ultimately skip issuing this
+         * frame to the GPU but user might want to know its format/extent/etc.
+         */
+
+        Frame->SwapchainImage = &gRenderer->SwapchainImages.Data[0];
+
+        gRenderer->Swapchain.Unavailable = true;
+    }
 
     Frame->Graph = RR_ALLOC_TYPE(Rr_Graph, Frame->Arena);
     Frame->Graph->QueueType = RR_QUEUE_TYPE_MAIN;
@@ -894,6 +922,11 @@ void Rr_NewFrame(void)
 
 void Rr_DrawFrame(void)
 {
+    if (gRenderer->Swapchain.Unavailable)
+    {
+        return;
+    }
+
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Device *Device = &gRenderer->Device;

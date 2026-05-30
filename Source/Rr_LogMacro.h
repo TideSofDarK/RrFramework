@@ -31,4 +31,5 @@
 #define RR_LOG_WARNING(...) Rr_LogWarning(RR_LOG_MACRO_CATEGORY, __VA_ARGS__)
 #define RR_LOG_INFO(...)    Rr_LogInfo(RR_LOG_MACRO_CATEGORY, __VA_ARGS__)
 #define RR_LOG_TRACE(...)   Rr_LogTrace(RR_LOG_MACRO_CATEGORY, __VA_ARGS__)
+#define RR_LOG(...)         Rr_LogTrace(RR_LOG_MACRO_CATEGORY, __VA_ARGS__)
 #endif

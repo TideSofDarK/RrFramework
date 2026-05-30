@@ -75,6 +75,10 @@ static void Rr_DefaultLogFunction(
     {
         Out = stderr;
     }
+    /* TODO: Temporary. */
+#ifdef _WIN32
+    Out = stderr;
+#endif
     fprintf(Out, "[%s] ", Rr_LogCategoryString(Category));
     vfprintf(Out, Format, Args);
     fprintf(Out, "\n");

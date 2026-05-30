@@ -35,22 +35,40 @@
 #include <assert.h>
 #include <stdio.h>
 
-static struct Rr_Platform_SDL
+static struct
 {
     bool Initialized;
+
     SDL_Window *Window;
     bool WindowScaled;
     Rr_Vec2 WindowScale;
     Rr_IntVec2 WindowedOffset;
     Rr_IntVec2 WindowedExtent;
-    Rr_Vec2 MousePositionDelta;
-    bool RelativeMouseMode;
-    Rr_Vec2 RelativeMouseModePosition;
-} gPlatform;
+} gSDL;
+
+static inline Rr_Vec2 Rr_SDLConvertMousePosition(Rr_Vec2 Scaled)
+{
+    Rr_IntVec2 WindowSize;
+    SDL_GetWindowSize(gSDL.Window, &WindowSize.X, &WindowSize.Y);
+
+    Rr_IntVec2 WindowSizeInPixels;
+    SDL_GetWindowSizeInPixels(
+        gSDL.Window,
+        &WindowSizeInPixels.X,
+        &WindowSizeInPixels.Y);
+
+    Scaled.X /= (float)WindowSize.X;
+    Scaled.Y /= (float)WindowSize.Y;
+
+    Scaled.X *= (float)WindowSizeInPixels.X;
+    Scaled.Y *= (float)WindowSizeInPixels.Y;
+
+    return Scaled;
+}
 
 bool Rr_InitPlatform(Rr_AppConfig *Config)
 {
-    assert(!gPlatform.Initialized);
+    assert(!gSDL.Initialized);
 
     RR_LOG_INFO("Using SDL3");
 
@@ -72,13 +90,13 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     {
         SDLWindowFlags |= SDL_WINDOW_RESIZABLE;
     }
-    gPlatform.Window = SDL_CreateWindow(Config->Title, 0, 0, SDLWindowFlags);
-    if (!gPlatform.Window)
+    gSDL.Window = SDL_CreateWindow(Config->Title, 0, 0, SDLWindowFlags);
+    if (!gSDL.Window)
     {
         RR_LOG_ERROR("%s", SDL_GetError());
     }
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
-    SDL_StartTextInput(gPlatform.Window);
+    SDL_StartTextInput(gSDL.Window);
     Rr_IntVec2 WindowSize = Rr_GetDisplaySize();
     WindowSize.X = (int32_t)((float)WindowSize.X * RR_WINDOWED_RATIO);
     WindowSize.Y = (int32_t)((float)WindowSize.Y * RR_WINDOWED_RATIO);
@@ -90,9 +108,9 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     WindowSize.X = (int32_t)((float)UsableBounds.w * RR_WINDOWED_RATIO);
     WindowSize.Y = (int32_t)((float)UsableBounds.h * RR_WINDOWED_RATIO);
 #endif
-    SDL_SetWindowSize(gPlatform.Window, WindowSize.X, WindowSize.Y);
+    SDL_SetWindowSize(gSDL.Window, WindowSize.X, WindowSize.Y);
     SDL_SetWindowPosition(
-        gPlatform.Window,
+        gSDL.Window,
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED);
 
@@ -100,16 +118,17 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     sprintf(DoubleClickTimeString, "%d", RR_DOUBLE_CLICK_TIME_MS);
     SDL_SetHint(SDL_HINT_MOUSE_DOUBLE_CLICK_TIME, DoubleClickTimeString);
 
-    gPlatform.Initialized = true;
+    gSDL.Initialized = true;
 
     return true;
 }
 
 void Rr_CleanupPlatform(void)
 {
-    assert(gPlatform.Initialized);
+    assert(gSDL.Initialized);
 
-    SDL_DestroyWindow(gPlatform.Window);
+    SDL_DestroyWindow(gSDL.Window);
+
     SDL_Quit();
 
     RR_ZERO(gPlatform);
@@ -128,53 +147,10 @@ const char *const *Rr_GetVulkanExtensions(uint32_t *Count)
 bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface)
 {
     return SDL_Vulkan_CreateSurface(
-        gPlatform.Window,
+        gSDL.Window,
         (VkInstance)Instance,
         NULL,
         (VkSurfaceKHR *)Surface);
-}
-
-bool Rr_IsScancodePressed(Rr_Scancode Scancode)
-{
-    return SDL_GetKeyboardState(NULL)[Scancode];
-}
-
-static inline Rr_Vec2 Rr_SDLConvertMousePosition(Rr_Vec2 Scaled)
-{
-    Rr_IntVec2 WindowSize;
-    SDL_GetWindowSize(gPlatform.Window, &WindowSize.X, &WindowSize.Y);
-
-    Rr_IntVec2 WindowSizeInPixels;
-    SDL_GetWindowSizeInPixels(
-        gPlatform.Window,
-        &WindowSizeInPixels.X,
-        &WindowSizeInPixels.Y);
-
-    Scaled.X /= (float)WindowSize.X;
-    Scaled.Y /= (float)WindowSize.Y;
-
-    Scaled.X *= (float)WindowSizeInPixels.X;
-    Scaled.Y *= (float)WindowSizeInPixels.Y;
-
-    return Scaled;
-}
-
-Rr_Vec2 Rr_GetMousePosition(void)
-{
-    Rr_Vec2 MousePosition;
-    SDL_GetMouseState(&MousePosition.X, &MousePosition.Y);
-
-    return Rr_SDLConvertMousePosition(MousePosition);
-}
-
-Rr_Vec2 Rr_GetMousePositionDelta(void)
-{
-    return gPlatform.MousePositionDelta;
-}
-
-Rr_MouseButtonFlags Rr_GetMouseState(void)
-{
-    return SDL_GetMouseState(NULL, NULL);
 }
 
 void Rr_NewPlatformFrame(void)
@@ -184,7 +160,7 @@ void Rr_NewPlatformFrame(void)
 
 bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
 {
-    static SDL_Event SDLEvent;
+    SDL_Event SDLEvent;
 
     while (SDL_PollEvent(&SDLEvent))
     {
@@ -195,58 +171,25 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
                 size_t Length = strlen(SDLEvent.text.text);
                 char *Buffer = RR_ALLOC_NO_ZERO(Length + 1, Arena);
                 memcpy(Buffer, SDLEvent.text.text, Length + 1);
-
-                Event->Type = RR_EVENT_TYPE_TEXT_INPUT;
-                Event->Text.Length = Length;
-                Event->Text.CString = Buffer;
+                Rr_SetTextInputEventString(Buffer, Length, Event);
 
                 return true;
             }
             case SDL_EVENT_KEY_DOWN:
             case SDL_EVENT_KEY_UP:
             {
-                if (SDLEvent.key.repeat)
-                {
-                    Event->Type = RR_EVENT_TYPE_KEY_REPEAT;
-                }
-                else
-                {
-                    Event->Type = SDLEvent.type == SDL_EVENT_KEY_DOWN
-                                      ? RR_EVENT_TYPE_KEY_DOWN
-                                      : RR_EVENT_TYPE_KEY_UP;
-                }
-                Event->Key.Down = Event->Type != RR_EVENT_TYPE_KEY_UP;
-                Event->Key.Scancode = (Rr_Scancode)SDLEvent.key.scancode;
-                Event->Key.Keymod = 0;
-                if (SDLEvent.key.mod & SDL_KMOD_LCTRL ||
-                    SDLEvent.key.mod & SDL_KMOD_RCTRL ||
-                    SDLEvent.key.mod & SDL_KMOD_CTRL)
-                {
-                    Event->Key.Keymod |= RR_KEYMOD_CTRL;
-                }
-                if (SDLEvent.key.mod & SDL_KMOD_LSHIFT ||
-                    SDLEvent.key.mod & SDL_KMOD_RSHIFT ||
-                    SDLEvent.key.mod & SDL_KMOD_SHIFT)
-                {
-                    Event->Key.Keymod |= RR_KEYMOD_SHIFT;
-                }
-                if (SDLEvent.key.mod & SDL_KMOD_LALT ||
-                    SDLEvent.key.mod & SDL_KMOD_RALT ||
-                    SDLEvent.key.mod & SDL_KMOD_ALT)
-                {
-                    Event->Key.Keymod |= RR_KEYMOD_ALT;
-                }
-                if (SDLEvent.key.mod & SDL_KMOD_LGUI ||
-                    SDLEvent.key.mod & SDL_KMOD_RGUI ||
-                    SDLEvent.key.mod & SDL_KMOD_GUI)
-                {
-                    Event->Key.Keymod |= RR_KEYMOD_GUI;
-                }
+                Rr_SetKeyEvent(
+                    (Rr_Scancode)SDLEvent.key.scancode,
+                    SDLEvent.key.down,
+                    Event);
 
                 return true;
             }
             case SDL_EVENT_MOUSE_MOTION:
             {
+                gPlatform.MouseState =
+                    (Rr_MouseButtonFlags)SDL_GetMouseState(NULL, NULL);
+
                 Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
                 Event->MouseMotion.Position = Rr_SDLConvertMousePosition(
                     (Rr_Vec2){ SDLEvent.motion.x, SDLEvent.motion.y });
@@ -270,6 +213,9 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
             case SDL_EVENT_MOUSE_BUTTON_UP:
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
             {
+                gPlatform.MouseState =
+                    (Rr_MouseButtonFlags)SDL_GetMouseState(NULL, NULL);
+
                 Rr_SetMouseButtonEvent(
                     SDLEvent.type == SDL_EVENT_MOUSE_BUTTON_DOWN,
                     Rr_V2(SDLEvent.button.x, SDLEvent.button.y),
@@ -315,22 +261,19 @@ bool Rr_PollPlatformEvent(Rr_Event *Event, Rr_Arena *Arena)
 
 void Rr_ShowWindow(void)
 {
-    SDL_ShowWindow(gPlatform.Window);
+    SDL_ShowWindow(gSDL.Window);
 }
 
 bool Rr_IsWindowMinimized(void)
 {
-    return SDL_GetWindowFlags(gPlatform.Window) & SDL_WINDOW_MINIMIZED;
-}
-
-bool Rr_IsWindowFullscreen(void)
-{
-    return (SDL_GetWindowFlags(gPlatform.Window) & SDL_WINDOW_FULLSCREEN) != 0;
+    return SDL_GetWindowFlags(gSDL.Window) & SDL_WINDOW_MINIMIZED;
 }
 
 void Rr_SetWindowFullscreen(bool Fullscreen)
 {
-    SDL_SetWindowFullscreen(gPlatform.Window, Fullscreen);
+    SDL_SetWindowFullscreen(gSDL.Window, Fullscreen);
+
+    gPlatform.Fullscreen = Fullscreen;
 }
 
 void Rr_SetRelativeMouseMode(bool Relative)
@@ -340,58 +283,62 @@ void Rr_SetRelativeMouseMode(bool Relative)
         return;
     }
 
-    gPlatform.RelativeMouseMode = Relative;
-
     if (Relative)
     {
         /* SDL_CaptureMouse(true); */
-        /* SDL_SetWindowMouseGrab(gPlatform.Window, true); */
-        SDL_GetMouseState(
-            &gPlatform.RelativeMouseModePosition.X,
-            &gPlatform.RelativeMouseModePosition.Y);
+        /* SDL_SetWindowMouseGrab(gSDL.Window, true); */
+        float X, Y;
+        SDL_GetMouseState(&X, &Y);
+        gPlatform.RelativeMouseRestorePosition =
+            Rr_IntV2((int32_t)X, (int32_t)Y);
         SDL_Rect Rect = {
-            .x = (int)gPlatform.RelativeMouseModePosition.X,
-            .y = (int)gPlatform.RelativeMouseModePosition.Y,
+            .x = (int)X,
+            .y = (int)Y,
             .w = 1,
             .h = 1,
         };
-        SDL_SetWindowMouseRect(gPlatform.Window, &Rect);
-        SDL_SetWindowRelativeMouseMode(gPlatform.Window, true);
+        SDL_SetWindowMouseRect(gSDL.Window, &Rect);
+        SDL_SetWindowRelativeMouseMode(gSDL.Window, true);
     }
     else
     {
         /* SDL_CaptureMouse(false); */
-        /* SDL_SetWindowMouseGrab(gPlatform.Window, false); */
-        SDL_SetWindowMouseRect(gPlatform.Window, NULL);
-        SDL_SetWindowRelativeMouseMode(gPlatform.Window, false);
+        /* SDL_SetWindowMouseGrab(gSDL.Window, false); */
+        SDL_SetWindowMouseRect(gSDL.Window, NULL);
+        SDL_SetWindowRelativeMouseMode(gSDL.Window, false);
     }
+
+    gPlatform.RelativeMouseMode = Relative;
 }
 
-float Rr_GetDisplayRefreshRate(void)
+double Rr_GetDisplayRefreshRate(void)
 {
-    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(gPlatform.Window);
+    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(gSDL.Window);
     const SDL_DisplayMode *Mode = SDL_GetDesktopDisplayMode(DisplayID);
-    return Mode->refresh_rate;
+
+    return (double)Mode->refresh_rate;
 }
 
 Rr_IntVec2 Rr_GetWindowSize(void)
 {
     Rr_IntVec2 Size;
-    SDL_GetWindowSizeInPixels(gPlatform.Window, &Size.X, &Size.Y);
+    SDL_GetWindowSizeInPixels(gSDL.Window, &Size.X, &Size.Y);
+
     return Size;
 }
 
 void Rr_SetWindowTitle(const char *Title)
 {
-    SDL_SetWindowTitle(gPlatform.Window, Title);
+    SDL_SetWindowTitle(gSDL.Window, Title);
 }
 
 Rr_IntVec2 Rr_GetDisplaySize(void)
 {
-    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(gPlatform.Window);
-    float Scale = SDL_GetWindowPixelDensity(gPlatform.Window);
+    SDL_DisplayID DisplayID = SDL_GetDisplayForWindow(gSDL.Window);
+    float Scale = SDL_GetWindowPixelDensity(gSDL.Window);
     SDL_Rect Rect;
     SDL_GetDisplayBounds(DisplayID, &Rect);
+
     return (Rr_IntVec2){
         (int32_t)(Scale * (float)Rect.w),
         (int32_t)(Scale * (float)Rect.h),
@@ -400,21 +347,21 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
 
 float Rr_GetWindowContentsScale(void)
 {
-    return SDL_GetWindowDisplayScale(gPlatform.Window);
+    return SDL_GetWindowDisplayScale(gSDL.Window);
 }
 
 void Rr_SetWindowSize(Rr_IntVec2 Size)
 {
-    float Scale = SDL_GetWindowDisplayScale(gPlatform.Window);
+    float Scale = SDL_GetWindowDisplayScale(gSDL.Window);
     SDL_SetWindowSize(
-        gPlatform.Window,
+        gSDL.Window,
         (int32_t)((float)Size.Width / Scale),
         (int32_t)((float)Size.Height / Scale));
 }
 
 void Rr_SetCursor(Rr_CursorType Type)
 {
-    if (Type >= RR_CURSOR_TYPE_COUNT)
+    if (Type < RR_CURSOR_TYPE_NORMAL || Type >= RR_CURSOR_TYPE_COUNT)
     {
         return;
     }
@@ -429,11 +376,11 @@ void Rr_SetCursor(Rr_CursorType Type)
         [RR_CURSOR_TYPE_RESIZE_ALL] = SDL_SYSTEM_CURSOR_MOVE,
         [RR_CURSOR_TYPE_TEXT] = SDL_SYSTEM_CURSOR_TEXT,
     };
-
     if (SDLCursors[Type] == NULL)
     {
         SDLCursors[Type] = SDL_CreateSystemCursor(ToSDLCursor[Type]);
     }
+
     SDL_SetCursor(SDLCursors[Type]);
 }
 
@@ -442,7 +389,15 @@ void Rr_SetClipboardText(const char *CString)
     SDL_SetClipboardText(CString);
 }
 
-const char *Rr_GetClipboardText(void)
+char const *Rr_GetClipboardText(Rr_Arena *Arena)
 {
-    return SDL_GetClipboardText();
+    char const *SDLClipboard = SDL_GetClipboardText();
+
+    size_t Length = strlen(SDLClipboard);
+    if (!Length)
+    {
+        return NULL;
+    }
+
+    return RR_ALLOC_COPY(SDLClipboard, Length + 1, Arena);
 }

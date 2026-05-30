@@ -31,6 +31,7 @@
 #include "Rr_Hash.h"
 #include "Rr_Image.h"
 #include "Rr_LogMacro.h"
+#include "Rr_Platform.h"
 #include "Rr_Renderer.h"
 
 #include <Rr/Rr_Graph.h>
@@ -285,10 +286,6 @@ struct Rr_UIContext
     RR_ARRAY(char) TextInputBuffer;
     bool DeferTextInputBufferCopy;
 
-    bool CtrlHeld;
-    bool ShiftHeld;
-    bool AltHeld;
-    bool SuperHeld;
     RR_ARRAY(Rr_KeyEvent) KeyboardInputEvents;
 
     Rr_Vec2 ScreenSize;
@@ -717,10 +714,6 @@ static inline void Rr_UIConsumeMouseAndKeyboardInput(void)
 {
     Rr_UIConsumeMouseInput();
     RR_CLEAR_ARRAY(&gUIContext->KeyboardInputEvents);
-    gUIContext->CtrlHeld = false;
-    gUIContext->ShiftHeld = false;
-    gUIContext->AltHeld = false;
-    gUIContext->SuperHeld = false;
 }
 
 static inline bool Rr_UIWindowNoTitleBar(Rr_UIWindow *Window)
@@ -3214,7 +3207,7 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
         Rr_UIClickResult ClickResult =
             Rr_UIClickMulti(Layout, &TitleBarRect, Hash);
         if (ClickResult.ClickCount == 1 && Rr_UIWindowUndockable(Window) &&
-            gUIContext->CtrlHeld)
+            RR_HAS_BIT(gPlatform.Keymod, RR_KEYMOD_CTRL))
         {
             if (Window->Undocked)
             {
@@ -4181,7 +4174,8 @@ static bool Rr_UIBeginDockedChildWindow(
                 Selected ? &gUIContext->Colors.TitleBackground
                          : &gUIContext->Colors.ButtonHeld))
         {
-            if (Rr_UIWindowUndockable(Window) && gUIContext->CtrlHeld)
+            if (Rr_UIWindowUndockable(Window) &&
+                RR_HAS_BIT(gPlatform.Keymod, RR_KEYMOD_CTRL))
             {
                 Rr_Vec2 TitlePosition = ButtonRect.Offset;
                 TitlePosition.X += gUIContext->TitleBarPadding.X;
@@ -5546,7 +5540,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
     size_t CursorMax;
 
 #ifdef __APPLE__
-    const Rr_KeymodFlags DEFAULT_MOD = RR_KEYMOD_GUI;
+    const Rr_KeymodFlags DEFAULT_MOD = RR_KEYMOD_SUPER;
 #else
     const Rr_KeymodFlags DEFAULT_MOD = RR_KEYMOD_CTRL;
 #endif
@@ -5570,7 +5564,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         bool Edited = false;
         bool ResetCol = false;
 
-        if (Event->Scancode == RR_SCANCODE_A && Event->Keymod == DEFAULT_MOD)
+        if (Event->Scancode == RR_SCANCODE_A && Event->Keymod & DEFAULT_MOD)
         {
             NewCursorBegin = 0;
             NewCursorEnd = BufferLength;
@@ -5578,7 +5572,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
             ResetCol = true;
         }
 
-        if (Event->Scancode == RR_SCANCODE_C && Event->Keymod == DEFAULT_MOD)
+        if (Event->Scancode == RR_SCANCODE_C && Event->Keymod & DEFAULT_MOD)
         {
             Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -5618,9 +5612,11 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
 
             Rr_DestroyScratch(Scratch);
         }
-        if (Event->Scancode == RR_SCANCODE_V && Event->Keymod == DEFAULT_MOD)
+        if (Event->Scancode == RR_SCANCODE_V && Event->Keymod & DEFAULT_MOD)
         {
-            char const *ClipboardBuffer = Rr_GetClipboardText();
+            Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+            char const *ClipboardBuffer = Rr_GetClipboardText(Scratch.Arena);
             if (ClipboardBuffer != NULL)
             {
                 size_t ClipboardLength = strlen(ClipboardBuffer);
@@ -5636,8 +5632,10 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
                 Edited = true;
                 ResetCol = true;
             }
+
+            Rr_DestroyScratch(Scratch);
         }
-        if (Event->Scancode == RR_SCANCODE_X && Event->Keymod == DEFAULT_MOD)
+        if (Event->Scancode == RR_SCANCODE_X && Event->Keymod & DEFAULT_MOD)
         {
             Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
@@ -8733,30 +8731,6 @@ void Rr_ProcessUIEvent(Rr_Event const *Event)
         case RR_EVENT_TYPE_KEY_REPEAT:
         case RR_EVENT_TYPE_KEY_UP:
         {
-            if (Event->Key.Scancode == RR_SCANCODE_LCTRL ||
-                Event->Key.Scancode == RR_SCANCODE_RCTRL)
-            {
-                gUIContext->CtrlHeld = Event->Key.Down;
-            }
-
-            if (Event->Key.Scancode == RR_SCANCODE_LSHIFT ||
-                Event->Key.Scancode == RR_SCANCODE_RSHIFT)
-            {
-                gUIContext->ShiftHeld = Event->Key.Down;
-            }
-
-            if (Event->Key.Scancode == RR_SCANCODE_LALT ||
-                Event->Key.Scancode == RR_SCANCODE_RALT)
-            {
-                gUIContext->AltHeld = Event->Key.Down;
-            }
-
-            if (Event->Key.Scancode == RR_SCANCODE_LSUPER ||
-                Event->Key.Scancode == RR_SCANCODE_RSUPER)
-            {
-                gUIContext->SuperHeld = Event->Key.Down;
-            }
-
             *RR_PUSH_INTO_ARRAY(
                 &gUIContext->KeyboardInputEvents,
                 gUIContext->FrameArena) = Event->Key;
@@ -9103,17 +9077,35 @@ void Rr_UIDebugOverlay(void)
     {
         Rr_UIBeginWindowEx("General", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
         {
+            Rr_IntVec2 WindowSize = Rr_GetWindowSize();
+            Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
             Rr_Vec2 MousePosition = Rr_GetMousePosition();
             Rr_Vec2 MouseDelta = Rr_GetMousePositionDelta();
             Rr_UITextF(
                 "Time: %.2f\n"
+                "Window Size: %dx%d\n"
+                "Mouse State: %d:%d:%d:%d:%d\n"
                 "Mouse Position: %.2f %.2f\n"
-                "Mouse Delta: %.2f %.2f",
+                "Mouse Delta: %.2f %.2f\n"
+                "Pressed Keys: %d\n"
+                "Keymod: %d:%d:%d:%d",
                 Rr_GetTimeSeconds(),
+                WindowSize.X,
+                WindowSize.Y,
+                RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_BIT),
+                RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_MIDDLE_BIT),
+                RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_RIGHT_BIT),
+                RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_X1_BIT),
+                RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_X2_BIT),
                 MousePosition.X,
                 MousePosition.Y,
                 MouseDelta.X,
-                MouseDelta.Y);
+                MouseDelta.Y,
+                gPlatform.PressedKeyCount,
+                RR_HAS_BIT(gPlatform.Keymod, RR_KEYMOD_CTRL),
+                RR_HAS_BIT(gPlatform.Keymod, RR_KEYMOD_SHIFT),
+                RR_HAS_BIT(gPlatform.Keymod, RR_KEYMOD_ALT),
+                RR_HAS_BIT(gPlatform.Keymod, RR_KEYMOD_SUPER));
             Rr_UISeparator();
             uint32_t PresentModeCount;
             Rr_PresentMode *PresentModes =
@@ -9141,8 +9133,7 @@ void Rr_UIDebugOverlay(void)
             }
             Rr_UIInputUnsignedInt(
                 "Target Frame Rate",
-                &gApp->FrameTime.TargetFrameRate);
-
+                &Rr_GetFrameTime()->TargetFrameRate);
             {
                 static double SamplingFreq = 0.5;
                 static double LastSample = 0;

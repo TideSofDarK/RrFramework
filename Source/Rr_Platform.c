@@ -20,7 +20,191 @@
 
 #include "Rr_Platform.h"
 
-#include <Rr/Rr_App.h>
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_PLATFORM
+#include "Rr_App.h"
+#include "Rr_LogMacro.h"
+
+#include <Rr/Rr_Utility.h>
+
+#include <ctype.h>
+
+Rr_Platform gPlatform = { 0 };
+
+Rr_Event *Rr_AddEvent(void)
+{
+    Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
+
+    Rr_EventHiveIterator It =
+        Rr_PushEventIntoHive(&gPlatform.EventHive, ThreadContext->Arena);
+    return It.Element;
+}
+
+void Rr_ReleaseAllInput(void)
+{
+    gPlatform.MouseState = 0;
+    gPlatform.RelativeMouseMode = false;
+
+    for (Rr_Scancode Scancode = RR_SCANCODE_UNKNOWN;
+         Scancode < RR_SCANCODE_COUNT;
+         ++Scancode)
+    {
+        if (gPlatform.PressedKeys[Scancode])
+        {
+            Rr_SetKeyEvent(Scancode, false, NULL);
+        }
+    }
+
+    gPlatform.Keymod = 0;
+}
+
+bool Rr_IsScancodePressed(Rr_Scancode Scancode)
+{
+    return gPlatform.PressedKeys[Scancode];
+}
+
+Rr_Vec2 Rr_GetMousePosition(void)
+{
+    return gPlatform.MousePosition;
+}
+
+Rr_Vec2 Rr_GetMousePositionDelta(void)
+{
+    return gPlatform.MousePositionDelta;
+}
+
+Rr_MouseButtonFlags Rr_GetMouseState(void)
+{
+    return gPlatform.MouseState;
+}
+
+bool Rr_IsWindowFullscreen(void)
+{
+    return gPlatform.Fullscreen;
+}
+
+void Rr_SetFocusEvent(bool HasFocus, Rr_Event *Event)
+{
+    if (!Event)
+    {
+        Event = Rr_AddEvent();
+    }
+
+    Event->Type = RR_EVENT_TYPE_FOCUS;
+    Event->Focus.Focused = HasFocus;
+
+    if (!HasFocus)
+    {
+        Rr_ReleaseAllInput();
+    }
+}
+
+static inline void Rr_UpdateKeymodState(Rr_KeymodFlagsBits Bit, bool On)
+{
+    if (On)
+    {
+        gPlatform.Keymod |= (Rr_KeymodFlags)Bit;
+    }
+    else
+    {
+        gPlatform.Keymod &= (Rr_KeymodFlags)~Bit;
+    }
+}
+
+void Rr_SetKeyEvent(Rr_Scancode Scancode, bool Down, Rr_Event *Event)
+{
+    if (Scancode == RR_SCANCODE_UNKNOWN)
+    {
+        return;
+    }
+
+    if (!Down && !gPlatform.PressedKeys[Scancode])
+    {
+        return;
+    }
+
+    bool WasDown = gPlatform.PressedKeys[Scancode];
+    gPlatform.PressedKeys[Scancode] = Down;
+
+    switch (Scancode)
+    {
+        case RR_SCANCODE_LCTRL:
+        {
+            Rr_UpdateKeymodState(RR_KEYMOD_LCTRL, Down);
+        }
+        break;
+        case RR_SCANCODE_LSHIFT:
+        {
+            Rr_UpdateKeymodState(RR_KEYMOD_LSHIFT, Down);
+        }
+        break;
+        case RR_SCANCODE_LALT:
+        {
+            Rr_UpdateKeymodState(RR_KEYMOD_LALT, Down);
+        }
+        break;
+        case RR_SCANCODE_LSUPER:
+        {
+            Rr_UpdateKeymodState(RR_KEYMOD_LSUPER, Down);
+        }
+        break;
+        case RR_SCANCODE_RCTRL:
+        {
+            Rr_UpdateKeymodState(RR_KEYMOD_RCTRL, Down);
+        }
+        break;
+        case RR_SCANCODE_RSHIFT:
+        {
+            Rr_UpdateKeymodState(RR_KEYMOD_RSHIFT, Down);
+        }
+        break;
+        case RR_SCANCODE_RALT:
+        {
+            Rr_UpdateKeymodState(RR_KEYMOD_RALT, Down);
+        }
+        break;
+        case RR_SCANCODE_RSUPER:
+        {
+            Rr_UpdateKeymodState(RR_KEYMOD_RSUPER, Down);
+        }
+        break;
+        default:
+        {
+        }
+        break;
+    }
+
+    if (!Event)
+    {
+        Event = Rr_AddEvent();
+    }
+
+    if (WasDown && Down)
+    {
+        Event->Type = RR_EVENT_TYPE_KEY_REPEAT;
+    }
+    else
+    {
+        Event->Type = Down ? RR_EVENT_TYPE_KEY_DOWN : RR_EVENT_TYPE_KEY_UP;
+
+        if (Down)
+        {
+            gPlatform.PressedKeyCount++;
+        }
+        else
+        {
+            gPlatform.PressedKeyCount--;
+        }
+    }
+    Event->Key.Keymod = gPlatform.Keymod;
+    Event->Key.Scancode = Scancode;
+    Event->Key.Down = Down;
+
+    if (Scancode == RR_SCANCODE_F4 && gPlatform.Keymod & RR_KEYMOD_ALT)
+    {
+        Event = Rr_AddEvent();
+        Event->Type = RR_EVENT_TYPE_QUIT;
+    }
+}
 
 void Rr_SetMouseButtonEvent(
     bool Down,
@@ -28,6 +212,11 @@ void Rr_SetMouseButtonEvent(
     Rr_MouseButton Button,
     Rr_Event *Event)
 {
+    if (!Event)
+    {
+        Event = Rr_AddEvent();
+    }
+
     Event->Type =
         Down ? RR_EVENT_TYPE_MOUSE_BUTTON_DOWN : RR_EVENT_TYPE_MOUSE_BUTTON_UP;
     Event->MouseButton.Position = Position;
@@ -54,4 +243,53 @@ void Rr_SetMouseButtonEvent(
     {
         Event->MouseButton.Clicks = 1;
     }
+}
+
+void Rr_SetTextInputEventString(
+    char const *CString,
+    size_t Length,
+    Rr_Event *Event)
+{
+    Event->Type = RR_EVENT_TYPE_TEXT_INPUT;
+    Event->Text.CString = CString;
+    Event->Text.Length = Length;
+}
+
+void Rr_SetTextInputEvent(uint32_t Codepoint, Rr_Event *Event, Rr_Arena *Arena)
+{
+    int SignedCodepoint;
+    memcpy(
+        &SignedCodepoint,
+        &Codepoint,
+        RR_MIN(sizeof(SignedCodepoint), sizeof(Codepoint)));
+    if (iscntrl(SignedCodepoint))
+    {
+        return;
+    }
+
+    if (!Event)
+    {
+        Event = Rr_AddEvent();
+    }
+
+    char *Buffer = RR_ALLOC_NO_ZERO(5, Arena);
+    Rr_CodepointToUTF8(Codepoint, Buffer);
+
+    Rr_SetTextInputEventString(Buffer, strlen(Buffer), Event);
+}
+
+void Rr_SetDropFileEvent(char const *Path, Rr_Event *Event)
+{
+    if (!Path)
+    {
+        return;
+    }
+
+    if (!Event)
+    {
+        Event = Rr_AddEvent();
+    }
+
+    Event->Type = RR_EVENT_TYPE_DROP_FILE;
+    Event->DropFile.Path = Path;
 }

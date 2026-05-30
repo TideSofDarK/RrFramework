@@ -49,6 +49,7 @@ struct Rr_Swapchain
     VkExtent3D Extent;
     bool RecreatePending;
     bool RecreateEventPending;
+    bool Unavailable;
 };
 
 typedef struct Rr_CommandPools Rr_CommandPools;

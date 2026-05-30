@@ -2334,11 +2334,6 @@ void Rr_TransferImageCubeToQueue(
 
 void Rr_DecrementRefCounts(Rr_Graph *Graph)
 {
-    if (Graph == NULL)
-    {
-        return;
-    }
-
     for (size_t Index = 0; Index < Graph->BufferResources.Count; ++Index)
     {
         Rr_GraphResource *BufferResource = &Graph->BufferResources.Data[Index];

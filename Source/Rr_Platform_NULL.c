@@ -24,8 +24,6 @@
 #include "Rr_LogMacro.h"
 #include "Rr_Vulkan.h"
 
-#include <xcb/xcb.h>
-
 static struct Rr_Platform_NULL
 {
     bool Initialized;
@@ -55,7 +53,7 @@ const char *const *Rr_GetVulkanExtensions(uint32_t *Count)
     return NULL;
 }
 
-bool Rr_CreateVulkanSurface(void *Instance, void **Surface)
+bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface)
 {
     return false;
 }
