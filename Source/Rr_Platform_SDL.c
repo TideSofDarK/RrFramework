@@ -40,10 +40,6 @@ static struct
     bool Initialized;
 
     SDL_Window *Window;
-    bool WindowScaled;
-    Rr_Vec2 WindowScale;
-    Rr_IntVec2 WindowedOffset;
-    Rr_IntVec2 WindowedExtent;
 } gSDL;
 
 static inline Rr_Vec2 Rr_SDLConvertMousePosition(Rr_Vec2 Scaled)
@@ -185,14 +181,12 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
                 gPlatform.MouseState =
                     (Rr_MouseButtonFlags)SDL_GetMouseState(NULL, NULL);
 
-                Rr_Event *Event = Rr_AddEvent();
-                Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
-                Event->MouseMotion.Position = Rr_SDLConvertMousePosition(
-                    (Rr_Vec2){ SDLEvent.motion.x, SDLEvent.motion.y });
-
                 gPlatform.MousePositionDelta = Rr_AddV2(
                     gPlatform.MousePositionDelta,
                     (Rr_Vec2){ SDLEvent.motion.xrel, SDLEvent.motion.yrel });
+
+                Rr_AddMouseMotionEvent(Rr_SDLConvertMousePosition(
+                    (Rr_Vec2){ SDLEvent.motion.x, SDLEvent.motion.y }));
             }
             break;
             case SDL_EVENT_MOUSE_WHEEL:
@@ -226,8 +220,7 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
             break;
             case SDL_EVENT_QUIT:
             {
-                Rr_Event *Event = Rr_AddEvent();
-                Event->Type = RR_EVENT_TYPE_QUIT;
+                Rr_AddQuitRequestedEvent();
             }
             break;
             case SDL_EVENT_WINDOW_FOCUS_GAINED:

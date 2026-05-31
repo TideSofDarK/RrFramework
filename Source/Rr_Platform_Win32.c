@@ -472,9 +472,7 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
                 gPlatform.MousePosition = RR_LPARAM_TO_VEC2(LParam);
             }
 
-            Rr_Event *Event = Rr_AddEvent();
-            Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
-            Event->MouseMotion.Position = gPlatform.MousePosition;
+            Rr_AddMouseMotionEvent(gPlatform.MousePosition);
 
             return 0;
         }
@@ -483,15 +481,17 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
             Rr_AddMouseWheelEvent(
                 gPlatform.MousePosition,
                 Rr_V2(0.0f, (int)WParam > 0 ? 1.0f : -1.0f));
+
+            return 0;
         }
-        break;
         case WM_MOUSEHWHEEL:
         {
             Rr_AddMouseWheelEvent(
                 gPlatform.MousePosition,
                 Rr_V2((int)WParam > 0 ? 1.0f : -1.0f, 0.0f));
+
+            return 0;
         }
-        break;
         case WM_LBUTTONDOWN:
         case WM_LBUTTONUP:
         case WM_MBUTTONDOWN:
@@ -588,15 +588,13 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
 
             return 0;
         }
-        case WM_DESTROY:
-        case WM_QUIT:
         case WM_CLOSE:
         {
-            Rr_Event *Event = Rr_AddEvent();
-            Event->Type = RR_EVENT_TYPE_QUIT;
+            Rr_AddQuitRequestedEvent();
 
             return 0;
         }
+        break;
         default:
         {
             return DefWindowProcW(Window, Message, WParam, LParam);
@@ -740,6 +738,8 @@ void Rr_CleanupPlatform(void)
 {
     assert(gWin32.Initialized);
 
+    DestroyWindow(gWin32.Window);
+
     UnregisterClassW(RR_WIN32_CLASS_NAME, GetModuleHandleW(NULL));
 
     IDXGIFactory_Release(gWin32.DXGIFactory);
@@ -790,7 +790,7 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
     SetWindowLongPtrW(gWin32.Window, GWLP_USERDATA, (LONG_PTR)Arena);
 
     MSG Message;
-    if (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
+    while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
     {
         TranslateMessage(&Message);
         DispatchMessage(&Message);
@@ -835,24 +835,13 @@ bool Rr_IsWindowFullscreen(void)
 
 void Rr_SetWindowFullscreen(bool Fullscreen)
 {
-    LONG ExStyle;
-    LONG Style;
     if (Fullscreen)
     {
-        ExStyle = RR_WIN32_FULLSCREEN_EXSTYLE;
-        Style = RR_WIN32_FULLSCREEN_STYLE;
-    }
-    else
-    {
-        ExStyle = RR_WIN32_WINDOWED_EXSTYLE;
-        Style = RR_WIN32_WINDOWED_STYLE;
-    }
-
-    SetWindowLongPtrW(gWin32.Window, GWL_EXSTYLE, ExStyle);
-    SetWindowLongPtrW(gWin32.Window, GWL_STYLE, Style);
-
-    if (Fullscreen)
-    {
+        SetWindowLongPtrW(
+            gWin32.Window,
+            GWL_EXSTYLE,
+            RR_WIN32_FULLSCREEN_EXSTYLE);
+        SetWindowLongPtrW(gWin32.Window, GWL_STYLE, RR_WIN32_FULLSCREEN_STYLE);
         GetWindowRect(gWin32.Window, &gWin32.WindowedRect);
         Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
         SetWindowPos(
@@ -866,6 +855,11 @@ void Rr_SetWindowFullscreen(bool Fullscreen)
     }
     else
     {
+        SetWindowLongPtrW(
+            gWin32.Window,
+            GWL_EXSTYLE,
+            RR_WIN32_WINDOWED_EXSTYLE);
+        SetWindowLongPtrW(gWin32.Window, GWL_STYLE, RR_WIN32_WINDOWED_STYLE);
         SetWindowPos(
             gWin32.Window,
             HWND_TOP,

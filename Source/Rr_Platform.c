@@ -30,15 +30,6 @@
 
 Rr_Platform gPlatform = { 0 };
 
-Rr_Event *Rr_AddEvent(void)
-{
-    Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
-
-    Rr_EventHiveIterator It =
-        Rr_PushEventIntoHive(&gPlatform.EventHive, ThreadContext->Arena);
-    return It.Element;
-}
-
 void Rr_ReleaseAllInput(void)
 {
     gPlatform.MouseState = 0;
@@ -75,6 +66,27 @@ Rr_Vec2 Rr_GetMousePositionDelta(void)
 Rr_MouseButtonFlags Rr_GetMouseState(void)
 {
     return gPlatform.MouseState;
+}
+
+static inline Rr_Event *Rr_AddEvent(void)
+{
+    Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
+
+    Rr_EventHiveIterator It =
+        Rr_PushEventIntoHive(&gPlatform.EventHive, ThreadContext->Arena);
+    return It.Element;
+}
+
+void Rr_AddQuitRequestedEvent(void)
+{
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type = RR_EVENT_TYPE_QUIT_REQUESTED;
+}
+
+void Rr_AddSwapchainCreatedEvent(void)
+{
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type = RR_EVENT_TYPE_SWAPCHAIN_CREATED;
 }
 
 static inline void Rr_UpdateKeymodState(Rr_KeymodFlagsBits Bit, bool On)
@@ -177,8 +189,15 @@ void Rr_AddKeyEvent(Rr_Scancode Scancode, bool Down)
     if (Scancode == RR_SCANCODE_F4 && gPlatform.Keymod & RR_KEYMOD_ALT)
     {
         Event = Rr_AddEvent();
-        Event->Type = RR_EVENT_TYPE_QUIT;
+        Event->Type = RR_EVENT_TYPE_QUIT_REQUESTED;
     }
+}
+
+void Rr_AddMouseMotionEvent(Rr_Vec2 Position)
+{
+    Rr_Event *Event = Rr_AddEvent();
+    Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
+    Event->MouseMotion.Position = Position;
 }
 
 void Rr_AddMouseWheelEvent(Rr_Vec2 Position, Rr_Vec2 Amount)

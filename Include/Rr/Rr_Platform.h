@@ -208,6 +208,7 @@ typedef uint32_t Rr_MouseButtonFlags;
 
 typedef enum Rr_EventType
 {
+    RR_EVENT_TYPE_QUIT_REQUESTED,
     RR_EVENT_TYPE_SWAPCHAIN_CREATED,
     RR_EVENT_TYPE_KEY_DOWN,
     RR_EVENT_TYPE_KEY_REPEAT,
@@ -218,8 +219,9 @@ typedef enum Rr_EventType
     RR_EVENT_TYPE_MOUSE_BUTTON_UP,
     RR_EVENT_TYPE_TEXT_INPUT,
     RR_EVENT_TYPE_DROP_FILE,
-    RR_EVENT_TYPE_QUIT,
     RR_EVENT_TYPE_FOCUS,
+    /* RR_EVENT_TYPE_DISPLAY_CHANGED, */
+    /* RR_EVENT_TYPE_DISPALY_SCALE_CHANGED, */
 } Rr_EventType;
 
 typedef struct Rr_KeyEvent Rr_KeyEvent;

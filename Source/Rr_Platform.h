@@ -22,8 +22,6 @@
 
 #include <Rr/Rr_Platform.h>
 
-#include "Rr_Memory.h"
-
 #define RR_WINDOWED_RATIO 0.85f
 
 struct Rr_AppConfig;
@@ -55,9 +53,13 @@ extern Rr_Platform gPlatform;
 
 /* Events */
 
-extern Rr_Event *Rr_AddEvent(void);
+extern void Rr_AddQuitRequestedEvent(void);
+
+extern void Rr_AddSwapchainCreatedEvent(void);
 
 extern void Rr_AddKeyEvent(Rr_Scancode Scancode, bool Down);
+
+extern void Rr_AddMouseMotionEvent(Rr_Vec2 Position);
 
 extern void Rr_AddMouseWheelEvent(Rr_Vec2 Position, Rr_Vec2 Amount);
 

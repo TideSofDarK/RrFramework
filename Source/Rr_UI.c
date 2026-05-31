@@ -9077,6 +9077,12 @@ void Rr_UIDebugOverlay(void)
     {
         Rr_UIBeginWindowEx("General", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
         {
+            if(Rr_UIButton("Close"))
+            {
+                // Rr_Event * Event = Rr_AddEvent();
+                // Event->Type = RR_EVENT_TYPE_QUIT;
+                // Rr_Quit();
+            }
             Rr_IntVec2 WindowSize = Rr_GetWindowSize();
             Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
             Rr_Vec2 MousePosition = Rr_GetMousePosition();

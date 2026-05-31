@@ -82,7 +82,7 @@ static void Rr_InitFrameTime(Rr_FrameTime *FrameTime)
 
 static inline void Rr_HandleEvent(Rr_Event const *Event)
 {
-    if (Event->Type == RR_EVENT_TYPE_QUIT)
+    if (Event->Type == RR_EVENT_TYPE_QUIT_REQUESTED)
     {
         /* TODO: Should have an option to ignore it. */
 
@@ -103,8 +103,7 @@ static inline void Rr_DispatchEvents(void)
 
     if (gRenderer->Swapchain.RecreateEventPending)
     {
-        Rr_Event *Event = Rr_AddEvent();
-        Event->Type = RR_EVENT_TYPE_SWAPCHAIN_CREATED;
+        Rr_AddSwapchainCreatedEvent();
 
         gRenderer->Swapchain.RecreateEventPending = false;
     }
@@ -173,6 +172,11 @@ void Rr_Run(Rr_AppConfig *Config)
     {
         Rr_DispatchEvents();
 
+        if (Rr_LoadAtomicRelaxed(&gApp->QuitRequested))
+        {
+            break;
+        }
+
         Rr_BeginUI();
 
         gApp->IterateFunc();
@@ -193,11 +197,6 @@ void Rr_Run(Rr_AppConfig *Config)
         }
 
         Rr_CalculateDeltaTime(&gApp->FrameTime);
-
-        if (Rr_LoadAtomicRelaxed(&gApp->QuitRequested))
-        {
-            break;
-        }
 
         Rr_EndFrameSection("Rr.MainLoop");
 

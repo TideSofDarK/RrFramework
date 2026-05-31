@@ -271,7 +271,7 @@ struct STransferThreadApp
             Thread.AddToQueue(Event->DropFile.Path);
         }
 
-        if (Event->Type == RR_EVENT_TYPE_QUIT)
+        if (Event->Type == RR_EVENT_TYPE_QUIT_REQUESTED)
         {
             Thread.Stop();
         }
