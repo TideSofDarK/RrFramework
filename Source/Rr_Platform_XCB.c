@@ -988,8 +988,7 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
 
                 if (MessageEvent->data.data32[0] == gXCB.Atoms.WMDeleteWindow)
                 {
-                    Rr_Event *Event = Rr_AddEvent();
-                    Event->Type = RR_EVENT_TYPE_QUIT;
+                    Rr_AddQuitRequestedEvent();
                 }
             }
             break;
@@ -1097,9 +1096,7 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
                     gPlatform.MousePosition = Position;
                 }
 
-                Rr_Event *Event = Rr_AddEvent();
-                Event->Type = RR_EVENT_TYPE_MOUSE_MOTION;
-                Event->MouseMotion.Position = gPlatform.MousePosition;
+                Rr_AddMouseMotionEvent(gPlatform.MousePosition);
             }
             break;
             case XCB_KEY_PRESS:

@@ -1488,6 +1488,11 @@ VkSemaphore Rr_AcquireVulkanSemaphore(void)
 
 void Rr_ReleaseVulkanSemaphore(VkSemaphore Semaphore)
 {
+    if (Semaphore == VK_NULL_HANDLE)
+    {
+        return;
+    }
+
     Rr_LockSpinlock(&gRenderer->SemaphoresLock);
     Rr_LockSpinlock(&gRenderer->Lock);
 
@@ -1530,6 +1535,11 @@ VkFence Rr_AcquireVulkanFence(void)
 
 void Rr_ReleaseVulkanFence(VkFence Fence)
 {
+    if (Fence == VK_NULL_HANDLE)
+    {
+        return;
+    }
+
     Rr_Device *Device = &gRenderer->Device;
 
     Rr_LockSpinlock(&gRenderer->FencesLock);
