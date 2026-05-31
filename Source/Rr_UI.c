@@ -9077,12 +9077,6 @@ void Rr_UIDebugOverlay(void)
     {
         Rr_UIBeginWindowEx("General", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
         {
-            if(Rr_UIButton("Close"))
-            {
-                // Rr_Event * Event = Rr_AddEvent();
-                // Event->Type = RR_EVENT_TYPE_QUIT;
-                // Rr_Quit();
-            }
             Rr_IntVec2 WindowSize = Rr_GetWindowSize();
             Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
             Rr_Vec2 MousePosition = Rr_GetMousePosition();
@@ -9140,6 +9134,9 @@ void Rr_UIDebugOverlay(void)
             Rr_UIInputUnsignedInt(
                 "Target Frame Rate",
                 &Rr_GetFrameTime()->TargetFrameRate);
+            Rr_UIInputUnsignedInt(
+                "Background Frame Rate",
+                &Rr_GetFrameTime()->BackgroundFrameRate);
             {
                 static double SamplingFreq = 0.5;
                 static double LastSample = 0;
@@ -9180,10 +9177,19 @@ void Rr_UIDebugOverlay(void)
                     gRenderer->LastFrameMS);
             }
 
+            Rr_UIBeginHorizontal();
+
             if (Rr_UIButton("Toggle Fullscreen"))
             {
                 Rr_SetWindowFullscreen(!Rr_IsWindowFullscreen());
             }
+
+            if (Rr_UIButton("Quit"))
+            {
+                Rr_Quit();
+            }
+
+            Rr_UIEndHorizontal();
         }
         Rr_UIEndWindow();
 

@@ -65,6 +65,13 @@ static struct
 
 static LPCWSTR const RR_WIN32_CLASS_NAME = L"Rr.Win32.Class";
 
+static GUID const RR_DXGI_GUID = {
+    0x7b7166ec,
+    0x21c7,
+    0x44ae,
+    { 0xb2, 0x1a, 0xc9, 0xae, 0x32, 0x1a, 0xe3, 0x69 }
+};
+
 static inline Rr_Scancode Rr_Win32KeyToScancode(WPARAM WParam, LPARAM LParam)
 {
     static const Rr_Scancode Mapping[RR_SCANCODE_COUNT] = {
@@ -364,6 +371,9 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
         break;
         case WM_ACTIVATE:
         {
+            /* TODO: This needs special handling. Single window activate
+             * currently fires up to three focus events. */
+
             if (LOWORD(WParam) == WA_INACTIVE)
             {
                 Rr_AddFocusEvent(false);
@@ -666,6 +676,7 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     }
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
     WCHAR *WindowName = Rr_UTF8ToWin32(Config->Title, Scratch.Arena);
+    Style &= ~WS_VISIBLE;
     HWND Window = CreateWindowExW(
         (DWORD)ExStyle,
         WindowClassEx.lpszClassName,
@@ -695,12 +706,8 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     gWin32.Cursors[RR_CURSOR_TYPE_TEXT] = LoadCursor(NULL, IDC_IBEAM);
     SetCursor(gWin32.Cursors[gPlatform.CursorType]);
 
-    GUID DXGIGUID = { 0x7b7166ec,
-                      0x21c7,
-                      0x44ae,
-                      { 0xb2, 0x1a, 0xc9, 0xae, 0x32, 0x1a, 0xe3, 0x69 } };
     IDXGIFactory *DXGIFactory = NULL;
-    CreateDXGIFactory(&DXGIGUID, (void **)&DXGIFactory);
+    CreateDXGIFactory(&RR_DXGI_GUID, (void **)&DXGIFactory);
     if (!DXGIFactory)
     {
         return false;
@@ -737,6 +744,11 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
 void Rr_CleanupPlatform(void)
 {
     assert(gWin32.Initialized);
+
+    /* HACK: Swap window procedure to the default one to avoid handling events
+     * in a pretty much dead window. */
+
+    SetWindowLongPtrW(gWin32.Window, GWLP_WNDPROC, (LONG_PTR)DefWindowProcW);
 
     DestroyWindow(gWin32.Window);
 

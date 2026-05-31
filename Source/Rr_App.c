@@ -221,9 +221,9 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_CleanupRenderer();
 
-    Rr_CleanupThreadContext();
-
     Rr_CleanupPlatform();
+
+    Rr_CleanupThreadContext();
 }
 
 void Rr_InitThreadContext(void)
