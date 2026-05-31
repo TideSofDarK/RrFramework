@@ -97,6 +97,7 @@ static struct Rr_Platform_XCB
     bool UseRandr;
 
     char *Clipboard;
+    size_t ClipboardLength;
 
     void *VulkanModule;
     PFN_vkGetInstanceProcAddr VkGetInstanceProcAddr;
@@ -815,6 +816,20 @@ static inline void Rr_ProcessXCBKeyEvent(
 static inline void Rr_ProcessXCBSelectionRequestEvent(
     xcb_selection_request_event_t *SelectionRequestEvent)
 {
+    xcb_selection_notify_event_t SelectionNotifyEvent = {
+        .response_type = XCB_SELECTION_NOTIFY,
+        .time = XCB_CURRENT_TIME,
+        .requestor = SelectionRequestEvent->requestor,
+        .selection = SelectionRequestEvent->selection,
+        .target = SelectionRequestEvent->target,
+        .property = SelectionRequestEvent->property
+    };
+
+    if (SelectionRequestEvent->property == XCB_NONE)
+    {
+        SelectionRequestEvent->property = SelectionRequestEvent->target;
+    }
+
     if (SelectionRequestEvent->target == gXCB.Atoms.Targets)
     {
         xcb_change_property(
@@ -826,139 +841,46 @@ static inline void Rr_ProcessXCBSelectionRequestEvent(
             sizeof(xcb_atom_t) * 8,
             sizeof(xcb_atom_t) * RR_XCB_TARGET_COUNT,
             gXCB.Targets);
-
-        return;
-    }
-
-    xcb_generic_error_t *Error;
-    bool EmptyProperty = SelectionRequestEvent->property == XCB_NONE;
-    bool KnownTarget = false;
-    for (size_t Index = 0; Index < RR_XCB_TARGET_COUNT; ++Index)
-    {
-        if (gXCB.Targets[Index] == SelectionRequestEvent->target)
-        {
-            KnownTarget = true;
-
-            break;
-        }
-    }
-
-    if (!EmptyProperty && KnownTarget && gXCB.Clipboard)
-    {
-        xcb_change_property(
-            gXCB.Connection,
-            XCB_PROP_MODE_REPLACE,
-            SelectionRequestEvent->requestor,
-            SelectionRequestEvent->property,
-            SelectionRequestEvent->target,
-            8,
-            (uint32_t)strlen(gXCB.Clipboard),
-            gXCB.Clipboard);
-        RR_LOG("Sdf");
-
-        xcb_selection_notify_event_t SelectionNotifyEvent = {
-            .response_type = XCB_SELECTION_NOTIFY,
-            .time = SelectionRequestEvent->time,
-            .requestor = SelectionRequestEvent->requestor,
-            .selection = SelectionRequestEvent->selection,
-            .target = SelectionRequestEvent->target,
-            .property = SelectionRequestEvent->property,
-        };
-        Error = xcb_request_check(
-            gXCB.Connection,
-            xcb_send_event(
-                gXCB.Connection,
-                true,
-                SelectionRequestEvent->requestor,
-                XCB_EVENT_MASK_NO_EVENT,
-                (const char *)&SelectionNotifyEvent));
-        if (Error)
-        {
-            free(Error);
-        }
     }
     else
     {
-        xcb_selection_notify_event_t SelectionNotifyEvent = {
-            .response_type = XCB_SELECTION_NOTIFY,
-            .time = SelectionRequestEvent->time,
-            .requestor = SelectionRequestEvent->requestor,
-            .selection = SelectionRequestEvent->selection,
-            .target = SelectionRequestEvent->target,
-            .property = XCB_NONE,
-        };
-        Error = xcb_request_check(
-            gXCB.Connection,
-            xcb_send_event(
-                gXCB.Connection,
-                true,
-                SelectionRequestEvent->requestor,
-                XCB_EVENT_MASK_NO_EVENT,
-                (const char *)&SelectionNotifyEvent));
-        if (Error)
+        bool KnownTarget = false;
+        for (size_t Index = 0; Index < RR_XCB_TARGET_COUNT; ++Index)
         {
-            free(Error);
+            if (gXCB.Targets[Index] == SelectionRequestEvent->target)
+            {
+                KnownTarget = true;
+
+                break;
+            }
+        }
+
+        if (KnownTarget)
+        {
+            xcb_change_property(
+                gXCB.Connection,
+                XCB_PROP_MODE_REPLACE,
+                SelectionRequestEvent->requestor,
+                SelectionRequestEvent->property,
+                SelectionRequestEvent->target,
+                8,
+                (uint32_t)gXCB.ClipboardLength,
+                gXCB.Clipboard);
+        }
+        else
+        {
+            SelectionNotifyEvent.property = XCB_NONE;
         }
     }
-    // if (SelectionRequestEvent->target != gPlatform.)
-    // if (XCBEvent->target == gXCB.Atoms.Targets)
-    // {
-    //     xcb_change_property(
-    //         gXCB.Connection,
-    //         XCB_PROP_MODE_REPLACE,
-    //         XCBEvent->requestor,
-    //         XCBEvent->property,
-    //         XCB_ATOM_ATOM,
-    //         sizeof(xcb_atom_t) * 8,
-    //         sizeof(xcb_atom_t) * RR_XCB_TARGET_COUNT,
-    //         gXCB.Targets);
-    // }
-    // else
-    // {
-    //     bool KnownTarget = false;
-    //     for (int i = 0; i < RR_XCB_TARGET_COUNT; ++i)
-    //     {
-    //         if (gXCB.Targets[i] == XCBEvent->target)
-    //         {
-    //             KnownTarget = true;
 
-    //             break;
-    //         }
-    //     }
-    //     if (KnownTarget)
-    //     {
-    //         xcb_change_property(
-    //             gXCB.Connection,
-    //             XCB_PROP_MODE_REPLACE,
-    //             XCBEvent->requestor,
-    //             XCBEvent->property,
-    //             XCBEvent->target,
-    //             8,
-    //             (uint32_t)strlen(gXCB.Clipboard),
-    //             gXCB.Clipboard);
-    //     }
-    // }
+    xcb_send_event(
+        gXCB.Connection,
+        0,
+        SelectionRequestEvent->requestor,
+        XCB_EVENT_MASK_PROPERTY_CHANGE,
+        (void *)&SelectionNotifyEvent);
 
-    // xcb_selection_notify_event_t SelectionNotifyEvent = {
-    //     .response_type = XCB_SELECTION_NOTIFY,
-    //     .time = XCB_CURRENT_TIME,
-    //     .requestor = XCBEvent->requestor,
-    //     .selection = XCBEvent->selection,
-    //     .target = XCBEvent->target,
-    //     .property = XCBEvent->property,
-    // };
-    // xcb_generic_error_t *Error = xcb_request_check(
-    //     gXCB.Connection,
-    //     xcb_send_event(
-    //         gXCB.Connection,
-    //         false,
-    //         XCBEvent->requestor,
-    //         XCB_EVENT_MASK_PROPERTY_CHANGE,
-    //         (const char *)&SelectionNotifyEvent));
-    // if (Error)
-    // {
-    //     free(Error);
-    // }
+    xcb_flush(gXCB.Connection);
 }
 
 void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
@@ -1127,6 +1049,7 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
             {
                 free(gXCB.Clipboard);
                 gXCB.Clipboard = NULL;
+                gXCB.ClipboardLength = 0;
             }
             break;
             case XCB_SELECTION_REQUEST:
@@ -1494,71 +1417,98 @@ void Rr_SetCursor(Rr_CursorType Type)
 void Rr_SetClipboardText(const char *CString)
 {
     size_t Length = (size_t)strlen(CString);
-    gXCB.Clipboard = realloc(gXCB.Clipboard, Length + 1);
-    strcpy(gXCB.Clipboard, CString);
+    if (!Length)
+    {
+        free(gXCB.Clipboard);
+        gXCB.Clipboard = NULL;
+
+        return;
+    }
+    gXCB.ClipboardLength = Length;
+    gXCB.Clipboard = realloc(gXCB.Clipboard, Length);
+    memcpy(gXCB.Clipboard, CString, Length);
 
     xcb_set_selection_owner(
         gXCB.Connection,
         gXCB.Window,
         gXCB.Atoms.Clipboard,
         XCB_CURRENT_TIME);
-
     xcb_flush(gXCB.Connection);
 }
 
 char const *Rr_GetClipboardText(Rr_Arena *Arena)
 {
+    if (gXCB.Clipboard)
+    {
+        char *Buffer =
+            RR_ALLOC_COPY(gXCB.Clipboard, gXCB.ClipboardLength, Arena);
+        Buffer[gXCB.ClipboardLength] = '\0';
+
+        return Buffer;
+    }
+
     xcb_convert_selection(
         gXCB.Connection,
         gXCB.Window,
         gXCB.Atoms.Clipboard,
         gXCB.Atoms.UTF8String,
-        gXCB.Atoms.ClipboardRr,
+        gXCB.Atoms.Clipboard,
         XCB_CURRENT_TIME);
     xcb_flush(gXCB.Connection);
 
-    xcb_generic_event_t *Event = xcb_wait_for_event(gXCB.Connection);
-    uint32_t EventType = (uint32_t)(Event->response_type & ~0x80);
-    if (EventType == XCB_SELECTION_REQUEST)
+    for (uint64_t ToSleepNS = 1 << 7; ToSleepNS < (1 << 15); ToSleepNS <<= 1)
     {
-        Rr_ProcessXCBSelectionRequestEvent(
-            (xcb_selection_request_event_t *)Event);
-    }
-    else
-    {
-        return NULL;
+        xcb_generic_event_t *Event = xcb_poll_for_event(gXCB.Connection);
+        if (!Event)
+        {
+            Rr_SleepNS(ToSleepNS);
+
+            continue;
+        }
+        int Type = Event->response_type & ~0x80;
+        free(Event);
+        if (Type == XCB_SELECTION_NOTIFY)
+        {
+            break;
+        }
     }
 
     xcb_get_property_cookie_t GetPropertyCookie = xcb_get_property(
         gXCB.Connection,
-        0,
+        1,
         gXCB.Window,
-        gXCB.Atoms.ClipboardRr,
+        gXCB.Atoms.Clipboard,
         gXCB.Atoms.UTF8String,
         0,
-        UINT_MAX / 4);
+        0);
     xcb_get_property_reply_t *GetPropertyReply =
         xcb_get_property_reply(gXCB.Connection, GetPropertyCookie, NULL);
-    if (GetPropertyReply)
-    {
-        size_t Length = (size_t)xcb_get_property_value_length(GetPropertyReply);
-        char *Clipboard = RR_ALLOC_NO_ZERO(Length + 1, Arena);
-        memcpy(Clipboard, xcb_get_property_value(GetPropertyReply), Length);
-        Clipboard[Length] = '\0';
+    uint32_t BytesAfter = GetPropertyReply->bytes_after;
+    free(GetPropertyReply);
+    char *Buffer = RR_ALLOC_NO_ZERO(BytesAfter + 1, Arena);
 
+    GetPropertyCookie = xcb_get_property(
+        gXCB.Connection,
+        1,
+        gXCB.Window,
+        gXCB.Atoms.Clipboard,
+        gXCB.Atoms.UTF8String,
+        0,
+        (BytesAfter + 4) >> 2);
+    GetPropertyReply =
+        xcb_get_property_reply(gXCB.Connection, GetPropertyCookie, NULL);
+
+    if (xcb_get_property_value_length(GetPropertyReply) > (int)BytesAfter)
+    {
         free(GetPropertyReply);
 
-        xcb_delete_property(
-            gXCB.Connection,
-            gXCB.Window,
-            gXCB.Atoms.ClipboardRr);
-
-        return Clipboard;
+        return NULL;
     }
+
+    memcpy(Buffer, xcb_get_property_value(GetPropertyReply), BytesAfter);
+    Buffer[BytesAfter] = '\0';
 
     free(GetPropertyReply);
 
-    xcb_delete_property(gXCB.Connection, gXCB.Window, gXCB.Atoms.ClipboardRr);
-
-    return NULL;
+    return Buffer;
 }
