@@ -40,26 +40,24 @@
 #include <limits.h>
 #include <stdio.h>
 
-/* TODO: Add file drop events! */
-
 typedef enum
 {
-    RR_XCB_TARGET_UTF8_STRING,
-    RR_XCB_TARGET_COMPOUND_TEXT,
-    RR_XCB_TARGET_TEXT,
-    RR_XCB_TARGET_STRING,
-    RR_XCB_TARGET_TEXT_PLAIN_UTF8,
-    RR_XCB_TARGET_TEXT_PLAIN,
-    RR_XCB_TARGET_COUNT
-} Rr_XCBTarget;
+    RR_XCB_CLIPBOARD_TARGET_UTF8_STRING,
+    RR_XCB_CLIPBOARD_TARGET_COMPOUND_TEXT,
+    RR_XCB_CLIPBOARD_TARGET_TEXT,
+    RR_XCB_CLIPBOARD_TARGET_STRING,
+    RR_XCB_CLIPBOARD_TARGET_TEXT_PLAIN_UTF8,
+    RR_XCB_CLIPBOARD_TARGET_TEXT_PLAIN,
+    RR_XCB_CLIPBOARD_TARGET_COUNT,
+} Rr_XCBClipboardTarget;
 
-static const char *RR_XCB_TARGETS[RR_XCB_TARGET_COUNT] = {
+static const char *RR_XCB_CLIPBOARD_TARGETS[RR_XCB_CLIPBOARD_TARGET_COUNT] = {
     "UTF8_STRING",
     "COMPOUND_TEXT",
     "TEXT",
     "STRING",
     "text/plain;charset=utf-8",
-    "text/plain"
+    "text/plain",
 };
 
 static struct Rr_Platform_XCB
@@ -74,18 +72,25 @@ static struct Rr_Platform_XCB
     xcb_cursor_context_t *CursorContext;
     xcb_cursor_t Cursors[RR_CURSOR_TYPE_COUNT];
     xcb_cursor_t EmptyCursor;
-    Rr_CursorType CursorType;
-    bool CursorDisabled;
     struct
     {
         xcb_atom_t Targets;
         xcb_atom_t Clipboard;
-        xcb_atom_t ClipboardRr;
         xcb_atom_t UTF8String;
+        xcb_atom_t TextURIList;
         xcb_atom_t WMProtocols;
         xcb_atom_t WMDeleteWindow;
+        xcb_atom_t XdndTypeList;
+        xcb_atom_t XdndSelection;
+        xcb_atom_t XdndEnter;
+        xcb_atom_t XdndPosition;
+        xcb_atom_t XdndStatus;
+        xcb_atom_t XdndLeave;
+        xcb_atom_t XdndDrop;
+        xcb_atom_t XdndFinished;
+        xcb_atom_t XdndActionCopy;
+        xcb_atom_t XdndAware;
     } Atoms;
-    xcb_atom_t Targets[RR_XCB_TARGET_COUNT];
 
     struct xkb_context *XKBContext;
     struct xkb_keymap *XKBKeymap;
@@ -96,6 +101,11 @@ static struct Rr_Platform_XCB
 
     bool UseRandr;
 
+    uint32_t XdndVersion;
+    xcb_window_t XdndSource;
+    bool XdndKnownTarget;
+
+    xcb_atom_t ClipboardTargets[RR_XCB_CLIPBOARD_TARGET_COUNT];
     char *Clipboard;
     size_t ClipboardLength;
 
@@ -516,6 +526,163 @@ bool Rr_ProcessXKBEvent(xkb_generic_event_t *Event)
     return false;
 }
 
+static inline void Rr_ProcessXdndEvent(xcb_client_message_event_t *Event)
+{
+    if (Event->type == gXCB.Atoms.XdndEnter)
+    {
+        uint32_t Version = Event->data.data32[1] >> 24;
+        if (Version > 5)
+        {
+            return;
+        }
+
+        xcb_window_t Source = Event->data.data32[0];
+        bool IsList = Event->data.data32[1] & 1;
+        size_t Count = 0;
+        xcb_atom_t *Formats = NULL;
+        xcb_atom_t AltFormats[3] = { 0 };
+        xcb_get_property_reply_t *TypeListReply = NULL;
+        if (IsList)
+        {
+            TypeListReply = xcb_get_property_reply(
+                gXCB.Connection,
+                xcb_get_property(
+                    gXCB.Connection,
+                    0,
+                    Source,
+                    gXCB.Atoms.XdndTypeList,
+                    XCB_ATOM_ATOM,
+                    0,
+                    UINT32_MAX),
+                NULL);
+            if (!TypeListReply)
+            {
+                return;
+            }
+            Count = (size_t)xcb_get_property_value_length(TypeListReply) /
+                    sizeof(xcb_atom_t);
+            Formats = (xcb_atom_t *)xcb_get_property_value(TypeListReply);
+        }
+        else
+        {
+            Count = 0;
+            if (Event->data.data32[2] != XCB_NONE)
+            {
+                AltFormats[Count++] = Event->data.data32[2];
+            }
+            if (Event->data.data32[3] != XCB_NONE)
+            {
+                AltFormats[Count++] = Event->data.data32[3];
+            }
+            if (Event->data.data32[4] != XCB_NONE)
+            {
+                AltFormats[Count++] = Event->data.data32[4];
+            }
+
+            Formats = AltFormats;
+        }
+
+        bool KnownTarget = XCB_NONE;
+        for (size_t Index = 0; Index < Count; ++Index)
+        {
+            if (Formats[Index] == gXCB.Atoms.TextURIList)
+            {
+                KnownTarget = Formats[Index];
+
+                break;
+            }
+        }
+
+        if (KnownTarget)
+        {
+            gXCB.XdndKnownTarget = true;
+        }
+        gXCB.XdndVersion = Version;
+        gXCB.XdndSource = Source;
+
+        if (TypeListReply)
+        {
+            free(TypeListReply);
+        }
+    }
+
+    if (Event->type == gXCB.Atoms.XdndPosition)
+    {
+        uint32_t Version = Event->data.data32[1] >> 24;
+        if (Version > 5)
+        {
+            return;
+        }
+
+        xcb_window_t Source = Event->data.data32[0];
+        xcb_client_message_event_t StatusEvent = {
+            .response_type = XCB_CLIENT_MESSAGE,
+            .format = 32,
+            .window = Source,
+            .type = gXCB.Atoms.XdndStatus,
+            .data.data32[0] = gXCB.Window,
+        };
+        if (gXCB.XdndKnownTarget)
+        {
+            StatusEvent.data.data32[1] = 1;
+            if (Version >= 2)
+            {
+                StatusEvent.data.data32[4] = gXCB.Atoms.XdndActionCopy;
+            }
+        }
+        xcb_send_event(
+            gXCB.Connection,
+            false,
+            Source,
+            XCB_EVENT_MASK_NO_EVENT,
+            (void *)&StatusEvent);
+        xcb_flush(gXCB.Connection);
+    }
+
+    if (Event->type == gXCB.Atoms.XdndDrop)
+    {
+        uint32_t Version = Event->data.data32[1] >> 24;
+        if (Version > 5)
+        {
+            return;
+        }
+
+        xcb_window_t Source = Event->data.data32[0];
+        if (gXCB.XdndKnownTarget)
+        {
+            xcb_timestamp_t Time = XCB_CURRENT_TIME;
+            if (Version >= 1)
+            {
+                Time = Event->data.data32[2];
+            }
+            xcb_convert_selection(
+                gXCB.Connection,
+                gXCB.Window,
+                gXCB.Atoms.XdndSelection,
+                gXCB.Atoms.TextURIList,
+                gXCB.Atoms.XdndSelection,
+                Time);
+            xcb_flush(gXCB.Connection);
+        }
+        else if (Version >= 2)
+        {
+            xcb_client_message_event_t FinishedEvent = {
+                .response_type = XCB_CLIENT_MESSAGE,
+                .format = 32,
+                .window = Source,
+                .type = gXCB.Atoms.XdndFinished,
+            };
+            xcb_send_event(
+                gXCB.Connection,
+                false,
+                Source,
+                XCB_EVENT_MASK_NO_EVENT,
+                (void *)&FinishedEvent);
+            xcb_flush(gXCB.Connection);
+        }
+    }
+}
+
 static inline bool Rr_InitRandr(void)
 {
     xcb_generic_error_t *Error;
@@ -637,8 +804,8 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
 
     gXCB.Atoms.Targets = Rr_GetXCBAtom("TARGETS");
     gXCB.Atoms.Clipboard = Rr_GetXCBAtom("CLIPBOARD");
-    gXCB.Atoms.ClipboardRr = Rr_GetXCBAtom("CLIPBOARD_RR");
     gXCB.Atoms.UTF8String = Rr_GetXCBAtom("UTF8_STRING");
+    gXCB.Atoms.TextURIList = Rr_GetXCBAtom("text/uri-list");
     gXCB.Atoms.WMProtocols = Rr_GetXCBAtom("WM_PROTOCOLS");
     gXCB.Atoms.WMDeleteWindow = Rr_GetXCBAtom("WM_DELETE_WINDOW");
     xcb_change_property(
@@ -650,10 +817,31 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
         32,
         1,
         &gXCB.Atoms.WMDeleteWindow);
+    gXCB.Atoms.XdndTypeList = Rr_GetXCBAtom("XdndTypeList");
+    gXCB.Atoms.XdndSelection = Rr_GetXCBAtom("XdndSelection");
+    gXCB.Atoms.XdndEnter = Rr_GetXCBAtom("XdndEnter");
+    gXCB.Atoms.XdndPosition = Rr_GetXCBAtom("XdndPosition");
+    gXCB.Atoms.XdndStatus = Rr_GetXCBAtom("XdndStatus");
+    gXCB.Atoms.XdndLeave = Rr_GetXCBAtom("XdndLeave");
+    gXCB.Atoms.XdndDrop = Rr_GetXCBAtom("XdndDrop");
+    gXCB.Atoms.XdndFinished = Rr_GetXCBAtom("XdndFinished");
+    gXCB.Atoms.XdndActionCopy = Rr_GetXCBAtom("XdndActionCopy");
+    gXCB.Atoms.XdndAware = Rr_GetXCBAtom("XdndAware");
+    uint32_t XdndVersion = 5;
+    xcb_change_property(
+        Connection,
+        XCB_PROP_MODE_REPLACE,
+        Window,
+        gXCB.Atoms.XdndAware,
+        XCB_ATOM_ATOM,
+        32,
+        1,
+        &XdndVersion);
 
-    for (size_t Index = 0; Index < RR_XCB_TARGET_COUNT; ++Index)
+    for (size_t Index = 0; Index < RR_XCB_CLIPBOARD_TARGET_COUNT; ++Index)
     {
-        gXCB.Targets[Index] = Rr_GetXCBAtom(RR_XCB_TARGETS[Index]);
+        gXCB.ClipboardTargets[Index] =
+            Rr_GetXCBAtom(RR_XCB_CLIPBOARD_TARGETS[Index]);
     }
 
     xcb_cursor_context_t *CursorContext = NULL;
@@ -813,6 +1001,76 @@ static inline void Rr_ProcessXCBKeyEvent(
     }
 }
 
+static inline void Rr_ProcessXCBSelectionNotifyEvent(
+    xcb_selection_notify_event_t *Event,
+    Rr_Arena *Arena)
+{
+    if (Event->property != gXCB.Atoms.XdndSelection)
+    {
+        return;
+    }
+
+    xcb_get_property_reply_t *Reply = xcb_get_property_reply(
+        gXCB.Connection,
+        xcb_get_property(
+            gXCB.Connection,
+            0,
+            Event->requestor,
+            Event->property,
+            gXCB.Atoms.TextURIList,
+            0,
+            UINT32_MAX),
+        NULL);
+
+    if (gXCB.XdndVersion >= 2)
+    {
+        xcb_client_message_event_t FinishedEvent = {
+            .response_type = XCB_CLIENT_MESSAGE,
+            .format = 32,
+            .window = gXCB.XdndSource,
+            .type = gXCB.Atoms.XdndFinished,
+            .data.data32[0] = gXCB.Window,
+            .data.data32[1] = Reply != NULL,
+            .data.data32[2] = gXCB.Atoms.XdndActionCopy,
+        };
+        xcb_send_event(
+            gXCB.Connection,
+            false,
+            gXCB.XdndSource,
+            XCB_EVENT_MASK_NO_EVENT,
+            (void *)&FinishedEvent);
+        xcb_flush(gXCB.Connection);
+    }
+
+    if (Reply)
+    {
+        Rr_Scratch Scratch = Rr_GetScratch(Arena);
+
+        size_t URIListLength = (size_t)xcb_get_property_value_length(Reply);
+        char *URIList = RR_ALLOC_NO_ZERO(URIListLength + 1, Scratch.Arena);
+        memcpy(URIList, xcb_get_property_value(Reply), URIListLength);
+        URIList[URIListLength] = '\0';
+        char const *Line = strtok(URIList, "\r\n");
+        while (Line != NULL)
+        {
+            char const *Prefix = "file:///";
+            if (strncmp(Line, Prefix, sizeof("file:///") - 1) == 0)
+            {
+                char const *Path = Line + sizeof("file:///") - 2;
+                if (strlen(Path))
+                {
+                    Rr_AddDropFileEvent(Path);
+                }
+            }
+            Line = strtok(NULL, "\r\n");
+        }
+
+        free(Reply);
+
+        Rr_DestroyScratch(Scratch);
+    }
+}
+
 static inline void Rr_ProcessXCBSelectionRequestEvent(
     xcb_selection_request_event_t *SelectionRequestEvent)
 {
@@ -839,15 +1097,15 @@ static inline void Rr_ProcessXCBSelectionRequestEvent(
             SelectionRequestEvent->property,
             XCB_ATOM_ATOM,
             sizeof(xcb_atom_t) * 8,
-            sizeof(xcb_atom_t) * RR_XCB_TARGET_COUNT,
-            gXCB.Targets);
+            sizeof(xcb_atom_t) * RR_XCB_CLIPBOARD_TARGET_COUNT,
+            gXCB.ClipboardTargets);
     }
     else
     {
         bool KnownTarget = false;
-        for (size_t Index = 0; Index < RR_XCB_TARGET_COUNT; ++Index)
+        for (size_t Index = 0; Index < RR_XCB_CLIPBOARD_TARGET_COUNT; ++Index)
         {
-            if (gXCB.Targets[Index] == SelectionRequestEvent->target)
+            if (gXCB.ClipboardTargets[Index] == SelectionRequestEvent->target)
             {
                 KnownTarget = true;
 
@@ -907,6 +1165,8 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
             {
                 xcb_client_message_event_t *MessageEvent =
                     (xcb_client_message_event_t *)XCBEvent;
+
+                Rr_ProcessXdndEvent(MessageEvent);
 
                 if (MessageEvent->data.data32[0] == gXCB.Atoms.WMDeleteWindow)
                 {
@@ -1043,6 +1303,9 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
             break;
             case XCB_SELECTION_NOTIFY:
             {
+                Rr_ProcessXCBSelectionNotifyEvent(
+                    (xcb_selection_notify_event_t *)XCBEvent,
+                    Arena);
             }
             break;
             case XCB_SELECTION_CLEAR:
@@ -1400,7 +1663,7 @@ void Rr_SetWindowSize(Rr_IntVec2 Size)
 
 void Rr_SetCursor(Rr_CursorType Type)
 {
-    if (gXCB.CursorType == Type)
+    if (gPlatform.CursorType == Type)
     {
         return;
     }
@@ -1411,7 +1674,7 @@ void Rr_SetCursor(Rr_CursorType Type)
         XCB_CW_CURSOR,
         &gXCB.Cursors[Type]);
 
-    gXCB.CursorType = Type;
+    gPlatform.CursorType = Type;
 }
 
 void Rr_SetClipboardText(const char *CString)

@@ -41,7 +41,7 @@ static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
                               (double)Rr_GetPerformanceFrequency();
 }
 
-static void Rr_SimulateVSync(Rr_FrameTime *FrameTime, uint32_t FrameRate)
+static void Rr_LimitFrameRate(Rr_FrameTime *FrameTime, uint32_t FrameRate)
 {
     uint64_t Interval = 1000000000 / FrameRate;
     uint64_t Now = Rr_GetTimeNS();
@@ -133,7 +133,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_InitThreadContext();
 
-    Rr_Arena *Arena = ThreadContext->Arena;
+    Rr_Arena *Arena = Rr_GetThreadContext()->Arena;
 
     gApp = RR_ALLOC_TYPE(Rr_App, Arena);
     gApp->InitFunc = Config->InitFunc;
@@ -187,13 +187,15 @@ void Rr_Run(Rr_AppConfig *Config)
 
         if (Rr_IsWindowMinimized())
         {
-            Rr_SimulateVSync(
+            Rr_LimitFrameRate(
                 &gApp->FrameTime,
                 gApp->FrameTime.BackgroundFrameRate);
         }
         else if (gApp->FrameTime.TargetFrameRate)
         {
-            Rr_SimulateVSync(&gApp->FrameTime, gApp->FrameTime.TargetFrameRate);
+            Rr_LimitFrameRate(
+                &gApp->FrameTime,
+                gApp->FrameTime.TargetFrameRate);
         }
 
         Rr_CalculateDeltaTime(&gApp->FrameTime);
