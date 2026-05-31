@@ -9242,7 +9242,7 @@ void Rr_UIDebugOverlay(void)
             Rr_UITextF(
                 "Drag Parent: %s\n"
                 "Drag Hash: %llu\n"
-                "Drag Value Start: %.2f %.2f %.2f %.2f\n",
+                "Drag Value Start: %.2f %.2f %.2f %.2f",
                 gUIContext->DragParent ? gUIContext->DragParent->Title : NULL,
                 gUIContext->DragParent ? gUIContext->DragHash : 0,
                 gUIContext->DragParent ? gUIContext->DragValueStart.Offset.X
