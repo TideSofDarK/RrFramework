@@ -53,23 +53,23 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
     Rr_ConsumeNextObjectName(Buffer->Name);
 
     Buffer->Usage = 0;
-    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_UNIFORM_BIT))
+    if (Flags & RR_BUFFER_FLAGS_UNIFORM_BIT)
     {
         Buffer->Usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     }
-    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STORAGE_BIT))
+    if (Flags & RR_BUFFER_FLAGS_STORAGE_BIT)
     {
         Buffer->Usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     }
-    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_VERTEX_BIT))
+    if (Flags & RR_BUFFER_FLAGS_VERTEX_BIT)
     {
         Buffer->Usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     }
-    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_INDEX_BIT))
+    if (Flags & RR_BUFFER_FLAGS_INDEX_BIT)
     {
         Buffer->Usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     }
-    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_INDIRECT_BIT))
+    if (Flags & RR_BUFFER_FLAGS_INDIRECT_BIT)
     {
         Buffer->Usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
     }
@@ -90,11 +90,11 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
     VmaAllocationCreateInfo AllocationCreateInfo = { 0 };
     AllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
 
-    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
+    if (Flags & RR_BUFFER_FLAGS_MAPPED_BIT)
     {
         AllocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
     }
-    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_READBACK_BIT))
+    if (Flags & RR_BUFFER_FLAGS_READBACK_BIT)
     {
         AllocationCreateInfo.requiredFlags |=
             VK_MEMORY_PROPERTY_HOST_CACHED_BIT |
@@ -103,20 +103,19 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
             VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
     }
 
-    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STAGING_BIT))
+    if (Flags & RR_BUFFER_FLAGS_STAGING_BIT)
     {
         AllocationCreateInfo.requiredFlags |=
             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        if (RR_HAS_BIT(
-                AllocationCreateInfo.flags,
-                VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT) == false)
+        if (!(AllocationCreateInfo.flags &
+              VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT))
         {
 
             AllocationCreateInfo.flags |=
                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
         }
     }
-    else if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT))
+    else if (Flags & RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT)
     {
         AllocationCreateInfo.preferredFlags |=
             VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
@@ -125,7 +124,7 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
     }
 
     Buffer->AllocatedBufferCount = 1;
-    if (RR_HAS_BIT(Flags, RR_BUFFER_FLAGS_PER_FRAME_BIT))
+    if (Flags & RR_BUFFER_FLAGS_PER_FRAME_BIT)
     {
         Buffer->AllocatedBufferCount = RR_FRAME_OVERLAP;
     }
@@ -217,7 +216,7 @@ void *Rr_GetMappedBufferData(Rr_Buffer *Buffer)
 void *Rr_MapBuffer(Rr_Buffer *Buffer)
 {
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
-    if (RR_HAS_BIT(Buffer->Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
+    if (Buffer->Flags & RR_BUFFER_FLAGS_MAPPED_BIT)
     {
         return AllocatedBuffer->MappedData;
     }
@@ -231,7 +230,7 @@ void *Rr_MapBuffer(Rr_Buffer *Buffer)
 
 void Rr_UnmapBuffer(Rr_Buffer *Buffer)
 {
-    if (RR_HAS_BIT(Buffer->Flags, RR_BUFFER_FLAGS_MAPPED_BIT))
+    if (Buffer->Flags & RR_BUFFER_FLAGS_MAPPED_BIT)
     {
         return;
     }

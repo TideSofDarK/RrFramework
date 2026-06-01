@@ -36,8 +36,6 @@
 
 #define RR_UNUSED(Var) (void)Var
 
-#define RR_HAS_BIT(Value, Bit) ((Value & Bit) != 0)
-
 #define RR_ZERO(x)     memset(&(x), 0, sizeof((x)))
 #define RR_ZERO_PTR(x) memset((x), 0, sizeof(*(x)))
 

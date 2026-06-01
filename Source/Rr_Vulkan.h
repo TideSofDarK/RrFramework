@@ -21,7 +21,6 @@
 #pragma once
 
 #include "Rr_Memory.h"
-#include "Rr_Platform.h"
 
 #include <Rr/Rr_Image.h>
 #include <Rr/Rr_Log.h>
@@ -826,15 +825,15 @@ static inline VkOffset3D Rr_ToVulkanOffset3D(Rr_IntVec3 Offset)
 static inline VkImageAspectFlags Rr_ToVulkanImageAspect(Rr_ImageAspect Aspect)
 {
     VkImageAspectFlags Result = 0;
-    if (RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_COLOR_BIT))
+    if (Aspect & RR_IMAGE_ASPECT_COLOR_BIT)
     {
         Result |= VK_IMAGE_ASPECT_COLOR_BIT;
     }
-    if (RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_DEPTH_BIT))
+    if (Aspect & RR_IMAGE_ASPECT_DEPTH_BIT)
     {
         Result |= VK_IMAGE_ASPECT_DEPTH_BIT;
     }
-    if (RR_HAS_BIT(Aspect, RR_IMAGE_ASPECT_STENCIL_BIT))
+    if (Aspect & RR_IMAGE_ASPECT_STENCIL_BIT)
     {
         Result |= VK_IMAGE_ASPECT_STENCIL_BIT;
     }

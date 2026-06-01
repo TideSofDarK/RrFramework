@@ -847,9 +847,8 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     gXCB.Window = Window;
 
     gXCB.FirstTimeShowFullscreen =
-        RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_FULLSCREEN_BIT);
-    gXCB.Resizable =
-        RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_RESIZE_BIT);
+        Config->WindowFlags & RR_WINDOW_FLAGS_FULLSCREEN_BIT;
+    gXCB.Resizable = Config->WindowFlags & RR_WINDOW_FLAGS_RESIZE_BIT;
     if (!gXCB.Resizable)
     {
         Rr_ForceXCBWindowSize(WindowSize);

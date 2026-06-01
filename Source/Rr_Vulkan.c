@@ -22,6 +22,7 @@
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_VULKAN
 #include "Rr_LogMacro.h"
+#include "Rr_Platform.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -582,8 +583,7 @@ void Rr_SelectPhysicalDevice(
 
 void Rr_InitSurface(Rr_Instance *Instance, VkSurfaceKHR *Surface)
 {
-    if (Rr_CreateVulkanSurface((uint64_t)Instance->Handle, (void *)Surface) !=
-        true)
+    if (!Rr_CreateVulkanSurface((uint64_t)Instance->Handle, (void *)Surface))
     {
         RR_LOG_ABORT("Failed to create Vulkan surface!");
     }

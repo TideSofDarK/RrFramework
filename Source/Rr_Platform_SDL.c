@@ -80,7 +80,7 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
 
     SDL_WindowFlags SDLWindowFlags =
         SDL_WINDOW_HIDDEN | SDL_WINDOW_VULKAN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    if (RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_RESIZE_BIT))
+    if (Config->WindowFlags & RR_WINDOW_FLAGS_RESIZE_BIT)
     {
         SDLWindowFlags |= SDL_WINDOW_RESIZABLE;
     }

@@ -672,10 +672,8 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     WindowedRect.bottom = WindowedRect.top + WindowedSize.Y;
     AdjustWindowRect(&WindowedRect, WS_OVERLAPPEDWINDOW, FALSE);
     gWin32.WindowedRect = WindowedRect;
-    gWin32.Resizable =
-        RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_RESIZE_BIT);
-    bool Fullscreen =
-        RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_FULLSCREEN_BIT);
+    gWin32.Resizable = Config->WindowFlags & RR_WINDOW_FLAGS_RESIZE_BIT;
+    bool Fullscreen = Config->WindowFlags & RR_WINDOW_FLAGS_FULLSCREEN_BIT;
     LONG ExStyle = Rr_GetWin32WindowExStyle(Fullscreen);
     LONG Style = Rr_GetWin32WindowStyle(Fullscreen);
     Rr_IntVec2 WindowSize;

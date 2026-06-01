@@ -1273,7 +1273,7 @@ VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey *Key)
                 .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             };
 
-            if (RR_HAS_BIT(Key->ResolveMask, 1 << Index))
+            if (Key->ResolveMask & (1 << Index))
             {
                 Descriptions[ResolveDescriptionIndex] =
                     (VkAttachmentDescription){

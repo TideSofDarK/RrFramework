@@ -267,7 +267,7 @@ static Rr_Image *Rr_CreateImage(
     Rr_UnlockSpinlock(&gRenderer->ImagesLock);
 
     uint32_t LevelCount = 1;
-    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_MIP_MAPPED_BIT))
+    if (Flags & RR_IMAGE_FLAGS_MIP_MAPPED_BIT)
     {
         LevelCount =
             (uint32_t)floorf(logf((float)RR_MAX(Extent.Width, Extent.Height))) +
@@ -287,37 +287,37 @@ static Rr_Image *Rr_CreateImage(
     Rr_ConsumeNextObjectName(Image->Name);
 
     Image->AllocatedImageCount = 1;
-    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_PER_FRAME_BIT))
+    if (Flags & RR_IMAGE_FLAGS_PER_FRAME_BIT)
     {
         Image->AllocatedImageCount = RR_FRAME_OVERLAP;
     }
 
     VkImageUsageFlags UsageFlags = 0;
-    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_STORAGE_BIT))
+    if (Flags & RR_IMAGE_FLAGS_STORAGE_BIT)
     {
         UsageFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
     }
-    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_SAMPLED_BIT))
+    if (Flags & RR_IMAGE_FLAGS_SAMPLED_BIT)
     {
         UsageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
-    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT))
+    if (Flags & RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT)
     {
         UsageFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     }
-    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT))
+    if (Flags & RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT)
     {
         UsageFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     }
-    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_TRANSFER_BIT))
+    if (Flags & RR_IMAGE_FLAGS_TRANSFER_BIT)
     {
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
 
-    if (RR_HAS_BIT(Flags, RR_IMAGE_FLAGS_MUTABLE_FORMAT_BIT))
+    if (Flags & RR_IMAGE_FLAGS_MUTABLE_FORMAT_BIT)
     {
         AdditionalFlags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     }
@@ -424,8 +424,8 @@ void Rr_DestroyImage(Rr_Image *Image)
     assert(Image && Image->AllocatedImageCount > 0);
 
     bool DestroyFramebuffers =
-        RR_HAS_BIT(Image->Flags, RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT) ||
-        RR_HAS_BIT(Image->Flags, RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
+        (Image->Flags & RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT) ||
+        (Image->Flags & RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
 
     for (uint32_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {

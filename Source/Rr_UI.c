@@ -719,64 +719,62 @@ static inline void Rr_UIConsumeMouseAndKeyboardInput(void)
 
 static inline bool Rr_UIWindowNoTitleBar(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT);
+    return Window->Flags & RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
 }
 
 static inline bool Rr_UIWindowNoClose(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_CLOSE_BIT);
+    return Window->Flags & RR_UI_WINDOW_FLAGS_NO_CLOSE_BIT;
 }
 
 static inline bool Rr_UIWindowNoBackground(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_BACKGROUND_BIT);
+    return Window->Flags & RR_UI_WINDOW_FLAGS_NO_BACKGROUND_BIT;
 }
 
 static inline bool Rr_UIWindowNoCollapse(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT);
+    return Window->Flags & RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT;
 }
 
 static inline bool Rr_UIWindowNoResize(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
+    return Window->Flags & RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT;
 }
 
 static inline bool Rr_UIWindowAutoResize(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+    return Window->Flags & RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
 }
 
 static inline bool Rr_UIWindowNoMove(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_MOVE_BIT);
+    return Window->Flags & RR_UI_WINDOW_FLAGS_NO_MOVE_BIT;
 }
 
 static inline bool Rr_UIWindowNoBorders(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT);
+    return Window->Flags & RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
 }
 
 static inline bool Rr_UIWindowNoVerticalScrollbar(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(
-        Window->Flags,
-        RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT);
+    return Window->Flags & RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
 }
 
 static inline bool Rr_UIWindowEscapeCloses(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT);
+    return Window->Flags & RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT;
 }
 
 static inline bool Rr_UIWindowUndockable(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+    return Window->Flags & RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT;
 }
 
 static inline bool Rr_UIWindowTabs(Rr_UIWindow *Window)
 {
-    return RR_HAS_BIT(Window->Flags, RR_UI_WINDOW_FLAGS_TABS_BIT);
+    return Window->Flags & RR_UI_WINDOW_FLAGS_TABS_BIT;
 }
 
 static inline Rr_UIHash Rr_UICurrentHash(void)
@@ -2827,11 +2825,11 @@ static inline Rr_Vec2 Rr_UIGetMinWindowExtent(Rr_UIWindowFlags Flags)
 {
     Rr_Vec2 Size = Rr_V2F(Rr_UICurrentLineHeight());
     Size = Rr_AddV2(Size, Rr_MulV2F(Rr_UICurrentWindowPadding(), 2.0f));
-    if (!RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT))
+    if (!(Flags & RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT))
     {
         Size.Y += gUIContext->TitleBarHeight;
     }
-    if (!RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT))
+    if (!(Flags & RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT))
     {
         Size = Rr_AddV2(
             Size,
@@ -3208,7 +3206,7 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
         Rr_UIClickResult ClickResult =
             Rr_UIClickMulti(Layout, &TitleBarRect, Hash);
         if (ClickResult.ClickCount == 1 && Rr_UIWindowUndockable(Window) &&
-            RR_HAS_BIT(gPlatform.Keymod, RR_KEYMOD_CTRL))
+            (gPlatform.Keymod & RR_KEYMOD_CTRL))
         {
             if (Window->Undocked)
             {
@@ -4176,7 +4174,7 @@ static bool Rr_UIBeginDockedChildWindow(
                          : &gUIContext->Colors.ButtonHeld))
         {
             if (Rr_UIWindowUndockable(Window) &&
-                RR_HAS_BIT(gPlatform.Keymod, RR_KEYMOD_CTRL))
+                (gPlatform.Keymod & RR_KEYMOD_CTRL))
             {
                 Rr_Vec2 TitlePosition = ButtonRect.Offset;
                 TitlePosition.X += gUIContext->TitleBarPadding.X;
@@ -4248,7 +4246,7 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
     Rr_UIWindow *ParentWindow = NULL;
 
     /* TODO: Resize handle is broken unless we force tabs to auto-resize. */
-    if (RR_HAS_BIT(Flags, RR_UI_WINDOW_FLAGS_TABS_BIT))
+    if (Flags & RR_UI_WINDOW_FLAGS_TABS_BIT)
     {
         Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
     }
@@ -4904,7 +4902,6 @@ void Rr_UIEndTree(void)
 {
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     assert(Layout->TreeDepth > 0 && "Did you forget to call Rr_BeginTree()?");
-    Rr_UIFont *Font = Rr_UICurrentFont();
 
     RR_UNUSED(RR_POP_FROM_ARRAY(&Layout->TreeStack));
 
@@ -6049,25 +6046,22 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIWindow *Window = Layout->Window;
 
-    bool DrawBackground =
-        !RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_NO_BACKGROUND_BIT);
+    bool DrawBackground = !(Flags & RR_UI_INPUT_FIELD_FLAGS_NO_BACKGROUND_BIT);
     Rr_UIPrimitive BackgroundBevelPrimitive;
     if (DrawBackground)
     {
         BackgroundBevelPrimitive = Rr_UIReserveBevel();
     }
 
-    bool AutoSelect =
-        RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT);
-    bool Drag = RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_DRAG_BIT);
+    bool AutoSelect = Flags & RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT;
+    bool Drag = Flags & RR_UI_INPUT_FIELD_FLAGS_DRAG_BIT;
 
     bool UseFixedWidth = FixedWidth != 0.0f;
     bool AutoCenter =
-        RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT) &&
-        UseFixedWidth;
+        (Flags & RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT) && UseFixedWidth;
 
     bool UsePersistentBuffer =
-        RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT);
+        Flags & RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT;
 
     bool Focused = Rr_UIIsFocused(Window, Hash);
     bool WasFocused = !Focused && Rr_UIWasFocused(Window, Hash);
@@ -6314,7 +6308,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         if (Focused)
         {
             bool EnterToConfirm =
-                !RR_HAS_BIT(Flags, RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT);
+                !(Flags & RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT);
             EditResult = Rr_UIEditUTF8Buffer(
                 &gUIContext->TextInputCursorBegin,
                 &gUIContext->TextInputCursorEnd,
@@ -6721,7 +6715,6 @@ static inline void Rr_UIClampScalarRange(
         {
             int32_t Min = *(int32_t const *)DataMin;
             int32_t Max = *(int32_t const *)DataMax;
-            int32_t Range = Max - Min;
             int32_t *Int = (int32_t *)Data;
             *Int = RR_CLAMP(Min, *Int, Max);
         }
@@ -6730,7 +6723,6 @@ static inline void Rr_UIClampScalarRange(
         {
             uint32_t Min = *(uint32_t const *)DataMin;
             uint32_t Max = *(uint32_t const *)DataMax;
-            uint32_t Range = Max - Min;
             uint32_t *UnsignedInt = (uint32_t *)Data;
             *UnsignedInt = RR_CLAMP(Min, *UnsignedInt, Max);
         }
@@ -6739,7 +6731,6 @@ static inline void Rr_UIClampScalarRange(
         {
             float Min = *(float const *)DataMin;
             float Max = *(float const *)DataMax;
-            float Range = Max - Min;
             float *Float = (float *)Data;
             *Float = RR_CLAMP(Min, *Float, Max);
         }
@@ -6748,7 +6739,6 @@ static inline void Rr_UIClampScalarRange(
         {
             double Min = *(double const *)DataMin;
             double Max = *(double const *)DataMax;
-            double Range = Max - Min;
             double *Double = (double *)Data;
             *Double = RR_CLAMP(Min, *Double, Max);
         }
@@ -9099,20 +9089,20 @@ void Rr_UIDebugOverlay(void)
                 Rr_GetTimeSeconds(),
                 WindowSize.X,
                 WindowSize.Y,
-                RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_LEFT_BIT),
-                RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_MIDDLE_BIT),
-                RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_RIGHT_BIT),
-                RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_X1_BIT),
-                RR_HAS_BIT(MouseState, RR_MOUSE_BUTTON_X2_BIT),
+                (bool)(MouseState & RR_MOUSE_BUTTON_LEFT_BIT),
+                (bool)(MouseState & RR_MOUSE_BUTTON_MIDDLE_BIT),
+                (bool)(MouseState & RR_MOUSE_BUTTON_RIGHT_BIT),
+                (bool)(MouseState & RR_MOUSE_BUTTON_X1_BIT),
+                (bool)(MouseState & RR_MOUSE_BUTTON_X2_BIT),
                 MousePosition.X,
                 MousePosition.Y,
                 MouseDelta.X,
                 MouseDelta.Y,
                 gPlatform.PressedKeyCount,
-                RR_HAS_BIT(gPlatform.Keymod, RR_KEYMOD_CTRL),
-                RR_HAS_BIT(gPlatform.Keymod, RR_KEYMOD_SHIFT),
-                RR_HAS_BIT(gPlatform.Keymod, RR_KEYMOD_ALT),
-                RR_HAS_BIT(gPlatform.Keymod, RR_KEYMOD_SUPER));
+                (bool)(gPlatform.Keymod & RR_KEYMOD_CTRL),
+                (bool)(gPlatform.Keymod & RR_KEYMOD_SHIFT),
+                (bool)(gPlatform.Keymod & RR_KEYMOD_ALT),
+                (bool)(gPlatform.Keymod & RR_KEYMOD_SUPER));
             Rr_UISeparator();
             uint32_t PresentModeCount;
             Rr_PresentMode *PresentModes =

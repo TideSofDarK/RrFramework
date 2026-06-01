@@ -239,8 +239,8 @@ static inline bool Rr_AddNodeDependency(
         if (Dependency->Handle.Values.Index == Handle->Values.Index)
         {
             bool AlreadyWriting =
-                RR_HAS_BIT(Dependency->State.AccessMask, RR_VULKAN_WRITES);
-            bool WantToWrite = RR_HAS_BIT(State->AccessMask, RR_VULKAN_WRITES);
+                Dependency->State.AccessMask & RR_VULKAN_WRITES;
+            bool WantToWrite = State->AccessMask & RR_VULKAN_WRITES;
             if (AlreadyWriting && WantToWrite && !AllowMultipleWrites)
             {
                 RR_LOG_ERROR(
@@ -280,7 +280,7 @@ static inline bool Rr_AddNodeDependency(
     /* Treat any image read as a write for now due to layout transitions. */
 
     if (State->Layout != VK_IMAGE_LAYOUT_UNDEFINED ||
-        RR_HAS_BIT(State->AccessMask, RR_VULKAN_WRITES))
+        (State->AccessMask & RR_VULKAN_WRITES))
     {
         if (*NodeInMap == NULL)
         {
@@ -465,9 +465,9 @@ static void Rr_SortGraph(
     static const int VisitedBit = 1;
     static const int OnStackBit = 2;
 
-    if (RR_HAS_BIT(State[CurrentNodeIndex], VisitedBit))
+    if (State[CurrentNodeIndex] & VisitedBit)
     {
-        if (RR_HAS_BIT(State[CurrentNodeIndex], OnStackBit))
+        if (State[CurrentNodeIndex] & OnStackBit)
         {
             RR_LOG_ABORT(
                 "Cyclic graph detected on node \"%s\"!",
@@ -1857,10 +1857,8 @@ void Rr_ExecuteGraph(
             bool TransferOwnership =
                 SrcState->QueueFamilyIndex != QueueFamilyIndex &&
                 SrcState->QueueFamilyIndex != VK_QUEUE_FAMILY_IGNORED;
-            bool IsReadingNow =
-                RR_HAS_BIT(DstState->AccessMask, RR_VULKAN_WRITES) == 0;
-            bool WasReadingBefore =
-                RR_HAS_BIT(SrcState->AccessMask, RR_VULKAN_WRITES) == 0;
+            bool IsReadingNow = !(DstState->AccessMask & RR_VULKAN_WRITES);
+            bool WasReadingBefore = !(SrcState->AccessMask & RR_VULKAN_WRITES);
             if (!TransferOwnership && IsReadingNow && WasReadingBefore)
             {
                 bool IncludesPreviousAccessMask =
@@ -1939,10 +1937,8 @@ void Rr_ExecuteGraph(
             bool TransferOwnership =
                 SrcState->QueueFamilyIndex != QueueFamilyIndex &&
                 SrcState->QueueFamilyIndex != VK_QUEUE_FAMILY_IGNORED;
-            bool IsReadingNow =
-                RR_HAS_BIT(DstState->AccessMask, RR_VULKAN_WRITES) == 0;
-            bool WasReadingBefore =
-                RR_HAS_BIT(SrcState->AccessMask, RR_VULKAN_WRITES) == 0;
+            bool IsReadingNow = !(DstState->AccessMask & RR_VULKAN_WRITES);
+            bool WasReadingBefore = !(SrcState->AccessMask & RR_VULKAN_WRITES);
             bool IsSameLayout = DstState->Layout == SrcState->Layout;
             if (!TransferOwnership && IsReadingNow && WasReadingBefore &&
                 IsSameLayout)
