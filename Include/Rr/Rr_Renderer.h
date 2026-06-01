@@ -100,10 +100,10 @@ typedef enum
 typedef enum
 {
     RR_COLOR_COMPONENT_DEFAULT = 0,
-    RR_COLOR_COMPONENT_R = (1 << 0),
-    RR_COLOR_COMPONENT_G = (1 << 1),
-    RR_COLOR_COMPONENT_B = (1 << 2),
-    RR_COLOR_COMPONENT_A = (1 << 3),
+    RR_COLOR_COMPONENT_R = 1U << 0,
+    RR_COLOR_COMPONENT_G = 1U << 1,
+    RR_COLOR_COMPONENT_B = 1U << 2,
+    RR_COLOR_COMPONENT_A = 1U << 3,
     RR_COLOR_COMPONENT_ALL = RR_COLOR_COMPONENT_R | RR_COLOR_COMPONENT_G |
                              RR_COLOR_COMPONENT_B | RR_COLOR_COMPONENT_A,
 } Rr_ColorComponent;
@@ -132,9 +132,9 @@ typedef enum
 
 typedef enum
 {
-    RR_SHADER_STAGE_VERTEX_BIT = (1 << 0),
-    RR_SHADER_STAGE_FRAGMENT_BIT = (1 << 1),
-    RR_SHADER_STAGE_COMPUTE_BIT = (1 << 2),
+    RR_SHADER_STAGE_VERTEX_BIT = 1U << 0,
+    RR_SHADER_STAGE_FRAGMENT_BIT = 1U << 1,
+    RR_SHADER_STAGE_COMPUTE_BIT = 1U << 2,
 } Rr_ShaderStageBits;
 typedef uint32_t Rr_ShaderStage;
 

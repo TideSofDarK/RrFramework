@@ -69,6 +69,8 @@ static struct Rr_Platform_XCB
     xcb_screen_t *Screen;
 
     xcb_window_t Window;
+    bool FirstTimeShowFullscreen;
+    bool Resizable;
     xcb_cursor_context_t *CursorContext;
     xcb_cursor_t Cursors[RR_CURSOR_TYPE_COUNT];
     xcb_cursor_t EmptyCursor;
@@ -702,6 +704,51 @@ static inline bool Rr_InitRandr(void)
     return true;
 }
 
+static inline void Rr_ForceXCBWindowSize(Rr_IntVec2 WindowSize)
+{
+    enum WMSizeHintsFlag
+    {
+        WM_SIZE_HINT_US_POSITION = 1U << 0,
+        WM_SIZE_HINT_US_SIZE = 1U << 1,
+        WM_SIZE_HINT_P_POSITION = 1U << 2,
+        WM_SIZE_HINT_P_SIZE = 1U << 3,
+        WM_SIZE_HINT_P_MIN_SIZE = 1U << 4,
+        WM_SIZE_HINT_P_MAX_SIZE = 1U << 5,
+        WM_SIZE_HINT_P_RESIZE_INC = 1U << 6,
+        WM_SIZE_HINT_P_ASPECT = 1U << 7,
+        WM_SIZE_HINT_BASE_SIZE = 1U << 8,
+        WM_SIZE_HINT_P_WIN_GRAVITY = 1U << 9
+    };
+    struct WMSizeHints
+    {
+        uint32_t Flags;
+        int32_t X, Y;
+        int32_t Width, Height;
+        int32_t MinWidth, MinHeight;
+        int32_t MaxWidth, MaxHeight;
+        int32_t WidthInc, HeightInc;
+        int32_t MinAspectNum, MinAspectDen;
+        int32_t MaxAspectNum, MaxAspectDen;
+        int32_t BaseWidth, BaseHeight;
+        uint32_t WinGravity;
+    } Hints = {
+        .Flags = WM_SIZE_HINT_P_MIN_SIZE | WM_SIZE_HINT_P_MAX_SIZE,
+        .MinWidth = WindowSize.X,
+        .MinHeight = WindowSize.Y,
+        .MaxWidth = WindowSize.X,
+        .MaxHeight = WindowSize.Y,
+    };
+    xcb_change_property(
+        gXCB.Connection,
+        XCB_PROP_MODE_REPLACE,
+        gXCB.Window,
+        XCB_ATOM_WM_NORMAL_HINTS,
+        XCB_ATOM_WM_SIZE_HINTS,
+        32,
+        sizeof(struct WMSizeHints) / sizeof(uint32_t),
+        &Hints);
+}
+
 static inline void *Rr_OpenVulkanModuleLinux(void)
 {
     int Flags = RTLD_NOW | RTLD_LOCAL;
@@ -752,13 +799,13 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     }
     gXCB.Screen = Screen;
 
-    Rr_IntVec2 WindowExtent = {
+    Rr_IntVec2 WindowSize = {
         (int32_t)((float)Screen->width_in_pixels * RR_WINDOWED_RATIO),
         (int32_t)((float)Screen->height_in_pixels * RR_WINDOWED_RATIO)
     };
-    Rr_IntVec2 WindowOffset = {
-        Screen->width_in_pixels / 2 - WindowExtent.X / 2,
-        Screen->height_in_pixels / 2 - WindowExtent.Y / 2
+    Rr_IntVec2 WindowPosition = {
+        Screen->width_in_pixels / 2 - WindowSize.X / 2,
+        Screen->height_in_pixels / 2 - WindowSize.Y / 2
     };
 
     uint32_t ValueMask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
@@ -780,10 +827,10 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
             XCB_COPY_FROM_PARENT,
             Window,
             Screen->root,
-            (int16_t)WindowOffset.X,
-            (int16_t)WindowOffset.Y,
-            (uint16_t)WindowExtent.X,
-            (uint16_t)WindowExtent.Y,
+            (int16_t)WindowPosition.X,
+            (int16_t)WindowPosition.Y,
+            (uint16_t)WindowSize.X,
+            (uint16_t)WindowSize.Y,
             0,
             XCB_WINDOW_CLASS_INPUT_OUTPUT,
             Screen->root_visual,
@@ -798,6 +845,15 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
         return false;
     }
     gXCB.Window = Window;
+
+    gXCB.FirstTimeShowFullscreen =
+        RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_FULLSCREEN_BIT);
+    gXCB.Resizable =
+        RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_RESIZE_BIT);
+    if (!gXCB.Resizable)
+    {
+        Rr_ForceXCBWindowSize(WindowSize);
+    }
 
     if (Rr_InitRandr())
     {
@@ -1338,6 +1394,11 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
 void Rr_ShowWindow(void)
 {
     xcb_map_window(gXCB.Connection, gXCB.Window);
+    if (gXCB.FirstTimeShowFullscreen)
+    {
+        Rr_SetWindowFullscreen(true);
+        gXCB.FirstTimeShowFullscreen = false;
+    }
     xcb_flush(gXCB.Connection);
 }
 
@@ -1592,6 +1653,7 @@ void Rr_SetWindowSize(Rr_IntVec2 Size)
         XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
         Values);
     xcb_flush(gXCB.Connection);
+    Rr_ForceXCBWindowSize(Size);
 }
 
 void Rr_SetWindowTitle(const char *Title)
@@ -1751,7 +1813,7 @@ char const *Rr_GetClipboardText(Rr_Arena *Arena)
             gXCB.Atoms.Clipboard,
             gXCB.Atoms.UTF8String,
             0,
-            (BytesAfter + 4) >> 2),
+            (BytesAfter + 4) / sizeof(uint32_t)),
         NULL);
 
     if (xcb_get_property_value_length(Reply) > (int)BytesAfter)
