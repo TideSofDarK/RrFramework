@@ -27,14 +27,14 @@ typedef struct Rr_Asset Rr_Asset;
 struct Rr_Asset
 {
     size_t Size;
-    const void *Pointer;
+    void const *Data;
 };
 
 #if defined(RR_USE_RC)
 
 typedef struct Rr_AssetRef
 {
-    const char *Name;
+    char const *Name;
 } Rr_AssetRef;
 
 #else

@@ -63,7 +63,7 @@ struct SBindingTestApp
             Rr_LoadAsset(EXAMPLE_ASSET_BINDINGTEST_COMP_SPV);
         Rr_ShaderInfo ShaderInfo = {
             .SPVSize = ComputeShader.Size,
-            .SPVData = ComputeShader.Pointer,
+            .SPVData = ComputeShader.Data,
             .SpecializationCount = Specializations.size(),
             .Specializations = Specializations.data(),
         };

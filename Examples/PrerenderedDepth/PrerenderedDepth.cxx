@@ -24,7 +24,7 @@ Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
     EXRVersion Version;
     int32_t Result = ParseEXRVersionFromMemory(
         &Version,
-        (unsigned char *)Asset.Pointer,
+        (unsigned char *)Asset.Data,
         Asset.Size);
     if (Result != 0)
     {
@@ -35,7 +35,7 @@ Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
     Result = ParseEXRHeaderFromMemory(
         &Header,
         &Version,
-        (unsigned char *)Asset.Pointer,
+        (unsigned char *)Asset.Data,
         Asset.Size,
         &Error);
     if (Result != 0)
@@ -49,7 +49,7 @@ Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
     Result = LoadEXRImageFromMemory(
         &Image,
         &Header,
-        (unsigned char *)Asset.Pointer,
+        (unsigned char *)Asset.Data,
         Asset.Size,
         &Error);
     if (Result != 0)
@@ -116,7 +116,7 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
     int32_t DesiredChannels = 4;
     int32_t Width, Height, Channels;
     char *Data = (char *)stbi_load_from_memory(
-        (stbi_uc *)Asset.Pointer,
+        (stbi_uc *)Asset.Data,
         (int32_t)Asset.Size,
         &Width,
         &Height,
@@ -174,14 +174,14 @@ struct SPrerenderedDepthApp
             Rr_LoadAsset(EXAMPLE_ASSET_PRERENDEREDDEPTH_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
             .SPVSize = VertexShader.Size,
-            .SPVData = VertexShader.Pointer,
+            .SPVData = VertexShader.Data,
         };
 
         Rr_Asset FragmentShader =
             Rr_LoadAsset(EXAMPLE_ASSET_PRERENDEREDDEPTH_FRAG_SPV);
         Rr_ShaderInfo FragmentShaderInfo = {
             .SPVSize = FragmentShader.Size,
-            .SPVData = FragmentShader.Pointer,
+            .SPVData = FragmentShader.Data,
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};

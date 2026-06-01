@@ -687,7 +687,7 @@ static inline VkFilter Rr_ToVulkanFilter(Rr_Filter Filter)
     return 0;
 }
 
-static Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
+static inline Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
 {
     switch (ImageFormat)
     {
@@ -840,7 +840,7 @@ static inline VkImageAspectFlags Rr_ToVulkanImageAspect(Rr_ImageAspect Aspect)
     return Result;
 }
 
-static VkAttachmentLoadOp Rr_ToVulkanLoadOp(Rr_LoadOp LoadOp)
+static inline VkAttachmentLoadOp Rr_ToVulkanLoadOp(Rr_LoadOp LoadOp)
 {
     switch (LoadOp)
     {
@@ -856,7 +856,7 @@ static VkAttachmentLoadOp Rr_ToVulkanLoadOp(Rr_LoadOp LoadOp)
     return 0;
 }
 
-static VkAttachmentStoreOp Rr_ToVulkanStoreOp(Rr_StoreOp StoreOp)
+static inline VkAttachmentStoreOp Rr_ToVulkanStoreOp(Rr_StoreOp StoreOp)
 {
     switch (StoreOp)
     {

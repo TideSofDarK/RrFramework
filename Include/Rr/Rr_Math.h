@@ -2982,7 +2982,7 @@ static inline Rr_Rect Rr_FitRect(Rr_Rect *Src, Rr_Rect *Dst)
     return Result;
 }
 
-static Rr_IntRect Rr_FitIntRect(Rr_IntRect *Src, Rr_IntRect *Dst)
+static inline Rr_IntRect Rr_FitIntRect(Rr_IntRect *Src, Rr_IntRect *Dst)
 {
     float X = 0;
     float Y = 0;

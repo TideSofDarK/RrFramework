@@ -52,7 +52,7 @@ static void Init()
     Rr_Asset ComputeShader = Rr_LoadAsset(EXAMPLE_ASSET_PREFIXSUM_COMP_SPV);
     Rr_ShaderInfo ShaderInfo = {
         .SPVSize = ComputeShader.Size,
-        .SPVData = ComputeShader.Pointer,
+        .SPVData = ComputeShader.Data,
         .SpecializationCount = Specializations.size(),
         .Specializations = Specializations.data(),
     };

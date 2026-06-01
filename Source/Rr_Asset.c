@@ -32,7 +32,7 @@ Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
 
     Rr_Asset Asset;
     Asset.Size = SizeofResource(NULL, Resource);
-    Asset.Pointer = (char *)LockResource(Memory);
+    Asset.Data = (char *)LockResource(Memory);
     return Asset;
 }
 
@@ -42,7 +42,7 @@ Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef)
 {
     Rr_Asset Asset = {
         .Size = (size_t)(AssetRef.End - AssetRef.Start),
-        .Pointer = AssetRef.Start,
+        .Data = AssetRef.Start,
     };
     return Asset;
 }

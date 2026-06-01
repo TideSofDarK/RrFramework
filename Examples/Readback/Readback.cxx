@@ -16,7 +16,7 @@ struct SReadbackApp
         Rr_Asset ComputeShader = Rr_LoadAsset(EXAMPLE_ASSET_READBACK_COMP_SPV);
         Rr_ShaderInfo ShaderInfo = {
             .SPVSize = ComputeShader.Size,
-            .SPVData = ComputeShader.Pointer,
+            .SPVData = ComputeShader.Data,
         };
 
         ComputePipeline = Rr_CreateComputePipeline(&ShaderInfo);

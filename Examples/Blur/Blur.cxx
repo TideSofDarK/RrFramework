@@ -131,7 +131,7 @@ struct SPNGImage
         Rr_Asset Asset = Rr_LoadAsset(AssetRef);
         int32_t DesiredChannels = 4;
         Data = stbi_load_from_memory(
-            (stbi_uc *)Asset.Pointer,
+            (stbi_uc *)Asset.Data,
             (int32_t)Asset.Size,
             (int32_t *)&Width,
             (int32_t *)&Height,
@@ -244,7 +244,7 @@ struct SBoxBlur2D
         Rr_Asset ComputeShader = Rr_LoadAsset(ComputeSPV);
         Rr_ShaderInfo ShaderInfo = {
             .SPVSize = ComputeShader.Size,
-            .SPVData = ComputeShader.Pointer,
+            .SPVData = ComputeShader.Data,
             .SpecializationCount = Specializations.size(),
             .Specializations = Specializations.data(),
         };
@@ -407,7 +407,7 @@ struct SKawaseBlur2D
         Rr_Asset ComputeShader = Rr_LoadAsset(EXAMPLE_ASSET_KAWASE2D_COMP_SPV);
         Rr_ShaderInfo ShaderInfo = {
             .SPVSize = ComputeShader.Size,
-            .SPVData = ComputeShader.Pointer,
+            .SPVData = ComputeShader.Data,
             .SpecializationCount = Specializations.size(),
             .Specializations = Specializations.data(),
         };
@@ -611,7 +611,7 @@ struct SDualKawaseBlur2D
         Rr_Asset ComputeShader = Rr_LoadAsset(ComputeSPV);
         Rr_ShaderInfo ShaderInfo = {
             .SPVSize = ComputeShader.Size,
-            .SPVData = ComputeShader.Pointer,
+            .SPVData = ComputeShader.Data,
             .SpecializationCount = Specializations.size(),
             .Specializations = Specializations.data(),
         };
@@ -714,7 +714,7 @@ struct SBoxBlurCube
         Rr_Asset ComputeShader = Rr_LoadAsset(ComputeSPV);
         Rr_ShaderInfo ShaderInfo = {
             .SPVSize = ComputeShader.Size,
-            .SPVData = ComputeShader.Pointer,
+            .SPVData = ComputeShader.Data,
             .SpecializationCount = Specializations.size(),
             .Specializations = Specializations.data(),
         };
@@ -829,13 +829,13 @@ struct SBlurApp
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
             .SPVSize = VertexShader.Size,
-            .SPVData = VertexShader.Pointer,
+            .SPVData = VertexShader.Data,
         };
 
         Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_FRAG_SPV);
         Rr_ShaderInfo FragmentShaderInfo = {
             .SPVSize = FragmentShader.Size,
-            .SPVData = FragmentShader.Pointer,
+            .SPVData = FragmentShader.Data,
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
@@ -905,13 +905,13 @@ struct SBlurApp
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_CUBE_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
             .SPVSize = VertexShader.Size,
-            .SPVData = VertexShader.Pointer,
+            .SPVData = VertexShader.Data,
         };
 
         Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_CUBE_FRAG_SPV);
         Rr_ShaderInfo FragmentShaderInfo = {
             .SPVSize = FragmentShader.Size,
-            .SPVData = FragmentShader.Pointer,
+            .SPVData = FragmentShader.Data,
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};

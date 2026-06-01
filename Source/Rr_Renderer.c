@@ -1665,7 +1665,11 @@ void Rr_SetNextObjectName(const char *Name)
     NextObjectName[Length] = '\0';
 }
 
-void Rr_SetNextObjectNameF(const char *Format, ...)
+void
+#if defined(__GNUC__) || defined(__clang__)
+    __attribute__((format(printf, 1, 2)))
+#endif
+    Rr_SetNextObjectNameF(const char *Format, ...)
 {
     va_list Args;
     va_start(Args, Format);

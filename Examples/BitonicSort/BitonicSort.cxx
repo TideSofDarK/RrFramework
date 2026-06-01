@@ -47,7 +47,7 @@ struct SValidator
         Rr_Asset ComputeShader = Rr_LoadAsset(EXAMPLE_ASSET_VALIDATE_COMP_SPV);
         Rr_ShaderInfo ShaderInfo = {
             .SPVSize = ComputeShader.Size,
-            .SPVData = ComputeShader.Pointer,
+            .SPVData = ComputeShader.Data,
             .SpecializationCount = Specializations.size(),
             .Specializations = Specializations.data(),
         };
@@ -130,7 +130,7 @@ struct SBitonicSorter
             Rr_LoadAsset(EXAMPLE_ASSET_BITONICSORT_COMP_SPV);
         Rr_ShaderInfo ShaderInfo = {
             .SPVSize = ComputeShader.Size,
-            .SPVData = ComputeShader.Pointer,
+            .SPVData = ComputeShader.Data,
             .SpecializationCount = Specializations.size(),
             .Specializations = Specializations.data(),
         };

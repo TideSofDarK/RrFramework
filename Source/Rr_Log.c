@@ -58,11 +58,15 @@ void Rr_SetLogPriority(Rr_LogPriority Priority)
     gLogPriority = Priority;
 }
 
-static void Rr_DefaultLogFunction(
-    uint32_t Category,
-    Rr_LogPriority Priority,
-    char const *Format,
-    va_list Args)
+static void
+#if defined(__GNUC__) || defined(__clang__)
+    __attribute__((format(printf, 3, 0)))
+#endif
+    Rr_DefaultLogFunction(
+        uint32_t Category,
+        Rr_LogPriority Priority,
+        char const *Format,
+        va_list Args)
 {
     FILE *Out = stdout;
     if (Priority == RR_LOG_PRIORITY_ERROR)

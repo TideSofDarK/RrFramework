@@ -494,7 +494,7 @@ static Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
     int32_t DesiredChannels = 4;
     int32_t Width, Height, Channels;
     char *Data = (char *)stbi_load_from_memory(
-        (stbi_uc *)Asset.Pointer,
+        (stbi_uc *)Asset.Data,
         (int32_t)Asset.Size,
         &Width,
         &Height,
@@ -533,13 +533,13 @@ static void Init(void)
 
     Rr_Asset StoneTombAsset = Rr_LoadAsset(EXAMPLE_ASSET_STONETOMB_TTF);
     StoneTombFont =
-        Rr_UICreateFont(StoneTombAsset.Size, StoneTombAsset.Pointer, 18.0f);
+        Rr_UICreateFont(StoneTombAsset.Size, StoneTombAsset.Data, 18.0f);
 
     Rr_Asset MozillaHeadlineCleanAsset =
         Rr_LoadAsset(EXAMPLE_ASSET_MOZILLAHEADLINE_TTF);
     MozillaHeadlineFont = Rr_UICreateFont(
         MozillaHeadlineCleanAsset.Size,
-        MozillaHeadlineCleanAsset.Pointer,
+        MozillaHeadlineCleanAsset.Data,
         14.0f);
 }
 

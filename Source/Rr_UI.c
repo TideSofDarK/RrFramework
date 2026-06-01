@@ -5057,7 +5057,11 @@ void Rr_UIText(char const *Text)
     Rr_UIAdvance(TextSize, Rr_V2F(0.0f));
 }
 
-void Rr_UITextF(char const *Format, ...)
+void
+#if defined(__GNUC__) || defined(__clang__)
+    __attribute__((format(printf, 1, 2)))
+#endif
+    Rr_UITextF(char const *Format, ...)
 {
     if (Rr_UISkipItems())
     {
@@ -6945,7 +6949,6 @@ static inline bool Rr_UIInputScalarMulti(
     }
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
-    Rr_UIWindow *Window = Layout->Window;
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
@@ -7498,7 +7501,6 @@ static inline void Rr_UIColorPickerPopup(
     float SVSelectorSize = Rr_UICurrentLineHeight() * 15.0f;
     float SVSelectorActiveSize =
         SVSelectorSize - gUIContext->DoubleBevelThickness * 2.0f;
-    float HSelectorStep = SVSelectorSize / 6.0f;
 
     Rr_Vec2 WindowPadding = Rr_UICurrentWindowPadding();
 
@@ -8422,7 +8424,7 @@ bool Rr_UIWantKeyboardCapture(void)
     return false;
 }
 
-static void Rr_UIConvertColorsToSRGB(void)
+static inline void Rr_UIConvertColorsToSRGB(void)
 {
     size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
     Rr_Vec4 *Colors = (Rr_Vec4 *)&gUIContext->Colors;
@@ -8432,7 +8434,7 @@ static void Rr_UIConvertColorsToSRGB(void)
     }
 }
 
-static void Rr_UIConvertColorsToLinear(void)
+static inline void Rr_UIConvertColorsToLinear(void)
 {
     size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
     Rr_Vec4 *Colors = (Rr_Vec4 *)&gUIContext->Colors;
@@ -8545,7 +8547,7 @@ void Rr_InitUI(void)
     float DefaultFontSize = 10.0f * Rr_GetDisplayScale();
     Rr_Asset FontAsset = Rr_LoadAsset(RR_BUILTIN_SOURCESERIF4_TTF);
     gUIContext->DefaultFont =
-        Rr_UICreateFont(FontAsset.Size, FontAsset.Pointer, DefaultFontSize);
+        Rr_UICreateFont(FontAsset.Size, FontAsset.Data, DefaultFontSize);
 
     Rr_UISetDefaultTheme();
 
@@ -8612,14 +8614,14 @@ void Rr_InitUI(void)
 
     Rr_ShaderInfo VertexShaderInfo = {
         .SPVSize = VertexShader.Size,
-        .SPVData = VertexShader.Pointer,
+        .SPVData = VertexShader.Data,
         .SpecializationCount = RR_ARRAY_COUNT(Specializations),
         .Specializations = Specializations,
     };
 
     Rr_ShaderInfo FragmentShaderInfo = {
         .SPVSize = FragmentShader.Size,
-        .SPVData = FragmentShader.Pointer,
+        .SPVData = FragmentShader.Data,
     };
 
     Rr_GraphicsPipelineCreateInfo PipelineInfo = {
@@ -9060,10 +9062,10 @@ float Rr_UICurrentLineHeight(void)
 static inline void Rr_UIDebugOverlayArena(Rr_Arena *Arena, char const *Comment)
 {
     Rr_UITextF(
-        "%s: commited %d bytes, position %p",
+        "%s: commited %zu bytes, position %p",
         Comment,
         Arena->Commited,
-        (Arena + Arena->Position));
+        (void *)(Arena + Arena->Position));
 }
 
 void Rr_UIDebugOverlay(void)
@@ -9169,9 +9171,7 @@ void Rr_UIDebugOverlay(void)
             }
             else
             {
-                Rr_UITextF(
-                    "GPU timestamps not supported!",
-                    gRenderer->LastFrameMS);
+                Rr_UITextF("GPU timestamps not supported!");
             }
 
             Rr_UIBeginHorizontal();
@@ -9228,7 +9228,7 @@ void Rr_UIDebugOverlay(void)
             Rr_UITextF(
                 "Hovered Window: %s\n"
                 "Click Parent: %s\n"
-                "Active Windows: %b\n"
+                "Active Windows: %zu\n"
                 "Popup Window Open: %b",
                 gUIContext->HoveredWindow ? gUIContext->HoveredWindow->Title
                                           : NULL,
@@ -9238,7 +9238,7 @@ void Rr_UIDebugOverlay(void)
 
             Rr_UITextF(
                 "Drag Parent: %s\n"
-                "Drag Hash: %llu\n"
+                "Drag Hash: %zu\n"
                 "Drag Value Start: %.2f %.2f %.2f %.2f",
                 gUIContext->DragParent ? gUIContext->DragParent->Title : NULL,
                 gUIContext->DragParent ? gUIContext->DragHash : 0,
@@ -9287,7 +9287,7 @@ void Rr_UIDebugOverlay(void)
                 gRenderer->DescriptorSetLayoutStorage.Hive.Count,
                 gRenderer->DescriptorSetLayoutStorage.Hive.Capacity);
             Rr_UITextF(
-                "DescriptorPools: %zu",
+                "DescriptorPools: %d",
                 gRenderer->DescriptorPoolListCount);
             Rr_UITextF(
                 "PipelineLayouts: %zu/%zu",

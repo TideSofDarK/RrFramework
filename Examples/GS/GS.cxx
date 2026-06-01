@@ -243,13 +243,13 @@ struct SGSApp
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_GS_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
             .SPVSize = VertexShader.Size,
-            .SPVData = VertexShader.Pointer,
+            .SPVData = VertexShader.Data,
         };
 
         Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_GS_FRAG_SPV);
         Rr_ShaderInfo FragmentShaderInfo = {
             .SPVSize = FragmentShader.Size,
-            .SPVData = FragmentShader.Pointer,
+            .SPVData = FragmentShader.Data,
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
@@ -270,7 +270,7 @@ struct SGSApp
 
         for (size_t Index = 0; Index < AliveCount; ++Index)
         {
-            SSplat *Splat = ((SSplat *)Asset.Pointer) + Index;
+            SSplat *Splat = ((SSplat *)Asset.Data) + Index;
             SGPUSplat &GPUSplat = GPUSplats[Index];
 
             GPUSplat.Position.XYZ = Splat->Position;

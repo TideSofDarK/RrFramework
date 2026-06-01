@@ -169,7 +169,7 @@ struct SPNGImage
         Rr_Asset Asset = Rr_LoadAsset(AssetRef);
         int32_t DesiredChannels = 4;
         Data = stbi_load_from_memory(
-            (stbi_uc *)Asset.Pointer,
+            (stbi_uc *)Asset.Data,
             (int32_t)Asset.Size,
             (int32_t *)&Width,
             (int32_t *)&Height,
@@ -221,13 +221,13 @@ struct SSkyboxApp
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
             .SPVSize = VertexShader.Size,
-            .SPVData = VertexShader.Pointer,
+            .SPVData = VertexShader.Data,
         };
 
         Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_FRAG_SPV);
         Rr_ShaderInfo FragmentShaderInfo = {
             .SPVSize = FragmentShader.Size,
-            .SPVData = FragmentShader.Pointer,
+            .SPVData = FragmentShader.Data,
         };
 
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};

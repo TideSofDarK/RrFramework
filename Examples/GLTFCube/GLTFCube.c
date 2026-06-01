@@ -39,7 +39,7 @@ static void InitGLTFPrimitive(void)
     cgltf_options Options = { 0 };
     cgltf_data *Data = NULL;
     cgltf_result Result =
-        cgltf_parse(&Options, LoadedAsset.Pointer, LoadedAsset.Size, &Data);
+        cgltf_parse(&Options, LoadedAsset.Data, LoadedAsset.Size, &Data);
     if (Result != cgltf_result_success)
     {
         fprintf(stderr, "Failed to load GLTF data!");
@@ -231,13 +231,13 @@ static void Init(void)
     Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_GLTFCUBE_VERT_SPV);
     Rr_ShaderInfo VertexShaderInfo = {
         .SPVSize = VertexShader.Size,
-        .SPVData = VertexShader.Pointer,
+        .SPVData = VertexShader.Data,
     };
 
     Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_GLTFCUBE_FRAG_SPV);
     Rr_ShaderInfo FragmentShaderInfo = {
         .SPVSize = FragmentShader.Size,
-        .SPVData = FragmentShader.Pointer,
+        .SPVData = FragmentShader.Data,
     };
 
     Rr_GraphicsPipelineCreateInfo PipelineInfo = {
