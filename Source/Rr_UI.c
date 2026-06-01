@@ -3653,10 +3653,11 @@ void Rr_UIPopFormatFloatDecimalPlaces(void)
     RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->FormatFloatDecimalPlacesStack));
 }
 
-static inline char const *Rr_UICurrentFloatFormatString(void)
+static inline int Rr_UIFormatDouble(
+    size_t BufferCapacity,
+    char *Buffer,
+    double Value)
 {
-    static char const *DEFAULT_STRING = "%.2f";
-
     if (gUIContext->FormatFloatDecimalPlacesStack.Count > 0)
     {
         uint32_t Top =
@@ -3664,31 +3665,31 @@ static inline char const *Rr_UICurrentFloatFormatString(void)
         switch (Top)
         {
             case 0:
-                return "%.0f";
+                return snprintf(Buffer, BufferCapacity, "%.0f", Value);
             case 1:
-                return "%.1f";
+                return snprintf(Buffer, BufferCapacity, "%.1f", Value);
             case 2:
-                return "%.2f";
+                return snprintf(Buffer, BufferCapacity, "%.2f", Value);
             case 3:
-                return "%.3f";
+                return snprintf(Buffer, BufferCapacity, "%.3f", Value);
             case 4:
-                return "%.4f";
+                return snprintf(Buffer, BufferCapacity, "%.4f", Value);
             case 5:
-                return "%.5f";
+                return snprintf(Buffer, BufferCapacity, "%.5f", Value);
             case 6:
-                return "%.6f";
+                return snprintf(Buffer, BufferCapacity, "%.6f", Value);
             case 7:
-                return "%.7f";
+                return snprintf(Buffer, BufferCapacity, "%.7f", Value);
             case 8:
-                return "%.8f";
+                return snprintf(Buffer, BufferCapacity, "%.8f", Value);
+            case 9:
+                return snprintf(Buffer, BufferCapacity, "%.9f", Value);
             default:
-                return DEFAULT_STRING;
+                break;
         }
     }
-    else
-    {
-        return DEFAULT_STRING;
-    }
+
+    return snprintf(Buffer, BufferCapacity, "%.2f", Value);
 }
 
 static inline bool Rr_UIConsumeWindowFloat(float *Src, float *Dst)
@@ -6460,20 +6461,12 @@ static inline void Rr_UIFormatScalar(
         break;
         case RR_UI_SCALAR_TYPE_FLOAT:
         {
-            snprintf(
-                Buffer,
-                BufferCapacity,
-                Rr_UICurrentFloatFormatString(),
-                *(float *)ElementData);
+            Rr_UIFormatDouble(BufferCapacity, Buffer, *(float *)ElementData);
         }
         break;
         case RR_UI_SCALAR_TYPE_DOUBLE:
         {
-            snprintf(
-                Buffer,
-                BufferCapacity,
-                Rr_UICurrentFloatFormatString(),
-                *(double *)ElementData);
+            Rr_UIFormatDouble(BufferCapacity, Buffer, *(double *)ElementData);
         }
         break;
         default:
@@ -8397,11 +8390,7 @@ bool Rr_UISliderFloat(char const *Title, float *Value, float Min, float Max)
     assert(Max > Min);
 
     char Buffer[RR_UI_SCALAR_BUFFER_SIZE];
-    int Length = snprintf(
-        Buffer,
-        sizeof(Buffer),
-        Rr_UICurrentFloatFormatString(),
-        *Value);
+    int Length = Rr_UIFormatDouble(sizeof(Buffer), Buffer, *Value);
 
     float In = *Value;
     float Clamped = RR_CLAMP(Min, *Value, Max);

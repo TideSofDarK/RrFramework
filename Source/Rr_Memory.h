@@ -33,8 +33,9 @@ extern void Rr_AlignedFree(void *Ptr);
 /*
  * Dynamic Array
  *
- * Grow discards previous allocation so it's mostly
- * useful with scratch arenas.
+ * Grow discards previous allocation so it's mostly useful with scratch arenas.
+ * Preserving its header between frames allows us to reserve last capacity
+ * upfront which helps in certain scenarios.
  */
 
 #define RR_ARRAY(Type)   \

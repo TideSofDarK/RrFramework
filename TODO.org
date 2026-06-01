@@ -50,6 +50,7 @@
 - [ ] Remove GLTF API.
 - [ ] Replace VMA with custom allocator.
 - [ ] Replace hash trie usage with Rr_HashTable.h where applicable.
+- [ ] Array implementation is a bit ugly...
 
 * Features
 
