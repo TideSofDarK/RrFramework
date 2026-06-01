@@ -18,22 +18,15 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
+#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "Rr_Image.h"
 
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
+#include "Rr_LogMacro.h"
 #include "Rr_Renderer.h"
-
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_STATIC
-#define STBI_NO_STDIO
-#define STBI_NO_GIF
-#define STBI_NO_BMP
-#define STBI_NO_PSD
-#define STBI_NO_PIC
-#define STBI_NO_PNM
-#define STBI_NO_HDR
-#define STBI_NO_TGA
-#define STBI_NO_FAILURE_STRINGS
-#include <stb/stb_image.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -111,11 +104,26 @@ void Rr_ReleaseSampler(Rr_Sampler *Sampler)
     Rr_UnlockSpinlock(&gRenderer->ReleasedSamplersLock);
 }
 
+static inline void Rr_PrintSamplerDestroyMessage(Rr_Sampler *Sampler)
+{
+    char DestroyMessage[512];
+    char *Cursor = DestroyMessage;
+    if (Sampler->Name[0] != '\0')
+    {
+        Cursor += sprintf(Cursor, "Rr_Sampler \"%s\" destroyed", Sampler->Name);
+    }
+    else
+    {
+        Cursor += sprintf(Cursor, "Rr_Sampler %p destroyed", (void *)Sampler);
+    }
+    RR_LOG_INFO("%s", DestroyMessage);
+}
+
 void Rr_DestroySampler(Rr_Sampler *Sampler)
 {
     assert(Sampler != NULL && Sampler->Handle != VK_NULL_HANDLE);
 
-    Rr_PrintDestroyMessage("Rr_Sampler", Sampler->Name, Sampler);
+    Rr_PrintSamplerDestroyMessage(Sampler);
 
     Rr_Device *Device = &gRenderer->Device;
 
@@ -432,11 +440,45 @@ void Rr_ReleaseImage(Rr_Image *Image)
     Rr_UnlockSpinlock(&gRenderer->ReleasedImagesLock);
 }
 
+static inline void Rr_PrintImageDestroyMessage(Rr_Image *Image)
+{
+    char DestroyMessage[512];
+    char *Cursor = DestroyMessage;
+    if (Image->Name[0] != '\0')
+    {
+        Cursor += sprintf(Cursor, "Rr_Image \"%s\" destroyed; ", Image->Name);
+    }
+    else
+    {
+        Cursor += sprintf(Cursor, "Rr_Image %p destroyed; ", (void *)Image);
+    }
+    Cursor += sprintf(Cursor, "allocations: %d, ", Image->AllocatedImageCount);
+    Cursor += sprintf(Cursor, "flags: ");
+    char const *const FlagNames[] = {
+        "STORAGE",          "SAMPLED",
+        "COLOR_ATTACHMENT", "DEPTH_STENCIL_ATTACHMENT",
+        "TRANSFER",         "PER_FRAME",
+        "MIP_MAPPED",       "MUTABLE_FORMAT",
+        "SAMPLE_COUNT_1",   "SAMPLE_COUNT_2",
+        "SAMPLE_COUNT_4",   "SAMPLE_COUNT_8",
+        "SAMPLE_COUNT_16",
+    };
+    for (size_t Index = 0; Index < RR_ARRAY_COUNT(FlagNames); ++Index)
+    {
+        size_t Bit = 1 << Index;
+        if (RR_HAS_BIT(Image->Flags, Bit))
+        {
+            Cursor += sprintf(Cursor, "%s ", FlagNames[Index]);
+        }
+    }
+    RR_LOG_INFO("%s", DestroyMessage);
+}
+
 void Rr_DestroyImage(Rr_Image *Image)
 {
     assert(Image && Image->AllocatedImageCount > 0);
 
-    Rr_PrintDestroyMessage("Rr_Image", Image->Name, Image);
+    Rr_PrintImageDestroyMessage(Image);
 
     bool DestroyFramebuffers =
         RR_HAS_BIT(Image->Flags, RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT) ||
@@ -556,55 +598,6 @@ Rr_IntVec3 Rr_GetImage3DExtent(Rr_Image3D *Image3D)
         .Height = (int32_t)Image3D->Extent.height,
         .Depth = (int32_t)Image3D->Extent.depth,
     };
-}
-
-Rr_Image2D *Rr_CreateSTBImage2D(
-    struct Rr_Graph *Graph,
-    Rr_ImageFormat Format,
-    size_t DataSize,
-    const char *Data)
-{
-    assert(
-        Format == RR_IMAGE_FORMAT_R8G8B8A8_SRGB ||
-        Format == RR_IMAGE_FORMAT_R8G8B8A8_UNORM ||
-        Format == RR_IMAGE_FORMAT_B8G8R8A8_UNORM);
-
-    Rr_IntVec2 ImageSize;
-    int32_t ImageChannels;
-    char *ImageData = (char *)stbi_load_from_memory(
-        (stbi_uc const *)Data,
-        (int32_t)DataSize,
-        &ImageSize.Width,
-        &ImageSize.Height,
-        &ImageChannels,
-        4);
-
-    size_t ImageDataSize = 4 * (size_t)(ImageSize.Width * ImageSize.Height);
-
-    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        ImageDataSize,
-        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
-
-    Rr_Image2D *Image2D = Rr_CreateImage2D(
-        ImageSize,
-        Format,
-        RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
-
-    memcpy(Rr_GetMappedBufferData(StagingBuffer), ImageData, ImageDataSize);
-
-    stbi_image_free(ImageData);
-
-    Rr_CopyBufferToImage2D(
-        Rr_GetGraph(),
-        StagingBuffer,
-        0,
-        ImageSize,
-        Image2D,
-        0);
-
-    Rr_ReleaseBuffer(StagingBuffer);
-
-    return Image2D;
 }
 
 Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_Image *Image)

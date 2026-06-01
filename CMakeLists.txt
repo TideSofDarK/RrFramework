@@ -10,8 +10,6 @@ set(BUILD_SHARED_LIBS OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
 
-include(CPM)
-
 #
 # Dependencies
 #
@@ -135,7 +133,6 @@ target_sources(
     Source/Rr_Buffer.c
     Source/Rr_Dependencies.cxx
     Source/Rr_Descriptor.c
-    Source/Rr_GLTF.c
     Source/Rr_Graph.c
     Source/Rr_Image.c
     Source/Rr_Log.c
@@ -160,7 +157,6 @@ target_sources(
     Include/Rr/Rr_Asset.h
     Include/Rr/Rr_Buffer.h
     Include/Rr/Rr_Defines.h
-    Include/Rr/Rr_GLTF.h
     Include/Rr/Rr_Graph.h
     Include/Rr/Rr_Image.h
     Include/Rr/Rr_Log.h
@@ -227,6 +223,8 @@ if (RR_PLATFORM STREQUAL "XCB")
 endif ()
 
 if (RR_PLATFORM STREQUAL "SDL")
+    include(CPM)
+
     set(SDL_AUDIO OFF CACHE BOOL "" FORCE)
     set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
     set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
@@ -252,8 +250,6 @@ target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE Vendor)
 target_link_libraries(${PROJECT_NAME} PRIVATE Vulkan::Headers)
 
 file(GLOB_RECURSE RR_BUILTIN_ASSETS CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.json"
-    "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.png"
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.ttf"
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.vert.glsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/Asset/*.frag.glsl"
@@ -272,23 +268,7 @@ rr_embed_assets(
 
 option(RR_EXAMPLES "Build included examples" OFF)
 if (RR_EXAMPLES)
-    add_subdirectory(Examples/Triangle)
-    add_subdirectory(Examples/GLTFCube)
-    add_subdirectory(Examples/QuadTree)
-    add_subdirectory(Examples/SmoothGrid)
-    add_subdirectory(Examples/PrerenderedDepth)
-    add_subdirectory(Examples/Skybox)
-    add_subdirectory(Examples/BitonicSort)
-    add_subdirectory(Examples/PrefixSum)
-    add_subdirectory(Examples/GS)
-    add_subdirectory(Examples/BrushFade)
-    add_subdirectory(Examples/TransferThread)
-    add_subdirectory(Examples/LayeredImage)
-    add_subdirectory(Examples/Blur)
-    add_subdirectory(Examples/BindingTest)
-    add_subdirectory(Examples/ModernRendering)
-    add_subdirectory(Examples/UITest)
-    add_subdirectory(Examples/Readback)
+    add_subdirectory(Examples)
 endif ()
 
 #

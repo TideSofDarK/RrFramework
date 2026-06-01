@@ -36,10 +36,6 @@ char const *Rr_LogCategoryString(Rr_LogCategory Category)
             return "Vulkan";
         case RR_LOG_CATEGORY_RENDERER:
             return "Renderer";
-        case RR_LOG_CATEGORY_IMAGE:
-            return "Image";
-        case RR_LOG_CATEGORY_BUFFER:
-            return "Buffer";
         case RR_LOG_CATEGORY_GRAPH:
             return "Graph";
         case RR_LOG_CATEGORY_DESCRIPTOR:
@@ -48,8 +44,6 @@ char const *Rr_LogCategoryString(Rr_LogCategory Category)
             return "Platform";
         case RR_LOG_CATEGORY_UI:
             return "UI";
-        case RR_LOG_CATEGORY_GLTF:
-            return "GLTF";
         case RR_LOG_CATEGORY_ARENA:
             return "Arena";
         default:

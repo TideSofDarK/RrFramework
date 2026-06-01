@@ -18,8 +18,14 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
+#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "Rr_Buffer.h"
 
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
+#include "Rr_LogMacro.h"
 #include "Rr_Renderer.h"
 
 #include <assert.h>
@@ -182,11 +188,42 @@ void Rr_ReleaseBuffer(Rr_Buffer *Buffer)
     Rr_UnlockSpinlock(&gRenderer->ReleasedBuffersLock);
 }
 
+static inline void Rr_PrintBufferDestroyMessage(Rr_Buffer *Buffer)
+{
+    char DestroyMessage[512];
+    char *Cursor = DestroyMessage;
+    if (Buffer->Name[0] != '\0')
+    {
+        Cursor += sprintf(Cursor, "Rr_Buffer \"%s\" destroyed; ", Buffer->Name);
+    }
+    else
+    {
+        Cursor += sprintf(Cursor, "Rr_Buffer %p destroyed; ", (void *)Buffer);
+    }
+    Cursor +=
+        sprintf(Cursor, "allocations: %d, ", Buffer->AllocatedBufferCount);
+    Cursor += sprintf(Cursor, "flags: ");
+    char const *const FlagNames[] = {
+        "UNIFORM",  "STORAGE",   "VERTEX",  "INDEX",
+        "INDIRECT", "READBACK",  "STAGING", "STAGING_INCOHERENT",
+        "MAPPED",   "PER_FRAME",
+    };
+    for (size_t Index = 0; Index < RR_ARRAY_COUNT(FlagNames); ++Index)
+    {
+        size_t Bit = 1 << Index;
+        if (RR_HAS_BIT(Buffer->Flags, Bit))
+        {
+            Cursor += sprintf(Cursor, "%s ", FlagNames[Index]);
+        }
+    }
+    RR_LOG_INFO("%s", DestroyMessage);
+}
+
 void Rr_DestroyBuffer(Rr_Buffer *Buffer)
 {
     assert(Buffer && Buffer->AllocatedBufferCount > 0);
 
-    Rr_PrintDestroyMessage("Rr_Buffer", Buffer->Name, Buffer);
+    Rr_PrintBufferDestroyMessage(Buffer);
 
     for (uint32_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {

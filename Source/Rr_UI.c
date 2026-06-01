@@ -624,6 +624,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
 
     size_t AtlasBufferSize =
         (size_t)(ATLAS_SIZE * ATLAS_SIZE) * sizeof(uint32_t);
+    Rr_SetNextObjectName("Rr.UI.StagingBuffer");
     Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
         AtlasBufferSize,
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT);
@@ -8642,27 +8643,33 @@ void Rr_InitUI(void)
 
     uint32_t const DONT_CONVERT_TO_SRGB = 0;
     Specializations[0].Data = &DONT_CONVERT_TO_SRGB;
+    Rr_SetNextObjectName("Rr.UI.LinearPipeline");
     gUIContext->LinearPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
     uint32_t const CONVERT_TO_SRGB = 1;
     Specializations[0].Data = &CONVERT_TO_SRGB;
+    Rr_SetNextObjectName("Rr.UI.SRGBPipeline");
     gUIContext->SRGBPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
+    Rr_SetNextObjectName("Rr.UI.VertexBuffer");
     gUIContext->VertexBuffer = Rr_CreateBuffer(
         RR_MEGABYTES(8),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
+    Rr_SetNextObjectName("Rr.UI.IndexBuffer");
     gUIContext->IndexBuffer = Rr_CreateBuffer(
         RR_MEGABYTES(8),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
+    Rr_SetNextObjectName("Rr.UI.UniformBuffer");
     gUIContext->UniformBuffer = Rr_CreateBuffer(
         sizeof(Rr_UIUniformData),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
+    Rr_SetNextObjectName("Rr.UI.Sampler");
     gUIContext->Sampler = Rr_CreateSampler(&(Rr_SamplerInfo){
         .MinFilter = RR_FILTER_LINEAR,
         .MagFilter = RR_FILTER_LINEAR,

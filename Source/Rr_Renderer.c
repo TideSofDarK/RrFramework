@@ -1713,12 +1713,3 @@ void Rr_EndVulkanCommandBufferLabel(VkCommandBuffer CommandBuffer)
     Instance->CmdEndDebugUtilsLabelEXT(CommandBuffer);
 #endif
 }
-
-void Rr_PrintDestroyMessage(const char *Type, const char *Name, void *Address)
-{
-    RR_LOG_INFO(
-        "Destroying %s: { name: \"%s\", address = %p }",
-        Type,
-        Name[0] != '\0' ? Name : "UNNAMED",
-        (void *)Address);
-}

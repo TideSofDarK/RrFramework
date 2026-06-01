@@ -104,10 +104,4 @@ typedef struct Rr_Image Rr_Image;
 
 extern void Rr_DestroyImage(Rr_Image *Image);
 
-extern Rr_Image2D *Rr_CreateSTBImage2D(
-    struct Rr_Graph *Graph,
-    Rr_ImageFormat Format,
-    size_t DataSize,
-    const char *Data);
-
 extern Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_Image *Image);

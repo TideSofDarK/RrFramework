@@ -259,9 +259,4 @@ extern void Rr_BeginVulkanCommandBufferLabel(
 
 extern void Rr_EndVulkanCommandBufferLabel(VkCommandBuffer CommandBuffer);
 
-extern void Rr_PrintDestroyMessage(
-    const char *Type,
-    const char *Name,
-    void *Address);
-
 extern Rr_Renderer *gRenderer;

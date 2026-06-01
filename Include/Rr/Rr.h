@@ -26,7 +26,6 @@
 #include <Rr/Rr_Asset.h>
 #include <Rr/Rr_Buffer.h>
 #include <Rr/Rr_Defines.h>
-#include <Rr/Rr_GLTF.h>
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Image.h>
 #include <Rr/Rr_Log.h>
