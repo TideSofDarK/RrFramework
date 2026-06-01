@@ -23,12 +23,12 @@
 
 #include <Rr/Rr_App.h>
 
-struct Rr_Graph;
-struct Rr_Image;
-
 #define RR_FRAME_OVERLAP          2
 #define RR_MAX_COLOR_ATTACHMENTS  4
 #define RR_MAX_OBJECT_NAME_LENGTH 32
+
+struct Rr_Graph;
+struct Rr_Image;
 
 typedef struct Rr_Renderer Rr_Renderer;
 
@@ -196,34 +196,42 @@ struct Rr_DrawIndexedIndirectCommand
     uint32_t FirstInstance;
 };
 
-RR_EXTERN struct Rr_Image *Rr_GetSwapchainImage(void);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-RR_EXTERN Rr_PresentMode *Rr_GetAvailablePresentModes(uint32_t *Count);
+extern struct Rr_Image *RR_CC Rr_GetSwapchainImage(void);
 
-RR_EXTERN Rr_PresentMode Rr_GetPresentMode(void);
+extern Rr_PresentMode *RR_CC Rr_GetAvailablePresentModes(uint32_t *Count);
 
-RR_EXTERN const char *Rr_GetPresentModeString(Rr_PresentMode PresentMode);
+extern Rr_PresentMode RR_CC Rr_GetPresentMode(void);
 
-RR_EXTERN bool Rr_SetPresentMode(Rr_PresentMode PresentMode);
+extern const char *RR_CC Rr_GetPresentModeString(Rr_PresentMode PresentMode);
 
-RR_EXTERN bool Rr_HasQueue(Rr_QueueType QueueType);
+extern bool RR_CC Rr_SetPresentMode(Rr_PresentMode PresentMode);
 
-RR_EXTERN bool Rr_IsIntegratedGPU(void);
+extern bool RR_CC Rr_HasQueue(Rr_QueueType QueueType);
 
-RR_EXTERN size_t Rr_GetMaxUniformRange(void);
+extern bool RR_CC Rr_IsIntegratedGPU(void);
 
-RR_EXTERN size_t Rr_GetUniformAlignment(void);
+extern size_t RR_CC Rr_GetMaxUniformRange(void);
 
-RR_EXTERN size_t Rr_GetStorageAlignment(void);
+extern size_t RR_CC Rr_GetUniformAlignment(void);
 
-RR_EXTERN size_t Rr_GetMaxComputeSharedMemorySize(void);
+extern size_t RR_CC Rr_GetStorageAlignment(void);
 
-RR_EXTERN size_t Rr_GetMaxComputeWorkgroupInvocations(void);
+extern size_t RR_CC Rr_GetMaxComputeSharedMemorySize(void);
 
-RR_EXTERN bool Rr_IsSRGBFormat(Rr_ImageFormat Format);
+extern size_t RR_CC Rr_GetMaxComputeWorkgroupInvocations(void);
 
-RR_EXTERN void Rr_SetNextObjectName(const char *Name);
+extern bool RR_CC Rr_IsSRGBFormat(Rr_ImageFormat Format);
 
-RR_EXTERN void Rr_SetNextObjectNameF(const char *Format, ...);
+extern void RR_CC Rr_SetNextObjectName(const char *Name);
+
+extern void RR_CC Rr_SetNextObjectNameF(const char *Format, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -241,25 +241,34 @@ struct Rr_BindingSet
     Rr_Binding *Bindings;
 };
 
-RR_EXTERN Rr_ComputePipeline *Rr_CreateComputePipeline(
-    Rr_ShaderInfo const *ShaderInfo);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-RR_EXTERN Rr_ComputePipeline *Rr_CreateComputePipelineWithLayout(
+extern Rr_ComputePipeline *RR_CC
+Rr_CreateComputePipeline(Rr_ShaderInfo const *ShaderInfo);
+
+extern Rr_ComputePipeline *RR_CC Rr_CreateComputePipelineWithLayout(
     Rr_ShaderInfo const *ShaderInfo,
     Rr_PipelineLayout *PipelineLayout);
 
-RR_EXTERN void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline);
+extern void RR_CC
+Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline);
 
-RR_EXTERN Rr_ColorTargetBlend Rr_AlphaBlend(void);
+extern Rr_ColorTargetBlend RR_CC Rr_AlphaBlend(void);
 
-RR_EXTERN Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
-    Rr_GraphicsPipelineCreateInfo const *CreateInfo);
+extern Rr_GraphicsPipeline *RR_CC
+Rr_CreateGraphicsPipeline(Rr_GraphicsPipelineCreateInfo const *CreateInfo);
 
-RR_EXTERN Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
+extern Rr_GraphicsPipeline *RR_CC Rr_CreateGraphicsPipelineWithLayout(
     Rr_GraphicsPipelineCreateInfo const *CreateInfo,
     Rr_PipelineLayout *PipelineLayout);
 
-RR_EXTERN void Rr_ReleaseGraphicsPipeline(
-    Rr_GraphicsPipeline *GraphicsPipeline);
+extern void RR_CC
+Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -35,6 +35,8 @@
 
 #include <vulkan/vulkan_win32.h>
 
+/* TODO: Handle resize window flag. */
+
 #define RR_WIN32_FULLSCREEN_EXSTYLE (LONG)(WS_EX_APPWINDOW | WS_EX_ACCEPTFILES)
 #define RR_WIN32_FULLSCREEN_STYLE \
     (LONG)(WS_VISIBLE | WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN)

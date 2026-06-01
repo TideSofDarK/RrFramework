@@ -47,8 +47,6 @@ typedef enum
 } Rr_LogCategories;
 typedef uint32_t Rr_LogCategory;
 
-RR_EXTERN char const *Rr_LogCategoryString(Rr_LogCategory Category);
-
 typedef enum
 {
     RR_LOG_PRIORITY_NONE,
@@ -59,7 +57,9 @@ typedef enum
 } Rr_LogPriorities;
 typedef uint32_t Rr_LogPriority;
 
-RR_EXTERN void Rr_SetLogPriority(Rr_LogPriority Priority);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef void (*Rr_LogFunc)(
     uint32_t Category,
@@ -67,22 +67,27 @@ typedef void (*Rr_LogFunc)(
     char const *Format,
     va_list Args);
 
-RR_EXTERN void Rr_SetLogFunction(Rr_LogFunc Function);
+extern char const *RR_CC Rr_LogCategoryString(Rr_LogCategory Category);
 
-RR_EXTERN Rr_LogFunc Rr_GetDefaultLogFunction(void);
+extern void RR_CC Rr_SetLogPriority(Rr_LogPriority Priority);
 
-RR_EXTERN void Rr_Log(
-    uint32_t Category,
-    Rr_LogPriority Priority,
-    char const *Format,
-    ...);
+extern void RR_CC Rr_SetLogFunction(Rr_LogFunc Function);
 
-RR_EXTERN void Rr_LogError(uint32_t Category, char const *Format, ...);
+extern Rr_LogFunc RR_CC Rr_GetDefaultLogFunction(void);
 
-RR_EXTERN void Rr_LogWarning(uint32_t Category, char const *Format, ...);
+extern void RR_CC
+Rr_Log(uint32_t Category, Rr_LogPriority Priority, char const *Format, ...);
 
-RR_EXTERN void Rr_LogInfo(uint32_t Category, char const *Format, ...);
+extern void RR_CC Rr_LogError(uint32_t Category, char const *Format, ...);
 
-RR_EXTERN void Rr_LogTrace(uint32_t Category, char const *Format, ...);
+extern void RR_CC Rr_LogWarning(uint32_t Category, char const *Format, ...);
+
+extern void RR_CC Rr_LogInfo(uint32_t Category, char const *Format, ...);
+
+extern void RR_CC Rr_LogTrace(uint32_t Category, char const *Format, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -24,6 +24,9 @@
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Asset.h>
 
+#define RR_UI_MIN_FONT_SIZE (6.0f)
+#define RR_UI_MAX_FONT_SIZE (48.0f)
+
 struct Rr_Renderer;
 struct Rr_String;
 struct Rr_Graph;
@@ -33,11 +36,7 @@ typedef uint64_t Rr_UIHash;
 typedef uint16_t Rr_UIIndex;
 
 typedef struct Rr_UIContext Rr_UIContext;
-
 typedef struct Rr_UIFont Rr_UIFont;
-
-#define RR_UI_MIN_FONT_SIZE (6.0f)
-#define RR_UI_MAX_FONT_SIZE (48.0f)
 
 typedef struct Rr_UIRange Rr_UIRange;
 struct Rr_UIRange
@@ -133,24 +132,6 @@ struct Rr_UIColors
     Rr_Vec4 SelectedTextForeground;
 };
 
-RR_EXTERN Rr_UIFont *Rr_UICreateFont(
-    size_t TTFSize,
-    void const *TTFData,
-    float FontSize);
-
-RR_EXTERN Rr_UIFont *Rr_UICreateFontRanges(
-    size_t TTFSize,
-    void const *TTFData,
-    float FontSize,
-    size_t CodepointRangeCount,
-    Rr_UIRange const *CodepointRanges);
-
-RR_EXTERN void Rr_UIReleaseFont(Rr_UIFont *Font);
-
-RR_EXTERN void Rr_UIPushFont(Rr_UIFont *Font);
-
-RR_EXTERN void Rr_UIPopFont(void);
-
 typedef enum
 {
     RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT = (1 << 0),
@@ -180,125 +161,140 @@ typedef enum
 } Rr_UIInputFieldFlagsBits;
 typedef uint32_t Rr_UIInputFieldFlags;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef bool (*Rr_UIInputFieldFilterFunc)(size_t Length, char const *);
 
-RR_EXTERN Rr_UIStyle *Rr_UIGetStyle(void);
+extern Rr_UIFont *RR_CC
+Rr_UICreateFont(size_t TTFSize, void const *TTFData, float FontSize);
 
-RR_EXTERN Rr_UIColors *Rr_UIGetColors(void);
+extern Rr_UIFont *RR_CC Rr_UICreateFontRanges(
+    size_t TTFSize,
+    void const *TTFData,
+    float FontSize,
+    size_t CodepointRangeCount,
+    Rr_UIRange const *CodepointRanges);
 
-RR_EXTERN Rr_UIPrimitive
+extern void RR_CC Rr_UIReleaseFont(Rr_UIFont *Font);
+
+extern void RR_CC Rr_UIPushFont(Rr_UIFont *Font);
+
+extern void RR_CC Rr_UIPopFont(void);
+
+extern Rr_UIStyle *RR_CC Rr_UIGetStyle(void);
+
+extern Rr_UIColors *RR_CC Rr_UIGetColors(void);
+
+extern Rr_UIPrimitive RR_CC
 Rr_UIReservePrimitive(size_t VertexCount, size_t IndexCount);
 
-RR_EXTERN void Rr_UIDrawTriangleVertices(Rr_UIVertex const *Vertices);
+extern void RR_CC Rr_UIDrawTriangleVertices(Rr_UIVertex const *Vertices);
 
-RR_EXTERN void Rr_UIDrawTriangleFilled(
-    Rr_Vec2 const *Positions,
-    Rr_Vec4 const *Color);
+extern void RR_CC
+Rr_UIDrawTriangleFilled(Rr_Vec2 const *Positions, Rr_Vec4 const *Color);
 
-RR_EXTERN void Rr_UIDrawFitTriangleFilled(
+extern void RR_CC Rr_UIDrawFitTriangleFilled(
     Rr_Vec2 Offset,
     float Size,
     float Angle,
     Rr_Vec4 const *Color);
 
-RR_EXTERN void Rr_UIDrawEquilateralTriangleFilled(
+extern void RR_CC Rr_UIDrawEquilateralTriangleFilled(
     Rr_Vec2 Offset,
     float Size,
     float Angle,
     Rr_Vec4 const *Color);
 
-RR_EXTERN void Rr_UIDrawCircle(
+extern void RR_CC Rr_UIDrawCircle(
     Rr_Vec2 Offset,
     float Radius,
     float Thickness,
     Rr_Vec4 const *Color);
 
-RR_EXTERN void Rr_UIDrawCircleFilled(
-    Rr_Vec2 Offset,
-    float Radius,
-    Rr_Vec4 const *Color);
+extern void RR_CC
+Rr_UIDrawCircleFilled(Rr_Vec2 Offset, float Radius, Rr_Vec4 const *Color);
 
-RR_EXTERN void Rr_UIDrawQuadVertices(Rr_UIVertex const *Vertices);
+extern void RR_CC Rr_UIDrawQuadVertices(Rr_UIVertex const *Vertices);
 
-RR_EXTERN Rr_Vec2 Rr_UIGetCursor(void);
+extern Rr_Vec2 RR_CC Rr_UIGetCursor(void);
 
-RR_EXTERN void Rr_UIAdvance(Rr_Vec2 RigidSize, Rr_Vec2 FlexibleSize);
+extern void RR_CC Rr_UIAdvance(Rr_Vec2 RigidSize, Rr_Vec2 FlexibleSize);
 
-RR_EXTERN void Rr_UIPushID(char const *IDString);
+extern void RR_CC Rr_UIPushID(char const *IDString);
 
-RR_EXTERN void Rr_UIPopID(void);
+extern void RR_CC Rr_UIPopID(void);
 
-RR_EXTERN void Rr_UIPushWindowPadding(Rr_Vec2 WindowPadding);
+extern void RR_CC Rr_UIPushWindowPadding(Rr_Vec2 WindowPadding);
 
-RR_EXTERN void Rr_UIPopWindowPadding(void);
+extern void RR_CC Rr_UIPopWindowPadding(void);
 
-RR_EXTERN void Rr_UIPushContentsMargin(Rr_Vec2 ContentsMargin);
+extern void RR_CC Rr_UIPushContentsMargin(Rr_Vec2 ContentsMargin);
 
-RR_EXTERN void Rr_UIPopContentsMargin(void);
+extern void RR_CC Rr_UIPopContentsMargin(void);
 
-RR_EXTERN void Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places);
+extern void RR_CC Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places);
 
-RR_EXTERN void Rr_UIPopFormatFloatDecimalPlaces(void);
+extern void RR_CC Rr_UIPopFormatFloatDecimalPlaces(void);
 
-RR_EXTERN void Rr_UISetNextWindowOffset(Rr_Vec2 Offset);
+extern void RR_CC Rr_UISetNextWindowOffset(Rr_Vec2 Offset);
 
-RR_EXTERN void Rr_UISetNextWindowOpenOffset(Rr_Vec2 Offset);
+extern void RR_CC Rr_UISetNextWindowOpenOffset(Rr_Vec2 Offset);
 
-RR_EXTERN void Rr_UISetNextWindowExtent(Rr_Vec2 Extent);
+extern void RR_CC Rr_UISetNextWindowExtent(Rr_Vec2 Extent);
 
-RR_EXTERN void Rr_UISetNextWindowMinExtent(Rr_Vec2 Extent);
+extern void RR_CC Rr_UISetNextWindowMinExtent(Rr_Vec2 Extent);
 
-RR_EXTERN void Rr_UISetNextWindowMaxExtent(Rr_Vec2 Extent);
+extern void RR_CC Rr_UISetNextWindowMaxExtent(Rr_Vec2 Extent);
 
-RR_EXTERN void Rr_UISetNextWindowCreateCollapsed(bool Collapsed);
+extern void RR_CC Rr_UISetNextWindowCreateCollapsed(bool Collapsed);
 
-RR_EXTERN bool Rr_UIBeginWindowEx(
-    char const *Title,
-    bool *Open,
-    Rr_UIWindowFlags Flags);
+extern bool RR_CC
+Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags);
 
-RR_EXTERN bool Rr_UIBeginWindow(char const *Title);
+extern bool RR_CC Rr_UIBeginWindow(char const *Title);
 
-RR_EXTERN void Rr_UIEndWindow(void);
+extern void RR_CC Rr_UIEndWindow(void);
 
-RR_EXTERN void Rr_UISetNextTreeExpanded(void);
+extern void RR_CC Rr_UISetNextTreeExpanded(void);
 
-RR_EXTERN void Rr_UISetNextTreeCollapsed(void);
+extern void RR_CC Rr_UISetNextTreeCollapsed(void);
 
-RR_EXTERN bool Rr_UIBeginTree(char const *Title);
+extern bool RR_CC Rr_UIBeginTree(char const *Title);
 
-RR_EXTERN void Rr_UIEndTree(void);
+extern void RR_CC Rr_UIEndTree(void);
 
-RR_EXTERN void Rr_UIPushWidgetExtent(Rr_Vec2 Extent);
+extern void RR_CC Rr_UIPushWidgetExtent(Rr_Vec2 Extent);
 
-RR_EXTERN void Rr_UIPopWidgetExtent(void);
+extern void RR_CC Rr_UIPopWidgetExtent(void);
 
-RR_EXTERN void Rr_UISeparator(void);
+extern void RR_CC Rr_UISeparator(void);
 
-RR_EXTERN void Rr_UIImageEx(
+extern void RR_CC Rr_UIImageEx(
     struct Rr_Image *Image,
     Rr_Vec2 Extent,
     Rr_Vec2 UVMin,
     Rr_Vec2 UVMax);
 
-RR_EXTERN void Rr_UIText(char const *Text);
+extern void RR_CC Rr_UIText(char const *Text);
 
-RR_EXTERN void Rr_UITextF(char const *Format, ...);
+extern void RR_CC Rr_UITextF(char const *Format, ...);
 
-RR_EXTERN void Rr_UITextWrapped(char const *Text, float WrapWidth);
+extern void RR_CC Rr_UITextWrapped(char const *Text, float WrapWidth);
 
-RR_EXTERN void Rr_UILabelText(char const *Title, char const *Text);
+extern void RR_CC Rr_UILabelText(char const *Title, char const *Text);
 
-RR_EXTERN bool Rr_UIButton(char const *Title);
+extern bool RR_CC Rr_UIButton(char const *Title);
 
-RR_EXTERN bool Rr_UIRadioButton(
+extern bool RR_CC Rr_UIRadioButton(
     char const *Title,
     int32_t *SelectedOption,
     int32_t ThisOption);
 
-RR_EXTERN bool Rr_UICheckbox(char const *Title, bool *Checked);
+extern bool RR_CC Rr_UICheckbox(char const *Title, bool *Checked);
 
-RR_EXTERN bool Rr_UIInputField(
+extern bool RR_CC Rr_UIInputField(
     char const *Title,
     size_t BufferCapacity,
     char *Buffer,
@@ -306,117 +302,107 @@ RR_EXTERN bool Rr_UIInputField(
     Rr_UIInputFieldFilterFunc FilterFunc,
     Rr_UIInputFieldFlags Flags);
 
-RR_EXTERN bool Rr_UIInputText(
-    char const *Title,
-    size_t BufferCapacity,
-    char *Buffer);
+extern bool RR_CC
+Rr_UIInputText(char const *Title, size_t BufferCapacity, char *Buffer);
 
-RR_EXTERN bool Rr_UIInputFloat(char const *Title, float *Value);
-RR_EXTERN bool Rr_UIInputFloatRange(
-    char const *Title,
-    float *Value,
-    float Min,
-    float Max);
-RR_EXTERN bool Rr_UIInputFloatZO(char const *Title, float *Value);
-RR_EXTERN bool Rr_UIInputFloatNO(char const *Title, float *Value);
+extern bool RR_CC Rr_UIInputFloat(char const *Title, float *Value);
+extern bool RR_CC
+Rr_UIInputFloatRange(char const *Title, float *Value, float Min, float Max);
+extern bool RR_CC Rr_UIInputFloatZO(char const *Title, float *Value);
+extern bool RR_CC Rr_UIInputFloatNO(char const *Title, float *Value);
 
-RR_EXTERN bool Rr_UIInputFloat2(char const *Title, float *Values);
-RR_EXTERN bool Rr_UIInputFloat2Range(
+extern bool RR_CC Rr_UIInputFloat2(char const *Title, float *Values);
+extern bool RR_CC Rr_UIInputFloat2Range(
     char const *Title,
     float *Values,
     float const *MinValues,
     float const *MaxValues);
-RR_EXTERN bool Rr_UIInputFloat2ZO(char const *Title, float *Values);
-RR_EXTERN bool Rr_UIInputFloat2NO(char const *Title, float *Values);
+extern bool RR_CC Rr_UIInputFloat2ZO(char const *Title, float *Values);
+extern bool RR_CC Rr_UIInputFloat2NO(char const *Title, float *Values);
 
-RR_EXTERN bool Rr_UIInputFloat3(char const *Title, float *Values);
-RR_EXTERN bool Rr_UIInputFloat3Range(
+extern bool RR_CC Rr_UIInputFloat3(char const *Title, float *Values);
+extern bool RR_CC Rr_UIInputFloat3Range(
     char const *Title,
     float *Values,
     float const *MinValues,
     float const *MaxValues);
-RR_EXTERN bool Rr_UIInputFloat3ZO(char const *Title, float *Values);
-RR_EXTERN bool Rr_UIInputFloat3NO(char const *Title, float *Values);
+extern bool RR_CC Rr_UIInputFloat3ZO(char const *Title, float *Values);
+extern bool RR_CC Rr_UIInputFloat3NO(char const *Title, float *Values);
 
-RR_EXTERN bool Rr_UIInputFloat4(char const *Title, float *Values);
-RR_EXTERN bool Rr_UIInputFloat4Range(
+extern bool RR_CC Rr_UIInputFloat4(char const *Title, float *Values);
+extern bool RR_CC Rr_UIInputFloat4Range(
     char const *Title,
     float *Values,
     float const *MinValues,
     float const *MaxValues);
-RR_EXTERN bool Rr_UIInputFloat4ZO(char const *Title, float *Values);
-RR_EXTERN bool Rr_UIInputFloat4NO(char const *Title, float *Values);
+extern bool RR_CC Rr_UIInputFloat4ZO(char const *Title, float *Values);
+extern bool RR_CC Rr_UIInputFloat4NO(char const *Title, float *Values);
 
-RR_EXTERN bool Rr_UIInputFloat2x2(char const *Title, float *Values);
+extern bool RR_CC Rr_UIInputFloat2x2(char const *Title, float *Values);
 
-RR_EXTERN bool Rr_UIInputFloat3x3(char const *Title, float *Values);
+extern bool RR_CC Rr_UIInputFloat3x3(char const *Title, float *Values);
 
-RR_EXTERN bool Rr_UIInputFloat4x4(char const *Title, float *Values);
+extern bool RR_CC Rr_UIInputFloat4x4(char const *Title, float *Values);
 
-RR_EXTERN bool Rr_UIInputInt(char const *Title, int32_t *Value);
+extern bool RR_CC Rr_UIInputInt(char const *Title, int32_t *Value);
 
-RR_EXTERN bool Rr_UIInputIntRange(
-    char const *Title,
-    int32_t *Value,
-    int32_t Min,
-    int32_t Max);
+extern bool RR_CC
+Rr_UIInputIntRange(char const *Title, int32_t *Value, int32_t Min, int32_t Max);
 
-RR_EXTERN bool Rr_UIInputInt2(char const *Title, int32_t *Values);
+extern bool RR_CC Rr_UIInputInt2(char const *Title, int32_t *Values);
 
-RR_EXTERN bool Rr_UIInputInt3(char const *Title, int32_t *Values);
+extern bool RR_CC Rr_UIInputInt3(char const *Title, int32_t *Values);
 
-RR_EXTERN bool Rr_UIInputInt4(char const *Title, int32_t *Values);
+extern bool RR_CC Rr_UIInputInt4(char const *Title, int32_t *Values);
 
-RR_EXTERN bool Rr_UIInputUnsignedInt(char const *Title, uint32_t *Value);
+extern bool RR_CC Rr_UIInputUnsignedInt(char const *Title, uint32_t *Value);
 
-RR_EXTERN bool Rr_UIInputUnsignedIntRange(
+extern bool RR_CC Rr_UIInputUnsignedIntRange(
     char const *Title,
     uint32_t *Value,
     uint32_t Min,
     uint32_t Max);
 
-RR_EXTERN bool Rr_UIInputColor3(char const *Title, float *Channels);
+extern bool RR_CC Rr_UIInputColor3(char const *Title, float *Channels);
 
-RR_EXTERN bool Rr_UIInputColor4(char const *Title, float *Channels);
+extern bool RR_CC Rr_UIInputColor4(char const *Title, float *Channels);
 
-RR_EXTERN bool Rr_UICombobox(
+extern bool RR_CC Rr_UICombobox(
     char const *Title,
     uint32_t OptionCount,
     char const *const *Options,
     uint32_t *SelectedIndex);
 
-RR_EXTERN bool Rr_UISliderInt(
-    char const *Title,
-    int32_t *Value,
-    int32_t Min,
-    int32_t Max);
+extern bool RR_CC
+Rr_UISliderInt(char const *Title, int32_t *Value, int32_t Min, int32_t Max);
 
-RR_EXTERN bool Rr_UISliderUnsignedInt(
+extern bool RR_CC Rr_UISliderUnsignedInt(
     char const *Title,
     uint32_t *Value,
     uint32_t Min,
     uint32_t Max);
 
-RR_EXTERN bool Rr_UISliderFloat(
-    char const *Title,
-    float *Value,
-    float Min,
-    float Max);
+extern bool RR_CC
+Rr_UISliderFloat(char const *Title, float *Value, float Min, float Max);
 
-RR_EXTERN void Rr_UIBeginHorizontal(void);
+extern void RR_CC Rr_UIBeginHorizontal(void);
 
-RR_EXTERN void Rr_UIEndHorizontal(void);
+extern void RR_CC Rr_UIEndHorizontal(void);
 
-RR_EXTERN bool Rr_UIWantMouseCapture(void);
+extern bool RR_CC Rr_UIWantMouseCapture(void);
 
-RR_EXTERN bool Rr_UIWantKeyboardCapture(void);
+extern bool RR_CC Rr_UIWantKeyboardCapture(void);
 
-RR_EXTERN float Rr_UICurrentFontSize(void);
+extern float RR_CC Rr_UICurrentFontSize(void);
 
-RR_EXTERN float Rr_UICurrentLineHeight(void);
+extern float RR_CC Rr_UICurrentLineHeight(void);
 
-RR_EXTERN void Rr_UISetDefaultTheme(void);
+extern void RR_CC Rr_UISetDefaultTheme(void);
 
-RR_EXTERN void Rr_UIDebugOverlay(void);
+extern void RR_CC Rr_UIDebugOverlay(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

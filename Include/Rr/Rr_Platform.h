@@ -288,36 +288,44 @@ struct Rr_Event
     };
 };
 
-RR_EXTERN bool Rr_IsScancodePressed(Rr_Scancode Scancode);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-RR_EXTERN Rr_Vec2 Rr_GetMousePosition(void);
+extern bool RR_CC Rr_IsScancodePressed(Rr_Scancode Scancode);
 
-RR_EXTERN Rr_Vec2 Rr_GetMousePositionDelta(void);
+extern Rr_Vec2 RR_CC Rr_GetMousePosition(void);
 
-RR_EXTERN Rr_MouseButtonFlags Rr_GetMouseState(void);
+extern Rr_Vec2 RR_CC Rr_GetMousePositionDelta(void);
 
-RR_EXTERN void Rr_SetRelativeMouseMode(bool Relative);
+extern Rr_MouseButtonFlags RR_CC Rr_GetMouseState(void);
 
-RR_EXTERN void Rr_SetCursor(Rr_CursorType Type);
+extern void RR_CC Rr_SetRelativeMouseMode(bool Relative);
 
-RR_EXTERN bool Rr_IsWindowMinimized(void);
+extern void RR_CC Rr_SetCursor(Rr_CursorType Type);
 
-RR_EXTERN bool Rr_IsWindowFullscreen(void);
+extern bool RR_CC Rr_IsWindowMinimized(void);
 
-RR_EXTERN void Rr_SetWindowFullscreen(bool Fullscreen);
+extern bool RR_CC Rr_IsWindowFullscreen(void);
 
-RR_EXTERN Rr_IntVec2 Rr_GetWindowSize(void);
+extern void RR_CC Rr_SetWindowFullscreen(bool Fullscreen);
 
-RR_EXTERN void Rr_SetWindowSize(Rr_IntVec2 Size);
+extern Rr_IntVec2 RR_CC Rr_GetWindowSize(void);
 
-RR_EXTERN void Rr_SetWindowTitle(const char *Title);
+extern void RR_CC Rr_SetWindowSize(Rr_IntVec2 Size);
 
-RR_EXTERN Rr_IntVec2 Rr_GetDisplaySize(void);
+extern void RR_CC Rr_SetWindowTitle(const char *Title);
 
-RR_EXTERN float Rr_GetDisplayScale(void);
+extern Rr_IntVec2 RR_CC Rr_GetDisplaySize(void);
 
-RR_EXTERN void Rr_SetClipboardText(const char *CString);
+extern float RR_CC Rr_GetDisplayScale(void);
 
-RR_EXTERN char const *Rr_GetClipboardText(Rr_Arena *Arena);
+extern void RR_CC Rr_SetClipboardText(const char *CString);
+
+extern char const *RR_CC Rr_GetClipboardText(Rr_Arena *Arena);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

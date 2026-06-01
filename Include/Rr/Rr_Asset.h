@@ -97,6 +97,14 @@ typedef struct Rr_AssetRef
 
 #endif
 
-RR_EXTERN Rr_Asset Rr_LoadAsset(Rr_AssetRef AssetRef);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern Rr_Asset RR_CC Rr_LoadAsset(Rr_AssetRef AssetRef);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

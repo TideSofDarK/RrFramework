@@ -27,29 +27,36 @@ struct Rr_PipelineSpecialization;
 struct Rr_ShaderInfo;
 struct Rr_GraphicsPipelineCreateInfo;
 
-RR_EXTERN size_t Rr_SerializePipelineSpecialization(
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern size_t RR_CC Rr_SerializePipelineSpecialization(
     void *Dst,
     struct Rr_PipelineSpecialization const *Src,
     size_t Count);
 
-RR_EXTERN struct Rr_PipelineSpecialization *
+extern struct Rr_PipelineSpecialization *RR_CC
 Rr_DeserializePipelineSpecialization(void *Buffer, size_t Count);
 
-RR_EXTERN size_t Rr_SerializeShaderInfo(
+extern size_t RR_CC Rr_SerializeShaderInfo(
     void *Dst,
     struct Rr_ShaderInfo const *Src,
     size_t Count);
 
-RR_EXTERN struct Rr_ShaderInfo *Rr_DeserializeShaderInfo(
-    void *Buffer,
-    size_t Count);
+extern struct Rr_ShaderInfo *RR_CC
+Rr_DeserializeShaderInfo(void *Buffer, size_t Count);
 
-RR_EXTERN size_t Rr_SerializeGraphicsPipelineCreateInfo(
+extern size_t RR_CC Rr_SerializeGraphicsPipelineCreateInfo(
     void *Dst,
     struct Rr_GraphicsPipelineCreateInfo const *Src,
     size_t Count);
 
-RR_EXTERN struct Rr_GraphicsPipelineCreateInfo *
+extern struct Rr_GraphicsPipelineCreateInfo *RR_CC
 Rr_DeserializeGraphicsPipelineCreateInfo(void *Buffer, size_t Count);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

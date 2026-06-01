@@ -30,6 +30,10 @@
 #include <cstdint>
 #endif
 
+#ifndef RR_CC
+#define RR_CC
+#endif
+
 #ifdef __cplusplus
 #define RR_EXTERN extern "C"
 #else

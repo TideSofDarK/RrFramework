@@ -42,19 +42,25 @@ typedef enum
 } Rr_BufferFlagsBits;
 typedef uint32_t Rr_BufferFlags;
 
-RR_EXTERN Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-RR_EXTERN void Rr_ReleaseBuffer(Rr_Buffer *Buffer);
+extern Rr_Buffer *RR_CC Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags);
 
-RR_EXTERN void *Rr_GetMappedBufferData(Rr_Buffer *Buffer);
+extern void RR_CC Rr_ReleaseBuffer(Rr_Buffer *Buffer);
 
-RR_EXTERN void *Rr_MapBuffer(Rr_Buffer *Buffer);
+extern void *RR_CC Rr_GetMappedBufferData(Rr_Buffer *Buffer);
 
-RR_EXTERN void Rr_UnmapBuffer(Rr_Buffer *Buffer);
+extern void *RR_CC Rr_MapBuffer(Rr_Buffer *Buffer);
 
-RR_EXTERN void Rr_FlushBufferRange(
-    Rr_Buffer *Buffer,
-    uint64_t Offset,
-    uint64_t Size);
+extern void RR_CC Rr_UnmapBuffer(Rr_Buffer *Buffer);
+
+extern void RR_CC
+Rr_FlushBufferRange(Rr_Buffer *Buffer, uint64_t Offset, uint64_t Size);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
