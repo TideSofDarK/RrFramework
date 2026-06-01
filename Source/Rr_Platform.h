@@ -51,6 +51,8 @@ struct Rr_Platform
 
 extern Rr_Platform gPlatform;
 
+extern void Rr_ReleaseAllInput(void);
+
 /* Events */
 
 extern void Rr_AddQuitRequestedEvent(void);

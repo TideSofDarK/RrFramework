@@ -8551,7 +8551,7 @@ void Rr_InitUI(void)
     gUIContext->NextWindowOpenOffset = Rr_V2F(INFINITY);
     gUIContext->NextWindowPadding = Rr_V2F(INFINITY);
 
-    float DefaultFontSize = 10.0f * Rr_GetWindowContentsScale();
+    float DefaultFontSize = 10.0f * Rr_GetDisplayScale();
     Rr_Asset FontAsset = Rr_LoadAsset(RR_BUILTIN_SOURCESERIF4_TTF);
     gUIContext->DefaultFont =
         Rr_UICreateFont(FontAsset.Size, FontAsset.Pointer, DefaultFontSize);

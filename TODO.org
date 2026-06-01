@@ -37,20 +37,24 @@
 - [X] Framebuffers/SyncStates require different hash table implementation. Current implementation is a mess...
 - [ ] Minimal error handling pass.
       Implement Rr_GetErrorString().
-  1) Image/buffer creation.
-  2) Graph node creation.
-  3) Binding resources.
+	1) Image/buffer creation.
+	2) Graph node creation.
+	3) Binding resources.
+- [ ] Documentation.
+- [ ] Custom assertions.
 - [ ] Support for immutable buffers/images that don't require synchronization.
 - [ ] Public API should use const where applicable.
 - [ ] Does PushXXXIntoHive need to return iterator?
 - [ ] Releasing same resource (buffer, image, etc) twice leads to annoying bugs.
-- [ ] Locking gRenderer->Arena is annoying...
+- [ ] Implement thread-safe arenas for permanent storage.
+- [ ] Remove GLTF API.
+- [ ] Replace VMA with custom allocator.
+- [ ] Replace hash trie usage with Rr_HashTable.h where applicable.
 
 * Features
 
 ** User Interface
 
-- [ ] Hide flexible widgets properly when layout lacks available width.
 - [X] Many newlines and scroll in text input bug.
 - [X] Shift-Enter doesn't work.
 - [X] Enter at cursor 0 doesn't work.
@@ -74,7 +78,6 @@
       Put colors into an array for easier conversion. 
 - [X] Draggable scalars.
 - [X] Clamps/ratios for draggable scalars.
-- [ ] Some options for horizontal child layouts + asserts.
 - [X] Combobox.
 - [X] Auto-resizing windows.
 - [X] Sliders.
@@ -83,29 +86,28 @@
 - [X] Radio buttons.
 - [X] Nested windows.
 - [X] Swap font rendering with stb_truetype.
+- [ ] Finally fix flickering.
+- [ ] Some options for horizontal child layouts + asserts.
+- [ ] Hide flexible widgets properly when layout lacks available width.
 - [ ] More animations.
-- [ ] Less flicker on auto-resize etc.
 - [ ] Proper stack data structure.
 - [ ] Horizontal scrollbar.
 
 ** Debug
 
+- [X] Vulkan markers.
 - [ ] Very basic profilers for CPU/GPU.
 - [ ] Memory arena registry and maybe some kind of memory profiler.
-- [X] Vulkan markers.
 - [ ] Allow inserting debug markers not associated with nodes.
 - [ ] Separate define for Vulkan markers.
 
-** GLTF
-
-- [ ] Add support for skeletal animation.
-- [ ] Examine current implementation and see if it's good enough.
-
 ** Examples
 
-- [ ] Pre-rendered depth.
-- [ ] Dissolving text.
-- [X] Modern rendering: shadows, rendering to cubemap, post-processing, etc.
+- [X] Modern Rendering
+- [ ] Modern Rendering: Actually Finish It This Time
+- [ ] Pre-rendered Depth
+- [ ] Particles
+- [ ] Light Space Perspective Shadow Maps
 
 ** Low-priority
 
@@ -117,7 +119,6 @@
       Solution: use size_t for user-provided counts (i.e. number of color targets).
       Otherwise stick to types that correspond to underlying Vulkan structs.
 - [X] With GLFW swapchain gets recreated immediately after launch.
-- [ ] Replace VMA with custom allocator (i.e. TLSF algorithm).
-- [ ] Own implementation of Windows/Linux platform layers.
+- [X] Own implementation of Windows/Linux platform layers.
 - [ ] Macro-based stuff should probably be internal.
       The goal is API that's 100% accessible from other languages.

@@ -326,7 +326,7 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
     };
 }
 
-float Rr_GetWindowContentsScale(void)
+float Rr_GetDisplayScale(void)
 {
     return SDL_GetWindowDisplayScale(gSDL.Window);
 }

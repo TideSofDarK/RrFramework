@@ -1027,7 +1027,7 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
         (int32_t)DevMode.dmPelsHeight);
 }
 
-float Rr_GetWindowContentsScale(void)
+float Rr_GetDisplayScale(void)
 {
     HDC DeviceContext = GetDC(gWin32.Window);
     LONG DensityPerInch = GetDeviceCaps(DeviceContext, LOGPIXELSY);

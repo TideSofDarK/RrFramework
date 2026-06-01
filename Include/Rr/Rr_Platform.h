@@ -21,8 +21,8 @@
 #ifndef RR_PLATFORM_H
 #define RR_PLATFORM_H
 
-#include <Rr/Rr_Math.h>
 #include <Rr/Rr_Arena.h>
+#include <Rr/Rr_Math.h>
 
 #define RR_DOUBLE_CLICK_TIME_MS (200)
 
@@ -288,8 +288,6 @@ struct Rr_Event
     };
 };
 
-RR_EXTERN void Rr_ReleaseAllInput(void);
-
 RR_EXTERN bool Rr_IsScancodePressed(Rr_Scancode Scancode);
 
 RR_EXTERN Rr_Vec2 Rr_GetMousePosition(void);
@@ -297,6 +295,10 @@ RR_EXTERN Rr_Vec2 Rr_GetMousePosition(void);
 RR_EXTERN Rr_Vec2 Rr_GetMousePositionDelta(void);
 
 RR_EXTERN Rr_MouseButtonFlags Rr_GetMouseState(void);
+
+RR_EXTERN void Rr_SetRelativeMouseMode(bool Relative);
+
+RR_EXTERN void Rr_SetCursor(Rr_CursorType Type);
 
 RR_EXTERN bool Rr_IsWindowMinimized(void);
 
@@ -306,17 +308,13 @@ RR_EXTERN void Rr_SetWindowFullscreen(bool Fullscreen);
 
 RR_EXTERN Rr_IntVec2 Rr_GetWindowSize(void);
 
+RR_EXTERN void Rr_SetWindowSize(Rr_IntVec2 Size);
+
 RR_EXTERN void Rr_SetWindowTitle(const char *Title);
 
 RR_EXTERN Rr_IntVec2 Rr_GetDisplaySize(void);
 
-RR_EXTERN float Rr_GetWindowContentsScale(void);
-
-RR_EXTERN void Rr_SetWindowSize(Rr_IntVec2 Size);
-
-RR_EXTERN void Rr_SetRelativeMouseMode(bool Relative);
-
-RR_EXTERN void Rr_SetCursor(Rr_CursorType Type);
+RR_EXTERN float Rr_GetDisplayScale(void);
 
 RR_EXTERN void Rr_SetClipboardText(const char *CString);
 

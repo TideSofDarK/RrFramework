@@ -126,13 +126,14 @@ struct xkb_generic_event_t
 
 static inline xcb_atom_t Rr_GetXCBAtom(const char *CString)
 {
-    xcb_intern_atom_cookie_t Cookie = xcb_intern_atom(
+    xcb_intern_atom_reply_t *Reply = xcb_intern_atom_reply(
         gXCB.Connection,
-        false,
-        (uint16_t)strlen(CString),
-        CString);
-    xcb_intern_atom_reply_t *Reply =
-        xcb_intern_atom_reply(gXCB.Connection, Cookie, NULL);
+        xcb_intern_atom(
+            gXCB.Connection,
+            false,
+            (uint16_t)strlen(CString),
+            CString),
+        NULL);
     if (!Reply)
     {
         return XCB_NONE;
@@ -339,7 +340,7 @@ static inline bool Rr_UpdateXKBKeymap(void)
     xkb_layout_index_t Layout = xkb_state_key_get_layout(gXCB.XKBStateNone, 0);
     xkb_state_update_mask(gXCB.XKBStateNone, 2, 2, 2, Layout, Layout, Layout);
 
-    xcb_xkb_get_names_reply_t *GetNamesReply = xcb_xkb_get_names_reply(
+    xcb_xkb_get_names_reply_t *Reply = xcb_xkb_get_names_reply(
         gXCB.Connection,
         xcb_xkb_get_names(
             gXCB.Connection,
@@ -347,34 +348,33 @@ static inline bool Rr_UpdateXKBKeymap(void)
             XCB_XKB_NAME_DETAIL_KEY_NAMES | XCB_XKB_NAME_DETAIL_KEY_ALIASES |
                 XCB_XKB_NAME_DETAIL_SYMBOLS),
         NULL);
-    if (!GetNamesReply)
+    if (!Reply)
     {
         return false;
     }
     xcb_xkb_get_names_value_list_t Values = { 0 };
-    void *NamesValueList = xcb_xkb_get_names_value_list(GetNamesReply);
+    void *NamesValueList = xcb_xkb_get_names_value_list(Reply);
     xcb_xkb_get_names_value_list_unpack(
         NamesValueList,
-        GetNamesReply->nTypes,
-        GetNamesReply->indicators,
-        GetNamesReply->virtualMods,
-        GetNamesReply->groupNames,
-        GetNamesReply->nKeys,
-        GetNamesReply->nKeyAliases,
-        GetNamesReply->nRadioGroups,
-        GetNamesReply->which,
+        Reply->nTypes,
+        Reply->indicators,
+        Reply->virtualMods,
+        Reply->groupNames,
+        Reply->nKeys,
+        Reply->nKeyAliases,
+        Reply->nRadioGroups,
+        Reply->which,
         &Values);
     int KeyNameCount =
-        xcb_xkb_get_names_value_list_key_names_length(GetNamesReply, &Values);
+        xcb_xkb_get_names_value_list_key_names_length(Reply, &Values);
     xcb_xkb_key_name_iterator_t It =
-        xcb_xkb_get_names_value_list_key_names_iterator(GetNamesReply, &Values);
+        xcb_xkb_get_names_value_list_key_names_iterator(Reply, &Values);
     for (int Index = 0; Index < KeyNameCount; Index++)
     {
         xcb_xkb_key_name_t *KeyName = It.data;
         if (KeyName)
         {
-            xcb_keycode_t Keycode =
-                (xcb_keycode_t)(GetNamesReply->firstKey + Index);
+            xcb_keycode_t Keycode = (xcb_keycode_t)(Reply->firstKey + Index);
 
             Rr_Scancode Scancode = Rr_XCBKeyNameToScancode(KeyName->name);
             gXCB.XKBKeycodeToScancode[Keycode] = Scancode;
@@ -383,7 +383,7 @@ static inline bool Rr_UpdateXKBKeymap(void)
         xcb_xkb_key_name_next(&It);
     }
 
-    free(GetNamesReply);
+    free(Reply);
 
     return true;
 }
@@ -435,17 +435,17 @@ static inline bool Rr_InitXKB(void)
     static const xcb_xkb_event_type_t SelectedEvents =
         XCB_XKB_EVENT_TYPE_NEW_KEYBOARD_NOTIFY | XCB_XKB_EVENT_TYPE_MAP_NOTIFY |
         XCB_XKB_EVENT_TYPE_STATE_NOTIFY;
-    xcb_void_cookie_t SelectEventsCookie = xcb_xkb_select_events_aux_checked(
+    xcb_generic_error_t *SelectEventsError = xcb_request_check(
         gXCB.Connection,
-        (xcb_xkb_device_spec_t)DeviceID,
-        SelectedEvents,
-        0,
-        0,
-        RequiredMapParts,
-        RequiredMapParts,
-        &SelectEventsDetails);
-    xcb_generic_error_t *SelectEventsError =
-        xcb_request_check(gXCB.Connection, SelectEventsCookie);
+        xcb_xkb_select_events_aux_checked(
+            gXCB.Connection,
+            (xcb_xkb_device_spec_t)DeviceID,
+            SelectedEvents,
+            0,
+            0,
+            RequiredMapParts,
+            RequiredMapParts,
+            &SelectEventsDetails));
     if (SelectEventsError)
     {
         free(SelectEventsError);
@@ -460,7 +460,7 @@ static inline bool Rr_InitXKB(void)
     return true;
 }
 
-static inline void Rr_WarpPointer(Rr_IntVec2 Position)
+static inline void Rr_WarpXCBPointer(Rr_IntVec2 Position)
 {
     xcb_warp_pointer(
         gXCB.Connection,
@@ -541,10 +541,10 @@ static inline void Rr_ProcessXdndEvent(xcb_client_message_event_t *Event)
         size_t Count = 0;
         xcb_atom_t *Formats = NULL;
         xcb_atom_t AltFormats[3] = { 0 };
-        xcb_get_property_reply_t *TypeListReply = NULL;
+        xcb_get_property_reply_t *Reply = NULL;
         if (IsList)
         {
-            TypeListReply = xcb_get_property_reply(
+            Reply = xcb_get_property_reply(
                 gXCB.Connection,
                 xcb_get_property(
                     gXCB.Connection,
@@ -555,13 +555,13 @@ static inline void Rr_ProcessXdndEvent(xcb_client_message_event_t *Event)
                     0,
                     UINT32_MAX),
                 NULL);
-            if (!TypeListReply)
+            if (!Reply)
             {
                 return;
             }
-            Count = (size_t)xcb_get_property_value_length(TypeListReply) /
+            Count = (size_t)xcb_get_property_value_length(Reply) /
                     sizeof(xcb_atom_t);
-            Formats = (xcb_atom_t *)xcb_get_property_value(TypeListReply);
+            Formats = (xcb_atom_t *)xcb_get_property_value(Reply);
         }
         else
         {
@@ -600,9 +600,9 @@ static inline void Rr_ProcessXdndEvent(xcb_client_message_event_t *Event)
         gXCB.XdndVersion = Version;
         gXCB.XdndSource = Source;
 
-        if (TypeListReply)
+        if (Reply)
         {
-            free(TypeListReply);
+            free(Reply);
         }
     }
 
@@ -686,9 +686,10 @@ static inline void Rr_ProcessXdndEvent(xcb_client_message_event_t *Event)
 static inline bool Rr_InitRandr(void)
 {
     xcb_generic_error_t *Error;
-    xcb_randr_query_version_cookie_t Cookie =
-        xcb_randr_query_version(gXCB.Connection, 1, 5);
-    xcb_randr_query_version_reply(gXCB.Connection, Cookie, &Error);
+    xcb_randr_query_version_reply(
+        gXCB.Connection,
+        xcb_randr_query_version(gXCB.Connection, 1, 5),
+        &Error);
     if (Error)
     {
         free(Error);
@@ -772,21 +773,22 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     };
 
     uint32_t Window = xcb_generate_id(Connection);
-    xcb_void_cookie_t CreateWindowCookie = xcb_create_window_checked(
+    XCBError = xcb_request_check(
         Connection,
-        XCB_COPY_FROM_PARENT,
-        Window,
-        Screen->root,
-        (int16_t)WindowOffset.X,
-        (int16_t)WindowOffset.Y,
-        (uint16_t)WindowExtent.X,
-        (uint16_t)WindowExtent.Y,
-        0,
-        XCB_WINDOW_CLASS_INPUT_OUTPUT,
-        Screen->root_visual,
-        ValueMask,
-        ValueList);
-    XCBError = xcb_request_check(Connection, CreateWindowCookie);
+        xcb_create_window_checked(
+            Connection,
+            XCB_COPY_FROM_PARENT,
+            Window,
+            Screen->root,
+            (int16_t)WindowOffset.X,
+            (int16_t)WindowOffset.Y,
+            (uint16_t)WindowExtent.X,
+            (uint16_t)WindowExtent.Y,
+            0,
+            XCB_WINDOW_CLASS_INPUT_OUTPUT,
+            Screen->root_visual,
+            ValueMask,
+            ValueList));
     if (XCBError)
     {
         RR_LOG_ERROR("Failed to create XCB window!");
@@ -1137,7 +1139,6 @@ static inline void Rr_ProcessXCBSelectionRequestEvent(
         SelectionRequestEvent->requestor,
         XCB_EVENT_MASK_PROPERTY_CHANGE,
         (void *)&SelectionNotifyEvent);
-
     xcb_flush(gXCB.Connection);
 }
 
@@ -1271,7 +1272,7 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
                     gPlatform.MousePosition =
                         Rr_AddV2(gPlatform.MousePosition, Delta);
 
-                    Rr_WarpPointer(gPlatform.RelativeMouseRestorePosition);
+                    Rr_WarpXCBPointer(gPlatform.RelativeMouseRestorePosition);
                 }
                 else
                 {
@@ -1332,9 +1333,6 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
 
     gPlatform.MousePositionDelta =
         Rr_SubV2(gPlatform.MousePosition, LastMousePosition);
-
-    // xcb_aux_sync(gXCB.Connection);
-    // xcb_flush(gXCB.Connection);
 }
 
 void Rr_ShowWindow(void)
@@ -1347,25 +1345,25 @@ static inline bool Rr_GetWMState(xcb_atom_t StateAtom)
 {
     xcb_atom_t WMState = Rr_GetXCBAtom("_NET_WM_STATE");
 
-    xcb_get_property_cookie_t GetPropertyCookie = xcb_get_property(
+    xcb_get_property_reply_t *Reply = xcb_get_property_reply(
         gXCB.Connection,
-        0,
-        gXCB.Window,
-        WMState,
-        XCB_ATOM_ATOM,
-        0,
-        1024);
-
-    xcb_get_property_reply_t *GetPropertyReply =
-        xcb_get_property_reply(gXCB.Connection, GetPropertyCookie, NULL);
-    if (!GetPropertyReply)
+        xcb_get_property(
+            gXCB.Connection,
+            0,
+            gXCB.Window,
+            WMState,
+            XCB_ATOM_ATOM,
+            0,
+            1024),
+        NULL);
+    if (!Reply)
     {
         return false;
     }
 
-    int AtomCount = xcb_get_property_value_length(GetPropertyReply) /
-                    (int)sizeof(xcb_atom_t);
-    xcb_atom_t *Atoms = (xcb_atom_t *)xcb_get_property_value(GetPropertyReply);
+    int AtomCount =
+        xcb_get_property_value_length(Reply) / (int)sizeof(xcb_atom_t);
+    xcb_atom_t *Atoms = (xcb_atom_t *)xcb_get_property_value(Reply);
 
     bool State = false;
     for (int i = 0; i < AtomCount; ++i)
@@ -1377,9 +1375,73 @@ static inline bool Rr_GetWMState(xcb_atom_t StateAtom)
         }
     }
 
-    free(GetPropertyReply);
+    free(Reply);
 
     return State;
+}
+
+void Rr_SetRelativeMouseMode(bool Relative)
+{
+    if (gPlatform.RelativeMouseMode == Relative)
+    {
+        return;
+    }
+
+    if (Relative)
+    {
+        xcb_grab_pointer_reply_t *Reply = xcb_grab_pointer_reply(
+            gXCB.Connection,
+            xcb_grab_pointer(
+                gXCB.Connection,
+                false,
+                gXCB.Window,
+                XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
+                    XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_ENTER_WINDOW |
+                    XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_POINTER_MOTION,
+                XCB_GRAB_MODE_ASYNC,
+                XCB_GRAB_MODE_ASYNC,
+                gXCB.Window,
+                gXCB.EmptyCursor,
+                XCB_TIME_CURRENT_TIME),
+            NULL);
+        if (!Reply)
+        {
+            return;
+        }
+
+        if (Reply->status == XCB_GRAB_STATUS_SUCCESS)
+        {
+            gPlatform.MousePositionDelta = Rr_V2F(0.0f);
+            gPlatform.RelativeMouseRestorePosition =
+                Rr_CastIntV2(gPlatform.MousePosition);
+        }
+
+        free(Reply);
+    }
+    else
+    {
+        xcb_ungrab_pointer(gXCB.Connection, XCB_TIME_CURRENT_TIME);
+
+        Rr_WarpXCBPointer(gPlatform.RelativeMouseRestorePosition);
+    }
+
+    gPlatform.RelativeMouseMode = Relative;
+}
+
+void Rr_SetCursor(Rr_CursorType Type)
+{
+    if (gPlatform.CursorType == Type)
+    {
+        return;
+    }
+
+    xcb_change_window_attributes(
+        gXCB.Connection,
+        gXCB.Window,
+        XCB_CW_CURSOR,
+        &gXCB.Cursors[Type]);
+
+    gPlatform.CursorType = Type;
 }
 
 bool Rr_IsWindowMinimized(void)
@@ -1424,66 +1486,16 @@ void Rr_SetWindowFullscreen(bool Fullscreen)
     xcb_flush(gXCB.Connection);
 }
 
-void Rr_SetRelativeMouseMode(bool Relative)
-{
-    if (gPlatform.RelativeMouseMode == Relative)
-    {
-        return;
-    }
-
-    if (Relative)
-    {
-        xcb_grab_pointer_cookie_t GrabPointerCookie = xcb_grab_pointer(
-            gXCB.Connection,
-            false,
-            gXCB.Window,
-            XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
-                XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_ENTER_WINDOW |
-                XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_POINTER_MOTION,
-            XCB_GRAB_MODE_ASYNC,
-            XCB_GRAB_MODE_ASYNC,
-            gXCB.Window,
-            gXCB.EmptyCursor,
-            XCB_TIME_CURRENT_TIME);
-        xcb_grab_pointer_reply_t *GrabPointerReply =
-            xcb_grab_pointer_reply(gXCB.Connection, GrabPointerCookie, NULL);
-        if (!GrabPointerReply)
-        {
-            return;
-        }
-
-        if (GrabPointerReply->status == XCB_GRAB_STATUS_SUCCESS)
-        {
-            gPlatform.MousePositionDelta = Rr_V2F(0.0f);
-            gPlatform.RelativeMouseRestorePosition =
-                Rr_CastIntV2(gPlatform.MousePosition);
-        }
-
-        free(GrabPointerReply);
-    }
-    else
-    {
-        xcb_ungrab_pointer(gXCB.Connection, XCB_TIME_CURRENT_TIME);
-
-        Rr_WarpPointer(gPlatform.RelativeMouseRestorePosition);
-    }
-
-    gPlatform.RelativeMouseMode = Relative;
-}
-
 static inline double Rr_GetXCBScreenRefreshRate(void)
 {
-    xcb_randr_get_screen_info_cookie_t GetScreenInfoCookie =
-        xcb_randr_get_screen_info_unchecked(gXCB.Connection, gXCB.Window);
-    xcb_randr_get_screen_info_reply_t *GetScreenInfoReply =
-        xcb_randr_get_screen_info_reply(
-            gXCB.Connection,
-            GetScreenInfoCookie,
-            NULL);
+    xcb_randr_get_screen_info_reply_t *Reply = xcb_randr_get_screen_info_reply(
+        gXCB.Connection,
+        xcb_randr_get_screen_info_unchecked(gXCB.Connection, gXCB.Window),
+        NULL);
 
-    double Result = (double)GetScreenInfoReply->rate;
+    double Result = (double)Reply->rate;
 
-    free(GetScreenInfoReply);
+    free(Reply);
 
     return Result;
 }
@@ -1495,57 +1507,51 @@ double Rr_GetDisplayRefreshRate(void)
         return Rr_GetXCBScreenRefreshRate();
     }
 
-    xcb_randr_get_output_primary_cookie_t GetOutputPrimaryCookie =
-        xcb_randr_get_output_primary(gXCB.Connection, gXCB.Screen->root);
-    xcb_randr_get_output_primary_reply_t *GetOutputPrimaryReply =
+    xcb_randr_get_output_primary_reply_t *OutputPrimaryReply =
         xcb_randr_get_output_primary_reply(
             gXCB.Connection,
-            GetOutputPrimaryCookie,
+            xcb_randr_get_output_primary(gXCB.Connection, gXCB.Screen->root),
             NULL);
-    if (!GetOutputPrimaryReply)
+    if (!OutputPrimaryReply)
     {
         return Rr_GetXCBScreenRefreshRate();
     }
-    xcb_randr_output_t PrimaryOutput = GetOutputPrimaryReply->output;
-    free(GetOutputPrimaryReply);
+    xcb_randr_output_t PrimaryOutput = OutputPrimaryReply->output;
+    free(OutputPrimaryReply);
 
-    xcb_randr_get_output_info_cookie_t GetPutputInfoCookie =
-        xcb_randr_get_output_info(
-            gXCB.Connection,
-            PrimaryOutput,
-            XCB_CURRENT_TIME);
-    xcb_randr_get_output_info_reply_t *GetOutputInfoReply =
+    xcb_randr_get_output_info_reply_t *OutputInfoReply =
         xcb_randr_get_output_info_reply(
             gXCB.Connection,
-            GetPutputInfoCookie,
-            NULL);
-    xcb_randr_crtc_t crtc = GetOutputInfoReply->crtc;
-    free(GetOutputInfoReply);
-
-    xcb_randr_get_crtc_info_cookie_t GetCRTCInfoCookie =
-        xcb_randr_get_crtc_info(gXCB.Connection, crtc, 0);
-    xcb_randr_get_crtc_info_reply_t *GetCRTCInfoReply =
-        xcb_randr_get_crtc_info_reply(gXCB.Connection, GetCRTCInfoCookie, NULL);
-    xcb_randr_mode_t Mode = GetCRTCInfoReply->mode;
-    free(GetCRTCInfoReply);
-
-    xcb_randr_get_screen_resources_current_cookie_t
-        GetScreenResourceCurrentCookie =
-            xcb_randr_get_screen_resources_current_unchecked(
+            xcb_randr_get_output_info(
                 gXCB.Connection,
-                gXCB.Window);
+                PrimaryOutput,
+                XCB_CURRENT_TIME),
+            NULL);
+    xcb_randr_crtc_t crtc = OutputInfoReply->crtc;
+    free(OutputInfoReply);
+
+    xcb_randr_get_crtc_info_reply_t *CRTCInfoReply =
+        xcb_randr_get_crtc_info_reply(
+            gXCB.Connection,
+            xcb_randr_get_crtc_info(gXCB.Connection, crtc, 0),
+            NULL);
+    xcb_randr_mode_t Mode = CRTCInfoReply->mode;
+    free(CRTCInfoReply);
+
     xcb_randr_get_screen_resources_current_reply_t
-        *GetScreenResourcesCurrentReply =
+        *ScreenResourcesCurrentReply =
             xcb_randr_get_screen_resources_current_reply(
                 gXCB.Connection,
-                GetScreenResourceCurrentCookie,
+                xcb_randr_get_screen_resources_current_unchecked(
+                    gXCB.Connection,
+                    gXCB.Window),
                 NULL);
     size_t ModeInfoCount =
         (size_t)xcb_randr_get_screen_resources_current_modes_length(
-            GetScreenResourcesCurrentReply);
+            ScreenResourcesCurrentReply);
     xcb_randr_mode_info_t *ModeInfos =
         xcb_randr_get_screen_resources_current_modes(
-            GetScreenResourcesCurrentReply);
+            ScreenResourcesCurrentReply);
     for (size_t Index = 0; Index < ModeInfoCount; ++Index)
     {
         xcb_randr_mode_info_t *ModeInfo = ModeInfos + Index;
@@ -1554,27 +1560,38 @@ double Rr_GetDisplayRefreshRate(void)
             double Result = (double)ModeInfo->dot_clock /
                             (double)(ModeInfo->htotal * ModeInfo->vtotal);
 
-            free(GetScreenResourcesCurrentReply);
+            free(ScreenResourcesCurrentReply);
 
             return Result;
         }
     }
 
-    free(GetScreenResourcesCurrentReply);
+    free(ScreenResourcesCurrentReply);
 
     return Rr_GetXCBScreenRefreshRate();
 }
 
 Rr_IntVec2 Rr_GetWindowSize(void)
 {
-    xcb_get_geometry_reply_t *Geometry = xcb_get_geometry_reply(
+    xcb_get_geometry_reply_t *Reply = xcb_get_geometry_reply(
         gXCB.Connection,
         xcb_get_geometry(gXCB.Connection, gXCB.Window),
         NULL);
-    Rr_IntVec2 Result = { Geometry->width, Geometry->height };
-    free(Geometry);
+    Rr_IntVec2 Result = { Reply->width, Reply->height };
+    free(Reply);
 
     return Result;
+}
+
+void Rr_SetWindowSize(Rr_IntVec2 Size)
+{
+    uint32_t Values[] = { (uint32_t)Size.X, (uint32_t)Size.Y };
+    xcb_configure_window(
+        gXCB.Connection,
+        gXCB.Window,
+        XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
+        Values);
+    xcb_flush(gXCB.Connection);
 }
 
 void Rr_SetWindowTitle(const char *Title)
@@ -1597,21 +1614,22 @@ Rr_IntVec2 Rr_GetDisplaySize(void)
         gXCB.Screen->height_in_pixels);
 }
 
-float Rr_GetWindowContentsScale(void)
+float Rr_GetDisplayScale(void)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     xcb_atom_t Atom = Rr_GetXCBAtom("RESOURCE_MANAGER");
-    xcb_get_property_cookie_t Cookie = xcb_get_property(
+    xcb_get_property_reply_t *Reply = xcb_get_property_reply(
         gXCB.Connection,
-        0,
-        gXCB.Screen->root,
-        Atom,
-        XCB_ATOM_ANY,
-        0,
-        1024 * 8);
-    xcb_get_property_reply_t *Reply =
-        xcb_get_property_reply(gXCB.Connection, Cookie, NULL);
+        xcb_get_property(
+            gXCB.Connection,
+            0,
+            gXCB.Screen->root,
+            Atom,
+            XCB_ATOM_ANY,
+            0,
+            1024 * 8),
+        NULL);
     if (Reply)
     {
         size_t Length = (size_t)xcb_get_property_value_length(Reply);
@@ -1648,33 +1666,6 @@ float Rr_GetWindowContentsScale(void)
     Rr_DestroyScratch(Scratch);
 
     return 1.0f;
-}
-
-void Rr_SetWindowSize(Rr_IntVec2 Size)
-{
-    uint32_t Values[] = { (uint32_t)Size.X, (uint32_t)Size.Y };
-    xcb_configure_window(
-        gXCB.Connection,
-        gXCB.Window,
-        XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
-        Values);
-    xcb_flush(gXCB.Connection);
-}
-
-void Rr_SetCursor(Rr_CursorType Type)
-{
-    if (gPlatform.CursorType == Type)
-    {
-        return;
-    }
-
-    xcb_change_window_attributes(
-        gXCB.Connection,
-        gXCB.Window,
-        XCB_CW_CURSOR,
-        &gXCB.Cursors[Type]);
-
-    gPlatform.CursorType = Type;
 }
 
 void Rr_SetClipboardText(const char *CString)
@@ -1736,42 +1727,44 @@ char const *Rr_GetClipboardText(Rr_Arena *Arena)
         }
     }
 
-    xcb_get_property_cookie_t GetPropertyCookie = xcb_get_property(
+    xcb_get_property_reply_t *Reply = xcb_get_property_reply(
         gXCB.Connection,
-        1,
-        gXCB.Window,
-        gXCB.Atoms.Clipboard,
-        gXCB.Atoms.UTF8String,
-        0,
-        0);
-    xcb_get_property_reply_t *GetPropertyReply =
-        xcb_get_property_reply(gXCB.Connection, GetPropertyCookie, NULL);
-    uint32_t BytesAfter = GetPropertyReply->bytes_after;
-    free(GetPropertyReply);
+        xcb_get_property(
+            gXCB.Connection,
+            1,
+            gXCB.Window,
+            gXCB.Atoms.Clipboard,
+            gXCB.Atoms.UTF8String,
+            0,
+            0),
+        NULL);
+    uint32_t BytesAfter = Reply->bytes_after;
+    free(Reply);
     char *Buffer = RR_ALLOC_NO_ZERO(BytesAfter + 1, Arena);
 
-    GetPropertyCookie = xcb_get_property(
+    Reply = xcb_get_property_reply(
         gXCB.Connection,
-        1,
-        gXCB.Window,
-        gXCB.Atoms.Clipboard,
-        gXCB.Atoms.UTF8String,
-        0,
-        (BytesAfter + 4) >> 2);
-    GetPropertyReply =
-        xcb_get_property_reply(gXCB.Connection, GetPropertyCookie, NULL);
+        xcb_get_property(
+            gXCB.Connection,
+            1,
+            gXCB.Window,
+            gXCB.Atoms.Clipboard,
+            gXCB.Atoms.UTF8String,
+            0,
+            (BytesAfter + 4) >> 2),
+        NULL);
 
-    if (xcb_get_property_value_length(GetPropertyReply) > (int)BytesAfter)
+    if (xcb_get_property_value_length(Reply) > (int)BytesAfter)
     {
-        free(GetPropertyReply);
+        free(Reply);
 
         return NULL;
     }
 
-    memcpy(Buffer, xcb_get_property_value(GetPropertyReply), BytesAfter);
+    memcpy(Buffer, xcb_get_property_value(Reply), BytesAfter);
     Buffer[BytesAfter] = '\0';
 
-    free(GetPropertyReply);
+    free(Reply);
 
     return Buffer;
 }
