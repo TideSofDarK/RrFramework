@@ -367,40 +367,9 @@ void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline)
     Rr_UnlockSpinlock(&gRenderer->ReleasedComputePipelinesLock);
 }
 
-static inline void Rr_PrintComputePipelineDestroyMessage(
-    Rr_ComputePipeline *ComputePipeline)
-{
-    char DestroyMessage[512];
-    char *Cursor = DestroyMessage;
-    if (ComputePipeline->Name[0] != '\0')
-    {
-        Cursor += snprintf(
-            Cursor,
-            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-            "Rr_ComputePipeline \"%s\" destroyed; ",
-            ComputePipeline->Name);
-    }
-    else
-    {
-        Cursor += snprintf(
-            Cursor,
-            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-            "Rr_ComputePipeline %p destroyed; ",
-            (void *)ComputePipeline);
-    }
-    Cursor += snprintf(
-        Cursor,
-        sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-        "layout: %p",
-        (void *)ComputePipeline->Layout);
-    RR_LOG_INFO("%s", DestroyMessage);
-}
-
 void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
 {
     assert(ComputePipeline && ComputePipeline->Handle != VK_NULL_HANDLE);
-
-    Rr_PrintComputePipelineDestroyMessage(ComputePipeline);
 
     Rr_Device *Device = &gRenderer->Device;
 
@@ -834,40 +803,9 @@ void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
     Rr_UnlockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
 }
 
-static inline void Rr_PrintGraphicsPipelineDestroyMessage(
-    Rr_GraphicsPipeline *GraphicsPipeline)
-{
-    char DestroyMessage[512];
-    char *Cursor = DestroyMessage;
-    if (GraphicsPipeline->Name[0] != '\0')
-    {
-        Cursor += snprintf(
-            Cursor,
-            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-            "Rr_GraphicsPipeline \"%s\" destroyed; ",
-            GraphicsPipeline->Name);
-    }
-    else
-    {
-        Cursor += snprintf(
-            Cursor,
-            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-            "Rr_GraphicsPipeline %p destroyed; ",
-            (void *)GraphicsPipeline);
-    }
-    Cursor += snprintf(
-        Cursor,
-        sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-        "layout: %p",
-        (void *)GraphicsPipeline->Layout);
-    RR_LOG_INFO("%s", DestroyMessage);
-}
-
 void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 {
     assert(GraphicsPipeline && GraphicsPipeline->Handle != VK_NULL_HANDLE);
-
-    Rr_PrintGraphicsPipelineDestroyMessage(GraphicsPipeline);
 
     Rr_Device *Device = &gRenderer->Device;
 

@@ -462,20 +462,6 @@ static inline bool Rr_InitXKB(void)
     return true;
 }
 
-static inline void Rr_WarpXCBPointer(Rr_IntVec2 Position)
-{
-    xcb_warp_pointer(
-        gXCB.Connection,
-        XCB_NONE,
-        gXCB.Window,
-        0,
-        0,
-        0,
-        0,
-        (int16_t)Position.X,
-        (int16_t)Position.Y);
-}
-
 bool Rr_ProcessXKBEvent(xkb_generic_event_t *Event)
 {
     if (Event->deviceId != gXCB.XKBDeviceID)
@@ -702,6 +688,20 @@ static inline bool Rr_InitRandr(void)
     xcb_randr_select_input(gXCB.Connection, gXCB.Screen->root, true);
 
     return true;
+}
+
+static inline void Rr_WarpXCBPointer(Rr_IntVec2 Position)
+{
+    xcb_warp_pointer(
+        gXCB.Connection,
+        XCB_NONE,
+        gXCB.Window,
+        0,
+        0,
+        0,
+        0,
+        (int16_t)Position.X,
+        (int16_t)Position.Y);
 }
 
 static inline void Rr_ForceXCBWindowSize(Rr_IntVec2 WindowSize)
@@ -1680,6 +1680,8 @@ float Rr_GetDisplayScale(void)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
+    float Scale = 1.0f;
+
     xcb_atom_t Atom = Rr_GetXCBAtom("RESOURCE_MANAGER");
     xcb_get_property_reply_t *Reply = xcb_get_property_reply(
         gXCB.Connection,
@@ -1718,7 +1720,7 @@ float Rr_GetDisplayScale(void)
             int DensityPerInch = 96;
             if (sscanf(ValueString, "%d", &DensityPerInch))
             {
-                return (float)DensityPerInch / 96.0f;
+                Scale = (float)DensityPerInch / 96.0f;
             }
         }
 
@@ -1727,7 +1729,7 @@ float Rr_GetDisplayScale(void)
 
     Rr_DestroyScratch(Scratch);
 
-    return 1.0f;
+    return Scale;
 }
 
 void Rr_SetClipboardText(const char *CString)

@@ -184,60 +184,9 @@ void Rr_ReleaseBuffer(Rr_Buffer *Buffer)
     Rr_UnlockSpinlock(&gRenderer->ReleasedBuffersLock);
 }
 
-static inline void Rr_PrintBufferDestroyMessage(Rr_Buffer *Buffer)
-{
-    char DestroyMessage[512];
-    char *Cursor = DestroyMessage;
-    if (Buffer->Name[0] != '\0')
-    {
-        Cursor += snprintf(
-            Cursor,
-            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-            "Rr_Buffer \"%s\" destroyed; ",
-            Buffer->Name);
-    }
-    else
-    {
-        Cursor += snprintf(
-            Cursor,
-            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-            "Rr_Buffer %p destroyed; ",
-            (void *)Buffer);
-    }
-    Cursor += snprintf(
-        Cursor,
-        sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-        "allocations: %d, ",
-        Buffer->AllocatedBufferCount);
-    Cursor += snprintf(
-        Cursor,
-        sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-        "flags: ");
-    char const *const FlagNames[] = {
-        "UNIFORM",  "STORAGE",   "VERTEX",  "INDEX",
-        "INDIRECT", "READBACK",  "STAGING", "STAGING_INCOHERENT",
-        "MAPPED",   "PER_FRAME",
-    };
-    for (size_t Index = 0; Index < RR_ARRAY_COUNT(FlagNames); ++Index)
-    {
-        Rr_BufferFlags Bit = 1 << Index;
-        if (RR_HAS_BIT(Buffer->Flags, Bit))
-        {
-            Cursor += snprintf(
-                Cursor,
-                sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-                "%s ",
-                FlagNames[Index]);
-        }
-    }
-    RR_LOG_INFO("%s", DestroyMessage);
-}
-
 void Rr_DestroyBuffer(Rr_Buffer *Buffer)
 {
     assert(Buffer && Buffer->AllocatedBufferCount > 0);
-
-    Rr_PrintBufferDestroyMessage(Buffer);
 
     for (uint32_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {

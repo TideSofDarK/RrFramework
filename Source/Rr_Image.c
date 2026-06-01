@@ -100,34 +100,9 @@ void Rr_ReleaseSampler(Rr_Sampler *Sampler)
     Rr_UnlockSpinlock(&gRenderer->ReleasedSamplersLock);
 }
 
-static inline void Rr_PrintSamplerDestroyMessage(Rr_Sampler *Sampler)
-{
-    char DestroyMessage[512];
-    char *Cursor = DestroyMessage;
-    if (Sampler->Name[0] != '\0')
-    {
-        Cursor += snprintf(
-            Cursor,
-            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-            "Rr_Sampler \"%s\" destroyed",
-            Sampler->Name);
-    }
-    else
-    {
-        Cursor += snprintf(
-            Cursor,
-            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-            "Rr_Sampler %p destroyed",
-            (void *)Sampler);
-    }
-    RR_LOG_INFO("%s", DestroyMessage);
-}
-
 void Rr_DestroySampler(Rr_Sampler *Sampler)
 {
     assert(Sampler != NULL && Sampler->Handle != VK_NULL_HANDLE);
-
-    Rr_PrintSamplerDestroyMessage(Sampler);
 
     Rr_Device *Device = &gRenderer->Device;
 
@@ -444,64 +419,9 @@ void Rr_ReleaseImage(Rr_Image *Image)
     Rr_UnlockSpinlock(&gRenderer->ReleasedImagesLock);
 }
 
-static inline void Rr_PrintImageDestroyMessage(Rr_Image *Image)
-{
-    char DestroyMessage[512];
-    char *Cursor = DestroyMessage;
-    if (Image->Name[0] != '\0')
-    {
-        Cursor += snprintf(
-            Cursor,
-            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-            "Rr_Image \"%s\" destroyed; ",
-            Image->Name);
-    }
-    else
-    {
-        Cursor += snprintf(
-            Cursor,
-            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-            "Rr_Image %p destroyed; ",
-            (void *)Image);
-    }
-    Cursor += snprintf(
-        Cursor,
-        sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-        "allocations: %d, ",
-        Image->AllocatedImageCount);
-    Cursor += snprintf(
-        Cursor,
-        sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-        "flags: ");
-    char const *const FlagNames[] = {
-        "STORAGE",          "SAMPLED",
-        "COLOR_ATTACHMENT", "DEPTH_STENCIL_ATTACHMENT",
-        "TRANSFER",         "PER_FRAME",
-        "MIP_MAPPED",       "MUTABLE_FORMAT",
-        "SAMPLE_COUNT_1",   "SAMPLE_COUNT_2",
-        "SAMPLE_COUNT_4",   "SAMPLE_COUNT_8",
-        "SAMPLE_COUNT_16",
-    };
-    for (size_t Index = 0; Index < RR_ARRAY_COUNT(FlagNames); ++Index)
-    {
-        Rr_ImageFlags Bit = 1 << Index;
-        if (RR_HAS_BIT(Image->Flags, Bit))
-        {
-            Cursor += snprintf(
-                Cursor,
-                sizeof(DestroyMessage) - (Cursor - DestroyMessage),
-                "%s ",
-                FlagNames[Index]);
-        }
-    }
-    RR_LOG_INFO("%s", DestroyMessage);
-}
-
 void Rr_DestroyImage(Rr_Image *Image)
 {
     assert(Image && Image->AllocatedImageCount > 0);
-
-    Rr_PrintImageDestroyMessage(Image);
 
     bool DestroyFramebuffers =
         RR_HAS_BIT(Image->Flags, RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT) ||
