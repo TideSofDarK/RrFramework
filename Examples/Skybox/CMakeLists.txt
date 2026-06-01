@@ -5,6 +5,7 @@ project(Skybox LANGUAGES CXX)
 add_executable(${PROJECT_NAME} Skybox.cxx)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)
+target_include_directories(${PROJECT_NAME} PRIVATE ../Vendor/)
 
 file(GLOB_RECURSE RR_EXAMPLE_ASSETS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.vert.glsl"

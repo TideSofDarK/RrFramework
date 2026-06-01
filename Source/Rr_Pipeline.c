@@ -27,8 +27,8 @@
 #include "Rr_SPIRV.h"
 
 #include <assert.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static VkRenderPass Rr_GetCompatibleRenderPass(
     uint32_t ColorTargetCount,

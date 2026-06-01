@@ -249,7 +249,7 @@ struct SSkybox
             VertexInputBindings.data(),
             &GLTFVertexInputBinding,
             0,
-            NULL);
+            nullptr);
 
         Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_GLB);
         GLTFAsset = Rr_CreateGLTFAsset(
@@ -1613,7 +1613,7 @@ struct SModernRenderingApp
     void UI()
     {
         Rr_UIDebugOverlay();
-        Rr_UIBeginWindowEx("ModernRendering.cxx", NULL, 0);
+        Rr_UIBeginWindowEx("ModernRendering.cxx", nullptr, 0);
         {
             if (Rr_UIBeginTree("General"))
             {

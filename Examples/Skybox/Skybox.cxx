@@ -5,7 +5,61 @@
 #include <array>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "../../Vendor/stb/stb_image.h"
+#include <stb/stb_image.h>
+
+struct SCube
+{
+    static float constexpr CubePositions[] = {
+        1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00,
+        1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00,
+        1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,
+        1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,
+        -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00,
+        -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00,
+        -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,
+        -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,
+    };
+    static uint16_t constexpr CubeIndices[] = {
+        1,  13, 19, 1,  19, 7,  9, 6, 18, 9, 18, 21, 23, 20, 14, 23, 14, 17,
+        16, 4,  10, 16, 10, 22, 5, 2, 8,  5, 8,  11, 15, 12, 0,  15, 0,  3,
+    };
+
+    Rr_Buffer *Buffer{};
+    size_t IndexOffset{};
+    size_t IndexCount{};
+
+    void Init()
+    {
+        size_t TotalSize = sizeof(CubePositions) + sizeof(CubeIndices);
+        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+            TotalSize,
+            RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
+        Rr_ReleaseBuffer(StagingBuffer);
+        char *BufferData = (char *)Rr_GetMappedBufferData(StagingBuffer);
+        std::memcpy(BufferData, CubePositions, sizeof(CubePositions));
+        BufferData += sizeof(CubePositions);
+        std::memcpy(BufferData, CubeIndices, sizeof(CubeIndices));
+
+        Buffer = Rr_CreateBuffer(
+            TotalSize,
+            RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_INDEX_BIT);
+        auto TransferNode = Rr_AddTransferNode(Rr_GetGraph());
+        Rr_TransferBufferData(
+            TransferNode,
+            TotalSize,
+            StagingBuffer,
+            0,
+            Buffer,
+            0);
+        IndexOffset = sizeof(CubePositions);
+        IndexCount = sizeof(CubeIndices) / sizeof(*CubeIndices);
+    }
+
+    void Cleanup()
+    {
+        Rr_ReleaseBuffer(Buffer);
+    }
+};
 
 struct SCamera
 {
@@ -142,10 +196,9 @@ struct SSkyboxApp
     Rr_Buffer *StagingBuffer;
     Rr_ImageCube *SkyboxImage;
     Rr_Sampler *Sampler;
-    Rr_GLTFContext *GLTFContext;
-    Rr_GLTFAsset *GLTFAsset;
 
     SCamera Camera;
+    SCube Cube;
 
     void InitPipeline()
     {
@@ -187,22 +240,6 @@ struct SSkyboxApp
         PipelineInfo.VertexInputBindings = VertexInputBindings.data();
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
-
-        std::array GLTFAttributeTypes = {
-            RR_GLTF_ATTRIBUTE_TYPE_POSITION,
-        };
-
-        Rr_GLTFVertexInputBinding GLTFVertexInputBinding = {
-            .AttributeTypeCount = RR_ARRAY_COUNT(GLTFAttributeTypes),
-            .AttributeTypes = GLTFAttributeTypes.data(),
-        };
-
-        GLTFContext = Rr_CreateGLTFContext(
-            VertexInputBindings.size(),
-            VertexInputBindings.data(),
-            &GLTFVertexInputBinding,
-            0,
-            NULL);
     }
 
     void InitUniformBuffer()
@@ -261,16 +298,6 @@ struct SSkyboxApp
             0);
     }
 
-    void InitSkyboxMesh()
-    {
-        Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_GLB);
-        GLTFAsset = Rr_CreateGLTFAsset(
-            GLTFContext,
-            Rr_GetGraph(),
-            LoadedAsset.Size,
-            LoadedAsset.Pointer);
-    }
-
     void InitCamera()
     {
         Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
@@ -285,7 +312,7 @@ struct SSkyboxApp
         InitUniformBuffer();
         InitSampler();
         InitCubemapImage();
-        InitSkyboxMesh();
+        Cube.Init();
     }
 
     void Event(Rr_Event const *Event)
@@ -334,19 +361,15 @@ struct SSkyboxApp
             .Clear = ColorClear,
         };
         Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, NULL);
+            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindVertexBuffer(
-            GraphicsNode,
-            GLTFAsset->Buffer,
-            0,
-            GLTFAsset->VertexBufferOffset);
+        Rr_BindVertexBuffer(GraphicsNode, Cube.Buffer, 0, 0);
         Rr_BindIndexBuffer(
             GraphicsNode,
-            GLTFAsset->Buffer,
+            Cube.Buffer,
             0,
-            GLTFAsset->IndexBufferOffset,
-            GLTFAsset->IndexType);
+            Cube.IndexOffset,
+            RR_INDEX_TYPE_UINT16);
         Rr_BindUniformBuffer(
             GraphicsNode,
             UniformBuffer,
@@ -360,8 +383,7 @@ struct SSkyboxApp
             Sampler,
             0,
             1);
-        Rr_GLTFPrimitive *GLTFPrimitive = GLTFAsset->Meshes->Primitives;
-        Rr_DrawIndexed(GraphicsNode, GLTFPrimitive->IndexCount, 1, 0, 0, 0);
+        Rr_DrawIndexed(GraphicsNode, Cube.IndexCount, 1, 0, 0, 0);
     }
 
     void Cleanup()
@@ -371,7 +393,7 @@ struct SSkyboxApp
         Rr_ReleaseBuffer(StagingBuffer);
         Rr_ReleaseSampler(Sampler);
         Rr_ReleaseImage(SkyboxImage);
-        Rr_ReleaseGLTFContext(GLTFContext);
+        Cube.Cleanup();
     }
 };
 

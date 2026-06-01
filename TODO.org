@@ -109,6 +109,7 @@
 - [ ] Particles
 - [ ] Light Space Perspective Shadow Maps
 - [ ] Mip Generation
+- [ ] Slang Integration
 
 ** Low-priority
 
