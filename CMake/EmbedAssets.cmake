@@ -84,6 +84,9 @@ else()
         "#else\n"
         "#ifndef ${ASSET_HEADER_DEFINE}\n"
         "#define ${ASSET_HEADER_DEFINE}\n"
+        "#ifdef __cplusplus\n"
+        "extern \"C\" {\n"
+        "#endif\n"
     )
     foreach (ASSET_PATH ${ASSETS_LIST})
         cmake_path(ABSOLUTE_PATH ASSET_PATH NORMALIZE OUTPUT_VARIABLE AssetAbsolutePath)
@@ -94,11 +97,14 @@ else()
         set(ASSET_FINAL_IDENTIFIER "${IDENTIFIER_PREFIX}${ASSET_IDENTIFIER}")
         file(
             APPEND "${ASSET_HEADER_PATH}"
-            "RR_EXTERN const Rr_AssetRef ${ASSET_FINAL_IDENTIFIER};\n"
+            "extern const Rr_AssetRef ${ASSET_FINAL_IDENTIFIER};\n"
         )
     endforeach (ASSET_PATH)
     file(
         APPEND "${ASSET_HEADER_PATH}"
+        "#ifdef __cplusplus\n"
+        "}\n"
+        "#endif\n"
         "#endif\n"
         "#endif\n"
         "\n"

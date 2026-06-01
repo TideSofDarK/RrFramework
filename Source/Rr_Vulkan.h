@@ -30,7 +30,6 @@
 #include <Rr/Rr_Renderer.h>
 
 #define VK_NO_PROTOTYPES
-
 #include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
@@ -39,7 +38,6 @@
 #define RR_VULKAN_EARLY_STAGES             \
     (VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | \
      VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT)
-
 #define RR_VULKAN_WRITES                                                 \
     (VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | \
      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |                      \

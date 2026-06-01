@@ -18,10 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
-#define _CRT_SECURE_NO_WARNINGS
-#endif
-
 #include "Rr_Buffer.h"
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
@@ -194,15 +190,29 @@ static inline void Rr_PrintBufferDestroyMessage(Rr_Buffer *Buffer)
     char *Cursor = DestroyMessage;
     if (Buffer->Name[0] != '\0')
     {
-        Cursor += sprintf(Cursor, "Rr_Buffer \"%s\" destroyed; ", Buffer->Name);
+        Cursor += snprintf(
+            Cursor,
+            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+            "Rr_Buffer \"%s\" destroyed; ",
+            Buffer->Name);
     }
     else
     {
-        Cursor += sprintf(Cursor, "Rr_Buffer %p destroyed; ", (void *)Buffer);
+        Cursor += snprintf(
+            Cursor,
+            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+            "Rr_Buffer %p destroyed; ",
+            (void *)Buffer);
     }
-    Cursor +=
-        sprintf(Cursor, "allocations: %d, ", Buffer->AllocatedBufferCount);
-    Cursor += sprintf(Cursor, "flags: ");
+    Cursor += snprintf(
+        Cursor,
+        sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+        "allocations: %d, ",
+        Buffer->AllocatedBufferCount);
+    Cursor += snprintf(
+        Cursor,
+        sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+        "flags: ");
     char const *const FlagNames[] = {
         "UNIFORM",  "STORAGE",   "VERTEX",  "INDEX",
         "INDIRECT", "READBACK",  "STAGING", "STAGING_INCOHERENT",
@@ -210,10 +220,14 @@ static inline void Rr_PrintBufferDestroyMessage(Rr_Buffer *Buffer)
     };
     for (size_t Index = 0; Index < RR_ARRAY_COUNT(FlagNames); ++Index)
     {
-        size_t Bit = 1 << Index;
+        Rr_BufferFlags Bit = 1 << Index;
         if (RR_HAS_BIT(Buffer->Flags, Bit))
         {
-            Cursor += sprintf(Cursor, "%s ", FlagNames[Index]);
+            Cursor += snprintf(
+                Cursor,
+                sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+                "%s ",
+                FlagNames[Index]);
         }
     }
     RR_LOG_INFO("%s", DestroyMessage);

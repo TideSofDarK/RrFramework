@@ -18,10 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
-#define _CRT_SECURE_NO_WARNINGS
-#endif
-
 #include "Rr_Renderer.h"
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
@@ -1651,7 +1647,22 @@ static RR_THREAD_LOCAL char NextObjectName[RR_MAX_OBJECT_NAME_LENGTH] = { 0 };
 
 void Rr_SetNextObjectName(const char *Name)
 {
-    strncpy(NextObjectName, Name, sizeof(NextObjectName) - 1);
+    size_t Length = strlen(Name);
+    if (!Length)
+    {
+        return;
+    }
+
+    if (Length > RR_MAX_OBJECT_NAME_LENGTH - 1)
+    {
+        memcpy(NextObjectName, Name, RR_MAX_OBJECT_NAME_LENGTH - 1);
+        NextObjectName[RR_MAX_OBJECT_NAME_LENGTH - 1] = '\0';
+
+        return;
+    }
+
+    memcpy(NextObjectName, Name, Length);
+    NextObjectName[Length] = '\0';
 }
 
 void Rr_SetNextObjectNameF(const char *Format, ...)

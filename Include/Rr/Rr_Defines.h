@@ -34,12 +34,6 @@
 #define RR_CC
 #endif
 
-#ifdef __cplusplus
-#define RR_EXTERN extern "C"
-#else
-#define RR_EXTERN extern
-#endif
-
 #define RR_UNUSED(Var) (void)Var
 
 #define RR_HAS_BIT(Value, Bit) ((Value & Bit) != 0)

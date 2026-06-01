@@ -2,8 +2,6 @@
 
 #include "ExampleAssets.inc"
 
-#include <stdio.h>
-
 static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Buffer *VertexBuffer;
 static Rr_Buffer *IndexBuffer;
@@ -23,8 +21,11 @@ static void Init(void)
         },
     };
 
-    Rr_ColorTargetInfo ColorTargets[1] = { 0 };
-    ColorTargets[0].Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
+    Rr_ColorTargetInfo ColorTargets[1] = {
+        {
+            .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
+        },
+    };
 
     Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_TRIANGLE_VERT_SPV);
     Rr_ShaderInfo VertexShaderInfo = {
@@ -52,7 +53,6 @@ static void Init(void)
         -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
         0.0f,  1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f,  1.0f,
     };
-
     VertexBuffer = Rr_CreateBuffer(
         sizeof(VertexData),
         RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
@@ -62,12 +62,7 @@ static void Init(void)
         VertexData,
         sizeof(VertexData));
 
-    uint32_t IndexData[] = {
-        2,
-        1,
-        0,
-    };
-
+    uint32_t IndexData[] = { 2, 1, 0 };
     IndexBuffer = Rr_CreateBuffer(
         sizeof(IndexData),
         RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT |

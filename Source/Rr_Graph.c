@@ -18,10 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
-#define _CRT_SECURE_NO_WARNINGS
-#endif
-
 #include "Rr_Graph.h"
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_GRAPH
@@ -2407,7 +2403,7 @@ void Rr_BeginGraphLabel(Rr_Graph *Graph, const char *Name)
 
     size_t Length = strlen(Name);
     char *Copy = RR_ALLOC_NO_ZERO(Length + 1, Graph->Arena);
-    strcpy(Copy, Name);
+    memcpy(Copy, Name, Length + 1);
 
     *RR_PUSH_INTO_ARRAY(&Graph->DebugLabelNames, Graph->Arena) = Copy;
     *RR_PUSH_INTO_ARRAY(&Graph->DebugLabelStates, Graph->Arena) = true;

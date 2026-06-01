@@ -35,16 +35,6 @@
 
 #include <vulkan/vulkan_win32.h>
 
-/* TODO: Handle resize window flag. */
-
-#define RR_WIN32_FULLSCREEN_EXSTYLE (LONG)(WS_EX_APPWINDOW | WS_EX_ACCEPTFILES)
-#define RR_WIN32_FULLSCREEN_STYLE \
-    (LONG)(WS_VISIBLE | WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN)
-#define RR_WIN32_WINDOWED_EXSTYLE \
-    (LONG)(WS_EX_APPWINDOW | WS_EX_WINDOWEDGE | WS_EX_ACCEPTFILES)
-#define RR_WIN32_WINDOWED_STYLE \
-    (LONG)(WS_VISIBLE | WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN)
-
 static struct
 {
     bool Initialized;
@@ -53,6 +43,7 @@ static struct
 
     HWND Window;
     RECT WindowedRect;
+    bool Resizable;
 
     HCURSOR Cursors[RR_CURSOR_TYPE_COUNT];
 
@@ -73,6 +64,33 @@ static GUID const RR_DXGI_GUID = {
     0x44ae,
     { 0xb2, 0x1a, 0xc9, 0xae, 0x32, 0x1a, 0xe3, 0x69 }
 };
+
+static inline LONG Rr_GetWin32WindowExStyle(bool Fullscreen)
+{
+    if (Fullscreen)
+    {
+        return WS_EX_APPWINDOW | WS_EX_ACCEPTFILES;
+    }
+
+    return WS_EX_APPWINDOW | WS_EX_WINDOWEDGE | WS_EX_ACCEPTFILES;
+}
+
+static inline LONG Rr_GetWin32WindowStyle(bool Fullscreen)
+{
+    if (Fullscreen)
+    {
+        return WS_VISIBLE | (LONG)WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+    }
+
+    LONG Style =
+        WS_VISIBLE | WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+    if (!gWin32.Resizable)
+    {
+        Style &= ~WS_MAXIMIZEBOX & ~WS_THICKFRAME;
+    }
+
+    return Style;
+}
 
 static inline Rr_Scancode Rr_Win32KeyToScancode(WPARAM WParam, LPARAM LParam)
 {
@@ -654,14 +672,16 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     WindowedRect.bottom = WindowedRect.top + WindowedSize.Y;
     AdjustWindowRect(&WindowedRect, WS_OVERLAPPEDWINDOW, FALSE);
     gWin32.WindowedRect = WindowedRect;
-    LONG ExStyle;
-    LONG Style;
+    gWin32.Resizable =
+        RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_RESIZE_BIT);
+    bool Fullscreen =
+        RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_FULLSCREEN_BIT);
+    LONG ExStyle = Rr_GetWin32WindowExStyle(Fullscreen);
+    LONG Style = Rr_GetWin32WindowStyle(Fullscreen);
     Rr_IntVec2 WindowSize;
     Rr_IntVec2 WindowPosition;
-    if (RR_HAS_BIT(Config->WindowFlags, RR_WINDOW_FLAGS_FULLSCREEN_BIT))
+    if (Fullscreen)
     {
-        ExStyle = RR_WIN32_FULLSCREEN_EXSTYLE;
-        Style = RR_WIN32_FULLSCREEN_STYLE;
         WindowSize = Rr_IntV2(
             (int32_t)DeviceMode.dmPelsWidth,
             (int32_t)DeviceMode.dmPelsHeight);
@@ -669,8 +689,6 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     }
     else
     {
-        ExStyle = RR_WIN32_WINDOWED_EXSTYLE;
-        Style = RR_WIN32_WINDOWED_STYLE;
         WindowSize = Rr_IntV2(
             WindowedRect.right - WindowedRect.left,
             WindowedRect.bottom - WindowedRect.top);
@@ -841,21 +859,21 @@ bool Rr_IsWindowMinimized(void)
 
 bool Rr_IsWindowFullscreen(void)
 {
-    return GetWindowLongW(gWin32.Window, GWL_STYLE) ==
-               RR_WIN32_FULLSCREEN_STYLE &&
-           GetWindowLongW(gWin32.Window, GWL_EXSTYLE) ==
-               RR_WIN32_FULLSCREEN_EXSTYLE;
+    return GetWindowLongW(gWin32.Window, GWL_STYLE) & (LONG)WS_POPUP;
 }
 
 void Rr_SetWindowFullscreen(bool Fullscreen)
 {
+    SetWindowLongPtrW(
+        gWin32.Window,
+        GWL_EXSTYLE,
+        Rr_GetWin32WindowExStyle(Fullscreen));
+    SetWindowLongPtrW(
+        gWin32.Window,
+        GWL_STYLE,
+        Rr_GetWin32WindowStyle(Fullscreen));
     if (Fullscreen)
     {
-        SetWindowLongPtrW(
-            gWin32.Window,
-            GWL_EXSTYLE,
-            RR_WIN32_FULLSCREEN_EXSTYLE);
-        SetWindowLongPtrW(gWin32.Window, GWL_STYLE, RR_WIN32_FULLSCREEN_STYLE);
         GetWindowRect(gWin32.Window, &gWin32.WindowedRect);
         Rr_IntVec2 DisplaySize = Rr_GetDisplaySize();
         SetWindowPos(
@@ -869,11 +887,6 @@ void Rr_SetWindowFullscreen(bool Fullscreen)
     }
     else
     {
-        SetWindowLongPtrW(
-            gWin32.Window,
-            GWL_EXSTYLE,
-            RR_WIN32_WINDOWED_EXSTYLE);
-        SetWindowLongPtrW(gWin32.Window, GWL_STYLE, RR_WIN32_WINDOWED_STYLE);
         SetWindowPos(
             gWin32.Window,
             HWND_TOP,

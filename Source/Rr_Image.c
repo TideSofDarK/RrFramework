@@ -18,10 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
-#define _CRT_SECURE_NO_WARNINGS
-#endif
-
 #include "Rr_Image.h"
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
@@ -110,11 +106,19 @@ static inline void Rr_PrintSamplerDestroyMessage(Rr_Sampler *Sampler)
     char *Cursor = DestroyMessage;
     if (Sampler->Name[0] != '\0')
     {
-        Cursor += sprintf(Cursor, "Rr_Sampler \"%s\" destroyed", Sampler->Name);
+        Cursor += snprintf(
+            Cursor,
+            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+            "Rr_Sampler \"%s\" destroyed",
+            Sampler->Name);
     }
     else
     {
-        Cursor += sprintf(Cursor, "Rr_Sampler %p destroyed", (void *)Sampler);
+        Cursor += snprintf(
+            Cursor,
+            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+            "Rr_Sampler %p destroyed",
+            (void *)Sampler);
     }
     RR_LOG_INFO("%s", DestroyMessage);
 }
@@ -446,14 +450,29 @@ static inline void Rr_PrintImageDestroyMessage(Rr_Image *Image)
     char *Cursor = DestroyMessage;
     if (Image->Name[0] != '\0')
     {
-        Cursor += sprintf(Cursor, "Rr_Image \"%s\" destroyed; ", Image->Name);
+        Cursor += snprintf(
+            Cursor,
+            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+            "Rr_Image \"%s\" destroyed; ",
+            Image->Name);
     }
     else
     {
-        Cursor += sprintf(Cursor, "Rr_Image %p destroyed; ", (void *)Image);
+        Cursor += snprintf(
+            Cursor,
+            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+            "Rr_Image %p destroyed; ",
+            (void *)Image);
     }
-    Cursor += sprintf(Cursor, "allocations: %d, ", Image->AllocatedImageCount);
-    Cursor += sprintf(Cursor, "flags: ");
+    Cursor += snprintf(
+        Cursor,
+        sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+        "allocations: %d, ",
+        Image->AllocatedImageCount);
+    Cursor += snprintf(
+        Cursor,
+        sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+        "flags: ");
     char const *const FlagNames[] = {
         "STORAGE",          "SAMPLED",
         "COLOR_ATTACHMENT", "DEPTH_STENCIL_ATTACHMENT",
@@ -465,10 +484,14 @@ static inline void Rr_PrintImageDestroyMessage(Rr_Image *Image)
     };
     for (size_t Index = 0; Index < RR_ARRAY_COUNT(FlagNames); ++Index)
     {
-        size_t Bit = 1 << Index;
+        Rr_ImageFlags Bit = 1 << Index;
         if (RR_HAS_BIT(Image->Flags, Bit))
         {
-            Cursor += sprintf(Cursor, "%s ", FlagNames[Index]);
+            Cursor += snprintf(
+                Cursor,
+                sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+                "%s ",
+                FlagNames[Index]);
         }
     }
     RR_LOG_INFO("%s", DestroyMessage);

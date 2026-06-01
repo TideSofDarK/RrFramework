@@ -21,6 +21,9 @@
 #include <Rr/Rr_Log.h>
 
 #ifdef RR_LOG_MACRO_CATEGORY
+#if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
 #include <stdlib.h>
 #define RR_LOG_ABORT(...)                                \
     {                                                    \

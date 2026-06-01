@@ -374,19 +374,25 @@ static inline void Rr_PrintComputePipelineDestroyMessage(
     char *Cursor = DestroyMessage;
     if (ComputePipeline->Name[0] != '\0')
     {
-        Cursor += sprintf(
+        Cursor += snprintf(
             Cursor,
+            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
             "Rr_ComputePipeline \"%s\" destroyed; ",
             ComputePipeline->Name);
     }
     else
     {
-        Cursor += sprintf(
+        Cursor += snprintf(
             Cursor,
+            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
             "Rr_ComputePipeline %p destroyed; ",
             (void *)ComputePipeline);
     }
-    Cursor += sprintf(Cursor, "layout: %p", (void *)ComputePipeline->Layout);
+    Cursor += snprintf(
+        Cursor,
+        sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+        "layout: %p",
+        (void *)ComputePipeline->Layout);
     RR_LOG_INFO("%s", DestroyMessage);
 }
 
@@ -835,19 +841,25 @@ static inline void Rr_PrintGraphicsPipelineDestroyMessage(
     char *Cursor = DestroyMessage;
     if (GraphicsPipeline->Name[0] != '\0')
     {
-        Cursor += sprintf(
+        Cursor += snprintf(
             Cursor,
+            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
             "Rr_GraphicsPipeline \"%s\" destroyed; ",
             GraphicsPipeline->Name);
     }
     else
     {
-        Cursor += sprintf(
+        Cursor += snprintf(
             Cursor,
+            sizeof(DestroyMessage) - (Cursor - DestroyMessage),
             "Rr_GraphicsPipeline %p destroyed; ",
             (void *)GraphicsPipeline);
     }
-    Cursor += sprintf(Cursor, "layout: %p", (void *)GraphicsPipeline->Layout);
+    Cursor += snprintf(
+        Cursor,
+        sizeof(DestroyMessage) - (Cursor - DestroyMessage),
+        "layout: %p",
+        (void *)GraphicsPipeline->Layout);
     RR_LOG_INFO("%s", DestroyMessage);
 }
 

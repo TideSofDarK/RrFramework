@@ -46,17 +46,17 @@ extern void Rr_InitSystem(void);
 
 extern Rr_System *Rr_GetSystem(void);
 
-RR_EXTERN uint64_t Rr_GetPerformanceCounter(void);
+extern uint64_t Rr_GetPerformanceCounter(void);
 
-RR_EXTERN uint64_t Rr_GetPerformanceFrequency(void);
+extern uint64_t Rr_GetPerformanceFrequency(void);
 
-RR_EXTERN void *Rr_ReserveMemory(size_t Size);
+extern void *Rr_ReserveMemory(size_t Size);
 
-RR_EXTERN void Rr_ReleaseMemory(void *Data, size_t Size);
+extern void Rr_ReleaseMemory(void *Data, size_t Size);
 
-RR_EXTERN bool Rr_CommitMemory(void *Data, size_t Size);
+extern bool Rr_CommitMemory(void *Data, size_t Size);
 
-RR_EXTERN void Rr_DecommitMemory(void *Data, size_t Size);
+extern void Rr_DecommitMemory(void *Data, size_t Size);
 
 extern void Rr_SleepNS(uint64_t Nanoseconds);
 
