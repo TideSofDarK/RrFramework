@@ -3,10 +3,10 @@
 #include <Rr/Rr.h>
 
 #define CGLTF_IMPLEMENTATION
-#include <cgltf/cgltf.h>
+#include "../../Vendor/cgltf/cgltf.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
+#include "../../Vendor/stb/stb_image.h"
 
 #include <stdio.h>
 #include <string.h>

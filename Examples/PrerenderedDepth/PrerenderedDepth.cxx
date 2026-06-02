@@ -11,7 +11,7 @@
 #define TINYEXR_IMPLEMENTATION
 #define TINYEXR_USE_STB_ZLIB 1
 #define TINYEXR_USE_MINIZ    0
-#include "tinyexr.h"
+#include "../../Vendor/tinyexr/tinyexr.h"
 
 #include <algorithm>
 
