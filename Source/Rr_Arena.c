@@ -48,7 +48,7 @@ Rr_Arena *Rr_CreateArena(size_t ReserveSize, size_t CommitSize)
     return Arena;
 }
 
-static const size_t RR_ARENA_RESERVE_DEFAULT = RR_GIGABYTES(8);
+static const size_t RR_ARENA_RESERVE_DEFAULT = RR_GIGABYTES(4);
 static const size_t RR_ARENA_COMMIT_DEFAULT = RR_KILOBYTES(64);
 
 Rr_Arena *Rr_CreateDefaultArena(void)

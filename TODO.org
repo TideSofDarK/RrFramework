@@ -88,18 +88,19 @@
 - [X] Nested windows.
 - [X] Swap font rendering with stb_truetype.
 - [ ] Finally fix flickering.
-- [ ] Some options for horizontal child layouts + asserts.
 - [ ] Hide flexible widgets properly when layout lacks available width.
-- [ ] More animations.
+- [ ] Input field doesn't lose focus when clicking elsewhere.
+- [ ] Child window borders ignore mouse wheel events.
 - [ ] Proper stack data structure.
 - [ ] Horizontal scrollbar.
-- [ ] Input field doesn't lose focus when clicking elsewhere.
+- [ ] Some options for horizontal child layouts + asserts.
+- [ ] More animations.
 
 ** Debug
 
 - [X] Vulkan markers.
 - [ ] Very basic profilers for CPU/GPU.
-- [ ] Memory arena registry and maybe some kind of memory profiler.
+- [ ] Memory arena registry.
 - [ ] Allow inserting debug markers not associated with nodes.
 - [ ] Separate define for Vulkan markers.
 

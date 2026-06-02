@@ -6768,35 +6768,30 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
 
     Rr_UIInputFieldFilterFunc FilterFunc;
     size_t ComponentSize;
-    char const *ScanString;
     switch (ScalarType)
     {
         case RR_UI_SCALAR_TYPE_INT:
         {
             ComponentSize = sizeof(int32_t);
             FilterFunc = Rr_UIIntegerFilter;
-            ScanString = "%i";
         }
         break;
         case RR_UI_SCALAR_TYPE_UINT:
         {
             ComponentSize = sizeof(uint32_t);
             FilterFunc = Rr_UIUnsignedIntegerFilter;
-            ScanString = "%u";
         }
         break;
         case RR_UI_SCALAR_TYPE_FLOAT:
         {
             ComponentSize = sizeof(float);
             FilterFunc = Rr_UIFloatFilter;
-            ScanString = "%g";
         }
         break;
         case RR_UI_SCALAR_TYPE_DOUBLE:
         {
             ComponentSize = sizeof(double);
             FilterFunc = Rr_UIFloatFilter;
-            ScanString = "%lg";
         }
         break;
         default:
@@ -6830,7 +6825,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
         for (int Col = 0; Col < Cols; ++Col)
         {
             size_t Index = (size_t)(Col * Rows + Row);
-            char *ComponentData = (char *)Data + Index * ComponentSize;
+            void *ComponentData = (char *)Data + Index * ComponentSize;
             char const *ComponentMin = NULL;
             char const *ComponentMax = NULL;
             if (Range)
@@ -6898,7 +6893,45 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
 
                 if (Result.Edited)
                 {
-                    sscanf(ComponentBuffer, ScanString, (void *)ComponentData);
+                    switch (ScalarType)
+                    {
+                        case RR_UI_SCALAR_TYPE_INT:
+                        {
+                            (void)sscanf(
+                                ComponentBuffer,
+                                "%i",
+                                (int *)ComponentData);
+                        }
+                        break;
+                        case RR_UI_SCALAR_TYPE_UINT:
+                        {
+                            (void)sscanf(
+                                ComponentBuffer,
+                                "%u",
+                                (unsigned int *)ComponentData);
+                        }
+                        break;
+                        case RR_UI_SCALAR_TYPE_FLOAT:
+                        {
+                            (void)sscanf(
+                                ComponentBuffer,
+                                "%g",
+                                (float *)ComponentData);
+                        }
+                        break;
+                        case RR_UI_SCALAR_TYPE_DOUBLE:
+                        {
+                            (void)sscanf(
+                                ComponentBuffer,
+                                "%lg",
+                                (double *)ComponentData);
+                        }
+                        break;
+                        default:
+                        {
+                        }
+                        break;
+                    }
                     if (Range)
                     {
                         Rr_UIClampScalarRange(
@@ -7754,7 +7787,7 @@ static inline void Rr_UIColorPickerPopup(
                 RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT))
     {
         uint32_t NewColor;
-        sscanf(HexBuffer, "%x", &NewColor);
+        (void)sscanf(HexBuffer, "%x", &NewColor);
         if (ChannelCount == 3)
         {
             NewColor <<= 8;
@@ -9048,13 +9081,15 @@ float Rr_UICurrentLineHeight(void)
     return Rr_UICurrentFont()->LineHeight;
 }
 
-static inline void Rr_UIDebugOverlayArena(Rr_Arena *Arena, char const *Comment)
+static inline void Rr_UIDebugOverlayArena(Rr_Arena *Arena, char const *Name)
 {
     Rr_UITextF(
-        "%s: commited %zu bytes, position %p",
-        Comment,
-        Arena->Commited,
-        (void *)(Arena + Arena->Position));
+        "%s:\n"
+        "  Commited: %zuKiB\n"
+        "  Reserved: %zuMiB",
+        Name,
+        Arena->Commited / 1024,
+        Arena->Reserved / 1024 / 1024);
 }
 
 void Rr_UIDebugOverlay(void)

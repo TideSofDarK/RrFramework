@@ -249,7 +249,7 @@ void Rr_AddTextInputEventString(char const *CString, size_t Length)
 
 void Rr_AddTextInputEvent(uint32_t Codepoint, Rr_Arena *Arena)
 {
-    if ((Codepoint == 127 || (Codepoint >= 0 && Codepoint <= 31)))
+    if (Codepoint == 127 || Codepoint <= 31)
     {
         return;
     }
