@@ -93,6 +93,7 @@
 - [ ] More animations.
 - [ ] Proper stack data structure.
 - [ ] Horizontal scrollbar.
+- [ ] Input field doesn't lose focus when clicking elsewhere.
 
 ** Debug
 

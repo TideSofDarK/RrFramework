@@ -1084,37 +1084,34 @@ void Rr_SetClipboardText(const char *CString)
         return;
     }
 
-    size_t Length = strlen(CString);
-    if (!Length)
-    {
-        return;
-    }
-
     if (!OpenClipboard(gWin32.Window))
     {
         return;
     }
 
-    HGLOBAL Handle = GlobalAlloc(GMEM_MOVEABLE, Length + 1);
+    size_t WideLength =
+        (size_t)MultiByteToWideChar(CP_UTF8, 0, CString, -1, NULL, 0);
+    HGLOBAL Handle = GlobalAlloc(GMEM_MOVEABLE, WideLength * sizeof(WCHAR));
     if (!Handle)
     {
         CloseClipboard();
 
         return;
     }
-    char *Copy = GlobalLock(Handle);
+    WCHAR *Copy = GlobalLock(Handle);
     if (!Copy)
     {
+        GlobalFree(Handle);
+
         CloseClipboard();
 
         return;
     }
-    memcpy(Copy, CString, Length);
-    Copy[Length] = '\0';
+    MultiByteToWideChar(CP_UTF8, 0, CString, -1, Copy, (int)WideLength);
     GlobalUnlock(Copy);
 
     EmptyClipboard();
-    SetClipboardData(CF_TEXT, Copy);
+    SetClipboardData(CF_UNICODETEXT, Copy);
     CloseClipboard();
 }
 
@@ -1125,7 +1122,7 @@ char const *Rr_GetClipboardText(Rr_Arena *Arena)
         return NULL;
     }
 
-    if (!IsClipboardFormatAvailable(CF_TEXT))
+    if (!IsClipboardFormatAvailable(CF_UNICODETEXT))
     {
         return NULL;
     }
@@ -1135,7 +1132,7 @@ char const *Rr_GetClipboardText(Rr_Arena *Arena)
         return NULL;
     }
 
-    HGLOBAL Global = GetClipboardData(CF_TEXT);
+    HGLOBAL Global = GetClipboardData(CF_UNICODETEXT);
     if (!Global)
     {
         CloseClipboard();
@@ -1143,7 +1140,7 @@ char const *Rr_GetClipboardText(Rr_Arena *Arena)
         return NULL;
     }
 
-    char const *Text = GlobalLock(Global);
+    LPCWCH Text = GlobalLock(Global);
     if (!Text)
     {
         CloseClipboard();
@@ -1151,24 +1148,11 @@ char const *Rr_GetClipboardText(Rr_Arena *Arena)
         return NULL;
     }
 
-    size_t Length = strlen(Text);
-    if (Length == 0)
-    {
-        GlobalUnlock(Global);
-
-        CloseClipboard();
-
-        return NULL;
-    }
-
-    char *NewAllocation = RR_ALLOC_NO_ZERO(Length + 1, Arena);
-    ;
-    memcpy(NewAllocation, Text, Length);
-    NewAllocation[Length] = '\0';
+    char const *Copy = Rr_Win32ToUTF8(Text, Arena);
 
     GlobalUnlock(Global);
 
     CloseClipboard();
 
-    return NewAllocation;
+    return Copy;
 }
