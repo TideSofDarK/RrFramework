@@ -365,6 +365,7 @@ static inline Rr_UIStorage *Rr_UIGetStorage(
         *StorageRef = RR_ALLOC_TYPE(Rr_UIStorage, gUIContext->Arena);
         Rr_UIStorage *Storage = *StorageRef;
         Storage->Type = Type;
+
         return *StorageRef;
     }
     Rr_UIStorage *Storage = *StorageRef;
@@ -373,8 +374,10 @@ static inline Rr_UIStorage *Rr_UIGetStorage(
         /* NOTE: Maybe report hash collision here? */
         RR_ZERO_PTR(Storage);
         Storage->Type = Type;
+
         return Storage;
     }
+
     return Storage;
 }
 
@@ -434,8 +437,10 @@ static inline Rr_UIGlyph *Rr_UIGetGlyphForCodepoint(
         {
             continue;
         }
+
         return Range->Glyphs + (Codepoint - Range->First);
     }
+
     return NULL;
 }
 
@@ -466,6 +471,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     {
         RR_LOG_ERROR("Failed to parse .ttf file!");
         Rr_DestroyScratch(Scratch);
+
         return NULL;
     }
 
@@ -496,6 +502,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     {
         RR_LOG_ERROR("Failed to begin .ttf packing!");
         Rr_DestroyScratch(Scratch);
+
         return NULL;
     }
 
@@ -700,6 +707,7 @@ static inline Rr_UIFont *Rr_UICurrentFont(void)
     {
         return RR_LAST_ARRAY_ELEMENT(&gUIContext->FontStack);
     }
+
     return gUIContext->DefaultFont;
 }
 
@@ -895,6 +903,7 @@ static inline Rr_Rect Rr_UIRectIntersection(
     Rr_Vec2 BottomRightB = Rr_AddV2(RectB->Offset, RectB->Extent);
     Rr_Vec2 Delta = Rr_MinV2(BottomRightA, BottomRightB);
     Result.Extent = Rr_SubV2(Delta, Result.Offset);
+
     return Result;
 }
 
@@ -904,6 +913,7 @@ static inline Rr_UILayout *Rr_UICurrentLayout(void)
     {
         return NULL;
     }
+
     return RR_LAST_ARRAY_ELEMENT(&gUIContext->LayoutStack);
 }
 
@@ -952,6 +962,7 @@ static inline bool Rr_UISkipItems(void)
 static inline Rr_UIWindow *Rr_UICurrentWindow(void)
 {
     Rr_UILayout *Layout = Rr_UICurrentLayout();
+
     return Layout ? Layout->Window : NULL;
 }
 
@@ -964,6 +975,7 @@ static inline float Rr_UIGetAvailableContentsWidth(Rr_UILayout *Layout)
 static inline bool Rr_UIIsHorizontal(void)
 {
     Rr_UILayout *Layout = Rr_UICurrentLayout();
+
     return Layout && Layout->HorizontalX != INFINITY;
 }
 
@@ -991,6 +1003,7 @@ static inline void Rr_UIAssertNoHorizontal(Rr_UILayout *Layout)
 Rr_UIPrimitive Rr_UIReservePrimitive(size_t VertexCount, size_t IndexCount)
 {
     Rr_UIIndex BaseVertex = (Rr_UIIndex)gUIContext->Vertices.Count;
+
     return (Rr_UIPrimitive){
         .Vertices = RR_PUSH_INTO_ARRAY_MANY(
             &gUIContext->Vertices,
@@ -2684,8 +2697,10 @@ static inline Rr_UIClipRect *Rr_UIEndClipRect(Rr_UILayout *Layout)
         Rr_UIClipRect *Last = &RR_LAST_ARRAY_ELEMENT(Layout->ClipRects);
         Last->IndexCount =
             (uint32_t)gUIContext->Indices.Count - Last->FirstIndex;
+
         return Last;
     }
+
     return NULL;
 }
 
@@ -2835,6 +2850,7 @@ static inline Rr_Vec2 Rr_UIGetMinWindowExtent(Rr_UIWindowFlags Flags)
             Size,
             Rr_MulV2F(Rr_V2F(gUIContext->DoubleBevelThickness), 2.0f));
     }
+
     return Rr_FloorV2(Size);
 }
 
@@ -2842,6 +2858,7 @@ Rr_Vec2 Rr_UIGetCursor(void)
 {
     Rr_UIAssertWindow();
     Rr_UILayout *Layout = Rr_UICurrentLayout();
+
     return Layout->Cursor;
 }
 
@@ -3073,6 +3090,7 @@ static inline Rr_Vec2 Rr_UIGetWindowOffsetRelativeToTitle(
         Offset.X -= gUIContext->TitleBarHeight;
     }
     Offset = Rr_SubV2(Offset, gUIContext->TitleBarPadding);
+
     return Offset;
 }
 
@@ -3698,8 +3716,10 @@ static inline bool Rr_UIConsumeWindowFloat(float *Src, float *Dst)
     {
         *Dst = floorf(*Src);
         *Src = INFINITY;
+
         return true;
     }
+
     return false;
 }
 
@@ -3740,6 +3760,7 @@ static inline bool Rr_UIConsumeNextWindowOpenOffset(Rr_Vec2 *OutResult)
     {
         *OutResult = Rr_FloorV2(gUIContext->NextWindowOpenOffset);
         gUIContext->NextWindowOpenOffset = Rr_V2F(INFINITY);
+
         return true;
     }
 
@@ -4353,6 +4374,7 @@ void Rr_UIEndWindow(void)
     if (Layout->SkipCompletely)
     {
         Rr_UIPopLayout();
+
         return;
     }
 
@@ -4924,8 +4946,10 @@ static inline bool Rr_UIApplyWidgetExtent(Rr_Vec2 *OutExtent)
     if (gUIContext->WidgetExtentStack.Count)
     {
         *OutExtent = RR_LAST_ARRAY_ELEMENT(&gUIContext->WidgetExtentStack);
+
         return true;
     }
+
     return false;
 }
 
@@ -5406,6 +5430,7 @@ static inline bool Rr_UIConsumeTextInput(
     Buffer[*BufferLength] = '\0';
     *CursorEnd = CursorMin + UTF8StringLength;
     *CursorBegin = *CursorEnd;
+
     return true;
 }
 
@@ -5446,6 +5471,7 @@ static inline size_t Rr_UIPreviousLine(char *Buffer, size_t Cursor)
     {
         return Cursor;
     }
+
     return Rr_UIThisLine(Buffer, Cursor);
 }
 
@@ -5477,6 +5503,7 @@ static inline size_t Rr_UILineStart(char const *Buffer, size_t Cursor)
     {
         LineStart++;
     }
+
     return LineStart;
 }
 
@@ -5492,6 +5519,7 @@ static inline void Rr_UISetTextInputMaxCol(char *Buffer, size_t Cursor)
     if (CursorMaxCol == 0)
     {
         gUIContext->TextInputCursorCodepointMaxCol = 0;
+
         return;
     }
     Rr_UTF8Decoder Decoder = {
@@ -5505,6 +5533,7 @@ static inline void Rr_UISetTextInputMaxCol(char *Buffer, size_t Cursor)
         {
             gUIContext->TextInputCursorCodepointMaxCol =
                 Decoder.CodepointCount - 1;
+
             return;
         }
     }
@@ -6387,6 +6416,7 @@ static inline bool Rr_UIHexFilter(size_t Length, char const *UTF8String)
             return false;
         }
     }
+
     return true;
 }
 
@@ -6402,6 +6432,7 @@ static inline bool Rr_UIIntegerFilter(size_t Length, char const *UTF8String)
             return false;
         }
     }
+
     return true;
 }
 
@@ -6418,6 +6449,7 @@ static inline bool Rr_UIUnsignedIntegerFilter(
             return false;
         }
     }
+
     return true;
 }
 
@@ -6434,6 +6466,7 @@ static inline bool Rr_UIFloatFilter(size_t Length, char const *UTF8String)
             return false;
         }
     }
+
     return true;
 }
 
@@ -6585,6 +6618,7 @@ static inline void Rr_UIModifyUnsignedInt(
     {
         if (Old + Abs < Old)
         {
+
             *UnsignedInt = UINT32_MAX;
             return;
         }
@@ -6595,6 +6629,7 @@ static inline void Rr_UIModifyUnsignedInt(
         if (Old - Abs > Old)
         {
             *UnsignedInt = Min;
+
             return;
         }
         *UnsignedInt = gUIContext->DragScalarValue.UnsignedInt32 - Abs;
@@ -7487,6 +7522,7 @@ static inline Rr_Vec3 Rr_UIRGBToHSV(Rr_Vec3 *Color)
     }
     float D = Q.X - RR_MIN(Q.W, Q.Y);
     float E = 1.0e-10f;
+
     return Rr_V3(fabsf(Q.Z + (Q.W - Q.Y) / (6.0f * D + E)), D / (Q.X + E), Q.X);
 }
 
@@ -7507,6 +7543,7 @@ static inline Rr_Vec3 Rr_UIHSVToRGB(Rr_Vec3 *HSV)
     B.X = RR_CLAMP(0.0f, B.X, 1.0f);
     B.Y = RR_CLAMP(0.0f, B.Y, 1.0f);
     B.Z = RR_CLAMP(0.0f, B.Z, 1.0f);
+
     return Rr_MulV3F(Rr_LerpV3(Rr_V3(K.X, K.X, K.X), HSV->Y, B), HSV->Z);
 }
 
@@ -8432,6 +8469,7 @@ bool Rr_UISliderFloat(char const *Title, float *Value, float Min, float Max)
         Rr_UISlider(Title, InNormalized, Buffer, (size_t)Length, 0.0f);
     float Out = OutNormalized * (Max - Min) + Min;
     *Value = Out;
+
     return In != Out;
 }
 
