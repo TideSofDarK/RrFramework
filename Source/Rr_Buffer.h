@@ -36,6 +36,7 @@ struct Rr_AllocatedBuffer
 struct Rr_Buffer
 {
     Rr_BufferFlags Flags;
+    VkDeviceSize Size;
     VkBufferUsageFlags Usage;
     uint32_t AllocatedBufferCount;
     Rr_AllocatedBuffer AllocatedBuffers[RR_FRAME_OVERLAP];

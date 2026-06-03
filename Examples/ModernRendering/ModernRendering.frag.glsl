@@ -4,6 +4,8 @@
 #define DEG_TO_RAD (PI / 180.0)
 #define SAMPLES_COUNT 32
 #define SAMPLES_COUNT_RECIPROCAL (1.0 / float(SAMPLES_COUNT))
+#define MAX_POINT_LIGHTS 4
+#define MAX_SPOT_LIGHTS 4
 
 layout(location = 0) in vec2 InUV;
 layout(location = 1) in vec3 InNormal;
@@ -58,22 +60,21 @@ struct SGPUSpotLight
     float TexelSize;
 };
 
-layout(set = 1, binding = 0) readonly buffer SGPUPointLights
+layout(set = 1, binding = 0) uniform SGPULights
 {
-    SGPUPointLight PointLights[];
+    uint PointLightCount;
+    uint SpotLightCount;
+    uint Padding0;
+    uint Padding1;
+    SGPUPointLight PointLights[MAX_POINT_LIGHTS];
+    SGPUSpotLight SpotLights[MAX_SPOT_LIGHTS];
 };
 
-layout(set = 1, binding = 1) uniform textureCube PointShadowMaps[4];
+layout(set = 1, binding = 1) uniform textureCube PointShadowMaps[MAX_POINT_LIGHTS];
+layout(set = 1, binding = 2) uniform texture2D SpotShadowMaps[MAX_SPOT_LIGHTS];
 
-layout(set = 1, binding = 2) readonly buffer SGPUSpotLights
-{
-    SGPUSpotLight SpotLights[];
-};
-
-layout(set = 1, binding = 3) uniform texture2D SpotShadowMaps[4];
-
-layout(set = 1, binding = 4) uniform sampler RegularSampler;
-layout(set = 1, binding = 5) uniform sampler ShadowSampler;
+layout(set = 1, binding = 3) uniform sampler RegularSampler;
+layout(set = 1, binding = 4) uniform sampler ShadowSampler;
 layout(set = 1, binding = 6) uniform texture2D AmbientOcclusionImage;
 
 const vec2 POISSON16[] = vec2[16](
@@ -370,7 +371,7 @@ void main()
     vec3 TotalDiffuse = vec3(0.0);
     vec3 TotalSpecular = vec3(0.0);
 
-    for (uint Index = 0; Index < PointLights.length(); ++Index)
+    for (uint Index = 0; Index < PointLightCount; ++Index)
     {
         SGPUPointLight Light = PointLights[Index];
 
@@ -393,7 +394,7 @@ void main()
         TotalSpecular += SpecLight * Shadow * Attenuation;
     }
 
-    for (uint Index = 0; Index < SpotLights.length(); ++Index)
+    for (uint Index = 0; Index < SpotLightCount; ++Index)
     {
         SGPUSpotLight Light = SpotLights[Index];
 

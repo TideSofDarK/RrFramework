@@ -48,6 +48,7 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
 
     *Buffer = (Rr_Buffer){
         .Flags = Flags,
+        .Size = (VkDeviceSize)Size,
     };
 
     Rr_ConsumeNextObjectName(Buffer->Name);
@@ -163,6 +164,11 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
     }
 
     return Buffer;
+}
+
+size_t Rr_GetBufferSize(Rr_Buffer *Buffer)
+{
+    return (size_t)Buffer->Size;
 }
 
 void Rr_ReleaseBuffer(Rr_Buffer *Buffer)

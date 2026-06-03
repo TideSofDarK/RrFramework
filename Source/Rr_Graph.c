@@ -3779,6 +3779,7 @@ void Rr_BindUniformBufferAt(
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
     assert(Size > 0);
+    assert(Size <= Rr_GetBufferSize(Buffer));
     assert(Node->CurrentLayout);
 
     Rr_GraphBuffer *BufferHandle = Rr_GetGraphBufferHandle(Node->Graph, Buffer);
@@ -3817,6 +3818,7 @@ static void Rr_BindStorageBufferEx(
     assert(Set < RR_MAX_SETS);
     assert(Binding < RR_MAX_BINDINGS);
     assert(Size > 0);
+    assert(Size <= Rr_GetBufferSize(Buffer));
     assert(Node->CurrentLayout);
 
     Rr_GraphBuffer *BufferHandle = Rr_GetGraphBufferHandle(Node->Graph, Buffer);

@@ -149,7 +149,7 @@ public:
             ModelSet,
             ModelBinding,
             0,
-            RR_WHOLE_SIZE);
+            Rr_GetBufferSize(ModelBuffer));
         uint32_t FirstInstance = 0;
         for (auto const &MeshIndex : MeshesToDraw)
         {
@@ -693,7 +693,7 @@ class CLighting
     static constexpr Rr_ImageFormat SHADOW_MAP_DEPTH_FORMAT =
         RR_IMAGE_FORMAT_D32_SFLOAT;
     static constexpr std::int32_t POINT_SHADOW_MAP_SIZE = 2048;
-    static constexpr std::int32_t SPOT_SHADOW_MAP_SIZE = 4096;
+    static constexpr std::int32_t SPOT_SHADOW_MAP_SIZE = 2048;
 
     struct SGPUPointLight
     {
@@ -732,6 +732,16 @@ class CLighting
         float TexelSize;
     };
 
+    struct SGPULights
+    {
+        uint32_t PointLightCount;
+        uint32_t SpotLightCount;
+        uint32_t Padding0;
+        uint32_t Padding1;
+        SGPUPointLight PointLights[MAX_POINT_LIGHTS];
+        SGPUSpotLight SpotLights[MAX_SPOT_LIGHTS];
+    };
+
     struct SGPUUniform
     {
         Rr_Mat4 ViewProjection;
@@ -743,14 +753,13 @@ class CLighting
     Rr_Sampler *ShadowSampler{};
     Rr_Sampler *RegularSampler{};
     Rr_Buffer *UniformBuffer{};
-
-    Rr_Buffer *PointLightsBuffer{};
+    size_t LightsBufferOffset{};
     std::vector<SGPUPointLight> PointLights{};
     std::vector<Rr_ImageCube *> PointShadowMaps{};
-
-    Rr_Buffer *SpotLightsBuffer{};
     std::vector<SGPUSpotLight> SpotLights{};
     std::vector<Rr_Image2D *> SpotShadowMaps{};
+    Rr_ImageCube *DummyPointShadowMap{};
+    Rr_Image2D *DummySpotShadowMap{};
 
     Rr_Mat4 GetCubeView(Rr_ImageCubeFace Face, Rr_Vec3 Position)
     {
@@ -789,41 +798,6 @@ class CLighting
             default:
                 std::abort();
         }
-    }
-
-    void UpdateLightBuffers()
-    {
-        for (auto &PointLight : PointLights)
-        {
-            // PointLight.DepthParams = Rr_V2(
-            //     (NEAR_PLANE - FAR_PLANE) / (NEAR_PLANE * FAR_PLANE),
-            //     1.0 / NEAR_PLANE);
-        }
-        std::memcpy(
-            Rr_GetMappedBufferData(PointLightsBuffer),
-            PointLights.data(),
-            sizeof(SGPUPointLight) * PointLights.size());
-
-        for (auto &SpotLight : SpotLights)
-        {
-            SpotLight.ViewProjection = Rr_Perspective_RH(
-                                           RR_ANGLE_DEG(SpotLight.OuterCone),
-                                           1.0f,
-                                           0.5f,
-                                           FAR_PLANE) *
-                                       FLIP_Y_MATRIX *
-                                       Rr_InvGeneral(SpotLight.Transform);
-            // SpotLight.Width = 1.0f;
-            // SpotLight.WidthUV = 0.8f;
-            // SpotLight.WidthUV =
-            //     SpotLight.Width /
-            //     (2.0f * std::tan(RR_ANGLE_DEG(SpotLight.OuterCone) / 2.0f) *
-            //      0.1f);
-        }
-        std::memcpy(
-            Rr_GetMappedBufferData(SpotLightsBuffer),
-            SpotLights.data(),
-            sizeof(SGPUSpotLight) * SpotLights.size());
     }
 
 public:
@@ -888,8 +862,6 @@ public:
         const SCamera &Camera,
         const std::function<void(Rr_GraphNode *Node)> &DrawSceneCallback)
     {
-        UpdateLightBuffers();
-
         Rr_BeginGraphLabel(Graph, "ShadowMaps");
 
         char *UniformData = (char *)Rr_GetMappedBufferData(UniformBuffer);
@@ -959,6 +931,12 @@ public:
             SGPUSpotLight &Spot = SpotLights[Index];
             Rr_Image2D *SpotShadowMap = SpotShadowMaps[Index];
 
+            Spot.ViewProjection = Rr_Perspective_RH(
+                                      RR_ANGLE_DEG(Spot.OuterCone),
+                                      1.0f,
+                                      0.5f,
+                                      FAR_PLANE) *
+                                  FLIP_Y_MATRIX * Rr_InvGeneral(Spot.Transform);
             SGPUUniform Uniform = {
                 .ViewProjection = Spot.ViewProjection,
                 .LightPosition = Spot.Transform.Columns[3].XYZ,
@@ -992,55 +970,52 @@ public:
         }
 
         Rr_EndGraphLabel(Graph, "ShadowMaps");
+
+        LightsBufferOffset = UniformOffset;
+        SGPULights *Lights = (SGPULights *)(UniformData + LightsBufferOffset);
+        Lights->PointLightCount = (uint32_t)PointLights.size();
+        Lights->SpotLightCount = (uint32_t)SpotLights.size();
+        std::memcpy(
+            Lights->PointLights,
+            PointLights.data(),
+            sizeof(SGPUPointLight) * PointLights.size());
+        std::memcpy(
+            Lights->SpotLights,
+            SpotLights.data(),
+            sizeof(SGPUSpotLight) * SpotLights.size());
     }
 
     void BindLights(Rr_GraphNode *GraphicsNode, std::uint32_t Set)
     {
-        Rr_BindStorageBuffer(
+        Rr_BindUniformBuffer(
             GraphicsNode,
-            PointLightsBuffer,
+            UniformBuffer,
             Set,
             0,
-            0,
-            sizeof(SGPUPointLight) * PointLights.size());
+            LightsBufferOffset,
+            sizeof(SGPULights));
         for (std::size_t Index = 0; Index < MAX_POINT_LIGHTS; ++Index)
         {
-            std::size_t ImageIndex = Index;
-            if (ImageIndex >= PointLights.size())
-            {
-                ImageIndex = PointLights.size() - 1;
-            }
             Rr_BindSampledImageCubeAt(
                 GraphicsNode,
-                PointShadowMaps[ImageIndex],
+                Index >= PointLights.size() ? DummyPointShadowMap
+                                            : PointShadowMaps[Index],
                 Set,
                 1,
                 Index);
         }
-
-        Rr_BindStorageBuffer(
-            GraphicsNode,
-            SpotLightsBuffer,
-            Set,
-            2,
-            0,
-            sizeof(SGPUSpotLight) * SpotLights.size());
         for (std::uint32_t Index = 0; Index < MAX_SPOT_LIGHTS; ++Index)
         {
-            std::uint32_t ImageIndex = Index;
-            if (ImageIndex >= SpotLights.size())
-            {
-                ImageIndex = SpotLights.size() - 1;
-            }
             Rr_BindSampledImage2DAt(
                 GraphicsNode,
-                SpotShadowMaps[ImageIndex],
+                Index >= SpotShadowMaps.size() ? DummySpotShadowMap
+                                               : SpotShadowMaps[Index],
                 Set,
-                3,
+                2,
                 Index);
         }
-        Rr_BindSampler(GraphicsNode, RegularSampler, 1, 4);
-        Rr_BindSampler(GraphicsNode, ShadowSampler, 1, 5);
+        Rr_BindSampler(GraphicsNode, RegularSampler, Set, 3);
+        Rr_BindSampler(GraphicsNode, ShadowSampler, Set, 4);
     }
 
     void UI()
@@ -1208,19 +1183,20 @@ public:
         ShadowPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         UniformBuffer = Rr_CreateBuffer(
-            RR_MEGABYTES(2),
+            RR_MEGABYTES(1) + sizeof(SGPULights),
             RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
                 RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_UNIFORM_BIT);
 
-        PointLightsBuffer = Rr_CreateBuffer(
-            RR_MEGABYTES(2),
-            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
-                RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_STORAGE_BIT);
-
-        SpotLightsBuffer = Rr_CreateBuffer(
-            RR_MEGABYTES(2),
-            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
-                RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_STORAGE_BIT);
+        DummyPointShadowMap = Rr_CreateImageCube(
+            { 2, 2 },
+            SHADOW_MAP_DEPTH_FORMAT,
+            RR_IMAGE_FLAGS_SAMPLED_BIT |
+                RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
+        DummySpotShadowMap = Rr_CreateImage2D(
+            { 2, 2 },
+            SHADOW_MAP_DEPTH_FORMAT,
+            RR_IMAGE_FLAGS_SAMPLED_BIT |
+                RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
     }
 
     ~CLighting()
@@ -1228,8 +1204,6 @@ public:
         Rr_ReleaseSampler(RegularSampler);
         Rr_ReleaseSampler(ShadowSampler);
         Rr_ReleaseGraphicsPipeline(ShadowPipeline);
-        Rr_ReleaseBuffer(PointLightsBuffer);
-        Rr_ReleaseBuffer(SpotLightsBuffer);
         Rr_ReleaseBuffer(UniformBuffer);
         for (auto &ShadowMap : PointShadowMaps)
         {
@@ -1239,6 +1213,8 @@ public:
         {
             Rr_ReleaseImage(ShadowMap);
         }
+        Rr_ReleaseImage(DummyPointShadowMap);
+        Rr_ReleaseImage(DummySpotShadowMap);
     }
 };
 
@@ -1479,7 +1455,7 @@ public:
 
 #include <cstdio>
 
-struct CModernRenderingApp
+class CModernRenderingApp
 {
     struct SGPUUniform
     {
@@ -1681,31 +1657,6 @@ struct CModernRenderingApp
                 RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
     }
 
-    void Event(Rr_Event const *Event)
-    {
-        switch (Event->Type)
-        {
-            case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
-            {
-                InitAttachments();
-                InitCamera();
-            }
-            break;
-            case RR_EVENT_TYPE_KEY_DOWN:
-            {
-                if (Event->Key.Scancode == RR_SCANCODE_F11)
-                {
-                    Rr_SetWindowFullscreen(!Rr_IsWindowFullscreen());
-                }
-            }
-            break;
-            default:
-            {
-            }
-            break;
-        }
-    }
-
     void UI()
     {
         Rr_UIDebugOverlay();
@@ -1735,6 +1686,32 @@ struct CModernRenderingApp
             Lighting.UI();
         }
         Rr_UIEndWindow();
+    }
+
+public:
+    void Event(Rr_Event const *Event)
+    {
+        switch (Event->Type)
+        {
+            case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
+            {
+                InitAttachments();
+                InitCamera();
+            }
+            break;
+            case RR_EVENT_TYPE_KEY_DOWN:
+            {
+                if (Event->Key.Scancode == RR_SCANCODE_F11)
+                {
+                    Rr_SetWindowFullscreen(!Rr_IsWindowFullscreen());
+                }
+            }
+            break;
+            default:
+            {
+            }
+            break;
+        }
     }
 
     void Iterate()

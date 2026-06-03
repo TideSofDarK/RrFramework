@@ -23,8 +23,6 @@
 
 #include <Rr/Rr_Renderer.h>
 
-static uint64_t const RR_WHOLE_SIZE = ~0ULL;
-
 typedef struct Rr_Buffer Rr_Buffer;
 
 typedef enum
@@ -47,6 +45,8 @@ extern "C" {
 #endif
 
 extern Rr_Buffer *RR_CC Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags);
+
+extern size_t Rr_GetBufferSize(Rr_Buffer *Buffer);
 
 extern void RR_CC Rr_ReleaseBuffer(Rr_Buffer *Buffer);
 
