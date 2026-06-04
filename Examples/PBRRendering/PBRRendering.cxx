@@ -521,17 +521,31 @@ public:
             {
                 if (Node->has_translation)
                 {
-                    Transform =
-                        Transform * Rr_Translate(*(Rr_Vec3 *)Node->translation);
+                    Rr_Vec3 Translation = {
+                        Node->translation[0],
+                        Node->translation[1],
+                        Node->translation[2],
+                    };
+                    Transform = Transform * Rr_Translate(Translation);
                 }
                 if (Node->has_rotation)
                 {
-                    Transform =
-                        Transform * Rr_QToM4(*(Rr_Quat *)Node->rotation);
+                    Rr_Quat Quat = {
+                        Node->rotation[0],
+                        Node->rotation[1],
+                        Node->rotation[2],
+                        Node->rotation[3],
+                    };
+                    Transform = Transform * Rr_QToM4(Quat);
                 }
                 if (Node->has_scale)
                 {
-                    Transform = Transform * Rr_Scale(*(Rr_Vec3 *)Node->scale);
+                    Rr_Vec3 Scale = {
+                        Node->scale[0],
+                        Node->scale[1],
+                        Node->scale[2],
+                    };
+                    Transform = Transform * Rr_Scale(Scale);
                 }
             }
             Models.emplace_back(Transform);
@@ -1904,7 +1918,7 @@ class CPBRRenderingApp
     void UI()
     {
         Rr_UIDebugOverlay();
-        Rr_UIBeginWindowEx("ModernRendering.cxx", nullptr, 0);
+        Rr_UIBeginWindowEx("PBRRendering.cxx", nullptr, 0);
         {
             if (Rr_UIBeginTree("General"))
             {
@@ -2155,7 +2169,7 @@ int main()
     static CPBRRenderingApp *App{};
 
     Rr_AppConfig Config = {};
-    Config.Title = "ModernRendering";
+    Config.Title = "PBRRendering";
     Config.WindowFlags |= RR_WINDOW_FLAGS_RESIZE_BIT;
     Config.InitFunc = []() { App = new CPBRRenderingApp(); };
     Config.EventFunc = [](Rr_Event const *Event) { App->Event(Event); };
