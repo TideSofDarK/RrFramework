@@ -26,9 +26,28 @@
 
 #include <Rr/Rr_Utility.h>
 
-#include <ctype.h>
-
 Rr_Platform gPlatform = { 0 };
+
+void Rr_BeginPlatformEvents(void)
+{
+    gPlatform.MousePositionDelta = Rr_V2F(0.0f);
+    if (!gPlatform.RelativeMouseMode)
+    {
+        gPlatform.MousePosition = Rr_QueryPlatformMousePosition();
+    }
+}
+
+void Rr_EndPlatformEvents(void)
+{
+    if (!gPlatform.RelativeMouseMode)
+    {
+        Rr_Vec2 MousePosition = Rr_QueryPlatformMousePosition();
+
+        gPlatform.MousePositionDelta =
+            Rr_SubV2(gPlatform.MousePosition, MousePosition);
+        gPlatform.MousePosition = MousePosition;
+    }
+}
 
 void Rr_ReleaseAllInput(void)
 {

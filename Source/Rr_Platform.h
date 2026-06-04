@@ -51,6 +51,32 @@ struct Rr_Platform
 
 extern Rr_Platform gPlatform;
 
+/* Platform-Specific Functions */
+
+extern bool Rr_InitPlatform(struct Rr_AppConfig *Config);
+
+extern void Rr_CleanupPlatform(void);
+
+extern void (*Rr_GetVkGetInstanceProcAddr(void))(void);
+
+extern const char *const *Rr_GetVulkanExtensions(uint32_t *Count);
+
+extern bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface);
+
+extern void Rr_ProcessPlatformEvents(Rr_Arena *Arena);
+
+extern void Rr_ShowWindow(void);
+
+extern double Rr_GetDisplayRefreshRate(void);
+
+extern Rr_Vec2 Rr_QueryPlatformMousePosition(void);
+
+/* Common Functions */
+
+extern void Rr_BeginPlatformEvents(void);
+
+extern void Rr_EndPlatformEvents(void);
+
 extern void Rr_ReleaseAllInput(void);
 
 /* Events */
@@ -77,21 +103,3 @@ extern void Rr_AddTextInputEvent(uint32_t Codepoint, Rr_Arena *Arena);
 extern void Rr_AddDropFileEvent(char const *Path);
 
 extern void Rr_AddFocusEvent(bool HasFocus);
-
-/* Platform-specific functions. */
-
-extern bool Rr_InitPlatform(struct Rr_AppConfig *Config);
-
-extern void Rr_CleanupPlatform(void);
-
-extern void (*Rr_GetVkGetInstanceProcAddr(void))(void);
-
-extern const char *const *Rr_GetVulkanExtensions(uint32_t *Count);
-
-extern bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface);
-
-extern void Rr_ProcessPlatformEvents(Rr_Arena *Arena);
-
-extern void Rr_ShowWindow(void);
-
-extern double Rr_GetDisplayRefreshRate(void);

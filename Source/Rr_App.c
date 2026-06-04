@@ -108,7 +108,11 @@ static inline void Rr_DispatchEvents(void)
         gRenderer->Swapchain.RecreateEventPending = false;
     }
 
+    Rr_BeginPlatformEvents();
+
     Rr_ProcessPlatformEvents(Scratch.Arena);
+
+    Rr_EndPlatformEvents();
 
     for (Rr_EventHiveIterator It = gPlatform.EventHive.Begin;
          It.Element != gPlatform.EventHive.End.Element;

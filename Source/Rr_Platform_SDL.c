@@ -88,25 +88,31 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
     {
         SDLWindowFlags |= SDL_WINDOW_RESIZABLE;
     }
-    gSDL.Window = SDL_CreateWindow(Config->Title, 0, 0, SDLWindowFlags);
+    if (Config->WindowFlags & RR_WINDOW_FLAGS_FULLSCREEN_BIT)
+    {
+        SDLWindowFlags |= SDL_WINDOW_FULLSCREEN;
+    }
+    SDL_DisplayID PrimaryDisplayID = SDL_GetPrimaryDisplay();
+    SDL_Rect PrimaryDisplayBounds;
+    SDL_GetDisplayBounds(PrimaryDisplayID, &PrimaryDisplayBounds);
+    Rr_IntVec2 WindowSize = {
+        (int32_t)((float)PrimaryDisplayBounds.w * RR_WINDOWED_RATIO),
+        (int32_t)((float)PrimaryDisplayBounds.h * RR_WINDOWED_RATIO),
+    };
+    gSDL.Window = SDL_CreateWindow(
+        Config->Title,
+        WindowSize.X,
+        WindowSize.Y,
+        SDLWindowFlags);
     if (!gSDL.Window)
     {
         RR_LOG_ERROR("%s", SDL_GetError());
+
+        return false;
     }
     SDL_SetEventEnabled(SDL_EVENT_DROP_FILE, true);
     SDL_StartTextInput(gSDL.Window);
-    Rr_IntVec2 WindowSize = Rr_GetDisplaySize();
-    WindowSize.X = (int32_t)((float)WindowSize.X * RR_WINDOWED_RATIO);
-    WindowSize.Y = (int32_t)((float)WindowSize.Y * RR_WINDOWED_RATIO);
-#ifdef __APPLE__
-    SDL_Rect UsableBounds;
-    SDL_GetDisplayUsableBounds(
-        SDL_GetDisplayForWindow(gPlatform->Window),
-        &UsableBounds);
-    WindowSize.X = (int32_t)((float)UsableBounds.w * RR_WINDOWED_RATIO);
-    WindowSize.Y = (int32_t)((float)UsableBounds.h * RR_WINDOWED_RATIO);
-#endif
-    SDL_SetWindowSize(gSDL.Window, WindowSize.X, WindowSize.Y);
+    /* SDL_SetWindowSize(gSDL.Window, WindowSize.X, WindowSize.Y); */
     SDL_SetWindowPosition(
         gSDL.Window,
         SDL_WINDOWPOS_CENTERED,
@@ -153,8 +159,6 @@ bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface)
 
 void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
 {
-    gPlatform.MousePositionDelta = Rr_V2F(0.0f);
-
     SDL_Event SDLEvent;
     while (SDL_PollEvent(&SDLEvent))
     {
@@ -181,33 +185,53 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
                 gPlatform.MouseState =
                     (Rr_MouseButtonFlags)SDL_GetMouseState(NULL, NULL);
 
-                gPlatform.MousePositionDelta = Rr_AddV2(
-                    gPlatform.MousePositionDelta,
-                    (Rr_Vec2){ SDLEvent.motion.xrel, SDLEvent.motion.yrel });
+                Rr_Vec2 Position =
+                    (Rr_Vec2){ SDLEvent.motion.x, SDLEvent.motion.y };
+                Position = Rr_SDLConvertMousePosition(Position);
 
-                Rr_AddMouseMotionEvent(Rr_SDLConvertMousePosition(
-                    (Rr_Vec2){ SDLEvent.motion.x, SDLEvent.motion.y }));
+                if (gPlatform.RelativeMouseMode)
+                {
+                    Rr_Vec2 Delta =
+                        (Rr_Vec2){ SDLEvent.motion.xrel, SDLEvent.motion.yrel };
+                    Delta = Rr_SDLConvertMousePosition(Delta);
+
+                    if ((int)Delta.X == 0 && (int)Delta.Y == 0)
+                    {
+                        break;
+                    }
+
+                    gPlatform.MousePosition =
+                        Rr_AddV2(gPlatform.MousePosition, Delta);
+                    gPlatform.MousePositionDelta =
+                        Rr_AddV2(gPlatform.MousePositionDelta, Delta);
+
+                    Rr_AddMouseMotionEvent(gPlatform.MousePosition);
+                }
+                else
+                {
+                    gPlatform.MousePosition = Position;
+
+                    Rr_AddMouseMotionEvent(Position);
+                }
             }
             break;
             case SDL_EVENT_MOUSE_WHEEL:
             {
                 Rr_AddMouseWheelEvent(
-                    Rr_SDLConvertMousePosition(
-                        (Rr_Vec2){ SDLEvent.wheel.mouse_x,
-                                   SDLEvent.wheel.mouse_y }),
+                    gPlatform.MousePosition,
                     (Rr_Vec2){ SDLEvent.wheel.x, SDLEvent.wheel.y });
             }
             break;
             case SDL_EVENT_MOUSE_BUTTON_UP:
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
             {
-                gPlatform.MouseState =
-                    (Rr_MouseButtonFlags)SDL_GetMouseState(NULL, NULL);
-
                 Rr_AddMouseButtonEvent(
                     SDLEvent.type == SDL_EVENT_MOUSE_BUTTON_DOWN,
-                    Rr_V2(SDLEvent.button.x, SDLEvent.button.y),
+                    gPlatform.MousePosition,
                     SDLEvent.button.button - 1);
+
+                gPlatform.MouseState =
+                    (Rr_MouseButtonFlags)SDL_GetMouseState(NULL, NULL);
             }
             break;
             case SDL_EVENT_DROP_FILE:
@@ -298,6 +322,15 @@ double Rr_GetDisplayRefreshRate(void)
     const SDL_DisplayMode *Mode = SDL_GetDesktopDisplayMode(DisplayID);
 
     return (double)Mode->refresh_rate;
+}
+
+Rr_Vec2 Rr_QueryPlatformMousePosition(void)
+{
+    Rr_Vec2 Position;
+    SDL_GetMouseState(&Position.X, &Position.Y);
+    Position = Rr_SDLConvertMousePosition(Position);
+
+    return Position;
 }
 
 Rr_IntVec2 Rr_GetWindowSize(void)

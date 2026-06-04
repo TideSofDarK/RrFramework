@@ -816,7 +816,8 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
             XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
             XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_EXPOSURE |
             XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_FOCUS_CHANGE |
-            XCB_EVENT_MASK_PROPERTY_CHANGE
+            XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_VISIBILITY_CHANGE |
+            XCB_EVENT_MASK_KEYMAP_STATE | XCB_EVENT_MASK_ENTER_WINDOW
     };
 
     uint32_t Window = xcb_generate_id(Connection);
@@ -1199,9 +1200,6 @@ static inline void Rr_ProcessXCBSelectionRequestEvent(
 
 void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
 {
-    Rr_Vec2 LastMousePosition = gPlatform.MousePosition;
-    gPlatform.MousePositionDelta = Rr_V2F(0.0f);
-
     xcb_connection_t *Connection = gXCB.Connection;
 
     xcb_generic_event_t *XCBEvent = NULL;
@@ -1245,26 +1243,29 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
                 xcb_button_press_event_t *ButtonPressEvent =
                     (xcb_button_press_event_t *)XCBEvent;
 
-                Rr_Vec2 Position = {
-                    (float)ButtonPressEvent->event_x,
-                    (float)ButtonPressEvent->event_y,
-                };
-
                 if (ButtonPressEvent->detail == 4)
                 {
-                    Rr_AddMouseWheelEvent(Position, Rr_V2(0.0f, 1.0f));
+                    Rr_AddMouseWheelEvent(
+                        gPlatform.MousePosition,
+                        Rr_V2(0.0f, 1.0f));
                 }
                 else if (ButtonPressEvent->detail == 5)
                 {
-                    Rr_AddMouseWheelEvent(Position, Rr_V2(0.0f, -1.0f));
+                    Rr_AddMouseWheelEvent(
+                        gPlatform.MousePosition,
+                        Rr_V2(0.0f, -1.0f));
                 }
                 else if (ButtonPressEvent->detail == 6)
                 {
-                    Rr_AddMouseWheelEvent(Position, Rr_V2(-1.0f, 0.0f));
+                    Rr_AddMouseWheelEvent(
+                        gPlatform.MousePosition,
+                        Rr_V2(-1.0f, 0.0f));
                 }
                 else if (ButtonPressEvent->detail == 7)
                 {
-                    Rr_AddMouseWheelEvent(Position, Rr_V2(1.0f, 0.0f));
+                    Rr_AddMouseWheelEvent(
+                        gPlatform.MousePosition,
+                        Rr_V2(1.0f, 0.0f));
                 }
                 else
                 {
@@ -1275,7 +1276,10 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
                         Button -= 4;
                     }
 
-                    Rr_AddMouseButtonEvent(true, Position, Button);
+                    Rr_AddMouseButtonEvent(
+                        true,
+                        gPlatform.MousePosition,
+                        Button);
 
                     gPlatform.MouseState |= (Rr_MouseButtonFlags)(1 << Button);
                 }
@@ -1286,11 +1290,6 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
                 xcb_button_release_event_t *ButtonReleaseEvent =
                     (xcb_button_release_event_t *)XCBEvent;
 
-                Rr_Vec2 Position = {
-                    (float)ButtonReleaseEvent->event_x,
-                    (float)ButtonReleaseEvent->event_y,
-                };
-
                 Rr_MouseButton Button =
                     (Rr_MouseButton)(ButtonReleaseEvent->detail - 1);
                 if (ButtonReleaseEvent->detail > 7)
@@ -1298,7 +1297,7 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
                     Button -= 4;
                 }
 
-                Rr_AddMouseButtonEvent(false, Position, Button);
+                Rr_AddMouseButtonEvent(false, gPlatform.MousePosition, Button);
 
                 gPlatform.MouseState &= (Rr_MouseButtonFlags) ~(1 << Button);
             }
@@ -1326,15 +1325,19 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
 
                     gPlatform.MousePosition =
                         Rr_AddV2(gPlatform.MousePosition, Delta);
+                    gPlatform.MousePositionDelta =
+                        Rr_AddV2(gPlatform.MousePositionDelta, Delta);
 
                     Rr_WarpXCBPointer(gPlatform.RelativeMouseRestorePosition);
+
+                    Rr_AddMouseMotionEvent(gPlatform.MousePosition);
                 }
                 else
                 {
                     gPlatform.MousePosition = Position;
-                }
 
-                Rr_AddMouseMotionEvent(gPlatform.MousePosition);
+                    Rr_AddMouseMotionEvent(Position);
+                }
             }
             break;
             case XCB_KEY_PRESS:
@@ -1385,9 +1388,6 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
 
         free(XCBEvent);
     }
-
-    gPlatform.MousePositionDelta =
-        Rr_SubV2(gPlatform.MousePosition, LastMousePosition);
 }
 
 void Rr_ShowWindow(void)
@@ -1629,6 +1629,18 @@ double Rr_GetDisplayRefreshRate(void)
     free(ScreenResourcesCurrentReply);
 
     return Rr_GetXCBScreenRefreshRate();
+}
+
+Rr_Vec2 Rr_QueryPlatformMousePosition(void)
+{
+    xcb_query_pointer_reply_t *Reply = xcb_query_pointer_reply(
+        gXCB.Connection,
+        xcb_query_pointer(gXCB.Connection, gXCB.Window),
+        NULL);
+    Rr_Vec2 Position = Rr_V2((float)Reply->win_x, (float)Reply->win_y);
+    free(Reply);
+
+    return Position;
 }
 
 Rr_IntVec2 Rr_GetWindowSize(void)
