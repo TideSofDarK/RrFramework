@@ -8,20 +8,41 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../Vendor/stb/stb_image.h"
 
+#include <webp/decode.h>
+
 #include <array>
 #include <format>
 #include <functional>
+#include <span>
+#include <thread>
 #include <vector>
 
-constexpr Rr_Mat4 FLIP_Y_MATRIX = { 1.0f, 0.0f,  0.0f, 0.0f,
+Rr_Mat4 constexpr FLIP_Y_MATRIX = { 1.0f, 0.0f,  0.0f, 0.0f,
                                     0.0f, -1.0f, 0.0f, 0.0f, //
                                     0.0f, 0.0f,  1.0f, 0.0f, //
                                     0.0f, 0.0f,  0.0f, 1.0f };
-constexpr Rr_ImageFormat DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
-constexpr float NEAR_PLANE = 0.1f;
-constexpr float FAR_PLANE = 100.0f;
-constexpr std::size_t MAX_POINT_LIGHTS = 4;
-constexpr std::size_t MAX_SPOT_LIGHTS = 4;
+
+std::array constexpr GENERIC_VERTEX_ATTRIBUTES = {
+    Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
+    Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_VEC2 },
+    Rr_VertexInputAttribute{ .Location = 2, .Format = RR_FORMAT_VEC3 },
+    Rr_VertexInputAttribute{ .Location = 3, .Format = RR_FORMAT_VEC4 },
+};
+std::array constexpr GENERIC_VERTEX_INPUT_BINDINGS = {
+    Rr_VertexInputBinding{
+        .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
+        .AttributeCount = GENERIC_VERTEX_ATTRIBUTES.size(),
+        .Attributes = GENERIC_VERTEX_ATTRIBUTES.data(),
+    },
+};
+
+float constexpr NEAR_PLANE = 0.1f;
+float constexpr FAR_PLANE = 100.0f;
+
+std::size_t constexpr MAX_POINT_LIGHTS = 4;
+std::size_t constexpr MAX_SPOT_LIGHTS = 4;
+
+Rr_ImageFormat constexpr DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
 
 struct SCamera
 {
@@ -107,12 +128,26 @@ struct SCamera
 
 class CGLTFScene
 {
+    enum class ETextureType
+    {
+        COLOR,
+        NORMAL,
+        ROUGHNESS_METALLIC
+    };
+
+    struct SMaterial
+    {
+        Rr_Image2D *Color{};
+        Rr_Image2D *Normal{};
+        Rr_Image2D *RoughnessMetallic{};
+    };
+
     struct SVertex
     {
         Rr_Vec3 Position;
         Rr_Vec2 UV;
         Rr_Vec3 Normal;
-        /* Rr_Vec3 Tangent; */
+        Rr_Vec4 Tangent;
     };
 
     struct SPrimitive
@@ -120,6 +155,7 @@ class CGLTFScene
         uint32_t IndexCount;
         uint32_t FirstIndex;
         int32_t VertexOffset;
+        uint32_t MaterialIndex;
     };
 
     struct SMesh
@@ -127,13 +163,159 @@ class CGLTFScene
         std::vector<SPrimitive> Primitives;
     };
 
+    struct alignas(256) SGPUMaterial
+    {
+        uint32_t AlphaMode;
+        float AlphaCutoff;
+        float Padding0;
+        float Padding1;
+    };
+
+    Rr_Sampler *Sampler{};
     Rr_Buffer *MeshBuffer{};
     Rr_Buffer *ModelBuffer{};
+    Rr_Buffer *MaterialBuffer{};
     size_t IndexOffset{};
     std::vector<SMesh> Meshes;
+    std::vector<SMaterial> Materials;
     std::vector<size_t> MeshesToDraw;
 
+    static Rr_Image2D *LoadTexture(
+        cgltf_texture *Texture,
+        Rr_ImageFormat Format,
+        Rr_Graph *Graph)
+    {
+        int32_t ImageWidth;
+        int32_t ImageHeight;
+        int32_t ImageChannels;
+        void *Data{};
+        if (Texture->has_webp)
+        {
+            size_t ImageDataSize =
+                (size_t)Texture->webp_image->buffer_view->size;
+            stbi_uc const *ImageData =
+                (stbi_uc const *)
+                    Texture->webp_image->buffer_view->buffer->data +
+                Texture->webp_image->buffer_view->offset;
+
+            Data = WebPDecodeRGBA(
+                ImageData,
+                ImageDataSize,
+                &ImageWidth,
+                &ImageHeight);
+        }
+        else
+        {
+            size_t ImageDataSize = (size_t)Texture->image->buffer_view->size;
+            stbi_uc const *ImageData =
+                (stbi_uc const *)Texture->image->buffer_view->buffer->data +
+                Texture->image->buffer_view->offset;
+
+            Data = (char *)stbi_load_from_memory(
+                ImageData,
+                ImageDataSize,
+                &ImageWidth,
+                &ImageHeight,
+                &ImageChannels,
+                4);
+        }
+        size_t DataSize = 4 * ImageWidth * ImageHeight;
+
+        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+            DataSize,
+            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+        Rr_ReleaseBuffer(StagingBuffer);
+        memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, DataSize);
+
+        stbi_image_free(Data);
+
+        auto Image2D = Rr_CreateImage2D(
+            Rr_IntV2(ImageWidth, ImageHeight),
+            Format,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
+        Rr_CopyBufferToImage2D(
+            Graph,
+            StagingBuffer,
+            0,
+            Rr_IntV2(ImageWidth, ImageHeight),
+            Image2D,
+            0);
+
+        return Image2D;
+    }
+
+    template <ETextureType Type>
+    static void LoadTextures(
+        cgltf_data *Data,
+        std::vector<SMaterial> &Materials)
+    {
+        Rr_InitThreadContext();
+
+        auto Graph = Rr_BeginGraph(RR_QUEUE_TYPE_DEDICATED_TRANSFER);
+
+        for (auto Index = 0; Index < Data->materials_count; ++Index)
+        {
+            auto &Material = Data->materials[Index];
+
+            if constexpr (Type == ETextureType::COLOR)
+            {
+                auto Texture =
+                    Material.pbr_metallic_roughness.base_color_texture.texture;
+                if (!Texture)
+                {
+                    continue;
+                }
+
+                auto Image = LoadTexture(
+                    Material.pbr_metallic_roughness.base_color_texture.texture,
+                    RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
+                    Graph);
+                Rr_TransferImage2DToQueue(Graph, Image, RR_QUEUE_TYPE_MAIN);
+                Materials[Index].Color = Image;
+            }
+
+            if constexpr (Type == ETextureType::NORMAL)
+            {
+                auto Texture = Material.normal_texture.texture;
+                if (!Texture)
+                {
+                    continue;
+                }
+
+                auto Image = LoadTexture(
+                    Material.normal_texture.texture,
+                    RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
+                    Graph);
+                Rr_TransferImage2DToQueue(Graph, Image, RR_QUEUE_TYPE_MAIN);
+                Materials[Index].Normal = Image;
+            }
+
+            if constexpr (Type == ETextureType::ROUGHNESS_METALLIC)
+            {
+                auto Texture = Material.pbr_metallic_roughness
+                                   .metallic_roughness_texture.texture;
+                if (!Texture)
+                {
+                    continue;
+                }
+
+                auto Image = LoadTexture(
+                    Material.pbr_metallic_roughness.metallic_roughness_texture
+                        .texture,
+                    RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
+                    Graph);
+                Rr_TransferImage2DToQueue(Graph, Image, RR_QUEUE_TYPE_MAIN);
+                Materials[Index].RoughnessMetallic = Image;
+            }
+        }
+
+        Rr_EndGraph(Graph);
+
+        Rr_CleanupThreadContext();
+    }
+
 public:
+    template <uint32_t MaterialSetIndex = UINT32_MAX>
     void Draw(Rr_GraphNode *Node, uint32_t ModelSet, uint32_t ModelBinding)
     {
         Rr_BindVertexBuffer(Node, MeshBuffer, 0, 0);
@@ -156,6 +338,40 @@ public:
             const auto &Mesh = Meshes[MeshIndex];
             for (auto const &Primitive : Mesh.Primitives)
             {
+                if constexpr (MaterialSetIndex != UINT32_MAX)
+                {
+                    auto const &Material = Materials[Primitive.MaterialIndex];
+                    Rr_BindUniformBuffer(
+                        Node,
+                        MaterialBuffer,
+                        MaterialSetIndex,
+                        0,
+                        Primitive.MaterialIndex * sizeof(SGPUMaterial),
+                        sizeof(SGPUMaterial));
+                    Rr_BindCombinedImage2DSampler(
+                        Node,
+                        Material.Color,
+                        Sampler,
+                        MaterialSetIndex,
+                        1);
+                    if (!Material.Normal)
+                    {
+                        continue;
+                    }
+                    Rr_BindCombinedImage2DSampler(
+                        Node,
+                        Material.Normal,
+                        Sampler,
+                        MaterialSetIndex,
+                        2);
+                    Rr_BindCombinedImage2DSampler(
+                        Node,
+                        Material.RoughnessMetallic,
+                        Sampler,
+                        MaterialSetIndex,
+                        3);
+                }
+
                 Rr_DrawIndexed(
                     Node,
                     Primitive.IndexCount,
@@ -170,7 +386,7 @@ public:
 
     CGLTFScene()
     {
-        Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_ROOM_GLB);
+        Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_SPONZA_GLB);
 
         cgltf_options Options = {};
         cgltf_data *Data{};
@@ -184,57 +400,93 @@ public:
         }
         cgltf_load_buffers(&Options, Data, NULL);
 
-        /* First pass: meshes. */
+        /* Materials */
+
+        Materials.resize(Data->materials_count);
+        auto ColorThread = std::jthread(
+            LoadTextures<ETextureType::COLOR>,
+            Data,
+            std::ref(Materials));
+        auto NormalThread = std::jthread(
+            LoadTextures<ETextureType::NORMAL>,
+            Data,
+            std::ref(Materials));
+        auto RoughnessMetallicThread = std::jthread(
+            LoadTextures<ETextureType::ROUGHNESS_METALLIC>,
+            Data,
+            std::ref(Materials));
+
+        MaterialBuffer = Rr_CreateBuffer(
+            sizeof(SGPUMaterial) * Data->materials_count,
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
+                RR_BUFFER_FLAGS_MAPPED_BIT);
+        auto *GPUMaterials =
+            (SGPUMaterial *)Rr_GetMappedBufferData(MaterialBuffer);
+
+        for (auto Index = 0; Index < Data->materials_count; ++Index)
+        {
+            auto &Material = Data->materials[Index];
+            GPUMaterials[Index].AlphaMode = Material.alpha_mode;
+            GPUMaterials[Index].AlphaCutoff = Material.alpha_cutoff;
+        }
+
+        /* Meshes */
 
         std::vector<SVertex> Vertices;
         std::vector<uint16_t> Indices;
         Meshes.reserve(Data->meshes_count);
-        for (auto MeshIndex = 0; MeshIndex < Data->meshes_count; ++MeshIndex)
+        for (auto &Mesh : std::span{ Data->meshes, Data->meshes_count })
         {
-            auto Mesh = &Data->meshes[MeshIndex];
             std::vector<SPrimitive> Primitives;
-            Primitives.reserve(Mesh->primitives_count);
-            for (auto Index = 0; Index < Mesh->primitives_count; ++Index)
+            Primitives.reserve(Mesh.primitives_count);
+            for (auto &Primitive :
+                 std::span{ Mesh.primitives, Mesh.primitives_count })
             {
-                auto Primitive = &Mesh->primitives[Index];
-
                 cgltf_accessor const *PositionAccessor = cgltf_find_accessor(
-                    Primitive,
+                    &Primitive,
                     cgltf_attribute_type_position,
                     0);
                 cgltf_accessor const *UVAccessor = cgltf_find_accessor(
-                    Primitive,
+                    &Primitive,
                     cgltf_attribute_type_texcoord,
                     0);
                 cgltf_accessor const *NormalAccessor = cgltf_find_accessor(
-                    Primitive,
+                    &Primitive,
                     cgltf_attribute_type_normal,
                     0);
+                cgltf_accessor const *TangentAccessor = cgltf_find_accessor(
+                    &Primitive,
+                    cgltf_attribute_type_tangent,
+                    0);
                 auto VertexOffset = Vertices.size();
-                Vertices.resize(Vertices.size() + PositionAccessor->count);
-                for (size_t VertexIndex = 0;
-                     VertexIndex < PositionAccessor->count;
-                     ++VertexIndex)
+                auto VertexCount = PositionAccessor->count;
+                Vertices.resize(Vertices.size() + VertexCount);
+                for (size_t Index = 0; Index < VertexCount; ++Index)
                 {
-                    auto &Vertex = Vertices.data()[VertexOffset + VertexIndex];
+                    auto &Vertex = Vertices.data()[VertexOffset + Index];
                     cgltf_accessor_read_float(
                         PositionAccessor,
-                        VertexIndex,
+                        Index,
                         Vertex.Position.Elements,
                         3);
                     cgltf_accessor_read_float(
                         UVAccessor,
-                        VertexIndex,
+                        Index,
                         Vertex.UV.Elements,
                         2);
                     cgltf_accessor_read_float(
                         NormalAccessor,
-                        VertexIndex,
+                        Index,
                         Vertex.Normal.Elements,
                         3);
+                    cgltf_accessor_read_float(
+                        TangentAccessor,
+                        Index,
+                        Vertex.Tangent.Elements,
+                        4);
                 }
 
-                cgltf_accessor const *IndexAccessor = Primitive->indices;
+                cgltf_accessor const *IndexAccessor = Primitive.indices;
                 size_t FirstIndex = Indices.size();
                 Indices.resize(Indices.size() + IndexAccessor->count);
                 cgltf_accessor_unpack_indices(
@@ -246,13 +498,14 @@ public:
                 Primitives.emplace_back(
                     IndexAccessor->count,
                     FirstIndex,
-                    VertexOffset);
+                    VertexOffset,
+                    cgltf_material_index(Data, Primitive.material));
             }
 
             Meshes.emplace_back(std::move(Primitives));
         }
 
-        /* Second pass: nodes. */
+        /* Nodes */
 
         std::vector<Rr_Mat4> Models;
         auto Scene = Data->scenes;
@@ -335,12 +588,25 @@ public:
         IndexOffset = VertexDataSize;
 
         cgltf_free(Data);
+
+        Rr_SamplerInfo Info = {};
+        Info.MinFilter = RR_FILTER_LINEAR;
+        Info.MagFilter = RR_FILTER_LINEAR;
+        Sampler = Rr_CreateSampler(&Info);
     }
 
     ~CGLTFScene()
     {
+        Rr_ReleaseSampler(Sampler);
         Rr_ReleaseBuffer(MeshBuffer);
         Rr_ReleaseBuffer(ModelBuffer);
+        Rr_ReleaseBuffer(MaterialBuffer);
+        for (auto const &Material : Materials)
+        {
+            Rr_ReleaseImage(Material.Color);
+            Rr_ReleaseImage(Material.Normal);
+            Rr_ReleaseImage(Material.RoughnessMetallic);
+        }
     }
 };
 
@@ -426,6 +692,18 @@ class CSkybox
         16, 4,  10, 16, 10, 22, 5, 2, 8,  5, 8,  11, 15, 12, 0,  15, 0,  3,
     };
 
+    static std::array constexpr VERTEX_ATTRIBUTES = {
+        Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
+    };
+
+    static std::array constexpr VERTEX_INPUT_BINDINGS = {
+        Rr_VertexInputBinding{
+            .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
+            .AttributeCount = VERTEX_ATTRIBUTES.size(),
+            .Attributes = VERTEX_ATTRIBUTES.data(),
+        },
+    };
+
     Rr_GraphicsPipeline *GraphicsPipeline{};
     Rr_Sampler *Sampler{};
 
@@ -433,18 +711,6 @@ class CSkybox
     Rr_Buffer *StagingBuffer{};
     Rr_Buffer *MeshBuffer{};
     size_t IndexOffset{};
-
-    static constexpr std::array VertexAttributes = {
-        Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
-    };
-
-    static constexpr std::array VertexInputBindings = {
-        Rr_VertexInputBinding{
-            .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
-            .AttributeCount = VertexAttributes.size(),
-            .Attributes = VertexAttributes.data(),
-        },
-    };
 
     void InitUniformBuffer()
     {
@@ -515,8 +781,8 @@ public:
         PipelineInfo.ColorTargetCount = 1;
         PipelineInfo.ColorTargets = &ColorTarget;
         PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
-        PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
-        PipelineInfo.VertexInputBindings = VertexInputBindings.data();
+        PipelineInfo.VertexInputBindingCount = VERTEX_INPUT_BINDINGS.size();
+        PipelineInfo.VertexInputBindings = VERTEX_INPUT_BINDINGS.data();
         PipelineInfo.Multisampling.SampleCount = MSAASampleCount;
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
@@ -1141,20 +1407,6 @@ public:
         SamplerInfo.MagFilter = RR_FILTER_LINEAR;
         ShadowSampler = Rr_CreateSampler(&SamplerInfo);
 
-        std::array VertexAttributes = {
-            Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
-            Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_VEC2 },
-            Rr_VertexInputAttribute{ .Location = 2, .Format = RR_FORMAT_VEC3 },
-        };
-
-        std::array VertexInputBindings = {
-            Rr_VertexInputBinding{
-                .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
-                .AttributeCount = VertexAttributes.size(),
-                .Attributes = VertexAttributes.data(),
-            },
-        };
-
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_SHADOWMAP_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
             .SPVSize = VertexShader.Size,
@@ -1171,8 +1423,9 @@ public:
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
-        PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
-        PipelineInfo.VertexInputBindings = VertexInputBindings.data();
+        PipelineInfo.VertexInputBindingCount =
+            GENERIC_VERTEX_INPUT_BINDINGS.size();
+        PipelineInfo.VertexInputBindings = GENERIC_VERTEX_INPUT_BINDINGS.data();
         PipelineInfo.DepthStencil.EnableDepthTest = true;
         PipelineInfo.DepthStencil.EnableDepthWrite = true;
         PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
@@ -1183,7 +1436,7 @@ public:
         ShadowPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         UniformBuffer = Rr_CreateBuffer(
-            RR_MEGABYTES(1) + sizeof(SGPULights),
+            RR_MEGABYTES(1),
             RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
                 RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_UNIFORM_BIT);
 
@@ -1455,7 +1708,7 @@ public:
 
 #include <cstdio>
 
-class CModernRenderingApp
+class CPBRRenderingApp
 {
     struct SGPUUniform
     {
@@ -1464,20 +1717,6 @@ class CModernRenderingApp
         Rr_Vec3 CameraPosition;
         float Time;
         Rr_Vec2 Resolution;
-    };
-
-    static std::array constexpr VERTEX_ATTRIBUTES = {
-        Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
-        Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_VEC2 },
-        Rr_VertexInputAttribute{ .Location = 2, .Format = RR_FORMAT_VEC3 },
-    };
-
-    static std::array constexpr VERTEX_INPUT_BINDINGS = {
-        Rr_VertexInputBinding{
-            .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
-            .AttributeCount = VERTEX_ATTRIBUTES.size(),
-            .Attributes = VERTEX_ATTRIBUTES.data(),
-        },
     };
 
     Rr_GraphicsPipeline *ForwardPassPipeline{};
@@ -1527,14 +1766,14 @@ class CModernRenderingApp
         };
 
         Rr_Asset VertexShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_MODERNRENDERING_VERT_SPV);
+            Rr_LoadAsset(EXAMPLE_ASSET_FORWARDPASS_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
             .SPVSize = VertexShader.Size,
             .SPVData = VertexShader.Data,
         };
 
         Rr_Asset FragmentShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_MODERNRENDERING_FRAG_SPV);
+            Rr_LoadAsset(EXAMPLE_ASSET_FORWARDPASS_FRAG_SPV);
         Rr_ShaderInfo FragmentShaderInfo = {
             .SPVSize = FragmentShader.Size,
             .SPVData = FragmentShader.Data,
@@ -1543,8 +1782,9 @@ class CModernRenderingApp
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
         PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
         PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
-        PipelineInfo.VertexInputBindingCount = VERTEX_INPUT_BINDINGS.size();
-        PipelineInfo.VertexInputBindings = VERTEX_INPUT_BINDINGS.data();
+        PipelineInfo.VertexInputBindingCount =
+            GENERIC_VERTEX_INPUT_BINDINGS.size();
+        PipelineInfo.VertexInputBindings = GENERIC_VERTEX_INPUT_BINDINGS.data();
         PipelineInfo.ColorTargetCount = ColorTargets.size();
         PipelineInfo.ColorTargets = ColorTargets.data();
         PipelineInfo.DepthStencil.EnableDepthTest = true;
@@ -1796,7 +2036,7 @@ public:
                 0,
                 0,
                 sizeof(SGPUUniform));
-            GLTFScene.Draw(GraphicsNode, 2, 0);
+            GLTFScene.Draw<3>(GraphicsNode, 2, 0);
 
             Rr_EndGraphLabel(Graph, "NormalDepthPrepass");
         }
@@ -1850,7 +2090,7 @@ public:
                 sizeof(SGPUUniform));
             Lighting.BindLights(GraphicsNode, 1);
             Rr_BindSampledImage2D(GraphicsNode, AmbientOcclusionImage, 1, 6);
-            GLTFScene.Draw(GraphicsNode, 2, 0);
+            GLTFScene.Draw<3>(GraphicsNode, 2, 0);
 
             if (DrawGrid)
             {
@@ -1871,7 +2111,7 @@ public:
         Rr_EndGraphLabel(Graph, "ModernRendering");
     }
 
-    CModernRenderingApp()
+    CPBRRenderingApp()
         : FullscreenBlit(EXAMPLE_ASSET_FULLSCREENTRIANGLE_FRAG_SPV)
         , Grid(GetMSAASampleCount())
         , Skybox(GetMSAASampleCount())
@@ -1879,11 +2119,9 @@ public:
     {
         auto &PointLight = Lighting.AddPointLight();
         PointLight.Position = Rr_V3(0.0f, 2.0f, 0.0f);
-        auto &SpotLight = Lighting.AddSpotLight();
-        SpotLight.Transform = Rr_Translate(Rr_V3(2.0f, 5.0f, 0.7f));
-        SpotLight.Transform =
-            SpotLight.Transform *
-            Rr_Rotate_RH(RR_ANGLE_DEG(-70.0f), Rr_V3(1.0f, 0.0f, 0.0f));
+        PointLight.Radius = 4.0f;
+        PointLight.Intensity = 5.0f;
+        PointLight.Falloff = 0.35f;
         InitAttachments();
         RecreatePipelines();
         InitUniform();
@@ -1891,7 +2129,7 @@ public:
         Camera.Position = Rr_V3(0.0f, 1.0f, 0.0f);
     }
 
-    ~CModernRenderingApp()
+    ~CPBRRenderingApp()
     {
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseBuffer(ModelBuffer);
@@ -1910,12 +2148,12 @@ public:
 
 int main()
 {
-    static CModernRenderingApp *App{};
+    static CPBRRenderingApp *App{};
 
     Rr_AppConfig Config = {};
     Config.Title = "ModernRendering";
     Config.WindowFlags |= RR_WINDOW_FLAGS_RESIZE_BIT;
-    Config.InitFunc = []() { App = new CModernRenderingApp(); };
+    Config.InitFunc = []() { App = new CPBRRenderingApp(); };
     Config.EventFunc = [](Rr_Event const *Event) { App->Event(Event); };
     Config.IterateFunc = []() { App->Iterate(); };
     Config.CleanupFunc = []() { delete App; };

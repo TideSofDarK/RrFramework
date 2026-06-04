@@ -51,6 +51,7 @@
 - [ ] Replace VMA with custom allocator.
 - [ ] Replace hash trie usage with Rr_HashTable.h where applicable.
 - [ ] Array implementation is a bit ugly...
+- [ ] Cache mouse position on window initialization.
 
 * Features
 

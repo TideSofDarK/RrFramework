@@ -370,6 +370,8 @@ static Rr_Image *Rr_CreateImage(
         AllocatedImage->SyncState = RR_EMPTY_SYNC;
         AllocatedImage->Container = Image;
 
+        Rr_LockSpinlock(&gRenderer->Lock);
+
         VkResult Result = vmaCreateImage(
             gRenderer->Allocator,
             &ImageCreateInfo,
@@ -377,6 +379,9 @@ static Rr_Image *Rr_CreateImage(
             &AllocatedImage->Handle,
             &AllocatedImage->Allocation,
             NULL);
+
+        Rr_UnlockSpinlock(&gRenderer->Lock);
+
         assert(Result == VK_SUCCESS);
 
         AllocatedImage->ImageViewMap = Rr_CreateImageViewMap();
@@ -435,10 +440,14 @@ void Rr_DestroyImage(Rr_Image *Image)
             AllocatedImage->ImageViewMap,
             DestroyFramebuffers);
 
+        Rr_LockSpinlock(&gRenderer->Lock);
+
         vmaDestroyImage(
             gRenderer->Allocator,
             AllocatedImage->Handle,
             AllocatedImage->Allocation);
+
+        Rr_UnlockSpinlock(&gRenderer->Lock);
     }
 
     Rr_LockSpinlock(&gRenderer->ImagesLock);

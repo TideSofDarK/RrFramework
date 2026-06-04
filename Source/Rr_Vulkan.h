@@ -693,18 +693,57 @@ static inline Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
     {
         case VK_FORMAT_UNDEFINED:
             return RR_IMAGE_FORMAT_UNDEFINED;
+            /* R8G8 */
+        case VK_FORMAT_R8G8_UNORM:
+            return RR_IMAGE_FORMAT_R8G8_UNORM;
+        case VK_FORMAT_R8G8_UINT:
+            return RR_IMAGE_FORMAT_R8G8_UINT;
+        case VK_FORMAT_R8G8_SINT:
+            return RR_IMAGE_FORMAT_R8G8_SINT;
+        case VK_FORMAT_R8G8_SRGB:
+            return RR_IMAGE_FORMAT_R8G8_SRGB;
+            /* R8G8B8 */
+        case VK_FORMAT_R8G8B8_UNORM:
+            return RR_IMAGE_FORMAT_R8G8B8_UNORM;
+        case VK_FORMAT_R8G8B8_UINT:
+            return RR_IMAGE_FORMAT_R8G8B8_UINT;
+        case VK_FORMAT_R8G8B8_SINT:
+            return RR_IMAGE_FORMAT_R8G8B8_SINT;
+        case VK_FORMAT_R8G8B8_SRGB:
+            return RR_IMAGE_FORMAT_R8G8B8_SRGB;
+            /* B8G8R8 */
+        case VK_FORMAT_B8G8R8_UNORM:
+            return RR_IMAGE_FORMAT_B8G8R8_UNORM;
+        case VK_FORMAT_B8G8R8_UINT:
+            return RR_IMAGE_FORMAT_B8G8R8_UINT;
+        case VK_FORMAT_B8G8R8_SINT:
+            return RR_IMAGE_FORMAT_B8G8R8_SINT;
+        case VK_FORMAT_B8G8R8_SRGB:
+            return RR_IMAGE_FORMAT_B8G8R8_SRGB;
+            /* R8G8B8A8 */
         case VK_FORMAT_R8G8B8A8_UNORM:
             return RR_IMAGE_FORMAT_R8G8B8A8_UNORM;
+        case VK_FORMAT_R8G8B8A8_UINT:
+            return RR_IMAGE_FORMAT_R8G8B8A8_UINT;
+        case VK_FORMAT_R8G8B8A8_SINT:
+            return RR_IMAGE_FORMAT_R8G8B8A8_SINT;
         case VK_FORMAT_R8G8B8A8_SRGB:
             return RR_IMAGE_FORMAT_R8G8B8A8_SRGB;
+            /* B8G8R8A8 */
         case VK_FORMAT_B8G8R8A8_UNORM:
             return RR_IMAGE_FORMAT_B8G8R8A8_UNORM;
+        case VK_FORMAT_B8G8R8A8_UINT:
+            return RR_IMAGE_FORMAT_B8G8R8A8_UINT;
+        case VK_FORMAT_B8G8R8A8_SINT:
+            return RR_IMAGE_FORMAT_B8G8R8A8_SINT;
         case VK_FORMAT_B8G8R8A8_SRGB:
             return RR_IMAGE_FORMAT_B8G8R8A8_SRGB;
+            /* A8B8G8R8 */
         case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
             return RR_IMAGE_FORMAT_A8B8G8R8_UNORM_PACK32;
         case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
             return RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32;
+            /* */
         case VK_FORMAT_D16_UNORM:
             return RR_IMAGE_FORMAT_D16_UNORM;
         case VK_FORMAT_D32_SFLOAT:
@@ -713,10 +752,6 @@ static inline Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
             return RR_IMAGE_FORMAT_D24_UNORM_S8_UINT;
         case VK_FORMAT_D32_SFLOAT_S8_UINT:
             return RR_IMAGE_FORMAT_D32_SFLOAT_S8_UINT;
-        case VK_FORMAT_R8G8B8A8_UINT:
-            return RR_IMAGE_FORMAT_R8G8B8A8_UINT;
-        case VK_FORMAT_R8G8B8A8_SINT:
-            return RR_IMAGE_FORMAT_R8G8B8A8_SINT;
         case VK_FORMAT_R32_UINT:
             return RR_IMAGE_FORMAT_R32_UINT;
         case VK_FORMAT_R32_SINT:
@@ -739,18 +774,57 @@ static VkFormat Rr_ToVulkanImageFormat(Rr_ImageFormat ImageFormat)
     {
         case RR_IMAGE_FORMAT_UNDEFINED:
             return VK_FORMAT_UNDEFINED;
+            /* R8G8 */
+        case RR_IMAGE_FORMAT_R8G8_UNORM:
+            return VK_FORMAT_R8G8_UNORM;
+        case RR_IMAGE_FORMAT_R8G8_UINT:
+            return VK_FORMAT_R8G8_UINT;
+        case RR_IMAGE_FORMAT_R8G8_SINT:
+            return VK_FORMAT_R8G8_SINT;
+        case RR_IMAGE_FORMAT_R8G8_SRGB:
+            return VK_FORMAT_R8G8_SRGB;
+            /* R8G8B8 */
+        case RR_IMAGE_FORMAT_R8G8B8_UNORM:
+            return VK_FORMAT_R8G8B8_UNORM;
+        case RR_IMAGE_FORMAT_R8G8B8_UINT:
+            return VK_FORMAT_R8G8B8_UINT;
+        case RR_IMAGE_FORMAT_R8G8B8_SINT:
+            return VK_FORMAT_R8G8B8_SINT;
+        case RR_IMAGE_FORMAT_R8G8B8_SRGB:
+            return VK_FORMAT_R8G8B8_SRGB;
+            /* B8G8R8 */
+        case RR_IMAGE_FORMAT_B8G8R8_UNORM:
+            return VK_FORMAT_B8G8R8_UNORM;
+        case RR_IMAGE_FORMAT_B8G8R8_UINT:
+            return VK_FORMAT_B8G8R8_UINT;
+        case RR_IMAGE_FORMAT_B8G8R8_SINT:
+            return VK_FORMAT_B8G8R8_SINT;
+        case RR_IMAGE_FORMAT_B8G8R8_SRGB:
+            return VK_FORMAT_B8G8R8_SRGB;
+            /* R8G8B8A8 */
         case RR_IMAGE_FORMAT_R8G8B8A8_UNORM:
             return VK_FORMAT_R8G8B8A8_UNORM;
+        case RR_IMAGE_FORMAT_R8G8B8A8_SINT:
+            return VK_FORMAT_R8G8B8A8_SINT;
+        case RR_IMAGE_FORMAT_R8G8B8A8_UINT:
+            return VK_FORMAT_R8G8B8A8_UINT;
         case RR_IMAGE_FORMAT_R8G8B8A8_SRGB:
             return VK_FORMAT_R8G8B8A8_SRGB;
+            /* B8G8R8A8 */
         case RR_IMAGE_FORMAT_B8G8R8A8_UNORM:
             return VK_FORMAT_B8G8R8A8_UNORM;
+        case RR_IMAGE_FORMAT_B8G8R8A8_UINT:
+            return VK_FORMAT_B8G8R8A8_UINT;
+        case RR_IMAGE_FORMAT_B8G8R8A8_SINT:
+            return VK_FORMAT_B8G8R8A8_SINT;
         case RR_IMAGE_FORMAT_B8G8R8A8_SRGB:
             return VK_FORMAT_B8G8R8A8_SRGB;
+            /* A8B8G8R8 */
         case RR_IMAGE_FORMAT_A8B8G8R8_UNORM_PACK32:
             return VK_FORMAT_A8B8G8R8_UNORM_PACK32;
         case RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32:
             return VK_FORMAT_A8B8G8R8_SRGB_PACK32;
+            /* */
         case RR_IMAGE_FORMAT_D16_UNORM:
             return VK_FORMAT_D16_UNORM;
         case RR_IMAGE_FORMAT_D32_SFLOAT:
@@ -759,10 +833,6 @@ static VkFormat Rr_ToVulkanImageFormat(Rr_ImageFormat ImageFormat)
             return VK_FORMAT_D24_UNORM_S8_UINT;
         case RR_IMAGE_FORMAT_D32_SFLOAT_S8_UINT:
             return VK_FORMAT_D32_SFLOAT_S8_UINT;
-        case RR_IMAGE_FORMAT_R8G8B8A8_UINT:
-            return VK_FORMAT_R8G8B8A8_UINT;
-        case RR_IMAGE_FORMAT_R8G8B8A8_SINT:
-            return VK_FORMAT_R8G8B8A8_SINT;
         case RR_IMAGE_FORMAT_R32_UINT:
             return VK_FORMAT_R32_UINT;
         case RR_IMAGE_FORMAT_R32_SINT:

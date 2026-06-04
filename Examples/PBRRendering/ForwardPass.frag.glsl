@@ -7,10 +7,10 @@
 #define MAX_POINT_LIGHTS 4
 #define MAX_SPOT_LIGHTS 4
 
-layout(location = 0) in vec2 InUV;
-layout(location = 1) in vec3 InNormal;
-layout(location = 2) in vec3 InPosition;
-layout(location = 3) in vec3 InNormalVS;
+layout(location = 0) in vec3 InPosition;
+layout(location = 1) in vec2 InUV;
+layout(location = 2) in vec3 InNormalVS;
+layout(location = 3) in mat3 InTBN;
 
 layout(location = 0) out vec4 OutColor;
 
@@ -76,6 +76,17 @@ layout(set = 1, binding = 2) uniform texture2D SpotShadowMaps[MAX_SPOT_LIGHTS];
 layout(set = 1, binding = 3) uniform sampler RegularSampler;
 layout(set = 1, binding = 4) uniform sampler ShadowSampler;
 layout(set = 1, binding = 6) uniform texture2D AmbientOcclusionImage;
+
+layout(set = 3, binding = 0) uniform SGPUMaterial
+{
+    uint AlphaMode;
+    float AlphaCutoff;
+    float Padding0;
+    float Padding1;
+} Material;
+layout(set = 3, binding = 1) uniform sampler2D ColorTexture;
+layout(set = 3, binding = 2) uniform sampler2D NormalTexture;
+layout(set = 3, binding = 3) uniform sampler2D RoughnessMetallicTexture;
 
 const vec2 POISSON16[] = vec2[16](
         vec2(-0.9420162, -0.39906216),
@@ -349,8 +360,6 @@ SLightDots GetLightDots(in vec3 FragNormal, in vec3 FragViewDir, in vec3 FragToL
     return LightDots;
 }
 
-const float ROUGHNESS = 0.2;
-const float METALLIC = 0.8;
 const vec3 AMBIENT = vec3(0.04);
 
 void main()
@@ -359,14 +368,27 @@ void main()
 
     vec4 Result = vec4(0.0, 0.0, 0.0, 1.0);
 
-    vec3 BaseColor = (InNormalVS + 0.5) * 0.5;
+    vec4 Color = texture(ColorTexture, InUV);
+    float Alpha = Color.a;
+    if (Material.AlphaMode == 1 && Alpha < Material.AlphaCutoff)
+    {
+        discard;
+    }
 
-    vec3 FragNormal = normalize(InNormal);
+    // vec3 BaseColor = (InNormalVS + 0.5) * 0.5;
+    vec3 BaseColor = Color.rgb;
+
+    vec2 RoughnessMetallic = texture(RoughnessMetallicTexture, InUV).gb;
+    float Roughness = RoughnessMetallic.x;
+    float Metallic = RoughnessMetallic.y;
+
+    vec3 FragNormal = texture(NormalTexture, InUV).xyz * 2.0 - 1.0;
+    FragNormal = normalize(InTBN * FragNormal);
     vec3 FragViewDir = normalize(CameraPosition - InPosition);
 
     float NDotV = max(dot(FragNormal, FragViewDir), 1e-4);
 
-    vec3 F0 = ComputeF0(METALLIC, 0.5, BaseColor);
+    vec3 F0 = ComputeF0(Metallic, 0.5, BaseColor);
 
     vec3 TotalDiffuse = vec3(0.0);
     vec3 TotalSpecular = vec3(0.0);
@@ -386,8 +408,8 @@ void main()
         SLightDots Dots = GetLightDots(FragNormal, FragViewDir, FragToLight);
 
         vec3 LightColorEnergy = Light.Color * Light.Energy;
-        vec3 DiffLight = LightColorEnergy * ComputeDiffuse(Dots.LDotH, NDotV, Dots.NDotL, ROUGHNESS);
-        vec3 SpecLight = ComputeSpecular(F0, Dots.LDotH, Dots.NDotH, NDotV, Dots.NDotL, ROUGHNESS);
+        vec3 DiffLight = LightColorEnergy * ComputeDiffuse(Dots.LDotH, NDotV, Dots.NDotL, Roughness);
+        vec3 SpecLight = ComputeSpecular(F0, Dots.LDotH, Dots.NDotH, NDotV, Dots.NDotL, Roughness);
         SpecLight *= LightColorEnergy * Light.Specular;
 
         TotalDiffuse += DiffLight * Shadow * Attenuation;
@@ -407,8 +429,8 @@ void main()
         SLightDots Dots = GetLightDots(FragNormal, FragViewDir, FragToLight);
 
         vec3 LightColorEnergy = Light.Color * Light.Energy;
-        vec3 DiffLight = LightColorEnergy * ComputeDiffuse(Dots.LDotH, NDotV, Dots.NDotL, ROUGHNESS);
-        vec3 SpecLight = ComputeSpecular(F0, Dots.LDotH, Dots.NDotH, NDotV, Dots.NDotL, ROUGHNESS);
+        vec3 DiffLight = LightColorEnergy * ComputeDiffuse(Dots.LDotH, NDotV, Dots.NDotL, Roughness);
+        vec3 SpecLight = ComputeSpecular(F0, Dots.LDotH, Dots.NDotH, NDotV, Dots.NDotL, Roughness);
         SpecLight *= LightColorEnergy * Light.Specular;
 
         TotalDiffuse += DiffLight * Shadow * Attenuation;
@@ -416,7 +438,7 @@ void main()
     }
 
     vec3 Ambient = AMBIENT;
-    Ambient = (1.0 - F0) * (1.0 - METALLIC) * Ambient;
+    Ambient = (1.0 - F0) * (1.0 - Metallic) * Ambient;
     Ambient += F0 * Ambient;
 
     TotalDiffuse = BaseColor * (TotalDiffuse + Ambient);

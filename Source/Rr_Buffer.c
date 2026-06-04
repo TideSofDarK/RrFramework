@@ -134,6 +134,8 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
         AllocatedBuffer->SyncState = RR_EMPTY_SYNC;
 
+        Rr_LockSpinlock(&gRenderer->Lock);
+
         VmaAllocationInfo AllocationInfo;
         VkResult Result = vmaCreateBuffer(
             gRenderer->Allocator,
@@ -142,6 +144,9 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
             &AllocatedBuffer->Handle,
             &AllocatedBuffer->Allocation,
             &AllocationInfo);
+
+        Rr_UnlockSpinlock(&gRenderer->Lock);
+
         assert(Result == VK_SUCCESS);
 
         AllocatedBuffer->MappedData = AllocationInfo.pMappedData;
@@ -197,10 +202,14 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
 
+        Rr_LockSpinlock(&gRenderer->Lock);
+
         vmaDestroyBuffer(
             gRenderer->Allocator,
             AllocatedBuffer->Handle,
             AllocatedBuffer->Allocation);
+
+        Rr_UnlockSpinlock(&gRenderer->Lock);
     }
 
     Rr_LockSpinlock(&gRenderer->BuffersLock);
@@ -216,6 +225,7 @@ void *Rr_GetMappedBufferData(Rr_Buffer *Buffer)
 {
     assert(Buffer);
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
+
     return AllocatedBuffer->MappedData;
 }
 
@@ -226,11 +236,13 @@ void *Rr_MapBuffer(Rr_Buffer *Buffer)
     {
         return AllocatedBuffer->MappedData;
     }
+
     void *MappedData;
     vmaMapMemory(
         gRenderer->Allocator,
         AllocatedBuffer->Allocation,
         &MappedData);
+
     return MappedData;
 }
 
@@ -240,13 +252,16 @@ void Rr_UnmapBuffer(Rr_Buffer *Buffer)
     {
         return;
     }
+
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
+
     vmaUnmapMemory(gRenderer->Allocator, AllocatedBuffer->Allocation);
 }
 
 void Rr_FlushBufferRange(Rr_Buffer *Buffer, uint64_t Offset, uint64_t Size)
 {
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
+
     vmaFlushAllocation(
         gRenderer->Allocator,
         AllocatedBuffer->Allocation,

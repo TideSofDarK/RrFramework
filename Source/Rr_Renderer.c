@@ -1647,6 +1647,11 @@ static RR_THREAD_LOCAL char NextObjectName[RR_MAX_OBJECT_NAME_LENGTH] = { 0 };
 
 void Rr_SetNextObjectName(const char *Name)
 {
+    if (!Name)
+    {
+        return;
+    }
+
     size_t Length = strlen(Name);
     if (!Length)
     {
