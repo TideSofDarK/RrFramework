@@ -225,20 +225,24 @@ endif ()
 if (RR_PLATFORM STREQUAL "SDL")
     include(CPM)
 
-    set(SDL_AUDIO OFF CACHE BOOL "" FORCE)
-    set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
-    set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
-    set(SDL_MISC OFF CACHE BOOL "" FORCE)
-    set(SDL_DIRECTX OFF CACHE BOOL "" FORCE)
-    set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
-    set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
-    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-    set(SDL_GPU OFF CACHE BOOL "" FORCE)
-    set(SDL_RENDER OFF CACHE BOOL "" FORCE)
-    set(SDL_POWER OFF CACHE BOOL "" FORCE)
-    set(SDL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
-    set(SDL_DISABLE_UNINSTALL ON CACHE BOOL "" FORCE)
-    CPMAddPackage("gh:libsdl-org/SDL#main")
+    CPMAddPackage(
+        URI
+        "gh:libsdl-org/SDL#main"
+	    OPTIONS
+        "SDL_AUDIO OFF"
+        "SDL_CAMERA OFF"
+        "SDL_SENSOR OFF"
+        "SDL_MISC OFF"
+        "SDL_DIRECTX OFF"
+        "SDL_OPENGLES OFF"
+        "SDL_OPENGL OFF"
+        "SDL_TEST_LIBRARY OFF"
+        "SDL_GPU OFF"
+        "SDL_RENDER OFF"
+        "SDL_POWER OFF"
+        "SDL_DISABLE_INSTALL ON"
+        "SDL_DISABLE_UNINSTALL ON"
+    )
 
     target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3)
     target_sources(${PROJECT_NAME} PRIVATE Source/Rr_Platform_SDL.c)

@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.28)
 project(PBRRendering LANGUAGES CXX)
 
 include(CPM)
+
 CPMAddPackage(
     NAME
     webp
