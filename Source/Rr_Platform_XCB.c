@@ -1329,15 +1329,13 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
                         Rr_AddV2(gPlatform.MousePositionDelta, Delta);
 
                     Rr_WarpXCBPointer(gPlatform.RelativeMouseRestorePosition);
-
-                    Rr_AddMouseMotionEvent(gPlatform.MousePosition);
                 }
                 else
                 {
                     gPlatform.MousePosition = Position;
-
-                    Rr_AddMouseMotionEvent(Position);
                 }
+
+                Rr_AddMouseMotionEvent(gPlatform.MousePosition);
             }
             break;
             case XCB_KEY_PRESS:

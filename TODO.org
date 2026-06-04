@@ -35,6 +35,7 @@
 - [X] See if it's possible to get rid of descriptor allocator arenas.
 - [X] Make locking more granular. gRenderer->Lock should only be locked when allocating.
 - [X] Framebuffers/SyncStates require different hash table implementation. Current implementation is a mess...
+- [X] Query platform mouse position before polling.
 - [ ] Minimal error handling pass.
       Implement Rr_GetErrorString().
 	1) Image/buffer creation.
@@ -51,7 +52,6 @@
 - [ ] Replace VMA with custom allocator.
 - [ ] Replace hash trie usage with Rr_HashTable.h where applicable.
 - [ ] Array implementation is a bit ugly...
-- [ ] Cache mouse position on window initialization.
 
 * Features
 

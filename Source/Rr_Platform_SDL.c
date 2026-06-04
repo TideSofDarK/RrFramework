@@ -204,15 +204,13 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
                         Rr_AddV2(gPlatform.MousePosition, Delta);
                     gPlatform.MousePositionDelta =
                         Rr_AddV2(gPlatform.MousePositionDelta, Delta);
-
-                    Rr_AddMouseMotionEvent(gPlatform.MousePosition);
                 }
                 else
                 {
                     gPlatform.MousePosition = Position;
-
-                    Rr_AddMouseMotionEvent(Position);
                 }
+
+                Rr_AddMouseMotionEvent(gPlatform.MousePosition);
             }
             break;
             case SDL_EVENT_MOUSE_WHEEL:
@@ -225,13 +223,13 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
             case SDL_EVENT_MOUSE_BUTTON_UP:
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
             {
+                gPlatform.MouseState =
+                    (Rr_MouseButtonFlags)SDL_GetMouseState(NULL, NULL);
+
                 Rr_AddMouseButtonEvent(
                     SDLEvent.type == SDL_EVENT_MOUSE_BUTTON_DOWN,
                     gPlatform.MousePosition,
                     SDLEvent.button.button - 1);
-
-                gPlatform.MouseState =
-                    (Rr_MouseButtonFlags)SDL_GetMouseState(NULL, NULL);
             }
             break;
             case SDL_EVENT_DROP_FILE:

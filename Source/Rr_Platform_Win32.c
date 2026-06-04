@@ -299,7 +299,7 @@ static inline void Rr_GetWin32DeviceMode(DEVMODEW *DeviceMode, DWORD Flags)
         DeviceMode);
 }
 
-static inline void Rr_UpdateMouseState(WPARAM WParam)
+static inline void Rr_UpdateWin32MouseState(WPARAM WParam)
 {
     Rr_MouseButtonFlags MouseState = 0;
 
@@ -468,7 +468,7 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
         }
         case WM_MOUSEMOVE:
         {
-            Rr_UpdateMouseState(WParam);
+            Rr_UpdateWin32MouseState(WParam);
 
             if (gPlatform.RelativeMouseMode)
             {
@@ -496,6 +496,8 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
 
                 gPlatform.MousePosition =
                     Rr_AddV2(gPlatform.MousePosition, Rr_CastV2(Delta));
+                gPlatform.MousePositionDelta =
+                    Rr_AddV2(gPlatform.MousePositionDelta, Rr_CastV2(Delta));
             }
             else
             {
@@ -531,7 +533,7 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
         case WM_XBUTTONDOWN:
         case WM_XBUTTONUP:
         {
-            Rr_UpdateMouseState(WParam);
+            Rr_UpdateWin32MouseState(WParam);
 
             Rr_MouseButton Button = RR_MOUSE_BUTTON_LEFT;
             bool Down = false;
@@ -582,39 +584,7 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
                 }
             }
 
-            Rr_AddMouseButtonEvent(Down, RR_LPARAM_TO_VEC2(LParam), Button);
-
-            if (gPlatform.RelativeMouseMode)
-            {
-                POINT Point;
-                GetCursorPos(&Point);
-
-                RECT Rect;
-                GetWindowRect(gWin32.Window, &Rect);
-                POINT Center = {
-                    (Rect.right + Rect.left) / 2,
-                    (Rect.top + Rect.bottom) / 2,
-                };
-
-                Rr_IntVec2 Delta =
-                    Rr_IntV2(Point.x - Center.x, Point.y - Center.y);
-
-                if (Delta.X == 0 && Delta.Y == 0)
-                {
-                    /* NOTE: Skip event that comes from SetCursorPos call. */
-
-                    break;
-                }
-
-                SetCursorPos(Center.x, Center.y);
-
-                gPlatform.MousePosition =
-                    Rr_AddV2(gPlatform.MousePosition, Rr_CastV2(Delta));
-            }
-            else
-            {
-                gPlatform.MousePosition = RR_LPARAM_TO_VEC2(LParam);
-            }
+            Rr_AddMouseButtonEvent(Down, gPlatform.MousePosition, Button);
 
             return 0;
         }
@@ -814,9 +784,6 @@ bool Rr_CreateVulkanSurface(uint64_t Instance, uint64_t *Surface)
 
 void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
 {
-    Rr_Vec2 LastMousePosition = gPlatform.MousePosition;
-    gPlatform.MousePositionDelta = Rr_V2F(0.0f);
-
     SetWindowLongPtrW(gWin32.Window, GWLP_USERDATA, (LONG_PTR)Arena);
 
     MSG Message;
@@ -827,9 +794,6 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
     }
 
     SetWindowLongPtrW(gWin32.Window, GWLP_USERDATA, (LONG_PTR)NULL);
-
-    gPlatform.MousePositionDelta =
-        Rr_SubV2(gPlatform.MousePosition, LastMousePosition);
 
     /* HACK: Windows doesn't send us WM_KEYUP for second shift. */
 
@@ -1009,6 +973,15 @@ double Rr_GetDisplayRefreshRate(void)
     }
 
     return Result;
+}
+
+Rr_Vec2 Rr_QueryPlatformMousePosition(void)
+{
+    POINT Point;
+    GetCursorPos(&Point);
+    ScreenToClient(gWin32.Window, &Point);
+
+    return Rr_V2((float)Point.x, (float)Point.y);
 }
 
 Rr_IntVec2 Rr_GetWindowSize(void)
