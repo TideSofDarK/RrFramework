@@ -108,7 +108,8 @@
 ** Examples
 
 - [X] Modern Rendering
-- [ ] Modern Rendering: Actually Finish It This Time
+- [ ] Modern Rendering: Better SSAO
+- [ ] Modern Rendering: Temporal AA?
 - [ ] Pre-rendered Depth
 - [ ] Particles
 - [ ] Light Space Perspective Shadow Maps

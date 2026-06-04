@@ -61,8 +61,8 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
         .maxAnisotropy = Info->MaxAnisotropy,
         .compareEnable = Info->CompareEnable,
         .compareOp = Rr_ToVulkanCompareOp(Info->CompareOp),
-        .minLod = Info->MinLod,
-        .maxLod = Info->MaxLod,
+        .minLod = 0.0f,
+        .maxLod = VK_LOD_CLAMP_NONE,
         .borderColor = Rr_ToVulkanBorderColor(Info->BorderColor),
         .unnormalizedCoordinates = Info->UnnormalizedCoordinates,
     };
@@ -269,9 +269,8 @@ static Rr_Image *Rr_CreateImage(
     uint32_t LevelCount = 1;
     if (Flags & RR_IMAGE_FLAGS_MIP_MAPPED_BIT)
     {
-        LevelCount =
-            (uint32_t)floorf(logf((float)RR_MAX(Extent.Width, Extent.Height))) +
-            1;
+        int32_t Max = RR_MAX(RR_MAX(Extent.Width, Extent.Height), Extent.Depth);
+        LevelCount = (uint32_t)floorf(log2f((float)Max)) + 1;
     }
 
     *Image = (Rr_Image){

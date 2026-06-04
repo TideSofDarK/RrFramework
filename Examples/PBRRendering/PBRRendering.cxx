@@ -232,7 +232,8 @@ class CGLTFScene
         auto Image2D = Rr_CreateImage2D(
             Rr_IntV2(ImageWidth, ImageHeight),
             Format,
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
+                RR_IMAGE_FLAGS_MIP_MAPPED_BIT);
         Rr_CopyBufferToImage2D(
             Graph,
             StagingBuffer,
@@ -399,6 +400,8 @@ public:
             exit(1);
         }
         cgltf_load_buffers(&Options, Data, NULL);
+
+        auto Graph = Rr_GetGraph();
 
         /* Materials */
 
@@ -576,7 +579,7 @@ public:
         memcpy(StagingData + VertexDataSize, Indices.data(), IndexDataSize);
         memcpy(StagingData + VertexIndexSize, Models.data(), ModelDataSize);
 
-        auto TransferNode = Rr_AddTransferNode(Rr_GetGraph());
+        auto TransferNode = Rr_AddTransferNode(Graph);
 
         MeshBuffer = Rr_CreateBuffer(
             VertexIndexSize,
@@ -607,10 +610,28 @@ public:
 
         cgltf_free(Data);
 
-        Rr_SamplerInfo Info = {};
-        Info.MinFilter = RR_FILTER_LINEAR;
-        Info.MagFilter = RR_FILTER_LINEAR;
-        Sampler = Rr_CreateSampler(&Info);
+        for (auto &Material : Materials)
+        {
+            if (Material.Color)
+            {
+                Rr_GenerateMipmaps(Graph, Material.Color);
+            }
+            if (Material.Normal)
+            {
+                Rr_GenerateMipmaps(Graph, Material.Normal);
+            }
+            if (Material.RoughnessMetallic)
+            {
+                Rr_GenerateMipmaps(Graph, Material.RoughnessMetallic);
+            }
+        }
+
+        Rr_SamplerInfo SamplerInfo = {
+            .MagFilter = RR_FILTER_LINEAR,
+            .MinFilter = RR_FILTER_LINEAR,
+            .MipmapMode = RR_SAMPLER_MIPMAP_MODE_LINEAR,
+        };
+        Sampler = Rr_CreateSampler(&SamplerInfo);
     }
 
     ~CGLTFScene()
@@ -650,11 +671,12 @@ public:
 
     CFullscreenBlit(Rr_AssetRef FragSPV)
     {
-        Rr_SamplerInfo Info = {};
-        Sampler = Rr_CreateSampler(&Info);
+        Rr_SamplerInfo SamplerInfo = {};
+        Sampler = Rr_CreateSampler(&SamplerInfo);
 
-        Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
+        Rr_ColorTargetInfo ColorTarget = {
+            .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
+        };
 
         Rr_Asset VertexShader =
             Rr_LoadAsset(EXAMPLE_ASSET_FULLSCREENTRIANGLE_VERT_SPV);
@@ -669,12 +691,13 @@ public:
             .SPVData = FragmentShader.Data,
         };
 
-        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
-        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
-        PipelineInfo.ColorTargetCount = 1;
-        PipelineInfo.ColorTargets = &ColorTarget;
-        PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {
+            .VertexShaderInfo = &VertexShaderInfo,
+            .FragmentShaderInfo = &FragmentShaderInfo,
+            .ColorTargetCount = 1,
+            .ColorTargets = &ColorTarget,
+            .Rasterizer = Rr_Rasterizer{ .CullMode = RR_CULL_MODE_NONE },
+        };
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
@@ -740,10 +763,11 @@ class CSkybox
 
     void InitSampler()
     {
-        Rr_SamplerInfo Info = {};
-        Info.MinFilter = RR_FILTER_LINEAR;
-        Info.MagFilter = RR_FILTER_LINEAR;
-        Sampler = Rr_CreateSampler(&Info);
+        Rr_SamplerInfo SamplerInfo = {
+            .MagFilter = RR_FILTER_LINEAR,
+            .MinFilter = RR_FILTER_LINEAR,
+        };
+        Sampler = Rr_CreateSampler(&SamplerInfo);
     }
 
     void InitSkyboxMesh()
@@ -777,9 +801,10 @@ public:
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
 
-        Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
-        ColorTarget.Blend = Rr_AlphaBlend();
+        Rr_ColorTargetInfo ColorTarget = {
+            .Blend = Rr_AlphaBlend(),
+            .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
+        };
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
@@ -793,15 +818,15 @@ public:
             .SPVData = FragmentShader.Data,
         };
 
-        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
-        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
-        PipelineInfo.ColorTargetCount = 1;
-        PipelineInfo.ColorTargets = &ColorTarget;
-        PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
-        PipelineInfo.VertexInputBindingCount = VERTEX_INPUT_BINDINGS.size();
-        PipelineInfo.VertexInputBindings = VERTEX_INPUT_BINDINGS.data();
-        PipelineInfo.Multisampling.SampleCount = MSAASampleCount;
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {
+            .VertexShaderInfo = &VertexShaderInfo,
+            .FragmentShaderInfo = &FragmentShaderInfo,
+            .VertexInputBindingCount = VERTEX_INPUT_BINDINGS.size(),
+            .VertexInputBindings = VERTEX_INPUT_BINDINGS.data(),
+            .ColorTargetCount = 1,
+            .ColorTargets = &ColorTarget,
+            .Multisampling = Rr_Multisampling{ .SampleCount = MSAASampleCount },
+        };
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
@@ -889,9 +914,10 @@ public:
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
 
-        Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
-        ColorTarget.Blend = Rr_AlphaBlend();
+        Rr_ColorTargetInfo ColorTarget = {
+            .Blend = Rr_AlphaBlend(),
+            .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
+        };
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_GRID_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
@@ -905,16 +931,20 @@ public:
             .SPVData = FragmentShader.Data,
         };
 
-        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
-        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
-        PipelineInfo.ColorTargetCount = 1;
-        PipelineInfo.ColorTargets = &ColorTarget;
-        PipelineInfo.DepthStencil.EnableDepthTest = true;
-        PipelineInfo.DepthStencil.EnableDepthWrite = true;
-        PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS_OR_EQUAL;
-        PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
-        PipelineInfo.Multisampling.SampleCount = SampleCount;
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {
+            .VertexShaderInfo = &VertexShaderInfo,
+            .FragmentShaderInfo = &FragmentShaderInfo,
+            .ColorTargetCount = 1,
+            .ColorTargets = &ColorTarget,
+            .Multisampling = Rr_Multisampling{ .SampleCount = SampleCount },
+            .DepthStencil =
+                Rr_DepthStencil{
+                    .Format = DEPTH_FORMAT,
+                    .CompareOp = RR_COMPARE_OP_LESS_OR_EQUAL,
+                    .EnableDepthTest = true,
+                    .EnableDepthWrite = true,
+                },
+        };
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
@@ -1414,9 +1444,10 @@ public:
 
     CLighting()
     {
-        Rr_SamplerInfo SamplerInfo = {};
-        SamplerInfo.MinFilter = RR_FILTER_NEAREST;
-        SamplerInfo.MagFilter = RR_FILTER_NEAREST;
+        Rr_SamplerInfo SamplerInfo = {
+            .MagFilter = RR_FILTER_NEAREST,
+            .MinFilter = RR_FILTER_NEAREST,
+        };
         RegularSampler = Rr_CreateSampler(&SamplerInfo);
 
         SamplerInfo.CompareEnable = true;
@@ -1438,18 +1469,24 @@ public:
             .SPVData = FragmentShader.Data,
         };
 
-        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
-        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
-        PipelineInfo.VertexInputBindingCount =
-            GENERIC_VERTEX_INPUT_BINDINGS.size();
-        PipelineInfo.VertexInputBindings = GENERIC_VERTEX_INPUT_BINDINGS.data();
-        PipelineInfo.DepthStencil.EnableDepthTest = true;
-        PipelineInfo.DepthStencil.EnableDepthWrite = true;
-        PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
-        PipelineInfo.DepthStencil.Format = SHADOW_MAP_DEPTH_FORMAT;
-        PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
-        PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {
+            .VertexShaderInfo = &VertexShaderInfo,
+            .FragmentShaderInfo = &FragmentShaderInfo,
+            .VertexInputBindingCount = GENERIC_VERTEX_INPUT_BINDINGS.size(),
+            .VertexInputBindings = GENERIC_VERTEX_INPUT_BINDINGS.data(),
+            .Rasterizer =
+                Rr_Rasterizer{
+                    .CullMode = RR_CULL_MODE_BACK,
+                    .FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE,
+                },
+            .DepthStencil =
+                Rr_DepthStencil{
+                    .Format = SHADOW_MAP_DEPTH_FORMAT,
+                    .CompareOp = RR_COMPARE_OP_LESS,
+                    .EnableDepthTest = true,
+                    .EnableDepthWrite = true,
+                },
+        };
 
         ShadowPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
@@ -1671,15 +1708,17 @@ public:
 
     CSSAO()
     {
-        Rr_SamplerInfo SamplerInfo = {};
-        SamplerInfo.AddressModeU = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        SamplerInfo.AddressModeV = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        SamplerInfo.MinFilter = RR_FILTER_LINEAR;
-        SamplerInfo.MagFilter = RR_FILTER_LINEAR;
+        Rr_SamplerInfo SamplerInfo = {
+            .MagFilter = RR_FILTER_LINEAR,
+            .MinFilter = RR_FILTER_LINEAR,
+            .AddressModeU = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+            .AddressModeV = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        };
         Sampler = Rr_CreateSampler(&SamplerInfo);
 
-        Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = RR_IMAGE_FORMAT_R32_SFLOAT;
+        Rr_ColorTargetInfo ColorTarget = {
+            .Format = RR_IMAGE_FORMAT_R32_SFLOAT,
+        };
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
@@ -1693,11 +1732,12 @@ public:
             .SPVData = FragmentShader.Data,
         };
 
-        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
-        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
-        PipelineInfo.ColorTargetCount = 1;
-        PipelineInfo.ColorTargets = &ColorTarget;
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {
+            .VertexShaderInfo = &VertexShaderInfo,
+            .FragmentShaderInfo = &FragmentShaderInfo,
+            .ColorTargetCount = 1,
+            .ColorTargets = &ColorTarget,
+        };
 
         SSAOPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
@@ -1797,21 +1837,28 @@ class CPBRRenderingApp
             .SPVData = FragmentShader.Data,
         };
 
-        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
-        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
-        PipelineInfo.VertexInputBindingCount =
-            GENERIC_VERTEX_INPUT_BINDINGS.size();
-        PipelineInfo.VertexInputBindings = GENERIC_VERTEX_INPUT_BINDINGS.data();
-        PipelineInfo.ColorTargetCount = ColorTargets.size();
-        PipelineInfo.ColorTargets = ColorTargets.data();
-        PipelineInfo.DepthStencil.EnableDepthTest = true;
-        PipelineInfo.DepthStencil.EnableDepthWrite = false;
-        PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS_OR_EQUAL;
-        PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
-        PipelineInfo.Rasterizer.FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE;
-        PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_BACK;
-        PipelineInfo.Multisampling.SampleCount = GetMSAASampleCount();
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {
+            .VertexShaderInfo = &VertexShaderInfo,
+            .FragmentShaderInfo = &FragmentShaderInfo,
+            .VertexInputBindingCount = GENERIC_VERTEX_INPUT_BINDINGS.size(),
+            .VertexInputBindings = GENERIC_VERTEX_INPUT_BINDINGS.data(),
+            .ColorTargetCount = ColorTargets.size(),
+            .ColorTargets = ColorTargets.data(),
+            .Multisampling =
+                Rr_Multisampling{ .SampleCount = GetMSAASampleCount() },
+            .Rasterizer =
+                Rr_Rasterizer{
+                    .CullMode = RR_CULL_MODE_BACK,
+                    .FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE,
+                },
+            .DepthStencil =
+                Rr_DepthStencil{
+                    .Format = DEPTH_FORMAT,
+                    .CompareOp = RR_COMPARE_OP_LESS_OR_EQUAL,
+                    .EnableDepthTest = true,
+                    .EnableDepthWrite = false,
+                },
+        };
 
         Rr_ReleaseGraphicsPipeline(ForwardPassPipeline);
         ForwardPassPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);

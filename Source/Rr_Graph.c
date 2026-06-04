@@ -631,6 +631,132 @@ static void Rr_ExecuteTransferNode(
     }
 }
 
+static inline void Rr_ExecuteGenerateMipmaps(
+    Rr_Graph *Graph,
+    Rr_GraphImage ImageHandle,
+    VkCommandBuffer CommandBuffer)
+{
+    Rr_Device *Device = &gRenderer->Device;
+
+    Rr_GraphResource *ImageResource =
+        Rr_GetGraphImageResource(Graph, ImageHandle);
+    Rr_AllocatedImage *Image = Rr_GetGraphImage(Graph, ImageHandle);
+    Rr_Image *Container = Image->Container;
+    Rr_SyncState *State = &ImageResource->SyncState;
+    VkImageAspectFlags Aspect = Container->AspectFlags;
+
+    VkImageMemoryBarrier Level0ReadBarrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = State->AccessMask,
+        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+        .oldLayout = State->Layout,
+        .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = Image->Handle,
+        .subresourceRange =
+            (VkImageSubresourceRange){
+                .aspectMask = Aspect,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            },
+    };
+    Device->CmdPipelineBarrier(
+        CommandBuffer,
+        State->StageMask,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        0,
+        NULL,
+        0,
+        NULL,
+        1,
+        &Level0ReadBarrier);
+
+    int32_t SrcWidth = (int32_t)Container->Extent.width;
+    int32_t SrcHeight = (int32_t)Container->Extent.height;
+    int32_t SrcDepth = (int32_t)Container->Extent.depth;
+    int32_t DstWidth = (int32_t)Container->Extent.width / 2;
+    int32_t DstHeight = (int32_t)Container->Extent.height / 2;
+    int32_t DstDepth = (int32_t)Container->Extent.depth / 2;
+    for (uint32_t SrcLevel = 0; SrcLevel < Container->LevelCount - 1; ++SrcLevel)
+    {
+        DstWidth = RR_MAX(1, DstWidth);
+        DstHeight = RR_MAX(1, DstHeight);
+        DstDepth = RR_MAX(1, DstDepth);
+
+        VkImageBlit Blit = {
+            .srcSubresource =
+                (VkImageSubresourceLayers){
+                    .aspectMask = Aspect,
+                    .mipLevel = SrcLevel,
+                    .baseArrayLayer = 0,
+                    .layerCount = Container->LayerCount,
+                },
+            .srcOffsets[1] = { SrcWidth, SrcHeight, SrcDepth },
+            .dstSubresource =
+                (VkImageSubresourceLayers){
+                    .aspectMask = Aspect,
+                    .mipLevel = SrcLevel + 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = Container->LayerCount,
+                },
+            .dstOffsets[1] = { DstWidth, DstHeight, DstDepth },
+        };
+        Device->CmdBlitImage(
+            CommandBuffer,
+            Image->Handle,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            Image->Handle,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1,
+            &Blit,
+            VK_FILTER_LINEAR);
+        VkImageMemoryBarrier ReadBarrier = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = Image->Handle,
+            .subresourceRange =
+                (VkImageSubresourceRange){
+                    .aspectMask = Aspect,
+                    .baseMipLevel = SrcLevel + 1,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = Container->LayerCount,
+                },
+        };
+        Device->CmdPipelineBarrier(
+            CommandBuffer,
+            State->StageMask,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            0,
+            0,
+            NULL,
+            0,
+            NULL,
+            1,
+            &ReadBarrier);
+
+        SrcWidth = DstWidth;
+        SrcHeight = DstHeight;
+        SrcDepth = DstDepth;
+        DstWidth /= 2;
+        DstHeight /= 2;
+        DstDepth /= 2;
+    }
+
+    State->StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    State->AccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    State->Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+}
+
 static inline bool Rr_ClampBlitRect(Rr_IntVec4 *Rect, VkExtent3D *Extent)
 {
     Rect->X = RR_CLAMP(0, Rect->X, (int)Extent->width);
@@ -647,12 +773,9 @@ static void Rr_ExecuteBlitNode(
     VkCommandBuffer CommandBuffer)
 {
     Rr_Device *Device = &gRenderer->Device;
-    Rr_Frame *Frame = Rr_GetCurrentFrame();
 
-    Rr_AllocatedImage *SrcImage =
-        Rr_GetGraphImage(Frame->Graph, Node->SrcImageHandle);
-    Rr_AllocatedImage *DstImage =
-        Rr_GetGraphImage(Frame->Graph, Node->DstImageHandle);
+    Rr_AllocatedImage *SrcImage = Rr_GetGraphImage(Graph, Node->SrcImageHandle);
+    Rr_AllocatedImage *DstImage = Rr_GetGraphImage(Graph, Node->DstImageHandle);
 
     if (Rr_ClampBlitRect(&Node->SrcRect, &SrcImage->Container->Extent) &&
         Rr_ClampBlitRect(&Node->DstRect, &DstImage->Container->Extent))
@@ -1573,6 +1696,14 @@ static void Rr_ExecuteGraphNode(
         case RR_GRAPH_NODE_TYPE_TRANSFER:
         {
             Rr_ExecuteTransferNode(Graph, &Node->Union.Transfer, CommandBuffer);
+        }
+        break;
+        case RR_GRAPH_NODE_TYPE_GENERATE_MIPMAPS:
+        {
+            Rr_ExecuteGenerateMipmaps(
+                Graph,
+                Node->Union.GenerateMipmaps,
+                CommandBuffer);
         }
         break;
         default:
@@ -2527,6 +2658,30 @@ void Rr_BlitImage2D(
     Rr_AddImageDependency(
         GraphNode,
         DstImageHandle,
+        &(Rr_SyncState){
+            .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
+            .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .Layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        });
+}
+
+void Rr_GenerateMipmaps(Rr_Graph *Graph, Rr_Image *Image)
+{
+    assert(
+        (Graph->QueueType == RR_QUEUE_TYPE_MAIN) &&
+        "This function requires a graph with graphics capabilities!");
+    assert(Image->LevelCount > 1 && "This image doesn't support mipmaps!");
+
+    Rr_GraphNode *GraphNode =
+        Rr_AddGraphNode(Graph, RR_GRAPH_NODE_TYPE_GENERATE_MIPMAPS);
+
+    Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Graph, Image);
+
+    GraphNode->Union.GenerateMipmaps = *ImageHandle;
+
+    Rr_AddImageDependency(
+        GraphNode,
+        ImageHandle,
         &(Rr_SyncState){
             .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
             .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,

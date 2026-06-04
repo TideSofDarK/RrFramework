@@ -34,11 +34,11 @@ typedef struct Rr_TransferNode Rr_TransferNode;
 extern "C" {
 #endif
 
-extern struct Rr_Graph *RR_CC Rr_GetGraph(void);
+extern Rr_Graph *RR_CC Rr_GetGraph(void);
 
-extern struct Rr_Graph *RR_CC Rr_BeginGraph(Rr_QueueType QueueType);
+extern Rr_Graph *RR_CC Rr_BeginGraph(Rr_QueueType QueueType);
 
-extern void RR_CC Rr_EndGraph(struct Rr_Graph *Graph);
+extern void RR_CC Rr_EndGraph(Rr_Graph *Graph);
 
 extern void RR_CC Rr_SetNextNodeName(Rr_Graph *Graph, const char *Name);
 
@@ -158,6 +158,8 @@ extern void RR_CC Rr_BlitImage2D(
     Rr_IntVec4 SrcRect,
     Rr_IntVec4 DstRect,
     Rr_ImageAspect ImageAspect);
+
+extern void RR_CC Rr_GenerateMipmaps(Rr_Graph *Graph, struct Rr_Image *Image);
 
 extern void RR_CC Rr_ClearColorImage2D(
     Rr_Graph *Graph,

@@ -74,8 +74,6 @@ struct Rr_SamplerInfo
     float MaxAnisotropy;
     bool CompareEnable;
     Rr_CompareOp CompareOp;
-    float MinLod;
-    float MaxLod;
     Rr_BorderColor BorderColor;
     bool UnnormalizedCoordinates;
 };

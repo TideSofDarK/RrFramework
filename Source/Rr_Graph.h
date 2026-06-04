@@ -55,6 +55,7 @@ typedef enum Rr_GraphNodeType
     RR_GRAPH_NODE_TYPE_COPY_BUFFER_TO_IMAGE,
     RR_GRAPH_NODE_TYPE_COPY_IMAGE_TO_BUFFER,
     RR_GRAPH_NODE_TYPE_COPY_IMAGE,
+    RR_GRAPH_NODE_TYPE_GENERATE_MIPMAPS,
 } Rr_GraphNodeType;
 
 typedef enum
@@ -330,6 +331,7 @@ struct Rr_GraphNode
         Rr_CopyImageNode CopyImage;
         Rr_BlitNode Blit;
         Rr_TransferNode Transfer;
+        Rr_GraphImage GenerateMipmaps;
     } Union;
     Rr_GraphNodeType Type;
 
@@ -341,6 +343,7 @@ struct Rr_GraphNode
     Rr_NodeDependencyArray ImageDeps;
 
     bool UsesLateCommandBuffer;
+
     Rr_PipelineLayout *CurrentLayout;
 
 #ifdef RR_USE_GPU_DEBUG_UTILS

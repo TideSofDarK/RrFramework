@@ -396,6 +396,7 @@ Rr_ColorTargetBlend Rr_AlphaBlend(void)
     Blend.DstAlphaBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     Blend.AlphaBlendOp = RR_BLEND_OP_ADD;
     Blend.ColorWriteMask = RR_COLOR_COMPONENT_DEFAULT;
+
     return Blend;
 }
 
