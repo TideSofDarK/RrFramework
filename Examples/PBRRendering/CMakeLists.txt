@@ -23,7 +23,14 @@ CPMAddPackage(
 
 add_executable(${PROJECT_NAME} PBRRendering.cxx)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
-target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework webpdecode webpdspdecode webputilsdecode)
+target_link_libraries(
+    ${PROJECT_NAME}
+    PRIVATE
+    RrFramework
+    webp
+    webpdecode
+    webpdspdecode
+    webputilsdecode)
 
 file(GLOB_RECURSE RR_EXAMPLE_ASSETS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.glb"

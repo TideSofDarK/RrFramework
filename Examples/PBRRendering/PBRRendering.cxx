@@ -403,15 +403,15 @@ public:
         /* Materials */
 
         Materials.resize(Data->materials_count);
-        auto ColorThread = std::jthread(
+        auto ColorThread = std::thread(
             LoadTextures<ETextureType::COLOR>,
             Data,
             std::ref(Materials));
-        auto NormalThread = std::jthread(
+        auto NormalThread = std::thread(
             LoadTextures<ETextureType::NORMAL>,
             Data,
             std::ref(Materials));
-        auto RoughnessMetallicThread = std::jthread(
+        auto RoughnessMetallicThread = std::thread(
             LoadTextures<ETextureType::ROUGHNESS_METALLIC>,
             Data,
             std::ref(Materials));
@@ -586,6 +586,10 @@ public:
             0);
 
         IndexOffset = VertexDataSize;
+
+        ColorThread.join();
+        NormalThread.join();
+        RoughnessMetallicThread.join();
 
         cgltf_free(Data);
 
