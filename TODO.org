@@ -36,6 +36,7 @@
 - [X] Make locking more granular. gRenderer->Lock should only be locked when allocating.
 - [X] Framebuffers/SyncStates require different hash table implementation. Current implementation is a mess...
 - [X] Query platform mouse position before polling.
+- [X] Remove GLTF API.
 - [ ] Minimal error handling pass.
       Implement Rr_GetErrorString().
 	1) Image/buffer creation.
@@ -48,7 +49,6 @@
 - [ ] Does PushXXXIntoHive need to return iterator?
 - [ ] Releasing same resource (buffer, image, etc) twice leads to annoying bugs.
 - [ ] Implement thread-safe arenas for permanent storage.
-- [ ] Remove GLTF API.
 - [ ] Replace VMA with custom allocator.
 - [ ] Replace hash trie usage with Rr_HashTable.h where applicable.
 - [ ] Array implementation is a bit ugly...
