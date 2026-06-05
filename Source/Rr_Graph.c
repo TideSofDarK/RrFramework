@@ -47,13 +47,11 @@ Rr_Graph *Rr_BeginGraph(Rr_QueueType QueueType)
 
     size_t ArenaPosition = ThreadContext->Arena->Position;
 
-    ThreadContext->Graph = RR_ALLOC(sizeof(Rr_Graph), ThreadContext->Arena);
-    *ThreadContext->Graph = (Rr_Graph){
-        .Arena = ThreadContext->Arena,
-        .QueueType = QueueType,
-        .DescriptorPoolList = Rr_AcquireDescriptorPoolList(),
-        .ArenaPosition = ArenaPosition,
-    };
+    ThreadContext->Graph = RR_ALLOC_TYPE(Rr_Graph, ThreadContext->Arena);
+    ThreadContext->Graph->QueueType = QueueType;
+    ThreadContext->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
+    ThreadContext->Graph->ArenaPosition = ArenaPosition;
+    ThreadContext->Graph->Arena = ThreadContext->Arena;
 
     return ThreadContext->Graph;
 }
@@ -61,13 +59,15 @@ Rr_Graph *Rr_BeginGraph(Rr_QueueType QueueType)
 void Rr_EndGraph(Rr_Graph *Graph)
 {
     assert(Graph);
+    assert(
+        !Graph->Primary &&
+        "Rr_EndGraph() can only be called on non-primary graphs!");
 
     if (Graph->Nodes.Count == 0)
     {
-        return;
+        goto Cleanup;
     }
 
-    Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
     Rr_CommandPools *CommandPools = Rr_AcquireCommandPools();
 
     Rr_Device *Device = &gRenderer->Device;
@@ -141,13 +141,15 @@ void Rr_EndGraph(Rr_Graph *Graph)
         CommandPool,
         VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
 
-    Rr_FinalizeGraph(Graph);
+Cleanup:
+
+    Rr_ReleaseGraphResources(Graph);
 
     /* TODO: Check whether semaphores are needed here considering that we always
      * wait on a fence. */
 
-    ThreadContext->Arena->Position = Graph->ArenaPosition;
-    ThreadContext->Graph = NULL;
+    Graph->Arena->Position = Graph->ArenaPosition;
+    Rr_GetThreadContext()->Graph = NULL;
 }
 
 static Rr_AllocatedBuffer *Rr_GetGraphBuffer(
@@ -681,7 +683,8 @@ static inline void Rr_ExecuteGenerateMipmaps(
     int32_t DstWidth = (int32_t)Container->Extent.width / 2;
     int32_t DstHeight = (int32_t)Container->Extent.height / 2;
     int32_t DstDepth = (int32_t)Container->Extent.depth / 2;
-    for (uint32_t SrcLevel = 0; SrcLevel < Container->LevelCount - 1; ++SrcLevel)
+    for (uint32_t SrcLevel = 0; SrcLevel < Container->LevelCount - 1;
+         ++SrcLevel)
     {
         DstWidth = RR_MAX(1, DstWidth);
         DstHeight = RR_MAX(1, DstHeight);
@@ -2314,7 +2317,7 @@ void Rr_ExecuteGraph(
     Rr_EndFrameSection("Rr.ExecuteGraph");
 }
 
-void Rr_FinalizeGraph(Rr_Graph *Graph)
+void Rr_ReleaseGraphResources(Rr_Graph *Graph)
 {
     Rr_ReleaseDescriptorPoolList(Graph->DescriptorPoolList);
     Rr_DecrementRefCounts(Graph);

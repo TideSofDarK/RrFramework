@@ -681,7 +681,7 @@ void Rr_CleanupRenderer(void)
 
         if (Graph)
         {
-            Rr_FinalizeGraph(Graph);
+            Rr_ReleaseGraphResources(Graph);
         }
     }
 
@@ -834,7 +834,7 @@ void Rr_NewFrame(void)
 
     if (Frame->Graph)
     {
-        Rr_FinalizeGraph(Frame->Graph);
+        Rr_ReleaseGraphResources(Frame->Graph);
     }
 
     Rr_DestroyReleasedObjects();
@@ -910,8 +910,9 @@ void Rr_NewFrame(void)
 
     Frame->Graph = RR_ALLOC_TYPE(Rr_Graph, Frame->Arena);
     Frame->Graph->QueueType = RR_QUEUE_TYPE_MAIN;
-    Frame->Graph->Arena = Frame->Arena;
+    Frame->Graph->Primary = true;
     Frame->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
+    Frame->Graph->Arena = Frame->Arena;
     Frame->Graph->SwapchainImageHandle =
         Rr_GetGraphImageHandle(Frame->Graph, &Frame->SwapchainImage->Container);
 }

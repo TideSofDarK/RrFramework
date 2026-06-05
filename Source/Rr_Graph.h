@@ -372,7 +372,10 @@ typedef RR_ARRAY(Rr_GraphResource) Rr_GraphResourceArray;
 struct Rr_Graph
 {
     Rr_QueueType QueueType;
+    bool Primary;
+    Rr_DescriptorPoolList *DescriptorPoolList;
 
+    const char *NextNodeName;
     RR_ARRAY(Rr_GraphNode *) Nodes;
 
     Rr_GraphResourceArray BufferResources;
@@ -387,10 +390,6 @@ struct Rr_Graph
     Rr_HandleSet ComputePipelines;
     Rr_HandleSet GraphicsPipelines;
     Rr_HandleSet Samplers;
-
-    Rr_DescriptorPoolList *DescriptorPoolList;
-
-    const char *NextNodeName;
 
 #ifdef RR_USE_GPU_DEBUG_UTILS
     RR_ARRAY(bool) DebugLabelStates;
@@ -427,4 +426,4 @@ extern void Rr_ExecuteGraph(
     VkCommandBuffer EarlyCommandBuffer,
     VkCommandBuffer LateCommandBuffer);
 
-extern void Rr_FinalizeGraph(Rr_Graph *Graph);
+extern void Rr_ReleaseGraphResources(Rr_Graph *Graph);

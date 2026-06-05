@@ -381,6 +381,7 @@ public:
                     Primitive.VertexOffset,
                     FirstInstance);
             }
+
             FirstInstance++;
         }
     }
