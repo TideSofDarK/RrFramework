@@ -110,7 +110,7 @@
 - [X] Modern Rendering
 - [ ] Modern Rendering: Better SSAO
 - [ ] Modern Rendering: Temporal AA?
-- [ ] Pre-rendered Depth
+- [X] Pre-rendered Depth
 - [ ] Particles
 - [ ] Light Space Perspective Shadow Maps
 - [ ] Mip Generation

@@ -149,13 +149,76 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
     return ColorImage;
 }
 
+struct SCube
+{
+    static float constexpr CubePositions[] = {
+        1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00,
+        1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00,
+        1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,
+        1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,
+        -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00,
+        -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00,
+        -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,
+        -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,
+    };
+    static uint16_t constexpr CubeIndices[] = {
+        1,  13, 19, 1,  19, 7,  9, 6, 18, 9, 18, 21, 23, 20, 14, 23, 14, 17,
+        16, 4,  10, 16, 10, 22, 5, 2, 8,  5, 8,  11, 15, 12, 0,  15, 0,  3,
+    };
+
+    Rr_Buffer *Buffer{};
+    size_t IndexOffset{};
+    size_t IndexCount{};
+
+    void Init()
+    {
+        size_t TotalSize = sizeof(CubePositions) + sizeof(CubeIndices);
+        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+            TotalSize,
+            RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
+        Rr_ReleaseBuffer(StagingBuffer);
+        char *BufferData = (char *)Rr_GetMappedBufferData(StagingBuffer);
+        std::memcpy(BufferData, CubePositions, sizeof(CubePositions));
+        BufferData += sizeof(CubePositions);
+        std::memcpy(BufferData, CubeIndices, sizeof(CubeIndices));
+
+        Buffer = Rr_CreateBuffer(
+            TotalSize,
+            RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_INDEX_BIT);
+        auto TransferNode = Rr_AddTransferNode(Rr_GetGraph());
+        Rr_TransferBufferData(
+            TransferNode,
+            TotalSize,
+            StagingBuffer,
+            0,
+            Buffer,
+            0);
+        IndexOffset = sizeof(CubePositions);
+        IndexCount = sizeof(CubeIndices) / sizeof(*CubeIndices);
+    }
+
+    void Cleanup()
+    {
+        Rr_ReleaseBuffer(Buffer);
+    }
+};
+
 struct SPrerenderedDepthApp
 {
     static const Rr_ImageFormat DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
 
     Rr_GraphicsPipeline *GraphicsPipeline;
+    SCube Cube{};
 
     Rr_Buffer *UniformBuffer;
+    struct
+    {
+        Rr_Mat4 Model;
+        Rr_Mat4 View;
+        Rr_Mat4 Projection;
+        float Near;
+        float Far;
+    } UniformData;
 
     Rr_Image2D *ColorImage;
     Rr_Image2D *DepthImage;
@@ -166,9 +229,21 @@ struct SPrerenderedDepthApp
 
     void InitPipeline()
     {
-        Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
-        ColorTarget.Blend = Rr_AlphaBlend();
+        std::array VertexAttributes = {
+            Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
+        };
+
+        std::array VertexInputBindings = {
+            Rr_VertexInputBinding{
+                .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
+                .AttributeCount = VertexAttributes.size(),
+                .Attributes = VertexAttributes.data(),
+            },
+        };
+
+        Rr_ColorTargetInfo ColorTarget = {
+            .Format = RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
+        };
 
         Rr_Asset VertexShader =
             Rr_LoadAsset(EXAMPLE_ASSET_PRERENDEREDDEPTH_VERT_SPV);
@@ -184,15 +259,21 @@ struct SPrerenderedDepthApp
             .SPVData = FragmentShader.Data,
         };
 
-        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
-        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
-        PipelineInfo.ColorTargetCount = 1;
-        PipelineInfo.ColorTargets = &ColorTarget;
-        PipelineInfo.DepthStencil.EnableDepthTest = true;
-        PipelineInfo.DepthStencil.EnableDepthWrite = true;
-        PipelineInfo.DepthStencil.CompareOp = RR_COMPARE_OP_LESS;
-        PipelineInfo.DepthStencil.Format = DEPTH_FORMAT;
+        Rr_GraphicsPipelineCreateInfo PipelineInfo = {
+            .VertexShaderInfo = &VertexShaderInfo,
+            .FragmentShaderInfo = &FragmentShaderInfo,
+            .VertexInputBindingCount = VertexInputBindings.size(),
+            .VertexInputBindings = VertexInputBindings.data(),
+            .ColorTargetCount = 1,
+            .ColorTargets = &ColorTarget,
+            .DepthStencil =
+                Rr_DepthStencil{
+                    .Format = DEPTH_FORMAT,
+                    .CompareOp = RR_COMPARE_OP_LESS,
+                    .EnableDepthTest = true,
+                    .EnableDepthWrite = true,
+                },
+        };
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
@@ -208,34 +289,12 @@ struct SPrerenderedDepthApp
         BackgroundExtent = Rr_GetImage2DExtent(BackgroundColorImage);
     }
 
-    void InitUniform(float Aspect)
+    void InitUniform()
     {
-        /* NOTE: Hardcoded values from PrerenderedDepth.blend scene. */
-
-        struct
-        {
-            Rr_Mat4 View;
-            Rr_Mat4 Projection;
-            float Near;
-            float Far;
-        } UniformData;
-
-        UniformData.View = Rr_EulerXYZ({ 90.0f - 63.5593f, -46.6919f, 0.0f }) *
-                           Rr_Translate({ -7.35889f, -4.0f, -6.92579f });
-        UniformData.Projection =
-            Rr_Perspective_RH(RR_ANGLE_DEG(43.7927f), Aspect, 0.5f, 50.0f);
-        UniformData.Near = 0.5f;
-        UniformData.Far = 50.0f;
-
         UniformBuffer = Rr_CreateBuffer(
             sizeof(UniformData),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-                RR_BUFFER_FLAGS_MAPPED_BIT);
-
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &UniformData,
-            sizeof(UniformData));
+                RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
     }
 
     void InitRenderTarget()
@@ -255,9 +314,9 @@ struct SPrerenderedDepthApp
     {
         InitPipeline();
         InitBackground();
-        InitUniform(
-            (float)BackgroundExtent.Width / (float)BackgroundExtent.Height);
+        InitUniform();
         InitRenderTarget();
+        Cube.Init();
     }
 
     void Iterate()
@@ -280,6 +339,44 @@ struct SPrerenderedDepthApp
             BackgroundExtent,
             0);
 
+        float Time = Rr_GetTimeSeconds() * 1.5f;
+        UniformData.Model =
+            Rr_Translate(
+                Rr_V3(cosf(Time) * 3.5f - 1.0f, 0.0f, sinf(Time) * 3.0f)) *
+
+            Rr_Rotate_RH(Time * 3.0f, Rr_V3(0.0f, 1.0f, 0.0f)) *
+            Rr_Scale(Rr_V3F(0.5f));
+
+        /* NOTE: Hardcoded values from PrerenderedDepth.blend scene. */
+
+        static Rr_Vec3 Position = Rr_V3(7.35889f, 4.0f, 6.92579f);
+        static Rr_Vec3 Rotation =
+            Rr_V3(63.5593f - 90.0f, 46.6919f + 90.0f, 0.0f);
+        Rr_UIBeginWindow("PrerenderedDepth.cxx");
+        Rr_UIText(
+            "This example demonstrates how to implement\n"
+            "prerendered backgrounds.\nChanging hardcoded position and "
+            "rotation values\nwould break the scene.");
+        Rr_UIInputFloat3("Camera Position", Position.Elements);
+        Rr_UIInputFloat3("Camera Rotation", Rotation.Elements);
+        Rr_UIEndWindow();
+        UniformData.View = Rr_EulerXYZ(Rr_V3(
+                               RR_ANGLE_DEG(Rotation.X),
+                               RR_ANGLE_DEG(Rotation.Y),
+                               RR_ANGLE_DEG(Rotation.Z))) *
+                           Rr_Translate(Position);
+        UniformData.Projection = Rr_Perspective_RH(
+            RR_ANGLE_DEG(25.48),
+            (float)BackgroundExtent.X / (float)BackgroundExtent.Y,
+            0.5f,
+            50.0f);
+        UniformData.Near = 0.5f;
+        UniformData.Far = 50.0f;
+        std::memcpy(
+            Rr_GetMappedBufferData(UniformBuffer),
+            &UniformData,
+            sizeof(UniformData));
+
         Rr_ColorTarget ColorTarget = {
             .Image = ColorImage,
             .LoadOp = RR_LOAD_OP_LOAD,
@@ -292,6 +389,22 @@ struct SPrerenderedDepthApp
         };
         Rr_GraphNode *GraphicsNode =
             Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
+        Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+        Rr_BindVertexBuffer(GraphicsNode, Cube.Buffer, 0, 0);
+        Rr_BindIndexBuffer(
+            GraphicsNode,
+            Cube.Buffer,
+            0,
+            Cube.IndexOffset,
+            RR_INDEX_TYPE_UINT16);
+        Rr_BindUniformBuffer(
+            GraphicsNode,
+            UniformBuffer,
+            0,
+            0,
+            0,
+            Rr_GetBufferSize(UniformBuffer));
+        Rr_DrawIndexed(GraphicsNode, Cube.IndexCount, 1, 0, 0, 0);
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
         Rr_IntVec2 SwapchainExtent = Rr_GetImage2DExtent(SwapchainImage);
@@ -313,6 +426,7 @@ struct SPrerenderedDepthApp
         Rr_ReleaseImage(BackgroundDepthImage);
         Rr_ReleaseImage(ColorImage);
         Rr_ReleaseImage(DepthImage);
+        Cube.Cleanup();
     }
 };
 
