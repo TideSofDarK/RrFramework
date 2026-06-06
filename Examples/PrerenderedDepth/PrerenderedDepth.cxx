@@ -19,7 +19,7 @@ Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
 {
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
 
-    const char *Error;
+    const char *Error{};
 
     EXRVersion Version;
     int32_t Result = ParseEXRVersionFromMemory(
@@ -347,16 +347,14 @@ struct SPrerenderedDepthApp
             Rr_Rotate_RH(Time * 3.0f, Rr_V3(0.0f, 1.0f, 0.0f)) *
             Rr_Scale(Rr_V3F(0.5f));
 
-        /* NOTE: Hardcoded values from PrerenderedDepth.blend scene. */
-
         static Rr_Vec3 Position = Rr_V3(7.35889f, 4.0f, 6.92579f);
         static Rr_Vec3 Rotation =
             Rr_V3(63.5593f - 90.0f, 46.6919f + 90.0f, 0.0f);
         Rr_UIBeginWindow("PrerenderedDepth.cxx");
         Rr_UIText(
-            "This example demonstrates how to implement\n"
-            "prerendered backgrounds.\nChanging hardcoded position and "
-            "rotation values\nwould break the scene.");
+            "This example demonstrates how to implement "
+            "prerendered backgrounds.\nCamera is set to exactly match Blender "
+            "camera; otherwise, it won't render correctly.");
         Rr_UIInputFloat3("Camera Position", Position.Elements);
         Rr_UIInputFloat3("Camera Rotation", Rotation.Elements);
         Rr_UIEndWindow();
