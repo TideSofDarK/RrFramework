@@ -1381,10 +1381,10 @@ public:
     {
         if (Rr_UIBeginTree("Lights"))
         {
-            if (Rr_UIBeginTree("Point Lights"))
+            for (std::uint32_t Index = 0; Index < PointLights.size(); ++Index)
             {
-                for (std::uint32_t Index = 0; Index < PointLights.size();
-                     ++Index)
+                if (Rr_UIBeginTree(
+                        std::format("Point Light #{}", Index).c_str()))
                 {
                     auto &PointLight = PointLights[Index];
                     bool Visualize =
@@ -1428,15 +1428,14 @@ public:
                         &PointLight.NormalBias,
                         0.0f,
                         1.0f);
-                }
 
-                Rr_UIEndTree();
+                    Rr_UIEndTree();
+                }
             }
 
-            if (Rr_UIBeginTree("Spot Lights"))
+            for (std::uint32_t Index = 0; Index < SpotLights.size(); ++Index)
             {
-                for (std::uint32_t Index = 0; Index < SpotLights.size();
-                     ++Index)
+                if (Rr_UIBeginTree(std::format("Spot Light #{}", Index).c_str()))
                 {
                     auto &SpotLight = SpotLights[Index];
                     Rr_UIInputColor3("Color", SpotLight.Color.Elements);
@@ -1478,9 +1477,9 @@ public:
                         &SpotLight.NormalBias,
                         0.0f,
                         1.0f);
-                }
 
-                Rr_UIEndTree();
+                    Rr_UIEndTree();
+                }
             }
 
             Rr_UIEndTree();
