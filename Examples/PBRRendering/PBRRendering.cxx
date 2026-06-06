@@ -315,7 +315,7 @@ class CGLTFScene
                     Material.pbr_metallic_roughness.base_color_texture.texture,
                     RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
                     Graph);
-                Rr_TransferImage2DToQueue(Graph, Image, RR_QUEUE_TYPE_MAIN);
+                Rr_TransferImageToQueue(Graph, Image, RR_QUEUE_TYPE_MAIN);
                 Materials[Index].Color = Image;
             }
 
@@ -331,7 +331,7 @@ class CGLTFScene
                     Material.normal_texture.texture,
                     RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
                     Graph);
-                Rr_TransferImage2DToQueue(Graph, Image, RR_QUEUE_TYPE_MAIN);
+                Rr_TransferImageToQueue(Graph, Image, RR_QUEUE_TYPE_MAIN);
                 Materials[Index].Normal = Image;
             }
 
@@ -349,7 +349,7 @@ class CGLTFScene
                         .texture,
                     RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
                     Graph);
-                Rr_TransferImage2DToQueue(Graph, Image, RR_QUEUE_TYPE_MAIN);
+                Rr_TransferImageToQueue(Graph, Image, RR_QUEUE_TYPE_MAIN);
                 Materials[Index].RoughnessMetallic = Image;
             }
         }

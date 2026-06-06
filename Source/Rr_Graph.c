@@ -2416,7 +2416,7 @@ void Rr_TransferBufferToQueue(
     Resource->DstQueueFamilyIndex = Rr_GetQueue(QueueType)->FamilyIndex;
 }
 
-static void Rr_TransferImageToQueue(
+void Rr_TransferImageToQueue(
     Rr_Graph *Graph,
     Rr_Image *Image,
     Rr_QueueType QueueType)
@@ -2424,38 +2424,6 @@ static void Rr_TransferImageToQueue(
     Rr_GraphHandle *Handle = Rr_GetGraphImageHandle(Graph, Image);
     Rr_GraphResource *Resource = Rr_GetGraphImageResource(Graph, *Handle);
     Resource->DstQueueFamilyIndex = Rr_GetQueue(QueueType)->FamilyIndex;
-}
-
-void Rr_TransferImage2DToQueue(
-    Rr_Graph *Graph,
-    Rr_Image2D *Image,
-    Rr_QueueType QueueType)
-{
-    Rr_TransferImageToQueue(Graph, Image, QueueType);
-}
-
-void Rr_TransferImage2DArrayToQueue(
-    Rr_Graph *Graph,
-    Rr_Image2DArray *Image,
-    Rr_QueueType QueueType)
-{
-    Rr_TransferImageToQueue(Graph, Image, QueueType);
-}
-
-void Rr_TransferImage3DToQueue(
-    Rr_Graph *Graph,
-    Rr_Image3D *Image,
-    Rr_QueueType QueueType)
-{
-    Rr_TransferImageToQueue(Graph, Image, QueueType);
-}
-
-void Rr_TransferImageCubeToQueue(
-    Rr_Graph *Graph,
-    Rr_ImageCube *Image,
-    Rr_QueueType QueueType)
-{
-    Rr_TransferImageToQueue(Graph, Image, QueueType);
 }
 
 void Rr_DecrementRefCounts(Rr_Graph *Graph)

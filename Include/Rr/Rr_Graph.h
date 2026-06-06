@@ -51,24 +51,9 @@ extern void RR_CC Rr_TransferBufferToQueue(
     Rr_Buffer *Buffer,
     Rr_QueueType QueueType);
 
-extern void RR_CC Rr_TransferImage2DToQueue(
+extern void RR_CC Rr_TransferImageToQueue(
     Rr_Graph *Graph,
-    Rr_Image2D *Image,
-    Rr_QueueType QueueType);
-
-extern void RR_CC Rr_TransferImage2DArrayToQueue(
-    Rr_Graph *Graph,
-    Rr_Image2DArray *Image,
-    Rr_QueueType QueueType);
-
-extern void RR_CC Rr_TransferImage3DToQueue(
-    Rr_Graph *Graph,
-    Rr_Image3D *Image,
-    Rr_QueueType QueueType);
-
-extern void RR_CC Rr_TransferImageCubeToQueue(
-    Rr_Graph *Graph,
-    Rr_ImageCube *Image,
+    struct Rr_Image *Image,
     Rr_QueueType QueueType);
 
 /* Allows multiple writes to the same buffer. */

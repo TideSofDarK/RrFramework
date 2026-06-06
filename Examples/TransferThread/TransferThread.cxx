@@ -106,7 +106,7 @@ struct STransferThread
                 std::abort();
             }
 
-            Rr_TransferImage2DToQueue(Graph, Image2D, RR_QUEUE_TYPE_MAIN);
+            Rr_TransferImageToQueue(Graph, Image2D, RR_QUEUE_TYPE_MAIN);
 
             Rr_EndGraph(Graph);
 
