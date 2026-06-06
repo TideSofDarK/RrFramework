@@ -25,7 +25,7 @@
 
 Rr_Profiler *Rr_CreateProfiler(Rr_Arena *Arena)
 {
-    Rr_Profiler *Profiler = RR_ALLOC_TYPE(Rr_Profiler, Arena);
+    Rr_Profiler *Profiler = Rr_Alloc(sizeof(Rr_Profiler), Arena);
     Profiler->Arena = Arena;
     return Profiler;
 }
@@ -57,8 +57,8 @@ void Rr_BeginSection(Rr_Profiler *Profiler, const char *SectionName)
         (*SectionRef)->LastTicks = Rr_GetPerformanceCounter();
         return;
     }
-    *SectionRef = RR_ALLOC_TYPE(Rr_ProfilerSection, Profiler->Arena);
-    (*SectionRef)->Name = RR_ALLOC_NO_ZERO(NameLength + 1, Profiler->Arena);
+    *SectionRef = Rr_Alloc(sizeof(Rr_ProfilerSection), Profiler->Arena);
+    (*SectionRef)->Name = Rr_AllocNoZero(NameLength + 1, Profiler->Arena);
     memcpy((*SectionRef)->Name, SectionName, NameLength + 1);
     (*SectionRef)->LastTicks = Rr_GetPerformanceCounter();
 }

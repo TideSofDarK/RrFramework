@@ -69,7 +69,7 @@ Rr_DescriptorPoolList *Rr_AcquireDescriptorPoolList(void)
 
         Rr_LockSpinlock(&gRenderer->Lock);
         Result =
-            RR_ALLOC_NO_ZERO(sizeof(Rr_DescriptorPoolList), gRenderer->Arena);
+            Rr_AllocNoZero(sizeof(Rr_DescriptorPoolList), gRenderer->Arena);
         Rr_UnlockSpinlock(&gRenderer->Lock);
 
         Result->Handle = Pool;
@@ -189,7 +189,7 @@ static inline void Rr_CopyDescriptorSet(
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    VkCopyDescriptorSet *Copies = RR_ALLOC_NO_ZERO(
+    VkCopyDescriptorSet *Copies = Rr_AllocNoZero(
         sizeof(VkCopyDescriptorSet) * Layout->Key.BindingCount,
         Scratch.Arena);
 

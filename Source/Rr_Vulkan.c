@@ -84,7 +84,7 @@ void Rr_InitInstance(
     uint32_t ExtensionCount = PlatformExtensionCount + InstanceExtensionCount;
 
     char const **Extensions =
-        RR_ALLOC_TYPE_COUNT(char const *, ExtensionCount + 1, Scratch.Arena);
+        Rr_Alloc(sizeof(char const *) * (ExtensionCount + 1), Scratch.Arena);
     for (uint32_t Index = 0; Index < PlatformExtensionCount; Index++)
     {
         Extensions[Index] = PlatformExtensions[Index];
@@ -293,12 +293,12 @@ static bool Rr_CheckPhysicalDevice(
         &ExtensionCount,
         NULL);
 
-    bool *FoundExtensions = RR_ALLOC(
+    bool *FoundExtensions = Rr_Alloc(
         sizeof(bool) * RR_ARRAY_COUNT(RR_VULKAN_DEVICE_EXTENSIONS),
         Arena);
 
     VkExtensionProperties *Extensions =
-        RR_ALLOC_TYPE_COUNT(VkExtensionProperties, ExtensionCount, Arena);
+        Rr_Alloc(sizeof(VkExtensionProperties) * ExtensionCount, Arena);
     Instance->EnumerateDeviceExtensionProperties(
         PhysicalDevice,
         NULL,
@@ -340,9 +340,9 @@ static bool Rr_CheckPhysicalDevice(
     }
 
     VkQueueFamilyProperties *QueueFamilyProperties =
-        RR_ALLOC_TYPE_COUNT(VkQueueFamilyProperties, QueueFamilyCount, Arena);
+        Rr_Alloc(sizeof(VkQueueFamilyProperties) * QueueFamilyCount, Arena);
     VkBool32 *QueuePresentSupport =
-        RR_ALLOC_TYPE_COUNT(VkBool32, QueueFamilyCount, Arena);
+        Rr_Alloc(sizeof(VkBool32) * QueueFamilyCount, Arena);
 
     Instance->GetPhysicalDeviceQueueFamilyProperties(
         PhysicalDevice,
@@ -421,7 +421,7 @@ void Rr_SelectPhysicalDevice(
     }
 
     VkPhysicalDevice *PhysicalDevices =
-        RR_ALLOC_TYPE_COUNT(VkPhysicalDevice, PhysicalDeviceCount, Arena);
+        Rr_Alloc(sizeof(VkPhysicalDevice) * PhysicalDeviceCount, Arena);
     Instance->EnumeratePhysicalDevices(
         Instance->Handle,
         &PhysicalDeviceCount,

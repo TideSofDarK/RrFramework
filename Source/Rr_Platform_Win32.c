@@ -239,7 +239,7 @@ static inline WCHAR *Rr_UTF8ToWin32(char const *CString, Rr_Arena *Arena)
         return NULL;
     }
 
-    WCHAR *Win32String = RR_ALLOC_NO_ZERO(Length, Arena);
+    WCHAR *Win32String = Rr_AllocNoZero(Length, Arena);
 
     if (!MultiByteToWideChar(CP_UTF8, 0, CString, -1, Win32String, (int)Length))
     {
@@ -258,7 +258,7 @@ static inline char *Rr_Win32ToUTF8(LPCWCH CString, Rr_Arena *Arena)
         return NULL;
     }
 
-    char *String = RR_ALLOC_NO_ZERO(Length, Arena);
+    char *String = Rr_AllocNoZero(Length, Arena);
 
     if (!WideCharToMultiByte(
             CP_UTF8,
@@ -360,7 +360,7 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
             {
                 UINT Length = DragQueryFileW(Drop, Index, NULL, 0) + 1;
                 LPWSTR String =
-                    RR_ALLOC_NO_ZERO(sizeof(WCHAR) * Length, Scratch.Arena);
+                    Rr_AllocNoZero(sizeof(WCHAR) * Length, Scratch.Arena);
                 if (DragQueryFileW(Drop, Index, String, Length))
                 {
                     Rr_AddDropFileEvent(Rr_Win32ToUTF8(String, Arena));

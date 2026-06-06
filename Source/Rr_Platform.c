@@ -273,7 +273,7 @@ void Rr_AddTextInputEvent(uint32_t Codepoint, Rr_Arena *Arena)
         return;
     }
 
-    char *Buffer = RR_ALLOC_NO_ZERO(5, Arena);
+    char *Buffer = Rr_AllocNoZero(5, Arena);
     Rr_CodepointToUTF8(Codepoint, Buffer);
 
     Rr_AddTextInputEventString(Buffer, strlen(Buffer));

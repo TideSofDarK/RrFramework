@@ -247,7 +247,7 @@ static inline Rr_SPIRVOp *Rr_UpsertSPIRVOp(
         Map = &(*Map)->Children[Hash >> 62];
     }
 
-    *Map = RR_ALLOC_TYPE(Rr_SPIRVOpMap, Arena);
+    *Map = Rr_Alloc(sizeof(Rr_SPIRVOpMap), Arena);
     (*Map)->Key = Key;
 
     return &(*Map)->SPIRVOp;

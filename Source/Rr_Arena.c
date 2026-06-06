@@ -71,6 +71,69 @@ void Rr_DestroyArena(Rr_Arena *Arena)
     Rr_ReleaseMemory((void *)Arena, Arena->ReserveSize);
 }
 
+void *Rr_AllocAlignedNoZero(size_t Size, size_t Align, Rr_Arena *Arena)
+{
+    if (Arena == NULL)
+    {
+        RR_LOG_ABORT("Allocating from NULL arena!");
+    }
+
+    if (Size == 0)
+    {
+        RR_LOG_ABORT("Allocating 0 bytes from an arena is not allowed!");
+    }
+
+    uintptr_t PositionAligned = RR_ALIGN_POW2(Arena->Position, Align);
+    uintptr_t Target = PositionAligned + (uintptr_t)Size;
+
+    if (Arena->Commited < Target)
+    {
+        uintptr_t CommitTarget = Target + Arena->CommitSize - 1;
+        CommitTarget -= CommitTarget % Arena->CommitSize;
+        CommitTarget = RR_MIN(CommitTarget, Arena->Reserved);
+        uintptr_t CommitSize = CommitTarget - Arena->Commited;
+        char *CommitPtr = (char *)Arena + Arena->Commited;
+        Rr_CommitMemory(CommitPtr, CommitSize);
+        Arena->Commited = CommitTarget;
+    }
+
+    char *Result = NULL;
+    if (Arena->Commited >= Target)
+    {
+        Result = (char *)Arena + PositionAligned;
+        Arena->Position = Target;
+    }
+    else
+    {
+        RR_LOG_ABORT("Arena reserved memory overflow!");
+    }
+
+    return Result;
+}
+
+void *Rr_AllocAligned(size_t Size, size_t Align, Rr_Arena *Arena)
+{
+    return memset(Rr_AllocAlignedNoZero(Size, Align, Arena), 0, Size);
+}
+
+void *Rr_AllocNoZero(size_t Size, Rr_Arena *Arena)
+{
+    return Rr_AllocAlignedNoZero(Size, RR_SAFE_ALIGNMENT, Arena);
+}
+
+void *Rr_Alloc(size_t Size, Rr_Arena *Arena)
+{
+    return memset(
+        Rr_AllocAlignedNoZero(Size, RR_SAFE_ALIGNMENT, Arena),
+        0,
+        Size);
+}
+
+void *Rr_AllocCopy(void *Source, size_t Size, Rr_Arena *Arena)
+{
+    return memcpy(Rr_AllocNoZero(Size, Arena), Source, Size);
+}
+
 Rr_Scratch Rr_CreateScratch(Rr_Arena *Arena)
 {
     return (Rr_Scratch){ .Arena = Arena, .Position = Arena->Position };
@@ -130,50 +193,4 @@ Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict)
     RR_LOG_ABORT("Couldn't find appropriate arena for a scratch!");
 
     return (Rr_Scratch){ 0 };
-}
-
-void *Rr_AllocNoZero(size_t Size, size_t Align, size_t Count, Rr_Arena *Arena)
-{
-    if (Arena == NULL)
-    {
-        RR_LOG_ABORT("Allocating from NULL arena!");
-    }
-
-    if (Size == 0 || Count == 0)
-    {
-        RR_LOG_ABORT("Allocating 0 bytes from an arena is not allowed!");
-    }
-
-    size_t TotalSize = Size * Count;
-    uintptr_t PositionAligned = RR_ALIGN_POW2(Arena->Position, Align);
-    uintptr_t Target = PositionAligned + TotalSize;
-
-    if (Arena->Commited < Target)
-    {
-        uintptr_t CommitTarget = Target + Arena->CommitSize - 1;
-        CommitTarget -= CommitTarget % Arena->CommitSize;
-        CommitTarget = RR_MIN(CommitTarget, Arena->Reserved);
-        uintptr_t CommitSize = CommitTarget - Arena->Commited;
-        char *CommitPtr = (char *)Arena + Arena->Commited;
-        Rr_CommitMemory(CommitPtr, CommitSize);
-        Arena->Commited = CommitTarget;
-    }
-
-    char *Result = NULL;
-    if (Arena->Commited >= Target)
-    {
-        Result = (char *)Arena + PositionAligned;
-        Arena->Position = Target;
-    }
-    else
-    {
-        RR_LOG_ABORT("Arena reserved memory overflow!");
-    }
-
-    return Result;
-}
-
-void *Rr_Alloc(size_t Size, size_t Align, size_t Count, Rr_Arena *Arena)
-{
-    return memset(Rr_AllocNoZero(Size, Align, Count, Arena), 0, Size * Count);
 }

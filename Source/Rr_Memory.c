@@ -65,7 +65,7 @@ void Rr_GrowArray(void *Array, size_t Size, size_t MinCount, Rr_Arena *Arena)
     {
         Replica.Capacity *= 2;
     }
-    Data = RR_ALLOC_NO_ZERO(Size * Replica.Capacity, Arena);
+    Data = Rr_AllocNoZero(Size * Replica.Capacity, Arena);
 
     if (Replica.Count && Replica.Data)
     {
@@ -94,7 +94,7 @@ void **Rr_FindInHashTrie(Rr_HashTrie **Map, Rr_HashTrieKey Key, Rr_Arena *Arena)
     {
         return NULL;
     }
-    *Map = (Rr_HashTrie *)RR_ALLOC(sizeof(Rr_HashTrie), Arena);
+    *Map = (Rr_HashTrie *)Rr_Alloc(sizeof(Rr_HashTrie), Arena);
     (*Map)->Key = Key;
     return &(*Map)->Value;
 }
@@ -145,7 +145,7 @@ void *Rr_GetFreeListItem(void *FreeList, size_t Size, Rr_Arena *Arena)
     Rr_FreeListHeader *OldFirst = FreeListTyped->First;
     if (OldFirst == NULL)
     {
-        Header = RR_ALLOC(Size + sizeof(Rr_FreeListHeader), Arena);
+        Header = Rr_Alloc(Size + sizeof(Rr_FreeListHeader), Arena);
         Header->Data = ((char *)Header) + sizeof(Rr_FreeListHeader);
     }
     else

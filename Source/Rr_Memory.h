@@ -58,7 +58,7 @@ extern void Rr_GrowArray(
         if ((Array)->Capacity < (ElementCount))               \
         {                                                     \
             void *OldData = (Array)->Data;                    \
-            (Array)->Data = RR_ALLOC_NO_ZERO(                 \
+            (Array)->Data = Rr_AllocNoZero(                   \
                 sizeof(*(Array)->Data) * (ElementCount),      \
                 (Arena));                                     \
             (Array)->Capacity = (ElementCount);               \
@@ -100,7 +100,7 @@ extern void Rr_GrowArray(
     {                                                       \
         if ((Array)->Capacity > 0)                          \
         {                                                   \
-            (Array)->Data = RR_ALLOC_NO_ZERO(               \
+            (Array)->Data = Rr_AllocNoZero(                 \
                 sizeof(*(Array)->Data) * (Array)->Capacity, \
                 (Arena));                                   \
             (Array)->Count = 0;                             \

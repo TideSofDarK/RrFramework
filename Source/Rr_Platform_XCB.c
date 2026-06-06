@@ -1105,7 +1105,7 @@ static inline void Rr_ProcessXCBSelectionNotifyEvent(
         Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
         size_t URIListLength = (size_t)xcb_get_property_value_length(Reply);
-        char *URIList = RR_ALLOC_NO_ZERO(URIListLength + 1, Scratch.Arena);
+        char *URIList = Rr_AllocNoZero(URIListLength + 1, Scratch.Arena);
         memcpy(URIList, xcb_get_property_value(Reply), URIListLength);
         URIList[URIListLength] = '\0';
         char const *Line = strtok(URIList, "\r\n");
@@ -1706,7 +1706,7 @@ float Rr_GetDisplayScale(void)
     if (Reply)
     {
         size_t Length = (size_t)xcb_get_property_value_length(Reply);
-        char *Buffer = RR_ALLOC_NO_ZERO(Length + 1, Scratch.Arena);
+        char *Buffer = Rr_AllocNoZero(Length + 1, Scratch.Arena);
         memcpy(Buffer, xcb_get_property_value(Reply), Length);
         Buffer[Length] = '\0';
 
@@ -1722,8 +1722,7 @@ float Rr_GetDisplayScale(void)
             }
 
             size_t ValueLength = (size_t)(ValueEnd - ValueStart);
-            char *ValueString =
-                RR_ALLOC_NO_ZERO(ValueLength + 1, Scratch.Arena);
+            char *ValueString = Rr_AllocNoZero(ValueLength + 1, Scratch.Arena);
             memcpy(ValueString, ValueStart, ValueLength);
             ValueString[ValueLength] = '\0';
             int DensityPerInch = 96;
@@ -1768,7 +1767,7 @@ char const *Rr_GetClipboardText(Rr_Arena *Arena)
     if (gXCB.Clipboard)
     {
         char *Buffer =
-            RR_ALLOC_COPY(gXCB.Clipboard, gXCB.ClipboardLength, Arena);
+            Rr_AllocCopy(gXCB.Clipboard, gXCB.ClipboardLength, Arena);
         Buffer[gXCB.ClipboardLength] = '\0';
 
         return Buffer;
@@ -1813,7 +1812,7 @@ char const *Rr_GetClipboardText(Rr_Arena *Arena)
         NULL);
     uint32_t BytesAfter = Reply->bytes_after;
     free(Reply);
-    char *Buffer = RR_ALLOC_NO_ZERO(BytesAfter + 1, Arena);
+    char *Buffer = Rr_AllocNoZero(BytesAfter + 1, Arena);
 
     Reply = xcb_get_property_reply(
         gXCB.Connection,

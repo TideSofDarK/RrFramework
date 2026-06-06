@@ -112,9 +112,8 @@ static bool Rr_InitSwapchain(void)
         NULL);
     assert(VulkanPresentModeCount > 0);
 
-    VkPresentModeKHR *VulkanPresentModes = RR_ALLOC_TYPE_COUNT(
-        VkPresentModeKHR,
-        VulkanPresentModeCount,
+    VkPresentModeKHR *VulkanPresentModes = Rr_Alloc(
+        sizeof(VkPresentModeKHR) * VulkanPresentModeCount,
         Scratch.Arena);
     Instance->GetPhysicalDeviceSurfacePresentModesKHR(
         gRenderer->PhysicalDevice.Handle,
@@ -179,7 +178,7 @@ static bool Rr_InitSwapchain(void)
     assert(FormatCount > 0);
 
     VkSurfaceFormatKHR *SurfaceFormats =
-        RR_ALLOC_TYPE_COUNT(VkSurfaceFormatKHR, FormatCount, Scratch.Arena);
+        Rr_Alloc(sizeof(VkSurfaceFormatKHR) * FormatCount, Scratch.Arena);
     Instance->GetPhysicalDeviceSurfaceFormatsKHR(
         gRenderer->PhysicalDevice.Handle,
         gRenderer->Surface,
@@ -280,7 +279,7 @@ static bool Rr_InitSwapchain(void)
         NULL);
 
     VkImage *ImageHandles =
-        RR_ALLOC_TYPE_COUNT(VkImage, ImageCount, Scratch.Arena);
+        Rr_Alloc(sizeof(VkImage) * ImageCount, Scratch.Arena);
 
     Device->GetSwapchainImagesKHR(
         gRenderer->Device.Handle,
@@ -547,7 +546,7 @@ void Rr_InitRenderer(const char *Title)
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
-    gRenderer = RR_ALLOC_TYPE(Rr_Renderer, Arena);
+    gRenderer = Rr_Alloc(sizeof(Rr_Renderer), Arena);
     gRenderer->Arena = Arena;
 
     Rr_InitLoader(&gRenderer->Loader);
@@ -908,7 +907,7 @@ void Rr_NewFrame(void)
         gRenderer->Swapchain.Unavailable = true;
     }
 
-    Frame->Graph = RR_ALLOC_TYPE(Rr_Graph, Frame->Arena);
+    Frame->Graph = Rr_Alloc(sizeof(Rr_Graph), Frame->Arena);
     Frame->Graph->QueueType = RR_QUEUE_TYPE_MAIN;
     Frame->Graph->Primary = true;
     Frame->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
@@ -1239,23 +1238,20 @@ VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey *Key)
         (uint32_t)(Key->ColorAttachmentCount + Key->ResolveAttachmentCount +
                    Key->DepthStencil);
 
-    VkAttachmentDescription *Descriptions = RR_ALLOC_TYPE_COUNT(
-        VkAttachmentDescription,
-        AttachmentCount,
+    VkAttachmentDescription *Descriptions = Rr_Alloc(
+        sizeof(VkAttachmentDescription) * AttachmentCount,
         Scratch.Arena);
 
     uint32_t ResolveDescriptionIndex = Key->ColorAttachmentCount;
 
     if (Key->ColorAttachmentCount > 0)
     {
-        ColorReferences = RR_ALLOC_TYPE_COUNT(
-            VkAttachmentReference,
-            Key->ColorAttachmentCount,
+        ColorReferences = Rr_Alloc(
+            sizeof(VkAttachmentReference) * Key->ColorAttachmentCount,
             Scratch.Arena);
 
-        ResolveReferences = RR_ALLOC_TYPE_COUNT(
-            VkAttachmentReference,
-            Key->ColorAttachmentCount,
+        ResolveReferences = Rr_Alloc(
+            sizeof(VkAttachmentReference) * Key->ColorAttachmentCount,
             Scratch.Arena);
 
         for (uint32_t Index = 0; Index < Key->ColorAttachmentCount; ++Index)
@@ -1316,7 +1312,7 @@ VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey *Key)
             .storeOp = Key->Attachments[ResolveDescriptionIndex].StoreOp,
         };
         DepthReference =
-            RR_ALLOC_NO_ZERO(sizeof(VkAttachmentReference), Scratch.Arena);
+            Rr_AllocNoZero(sizeof(VkAttachmentReference), Scratch.Arena);
         *DepthReference = (VkAttachmentReference){
             .attachment = ResolveDescriptionIndex,
             .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -1576,7 +1572,7 @@ Rr_CommandPools *Rr_AcquireCommandPools(void)
 
         Rr_LockSpinlock(&gRenderer->Lock);
         ThreadContext->CommandPools =
-            RR_ALLOC_NO_ZERO(sizeof(Rr_CommandPools), gRenderer->Arena);
+            Rr_AllocNoZero(sizeof(Rr_CommandPools), gRenderer->Arena);
         Rr_UnlockSpinlock(&gRenderer->Lock);
 
         Device->CreateCommandPool(

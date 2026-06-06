@@ -58,11 +58,11 @@ int main(int ArgCount, char **Args)
     ReserveTestMap(&Map, 25, Arena);
     assert(Map.Capacity == 64);
 
-    TestPair *TestPairs = RR_ALLOC(sizeof(TestPair) * TEST_COUNT, Arena);
+    TestPair *TestPairs = Rr_Alloc(sizeof(TestPair) * TEST_COUNT, Arena);
     for (size_t Index = 0; Index < TEST_COUNT; ++Index)
     {
         TestPair *TestPair = &TestPairs[Index];
-        TestPair->Key.String = RR_ALLOC_NO_ZERO(8, Arena);
+        TestPair->Key.String = Rr_AllocNoZero(8, Arena);
         snprintf(TestPair->Key.String, 8, "k%zu", Index);
         TestPair->Value.Integer = rand();
 

@@ -116,25 +116,24 @@ struct RR_HIVE_NAME
 
 /* NOTE: Assuming new group will be used immediately. Be
  * careful when implemeting Reserve() and the like! */
-#define RR_ALLOC_HIVE_GROUP(Hive_, OutGroup_, ElementCount_, Arena_)      \
-    do                                                                    \
-    {                                                                     \
-        (*OutGroup_) = RR_ALLOC_TYPE(RR_HIVE_GROUP_NAME, (Arena));        \
-        (*OutGroup_)->Previous = (Hive_)->End.Group;                      \
-        (*OutGroup_)->GroupNumber =                                       \
-            ((Hive_)->End.Group) == NULL                                  \
-                ? 0                                                       \
-                : (((Hive_)->End.Group))->GroupNumber + 1u;               \
-        (*OutGroup_)->Count = 1;                                          \
-        (*OutGroup_)->FreeListHead = UINT16_MAX;                          \
-        (*OutGroup_)->Capacity = (ElementCount_);                         \
-        (*OutGroup_)->Elements =                                          \
-            RR_ALLOC_TYPE_COUNT(RR_HIVE_TYPE, (ElementCount_), (Arena_)); \
-        (*OutGroup_)->Skips = RR_ALLOC_TYPE_COUNT(                        \
-            Rr_HiveSkipType,                                              \
-            (ElementCount_) + 1,                                          \
-            (Arena_));                                                    \
-    }                                                                     \
+#define RR_ALLOC_HIVE_GROUP(Hive_, OutGroup_, ElementCount_, Arena_)    \
+    do                                                                  \
+    {                                                                   \
+        (*OutGroup_) = Rr_Alloc(sizeof(RR_HIVE_GROUP_NAME), (Arena));   \
+        (*OutGroup_)->Previous = (Hive_)->End.Group;                    \
+        (*OutGroup_)->GroupNumber =                                     \
+            ((Hive_)->End.Group) == NULL                                \
+                ? 0                                                     \
+                : (((Hive_)->End.Group))->GroupNumber + 1u;             \
+        (*OutGroup_)->Count = 1;                                        \
+        (*OutGroup_)->FreeListHead = UINT16_MAX;                        \
+        (*OutGroup_)->Capacity = (ElementCount_);                       \
+        (*OutGroup_)->Elements =                                        \
+            Rr_Alloc((sizeof(RR_HIVE_TYPE) * ElementCount_), (Arena_)); \
+        (*OutGroup_)->Skips = Rr_Alloc(                                 \
+            sizeof(Rr_HiveSkipType) * ((ElementCount_) + 1),            \
+            (Arena_));                                                  \
+    }                                                                   \
     while (0)
 
 #define RR_RESET_HIVE_GROUP(Group, Count_, Next_, Previous_, GroupNumber_) \

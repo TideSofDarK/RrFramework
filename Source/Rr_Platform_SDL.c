@@ -167,7 +167,7 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
             case SDL_EVENT_TEXT_INPUT:
             {
                 size_t Length = strlen(SDLEvent.text.text);
-                char *Buffer = RR_ALLOC_NO_ZERO(Length + 1, Arena);
+                char *Buffer = Rr_AllocNoZero(Length + 1, Arena);
                 memcpy(Buffer, SDLEvent.text.text, Length + 1);
                 Rr_AddTextInputEventString(Buffer, Length);
             }
@@ -234,7 +234,7 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
             break;
             case SDL_EVENT_DROP_FILE:
             {
-                Rr_AddDropFileEvent(RR_ALLOC_COPY(
+                Rr_AddDropFileEvent(Rr_Alloc_COPY(
                     SDLEvent.drop.data,
                     strlen(SDLEvent.drop.data) + 1,
                     Arena));
@@ -416,5 +416,5 @@ char const *Rr_GetClipboardText(Rr_Arena *Arena)
         return NULL;
     }
 
-    return RR_ALLOC_COPY(SDLClipboard, Length + 1, Arena);
+    return Rr_Alloc_COPY(SDLClipboard, Length + 1, Arena);
 }

@@ -139,7 +139,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_Arena *Arena = Rr_GetThreadContext()->Arena;
 
-    gApp = RR_ALLOC_TYPE(Rr_App, Arena);
+    gApp = Rr_Alloc(sizeof(Rr_App), Arena);
     gApp->InitFunc = Config->InitFunc;
     gApp->EventFunc = Config->EventFunc;
     gApp->IterateFunc = Config->IterateFunc;
@@ -238,7 +238,7 @@ void Rr_InitThreadContext(void)
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
-    ThreadContext = RR_ALLOC(sizeof(Rr_ThreadContext), Arena);
+    ThreadContext = Rr_Alloc(sizeof(Rr_ThreadContext), Arena);
     ThreadContext->Arena = Arena;
 }
 

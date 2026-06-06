@@ -362,7 +362,7 @@ static inline Rr_UIStorage *Rr_UIGetStorage(
     if (*StorageRef == NULL)
     {
         /* TODO: Storages could be allocated from a hive. */
-        *StorageRef = RR_ALLOC_TYPE(Rr_UIStorage, gUIContext->Arena);
+        *StorageRef = Rr_Alloc(sizeof(Rr_UIStorage), gUIContext->Arena);
         Rr_UIStorage *Storage = *StorageRef;
         Storage->Type = Type;
 
@@ -464,7 +464,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     Rr_IntVec2 const ATLAS_EXTENT = { ATLAS_SIZE, ATLAS_SIZE };
 
     unsigned char *GrayscaleBuffer =
-        RR_ALLOC_NO_ZERO((size_t)(ATLAS_SIZE * ATLAS_SIZE), Scratch.Arena);
+        Rr_AllocNoZero((size_t)(ATLAS_SIZE * ATLAS_SIZE), Scratch.Arena);
 
     stbtt_fontinfo FontInfo;
     if (!stbtt_InitFont(&FontInfo, (unsigned char const *)TTFData, 0))
@@ -528,7 +528,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
         AllocationSize += GlyphCount * sizeof(Rr_UIGlyph);
     }
 
-    Rr_UIFont *Font = RR_ALLOC_NO_ZERO(AllocationSize, gUIContext->Arena);
+    Rr_UIFont *Font = Rr_AllocNoZero(AllocationSize, gUIContext->Arena);
     Font->AllocationSize = AllocationSize;
     Font->CreatedForSRGBSwapchain = IsSRGBSwapchain;
     Font->RangeCount = CodepointRangeCount;
@@ -543,7 +543,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     Font->Ascent = PixelAscent * BakeScale;
     Font->Descent = PixelDescent * BakeScale;
 
-    stbtt_pack_range *PackRanges = RR_ALLOC_NO_ZERO(
+    stbtt_pack_range *PackRanges = Rr_AllocNoZero(
         CodepointRangeCount * sizeof(stbtt_pack_range),
         Scratch.Arena);
 
@@ -563,7 +563,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
             .first_unicode_codepoint_in_range = CodepointRange->First,
             .num_chars = NumChars,
             .font_size = FontSize * BakeScale,
-            .chardata_for_range = RR_ALLOC_NO_ZERO(
+            .chardata_for_range = Rr_AllocNoZero(
                 (size_t)NumChars * sizeof(stbtt_packedchar),
                 Scratch.Arena),
         };
@@ -573,7 +573,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     }
 
     stbrp_rect *Rects =
-        RR_ALLOC_NO_ZERO(sizeof(stbrp_rect) * TotalCharCount, Scratch.Arena);
+        Rr_AllocNoZero(sizeof(stbrp_rect) * TotalCharCount, Scratch.Arena);
 
     int NumRects = stbtt_PackFontRangesGatherRects(
         &PackContext,
@@ -923,7 +923,7 @@ static inline void Rr_UIPushEmptyLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
      * empty layout. */
 
     Rr_UILayout *Layout =
-        RR_ALLOC_NO_ZERO(sizeof(Rr_UILayout), gUIContext->FrameArena);
+        Rr_AllocNoZero(sizeof(Rr_UILayout), gUIContext->FrameArena);
     Layout->Window = Window;
     Layout->SkipCompletely = true;
     Layout->SkipItems = true;
@@ -936,7 +936,7 @@ static inline void Rr_UIPushEmptyLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
 
 static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash)
 {
-    Rr_UILayout *Layout = RR_ALLOC_TYPE(Rr_UILayout, gUIContext->FrameArena);
+    Rr_UILayout *Layout = Rr_Alloc(sizeof(Rr_UILayout), gUIContext->FrameArena);
 
     Rr_UIPushIDHash(Hash);
 
@@ -3915,7 +3915,7 @@ static inline bool Rr_UIPushWindowLayout(
     else
     {
         Layout->ClipRects =
-            RR_ALLOC_TYPE(Rr_UIClipRectArray, gUIContext->FrameArena);
+            Rr_Alloc(sizeof(Rr_UIClipRectArray), gUIContext->FrameArena);
         Layout->TopLevelParent = Layout;
     }
 
@@ -4095,9 +4095,9 @@ static inline Rr_UIWindow *Rr_UICreateWindow(
     uint64_t TitleHash,
     Rr_UIWindowFlags Flags)
 {
-    Rr_UIWindow *Window = RR_ALLOC_TYPE(Rr_UIWindow, gUIContext->Arena);
+    Rr_UIWindow *Window = Rr_Alloc(sizeof(Rr_UIWindow), gUIContext->Arena);
     char *TitleCopy = memcpy(
-        RR_ALLOC(TitleLength + 1, gUIContext->Arena),
+        Rr_Alloc(TitleLength + 1, gUIContext->Arena),
         Title,
         TitleLength);
     TitleCopy[TitleLength] = '\0';
@@ -5102,7 +5102,7 @@ void
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    char *Buffer = RR_ALLOC_NO_ZERO((size_t)BufferSize + 1, Scratch.Arena);
+    char *Buffer = Rr_AllocNoZero((size_t)BufferSize + 1, Scratch.Arena);
 
     va_start(Args, Format);
     BufferSize = vsnprintf(Buffer, (size_t)BufferSize + 1, Format, Args);
@@ -5614,7 +5614,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
             {
                 ClipboardLength = CursorMax - CursorMin;
                 ClipboardBuffer =
-                    RR_ALLOC_NO_ZERO(ClipboardLength, Scratch.Arena);
+                    Rr_AllocNoZero(ClipboardLength, Scratch.Arena);
                 memcpy(ClipboardBuffer, Buffer + CursorMin, ClipboardLength);
             }
             else
@@ -5629,7 +5629,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
                 if (ClipboardLength > 0)
                 {
                     ClipboardBuffer =
-                        RR_ALLOC_NO_ZERO(ClipboardLength, Scratch.Arena);
+                        Rr_AllocNoZero(ClipboardLength, Scratch.Arena);
                     memcpy(
                         ClipboardBuffer,
                         Buffer + LineStart,
@@ -5677,7 +5677,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
             {
                 ClipboardLength = CursorMax - CursorMin;
                 ClipboardBuffer =
-                    RR_ALLOC_NO_ZERO(ClipboardLength, Scratch.Arena);
+                    Rr_AllocNoZero(ClipboardLength, Scratch.Arena);
                 memcpy(ClipboardBuffer, Buffer + CursorMin, ClipboardLength);
 
                 Rr_UIConsumeTextInput(
@@ -5704,7 +5704,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
                 if (ClipboardLength > 0)
                 {
                     ClipboardBuffer =
-                        RR_ALLOC_NO_ZERO(ClipboardLength, Scratch.Arena);
+                        Rr_AllocNoZero(ClipboardLength, Scratch.Arena);
                     memcpy(
                         ClipboardBuffer,
                         Buffer + LineStart,
@@ -6212,7 +6212,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
                 !gUIContext->TextInputBuffer.Data)
             {
                 gUIContext->TextInputBuffer.Data =
-                    RR_ALLOC_NO_ZERO(BufferCapacity, gUIContext->Arena);
+                    Rr_AllocNoZero(BufferCapacity, gUIContext->Arena);
                 gUIContext->TextInputBuffer.Capacity = BufferCapacity;
             }
             /* NOTE: It was BufferLength + 1 before. */
@@ -8594,7 +8594,7 @@ void Rr_InitUI(void)
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
-    gUIContext = RR_ALLOC_TYPE(Rr_UIContext, Arena);
+    gUIContext = Rr_Alloc(sizeof(Rr_UIContext), Arena);
     gUIContext->Arena = Arena;
 
     gUIContext->NextWindowExtent = Rr_V2F(INFINITY);
@@ -8779,7 +8779,7 @@ void Rr_ProcessUIEvent(Rr_Event const *Event)
         case RR_EVENT_TYPE_TEXT_INPUT:
         {
             size_t Length = Event->Text.Length;
-            char *Text = RR_ALLOC_NO_ZERO(Length + 1, gUIContext->FrameArena);
+            char *Text = Rr_AllocNoZero(Length + 1, gUIContext->FrameArena);
             memcpy(Text, Event->Text.CString, Length + 1);
             *RR_PUSH_INTO_ARRAY(
                 &gUIContext->TextInputEvents,
@@ -9171,7 +9171,7 @@ void Rr_UIDebugOverlay(void)
             uint32_t PresentModeCount;
             Rr_PresentMode *PresentModes =
                 Rr_GetAvailablePresentModes(&PresentModeCount);
-            char const **PresentModeStrings = RR_ALLOC(
+            char const **PresentModeStrings = Rr_Alloc(
                 PresentModeCount * sizeof(char const *),
                 Scratch.Arena);
             uint32_t CurrentPresentModeIndex;

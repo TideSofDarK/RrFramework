@@ -152,7 +152,7 @@ static inline void RR_HASH_MAP_INIT_NAME(
     size_t NodeSize =
         sizeof(RR_HASH_MAP_NODE_TYPE) +
         sizeof(RR_HASH_MAP_BUCKET_TYPE) * RR_HASH_MAP_INITIAL_CAPACITY;
-    Map->First = RR_ALLOC(NodeSize, Arena);
+    Map->First = Rr_Alloc(NodeSize, Arena);
     Map->First->Map = Map;
     Map->First->Capacity = RR_HASH_MAP_INITIAL_CAPACITY;
     Map->Last = Map->First;
@@ -514,7 +514,7 @@ static inline void RR_HASH_MAP_REHASH_NAME(
     {
         size_t NodeSize = sizeof(RR_HASH_MAP_NODE_TYPE) +
                           sizeof(RR_HASH_MAP_BUCKET_TYPE) * Map->Capacity;
-        RR_HASH_MAP_NODE_TYPE *NewNode = RR_ALLOC(NodeSize, Arena);
+        RR_HASH_MAP_NODE_TYPE *NewNode = Rr_Alloc(NodeSize, Arena);
         NewNode->Map = Map;
         NewNode->Capacity = Map->Capacity;
         Map->Last->Next = NewNode;
