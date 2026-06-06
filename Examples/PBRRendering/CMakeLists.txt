@@ -34,7 +34,7 @@ target_link_libraries(
     webputilsdecode)
 
 file(GLOB_RECURSE RR_EXAMPLE_ASSETS CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/*.png"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.raw"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.glb"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.comp.glsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.vert.glsl"

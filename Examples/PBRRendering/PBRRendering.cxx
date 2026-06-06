@@ -44,46 +44,27 @@ std::size_t constexpr MAX_SPOT_LIGHTS = 4;
 
 Rr_ImageFormat constexpr DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
 
-static Rr_Image2D *LoadImage(
-    Rr_Asset Asset,
+static Rr_Image2D *LoadImage2D(
+    void const *Data,
+    size_t Size,
+    Rr_IntVec2 Extent,
     Rr_ImageFormat Format,
+    bool Mipmaps,
     Rr_Graph *Graph)
 {
-    int32_t ImageWidth;
-    int32_t ImageHeight;
-    int32_t ImageChannels;
-    void *Data{};
-    size_t ImageDataSize = (size_t)Asset.Size;
-    stbi_uc const *ImageData = (stbi_uc const *)Asset.Data;
-
-    Data = (char *)stbi_load_from_memory(
-        ImageData,
-        ImageDataSize,
-        &ImageWidth,
-        &ImageHeight,
-        &ImageChannels,
-        4);
-    size_t DataSize = 4 * ImageWidth * ImageHeight;
-
     Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        DataSize,
+        Size,
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
     Rr_ReleaseBuffer(StagingBuffer);
-    memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, DataSize);
+    memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
 
-    stbi_image_free(Data);
-
-    auto Image2D = Rr_CreateImage2D(
-        Rr_IntV2(ImageWidth, ImageHeight),
-        Format,
-        RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
-    Rr_CopyBufferToImage2D(
-        Graph,
-        StagingBuffer,
-        0,
-        Rr_IntV2(ImageWidth, ImageHeight),
-        Image2D,
-        0);
+    auto Flags = RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT;
+    if (Mipmaps)
+    {
+        Flags |= RR_IMAGE_FLAGS_MIP_MAPPED_BIT;
+    }
+    auto Image2D = Rr_CreateImage2D(Extent, Format, Flags);
+    Rr_CopyBufferToImage2D(Graph, StagingBuffer, 0, Extent, Image2D, 0);
 
     return Image2D;
 }
@@ -235,29 +216,20 @@ class CGLTFScene
         void *Data{};
         if (Texture->has_webp)
         {
-            size_t ImageDataSize =
-                (size_t)Texture->webp_image->buffer_view->size;
-            stbi_uc const *ImageData =
-                (stbi_uc const *)
-                    Texture->webp_image->buffer_view->buffer->data +
-                Texture->webp_image->buffer_view->offset;
-
             Data = WebPDecodeRGBA(
-                ImageData,
-                ImageDataSize,
+                (uint8_t const *)
+                        Texture->webp_image->buffer_view->buffer->data +
+                    Texture->webp_image->buffer_view->offset,
+                (size_t)Texture->webp_image->buffer_view->size,
                 &ImageWidth,
                 &ImageHeight);
         }
         else
         {
-            size_t ImageDataSize = (size_t)Texture->image->buffer_view->size;
-            stbi_uc const *ImageData =
-                (stbi_uc const *)Texture->image->buffer_view->buffer->data +
-                Texture->image->buffer_view->offset;
-
             Data = (char *)stbi_load_from_memory(
-                ImageData,
-                ImageDataSize,
+                (stbi_uc const *)Texture->image->buffer_view->buffer->data +
+                    Texture->image->buffer_view->offset,
+                (int)Texture->image->buffer_view->size,
                 &ImageWidth,
                 &ImageHeight,
                 &ImageChannels,
@@ -265,28 +237,13 @@ class CGLTFScene
         }
         size_t DataSize = 4 * ImageWidth * ImageHeight;
 
-        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+        return LoadImage2D(
+            Data,
             DataSize,
-            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
-        Rr_ReleaseBuffer(StagingBuffer);
-        memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, DataSize);
-
-        stbi_image_free(Data);
-
-        auto Image2D = Rr_CreateImage2D(
             Rr_IntV2(ImageWidth, ImageHeight),
             Format,
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT |
-                RR_IMAGE_FLAGS_MIP_MAPPED_BIT);
-        Rr_CopyBufferToImage2D(
-            Graph,
-            StagingBuffer,
-            0,
-            Rr_IntV2(ImageWidth, ImageHeight),
-            Image2D,
-            0);
-
-        return Image2D;
+            true,
+            Graph);
     }
 
     template <ETextureType Type>
@@ -1051,7 +1008,7 @@ class CLighting
 {
     static constexpr Rr_ImageFormat SHADOW_MAP_DEPTH_FORMAT =
         RR_IMAGE_FORMAT_D32_SFLOAT;
-    static constexpr std::int32_t POINT_SHADOW_MAP_SIZE = 512;
+    static constexpr std::int32_t POINT_SHADOW_MAP_SIZE = 1024;
     static constexpr std::int32_t SPOT_SHADOW_MAP_SIZE = 1024;
 
     struct SGPUPointLight
@@ -1435,7 +1392,8 @@ public:
 
             for (std::uint32_t Index = 0; Index < SpotLights.size(); ++Index)
             {
-                if (Rr_UIBeginTree(std::format("Spot Light #{}", Index).c_str()))
+                if (Rr_UIBeginTree(
+                        std::format("Spot Light #{}", Index).c_str()))
                 {
                     auto &SpotLight = SpotLights[Index];
                     Rr_UIInputColor3("Color", SpotLight.Color.Elements);
@@ -2255,9 +2213,12 @@ public:
         InitUniform();
         InitCamera();
         Camera.Position = Rr_V3(0.0f, 1.0f, 0.0f);
-        BRDFImage = LoadImage(
-            Rr_LoadAsset(EXAMPLE_ASSET_BRDF_PNG),
-            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
+        BRDFImage = LoadImage2D(
+            Rr_LoadAsset(EXAMPLE_ASSET_BRDF_RAW).Data,
+            Rr_LoadAsset(EXAMPLE_ASSET_BRDF_RAW).Size,
+            Rr_IntV2(512, 512),
+            RR_IMAGE_FORMAT_R16G16_SFLOAT,
+            false,
             Rr_GetGraph());
     }
 

@@ -26,7 +26,6 @@ layout(set = 2, binding = 3) uniform sampler2D RoughnessMetallicTexture;
 void main()
 {
     vec4 Color = texture(ColorTexture, InUV);
-
     float Alpha = Color.a;
     if (Material.AlphaMode == 1 && Alpha < Material.AlphaCutoff)
     {

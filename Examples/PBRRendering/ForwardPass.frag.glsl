@@ -393,7 +393,7 @@ void MultiScattering(
     Radiance *= FssEss;
 }
 
-void ComputeAmbientOnly(
+void ComputeAmbient(
     inout vec3 Diffuse,
     inout vec3 Specular,
     vec3 kD,
@@ -418,10 +418,6 @@ void ComputeAmbientOnly(
 
 void main()
 {
-    float CameraDistance = distance(CameraPosition, InPosition);
-
-    vec4 Result = vec4(0.0, 0.0, 0.0, 1.0);
-
     vec4 Color = texture(ColorTexture, InUV);
     float Alpha = Color.a;
     if (Material.AlphaMode == 1 && Alpha < Material.AlphaCutoff)
@@ -496,7 +492,7 @@ void main()
             gl_FragCoord.xy / Resolution).r;
     float AO = unpackHalf2x16(floatBitsToUint(PackedAODepth)).r;
 
-    ComputeAmbientOnly(
+    ComputeAmbient(
         TotalDiffuse,
         TotalSpecular,
         (1.0 - Metallic) * BaseColor,
