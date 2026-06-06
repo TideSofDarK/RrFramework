@@ -234,7 +234,7 @@ void Rr_ProcessPlatformEvents(Rr_Arena *Arena)
             break;
             case SDL_EVENT_DROP_FILE:
             {
-                Rr_AddDropFileEvent(Rr_Alloc_COPY(
+                Rr_AddDropFileEvent(Rr_AllocCopy(
                     SDLEvent.drop.data,
                     strlen(SDLEvent.drop.data) + 1,
                     Arena));
@@ -416,5 +416,5 @@ char const *Rr_GetClipboardText(Rr_Arena *Arena)
         return NULL;
     }
 
-    return Rr_Alloc_COPY(SDLClipboard, Length + 1, Arena);
+    return Rr_AllocCopy(SDLClipboard, Length + 1, Arena);
 }

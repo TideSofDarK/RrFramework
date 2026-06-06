@@ -129,7 +129,7 @@ void *Rr_Alloc(size_t Size, Rr_Arena *Arena)
         Size);
 }
 
-void *Rr_AllocCopy(void *Source, size_t Size, Rr_Arena *Arena)
+void *Rr_AllocCopy(void const *Source, size_t Size, Rr_Arena *Arena)
 {
     return memcpy(Rr_AllocNoZero(Size, Arena), Source, Size);
 }

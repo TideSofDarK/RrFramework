@@ -215,7 +215,7 @@ static inline Rr_GraphNode *Rr_AddGraphNode(
     GraphNode->DebugLabelCount = Graph->DebugLabelNames.Count;
     if (GraphNode->DebugLabelCount)
     {
-        GraphNode->DebugLabelStates = Rr_Alloc_COPY(
+        GraphNode->DebugLabelStates = Rr_AllocCopy(
             Graph->DebugLabelStates.Data,
             sizeof(bool) * Graph->DebugLabelNames.Count,
             Graph->Arena);

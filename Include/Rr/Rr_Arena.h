@@ -61,7 +61,8 @@ extern void *RR_CC Rr_AllocNoZero(size_t Size, Rr_Arena *Arena);
 
 extern void *RR_CC Rr_Alloc(size_t Size, Rr_Arena *Arena);
 
-extern void *RR_CC Rr_AllocCopy(void *Source, size_t Size, Rr_Arena *Arena);
+extern void *RR_CC
+Rr_AllocCopy(void const *Source, size_t Size, Rr_Arena *Arena);
 
 extern Rr_Scratch RR_CC Rr_CreateScratch(Rr_Arena *Arena);
 
