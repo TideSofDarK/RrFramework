@@ -34,7 +34,7 @@ struct SGPUPointLight
     vec3 Color;
     float Specular;
     float Radius;
-    float Intensity;
+    float Intensity; // Unused
     float Falloff;
     float ConstantBias;
     float SlopeBias;
@@ -54,7 +54,7 @@ struct SGPUSpotLight
     float Energy;
     vec3 Padding;
     float Specular;
-    float Intensity;
+    float Intensity; // Unused
     float InnerCone;
     float OuterCone;
     float ConstantBias;
@@ -158,7 +158,7 @@ float PointAttenuate(
 
     float S2 = S * S;
 
-    return Light.Intensity * (1 - S2) * (1 - S2) / (1 + Light.Falloff * S);
+    return (1 - S2) * (1 - S2) / (1 + Light.Falloff * S);
 }
 
 float SpotAttenuate(in vec3 LightToFrag, in SGPUSpotLight Light)
@@ -426,11 +426,9 @@ void main()
     }
 
     // vec3 BaseColor = (InNormalVS + 0.5) * 0.5;
-    vec3 BaseColor = Color.rgb;
+    const vec3 BaseColor = Color.rgb;
 
-    vec2 RoughnessMetallic = texture(RoughnessMetallicTexture, InUV).gb;
-    float Roughness = RoughnessMetallic.x;
-    float Metallic = RoughnessMetallic.y;
+    const vec3 ORM = texture(RoughnessMetallicTexture, InUV).rgb;
 
     vec3 FragNormal = texture(NormalTexture, InUV).xyz * 2.0 - 1.0;
     FragNormal = normalize(InTBN * FragNormal);
@@ -438,7 +436,7 @@ void main()
 
     float NDotV = max(dot(FragNormal, FragViewDir), 1e-4);
 
-    vec3 F0 = ComputeF0(Metallic, 0.5, BaseColor);
+    vec3 F0 = ComputeF0(ORM.b, 0.5, BaseColor);
 
     vec3 TotalDiffuse = vec3(0.0);
     vec3 TotalSpecular = vec3(0.0);
@@ -458,9 +456,8 @@ void main()
         SLightDots Dots = GetLightDots(FragNormal, FragViewDir, FragToLight);
 
         vec3 LightColorEnergy = Light.Color * Light.Energy;
-        vec3 DiffLight = LightColorEnergy * ComputeDiffuse(Dots.LDotH, NDotV, Dots.NDotL, Roughness);
-        vec3 SpecLight = ComputeSpecular(F0, Dots.LDotH, Dots.NDotH, NDotV, Dots.NDotL, Roughness);
-        SpecLight *= LightColorEnergy * Light.Specular;
+        vec3 DiffLight = ComputeDiffuse(Dots.LDotH, NDotV, Dots.NDotL, ORM.g) * LightColorEnergy * (1.0 - ORM.b);
+        vec3 SpecLight = ComputeSpecular(F0, Dots.LDotH, Dots.NDotH, NDotV, Dots.NDotL, ORM.g) * LightColorEnergy * Light.Specular;
 
         TotalDiffuse += DiffLight * Shadow * Attenuation;
         TotalSpecular += SpecLight * Shadow * Attenuation;
@@ -479,9 +476,8 @@ void main()
         SLightDots Dots = GetLightDots(FragNormal, FragViewDir, FragToLight);
 
         vec3 LightColorEnergy = Light.Color * Light.Energy;
-        vec3 DiffLight = LightColorEnergy * ComputeDiffuse(Dots.LDotH, NDotV, Dots.NDotL, Roughness);
-        vec3 SpecLight = ComputeSpecular(F0, Dots.LDotH, Dots.NDotH, NDotV, Dots.NDotL, Roughness);
-        SpecLight *= LightColorEnergy * Light.Specular;
+        vec3 DiffLight = ComputeDiffuse(Dots.LDotH, NDotV, Dots.NDotL, ORM.g) * LightColorEnergy * (1.0 - ORM.b);
+        vec3 SpecLight = ComputeSpecular(F0, Dots.LDotH, Dots.NDotH, NDotV, Dots.NDotL, ORM.g) * LightColorEnergy * Light.Specular;
 
         TotalDiffuse += DiffLight * Shadow * Attenuation;
         TotalSpecular += SpecLight * Shadow * Attenuation;
@@ -495,10 +491,10 @@ void main()
     ComputeAmbient(
         TotalDiffuse,
         TotalSpecular,
-        (1.0 - Metallic) * BaseColor,
-        AO,
-        Roughness,
-        Metallic,
+        (1.0 - ORM.b) * BaseColor,
+        ORM.r + AO,
+        ORM.g,
+        ORM.b,
         F0,
         InPosition,
         FragNormal,

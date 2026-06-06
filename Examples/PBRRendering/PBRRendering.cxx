@@ -1018,7 +1018,7 @@ class CLighting
         Rr_Vec3 Color;
         float Specular;
         float Radius;
-        float Intensity;
+        float Intensity; // Unused
         float Falloff;
         float ConstantBias;
         float SlopeBias;
@@ -1038,7 +1038,7 @@ class CLighting
         float Energy;
         Rr_Vec3 Padding;
         float Specular;
-        float Intensity;
+        float Intensity; // Unused
         float InnerCone;
         float OuterCone;
         float ConstantBias;
@@ -1122,11 +1122,10 @@ public:
     auto &AddPointLight()
     {
         SGPUPointLight PointLight = {
-            .Energy = 1.0f,
+            .Energy = 8.0f,
             .Color = Rr_V3(1.0f, 1.0f, 1.0f),
-            .Specular = 0.5f,
+            .Specular = 1.0f,
             .Radius = 2.5f,
-            .Intensity = 3.8f,
             .Falloff = 1.4f,
             .ConstantBias = 0.000f,
             .SlopeBias = 0.000f,
@@ -1151,9 +1150,8 @@ public:
     {
         SGPUSpotLight SpotLight = {
             .Color = Rr_V3F(1.0f),
-            .Energy = 1.0f,
-            .Specular = 0.5f,
-            .Intensity = 1.0f,
+            .Energy = 8.0f,
+            .Specular = 1.0f,
             .InnerCone = 30.0f,
             .OuterCone = 75.0f,
             .ConstantBias = 0.455f,
@@ -1354,12 +1352,9 @@ public:
                     }
                     Rr_UIInputFloat3("Position", PointLight.Position.Elements);
                     Rr_UIInputColor3("Color", PointLight.Color.Elements);
+                    Rr_UISliderFloat("Energy", &PointLight.Energy, 0.0f, 16.0f);
+                    Rr_UISliderFloat("Specular", &PointLight.Specular, 0.0f, 16.0f);
                     Rr_UISliderFloat("Radius", &PointLight.Radius, 0.0f, 8.0f);
-                    Rr_UISliderFloat(
-                        "Intensity",
-                        &PointLight.Intensity,
-                        0.0f,
-                        8.0f);
                     Rr_UISliderFloat(
                         "Falloff",
                         &PointLight.Falloff,
@@ -1396,10 +1391,12 @@ public:
                         std::format("Spot Light #{}", Index).c_str()))
                 {
                     auto &SpotLight = SpotLights[Index];
-                    Rr_UIInputColor3("Color", SpotLight.Color.Elements);
                     Rr_UIInputFloat3(
                         "Position",
                         SpotLight.Transform.Columns[3].Elements);
+                    Rr_UIInputColor3("Color", SpotLight.Color.Elements);
+                    Rr_UISliderFloat("Energy", &SpotLight.Energy, 0.0f, 16.0f);
+                    Rr_UISliderFloat("Specular", &SpotLight.Specular, 0.0f, 16.0f);
                     Rr_UISliderFloat(
                         "Inner Cone",
                         &SpotLight.InnerCone,
@@ -1410,11 +1407,6 @@ public:
                         &SpotLight.OuterCone,
                         0.0f,
                         90.0f);
-                    Rr_UISliderFloat(
-                        "Intensity",
-                        &SpotLight.Intensity,
-                        0.0f,
-                        8.0f);
                     Rr_UISliderFloat(
                         "LightSize",
                         &SpotLight.LightSize,
