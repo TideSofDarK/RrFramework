@@ -16,6 +16,8 @@ layout(set = 0, binding = 0) uniform SGPUUniform
     vec3 CameraPosition;
     float Time;
     vec2 Resolution;
+    vec2 Padding0;
+    vec4 AmbientColor;
 };
 
 layout(set = 2, binding = 0) readonly buffer SGPUStorage

@@ -44,6 +44,50 @@ std::size_t constexpr MAX_SPOT_LIGHTS = 4;
 
 Rr_ImageFormat constexpr DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
 
+static Rr_Image2D *LoadImage(
+    Rr_Asset Asset,
+    Rr_ImageFormat Format,
+    Rr_Graph *Graph)
+{
+    int32_t ImageWidth;
+    int32_t ImageHeight;
+    int32_t ImageChannels;
+    void *Data{};
+    size_t ImageDataSize = (size_t)Asset.Size;
+    stbi_uc const *ImageData = (stbi_uc const *)Asset.Data;
+
+    Data = (char *)stbi_load_from_memory(
+        ImageData,
+        ImageDataSize,
+        &ImageWidth,
+        &ImageHeight,
+        &ImageChannels,
+        4);
+    size_t DataSize = 4 * ImageWidth * ImageHeight;
+
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
+        DataSize,
+        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+    Rr_ReleaseBuffer(StagingBuffer);
+    memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, DataSize);
+
+    stbi_image_free(Data);
+
+    auto Image2D = Rr_CreateImage2D(
+        Rr_IntV2(ImageWidth, ImageHeight),
+        Format,
+        RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
+    Rr_CopyBufferToImage2D(
+        Graph,
+        StagingBuffer,
+        0,
+        Rr_IntV2(ImageWidth, ImageHeight),
+        Image2D,
+        0);
+
+    return Image2D;
+}
+
 struct SCamera
 {
     float FOVDegrees = 90.0f;
@@ -1007,8 +1051,8 @@ class CLighting
 {
     static constexpr Rr_ImageFormat SHADOW_MAP_DEPTH_FORMAT =
         RR_IMAGE_FORMAT_D32_SFLOAT;
-    static constexpr std::int32_t POINT_SHADOW_MAP_SIZE = 2048;
-    static constexpr std::int32_t SPOT_SHADOW_MAP_SIZE = 2048;
+    static constexpr std::int32_t POINT_SHADOW_MAP_SIZE = 512;
+    static constexpr std::int32_t SPOT_SHADOW_MAP_SIZE = 1024;
 
     struct SGPUPointLight
     {
@@ -1069,9 +1113,7 @@ class CLighting
     Rr_Sampler *RegularSampler{};
     Rr_Buffer *UniformBuffer{};
     size_t LightsBufferOffset{};
-    std::vector<SGPUPointLight> PointLights{};
     std::vector<Rr_ImageCube *> PointShadowMaps{};
-    std::vector<SGPUSpotLight> SpotLights{};
     std::vector<Rr_Image2D *> SpotShadowMaps{};
     Rr_ImageCube *DummyPointShadowMap{};
     Rr_Image2D *DummySpotShadowMap{};
@@ -1116,6 +1158,8 @@ class CLighting
     }
 
 public:
+    std::vector<SGPUPointLight> PointLights{};
+    std::vector<SGPUSpotLight> SpotLights{};
     Rr_ImageCube *VisualizePointShadowMap{};
 
     auto &AddPointLight()
@@ -1529,20 +1573,20 @@ public:
 
 class CSSAO
 {
-    Rr_Sampler *Sampler;
-    Rr_GraphicsPipeline *SSAOPipeline;
-    Rr_GraphicsPipeline *BlurPipeline;
-    Rr_Buffer *Buffer;
+    Rr_Sampler *Sampler{};
+    Rr_GraphicsPipeline *SSAOPipeline{};
+    Rr_GraphicsPipeline *BlurPipeline{};
+    Rr_Buffer *Buffer{};
 
     struct
     {
         Rr_Mat4 Projection;
         Rr_Mat4 InvProjection;
-        float Bias = 0.5;
-        float Intensity = 0.0178;
-        float Scale = 1.0;
-        float KernelRadius = 25.0;
-        float MinRes = 0.0;
+        float Bias = 0.5f;
+        float Intensity = 0.02f;
+        float Scale = 1.0f;
+        float KernelRadius = 18.0f;
+        float MinRes = 0.0f;
         float CameraNear;
         float CameraFar;
         float DepthRange;
@@ -1776,7 +1820,9 @@ class CPBRRenderingApp
         Rr_Vec3 CameraPosition;
         float Time;
         Rr_Vec2 Resolution;
-    };
+        Rr_Vec2 Padding0;
+        Rr_Vec4 AmbientColor = Rr_V4(0.04f, 0.04f, 0.04f, 1.0f);
+    } GPUUniform;
 
     Rr_GraphicsPipeline *ForwardPassPipeline{};
     Rr_GraphicsPipeline *NormalDepthPrepassPipeline{};
@@ -1792,6 +1838,7 @@ class CPBRRenderingApp
     Rr_Image2D *DepthImage{};
     Rr_Image2D *AmbientOcclusionImage{};
     Rr_Image2D *AmbientOcclusionIntermediateImage{};
+    Rr_Image2D *BRDFImage{};
 
     static constexpr std::array<const char *, 4> MSAA_OPTIONS = {
         "Disabled",
@@ -1958,7 +2005,7 @@ class CPBRRenderingApp
     void InitUniform()
     {
         UniformBuffer = Rr_CreateBuffer(
-            sizeof(SGPUUniform),
+            sizeof(GPUUniform),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
                 RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
     }
@@ -1970,6 +2017,9 @@ class CPBRRenderingApp
         {
             if (Rr_UIBeginTree("General"))
             {
+                Rr_UIInputColor3(
+                    "Ambient Color",
+                    GPUUniform.AmbientColor.Elements);
                 Rr_UIInputFloat3("Camera Position", Camera.Position.Elements);
                 Rr_Vec3 CameraForward = Camera.GetForwardVector();
                 Rr_UIInputFloat3("Camera Forward", CameraForward.Elements);
@@ -2030,8 +2080,13 @@ public:
 
         Camera.Update();
 
+        if (Lighting.PointLights.size() > 1)
+        {
+            Lighting.PointLights[1].Position =
+                Rr_V3(std::cos(0.5f + Rr_GetTimeSeconds()) * 6.0f, 5.0f, 0.0f);
+        }
         Lighting.Iterate(Graph, Camera, [&](Rr_GraphNode *Node) {
-            GLTFScene.Draw(Node, 1, 0);
+            GLTFScene.Draw<2>(Node, 1, 0);
         });
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
@@ -2053,18 +2108,16 @@ public:
 
         bool UseMSAA = GetMSAASampleCount() > 1;
 
-        SGPUUniform Uniform = {
-            .View = Camera.GetViewMatrix(),
-            .Projection = Camera.ProjMatrix,
-            .CameraPosition = Camera.Position,
-            .Time = (float)Rr_GetTimeSeconds(),
-            .Resolution = { (float)SwapchainSize.Width,
-                            (float)SwapchainSize.Height },
-        };
+        GPUUniform.View = Camera.GetViewMatrix();
+        GPUUniform.Projection = Camera.ProjMatrix;
+        GPUUniform.CameraPosition = Camera.Position;
+        GPUUniform.Time = (float)Rr_GetTimeSeconds();
+        GPUUniform.Resolution = { (float)SwapchainSize.Width,
+                                  (float)SwapchainSize.Height };
         std::memcpy(
             Rr_GetMappedBufferData(UniformBuffer),
-            &Uniform,
-            sizeof(SGPUUniform));
+            &GPUUniform,
+            sizeof(GPUUniform));
 
         /* Normal/Depth Prepass */
         {
@@ -2101,7 +2154,7 @@ public:
                 0,
                 0,
                 0,
-                sizeof(SGPUUniform));
+                sizeof(GPUUniform));
             GLTFScene.Draw<3>(GraphicsNode, 2, 0);
 
             Rr_EndGraphLabel(Graph, "NormalDepthPrepass");
@@ -2153,9 +2206,10 @@ public:
                 0,
                 0,
                 0,
-                sizeof(SGPUUniform));
+                sizeof(GPUUniform));
             Lighting.BindLights(GraphicsNode, 1);
             Rr_BindSampledImage2D(GraphicsNode, AmbientOcclusionImage, 1, 6);
+            Rr_BindSampledImage2D(GraphicsNode, BRDFImage, 1, 7);
             GLTFScene.Draw<3>(GraphicsNode, 2, 0);
 
             if (DrawGrid)
@@ -2183,16 +2237,29 @@ public:
         , Skybox(GetMSAASampleCount())
         , GLTFScene({})
     {
-        auto &PointLight = Lighting.AddPointLight();
-        PointLight.Position = Rr_V3(0.0f, 2.0f, 0.0f);
-        PointLight.Radius = 4.0f;
-        PointLight.Intensity = 5.0f;
-        PointLight.Falloff = 0.35f;
+        {
+            auto &PointLight = Lighting.AddPointLight();
+            PointLight.Position = Rr_V3(0.0f, 2.0f, 0.0f);
+            PointLight.Radius = 4.0f;
+            PointLight.Intensity = 5.0f;
+            PointLight.Falloff = 0.35f;
+        }
+        {
+            auto &PointLight = Lighting.AddPointLight();
+            PointLight.Position = Rr_V3(0.0f, 5.0f, 0.0f);
+            PointLight.Radius = 4.0f;
+            PointLight.Intensity = 5.0f;
+            PointLight.Falloff = 0.35f;
+        }
         InitAttachments();
         RecreatePipelines();
         InitUniform();
         InitCamera();
         Camera.Position = Rr_V3(0.0f, 1.0f, 0.0f);
+        BRDFImage = LoadImage(
+            Rr_LoadAsset(EXAMPLE_ASSET_BRDF_PNG),
+            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
+            Rr_GetGraph());
     }
 
     ~CPBRRenderingApp()
@@ -2209,6 +2276,7 @@ public:
         Rr_ReleaseImage(DepthImage);
         Rr_ReleaseImage(AmbientOcclusionImage);
         Rr_ReleaseImage(AmbientOcclusionIntermediateImage);
+        Rr_ReleaseImage(BRDFImage);
     }
 };
 

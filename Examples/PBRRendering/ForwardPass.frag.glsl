@@ -1,5 +1,7 @@
 #version 460
 
+/* Much of this is shamefully copied from https://github.com/Bigfoot71/r3d */
+
 #define PI 3.1415926
 #define DEG_TO_RAD (PI / 180.0)
 #define SAMPLES_COUNT 32
@@ -21,6 +23,8 @@ layout(set = 0, binding = 0) uniform SGPUUniform
     vec3 CameraPosition;
     float Time;
     vec2 Resolution;
+    vec2 Padding3;
+    vec4 AmbientColor;
 };
 
 struct SGPUPointLight
@@ -76,6 +80,7 @@ layout(set = 1, binding = 2) uniform texture2D SpotShadowMaps[MAX_SPOT_LIGHTS];
 layout(set = 1, binding = 3) uniform sampler RegularSampler;
 layout(set = 1, binding = 4) uniform sampler ShadowSampler;
 layout(set = 1, binding = 6) uniform texture2D AmbientOcclusionImage;
+layout(set = 1, binding = 7) uniform texture2D BRDFImage;
 
 layout(set = 3, binding = 0) uniform SGPUMaterial
 {
@@ -360,7 +365,56 @@ SLightDots GetLightDots(in vec3 FragNormal, in vec3 FragViewDir, in vec3 FragToL
     return LightDots;
 }
 
-const vec3 AMBIENT = vec3(0.04);
+void MultiScattering(
+    inout vec3 Irradiance,
+    inout vec3 Radiance,
+    vec3 Diffuse,
+    vec3 F0,
+    vec2 BRDF,
+    float NDotV,
+    float Roughness)
+{
+    // Adapted from Fdez-Aguera method without the roughness-dependent Fresnel
+    // See: https://jcgt.org/published/0008/01/03/paper.pdf
+
+    // Single scattering with standard Fresnel
+    vec3 FssEss = F0 * BRDF.x + BRDF.y;
+
+    // Multiple scattering, from Fdez-Aguera
+    float Ess = BRDF.x + BRDF.y;
+    float Ems = 1.0 - Ess;
+    vec3 FAverage = F0 + (1.0 - F0) / 21.0;
+    vec3 FmsD = max(1.0 - (1.0 - Ess) * FAverage, vec3(1e-6)); //< avoids division by zero in extreme F0/low roughness cases
+    vec3 Fms = FssEss * FAverage / FmsD;
+    vec3 kD = Diffuse * (1.0 - FssEss);
+
+    // Compute final irradiance / radiance
+    Irradiance *= (Fms * Ems + kD);
+    Radiance *= FssEss;
+}
+
+void ComputeAmbientOnly(
+    inout vec3 Diffuse,
+    inout vec3 Specular,
+    vec3 kD,
+    float Occlusion,
+    float Roughness,
+    float Metallic,
+    vec3 F0,
+    vec3 P,
+    vec3 N,
+    vec3 V,
+    float NDotV)
+{
+    vec3 Irradiance = AmbientColor.rgb * Occlusion;
+    vec3 Radiance = vec3(0.0);
+
+    vec2 BRDF = texture(sampler2D(BRDFImage, RegularSampler), vec2(NDotV, Roughness)).xy;
+    MultiScattering(Irradiance, Radiance, kD, F0, BRDF, NDotV, Roughness);
+
+    Diffuse += Irradiance;
+    Specular += Radiance;
+}
 
 void main()
 {
@@ -437,19 +491,23 @@ void main()
         TotalSpecular += SpecLight * Shadow * Attenuation;
     }
 
-    vec3 Ambient = AMBIENT;
-    Ambient = (1.0 - F0) * (1.0 - Metallic) * Ambient;
-    Ambient += F0 * Ambient;
-
-    TotalDiffuse = BaseColor * (TotalDiffuse + Ambient);
-
-    OutColor = vec4(TotalDiffuse + TotalSpecular, 1.0);
-
     float PackedAODepth = texture(
             sampler2D(AmbientOcclusionImage, RegularSampler),
             gl_FragCoord.xy / Resolution).r;
     float AO = unpackHalf2x16(floatBitsToUint(PackedAODepth)).r;
 
-    OutColor.rgb *= AO;
-    // OutColor.rgb = vec3(AO);
+    ComputeAmbientOnly(
+        TotalDiffuse,
+        TotalSpecular,
+        (1.0 - Metallic) * BaseColor,
+        AO,
+        Roughness,
+        Metallic,
+        F0,
+        InPosition,
+        FragNormal,
+        FragViewDir,
+        NDotV);
+
+    OutColor = vec4(BaseColor * TotalDiffuse + TotalSpecular, 1.0);
 }

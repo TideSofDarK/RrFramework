@@ -5,6 +5,7 @@ layout(location = 1) in vec2 InUV;
 layout(location = 2) in vec3 InNormal;
 
 layout(location = 0) out vec3 OutPosition;
+layout(location = 1) out vec2 OutUV;
 
 layout(set = 0, binding = 0) uniform SGPUUniform
 {
@@ -23,6 +24,5 @@ void main()
     mat4 Model = ModelArray[gl_InstanceIndex];
     OutPosition = (Model * vec4(InPosition.xyz, 1.0)).xyz;
     gl_Position = ViewProjection * Model * vec4(InPosition.xyz, 1.0);
-    // gl_Position.x *= -1.0;
-    // gl_Position.y *= -1.0;
+    OutUV = InUV;
 }
