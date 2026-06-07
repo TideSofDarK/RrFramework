@@ -18,24 +18,31 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#ifndef RR_H
-#define RR_H
+#ifndef RR_SYSTEM_H
+#define RR_SYSTEM_H
 
-#include <Rr/Rr_App.h>
-#include <Rr/Rr_Arena.h>
-#include <Rr/Rr_Asset.h>
-#include <Rr/Rr_Buffer.h>
 #include <Rr/Rr_Defines.h>
-#include <Rr/Rr_Graph.h>
-#include <Rr/Rr_Image.h>
-#include <Rr/Rr_Log.h>
-#include <Rr/Rr_Math.h>
-#include <Rr/Rr_Pipeline.h>
-#include <Rr/Rr_Platform.h>
-#include <Rr/Rr_Renderer.h>
-#include <Rr/Rr_Serialization.h>
-#include <Rr/Rr_System.h>
-#include <Rr/Rr_UI.h>
-#include <Rr/Rr_Utility.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern uint64_t Rr_GetPerformanceCounter(void);
+
+extern uint64_t Rr_GetPerformanceFrequency(void);
+
+extern void *Rr_ReserveMemory(size_t Size);
+
+extern void Rr_ReleaseMemory(void *Data, size_t Size);
+
+extern bool Rr_CommitMemory(void *Data, size_t Size);
+
+extern void Rr_DecommitMemory(void *Data, size_t Size);
+
+extern void Rr_SleepNS(uint64_t Nanoseconds);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

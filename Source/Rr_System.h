@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <Rr/Rr_Defines.h>
+#include <Rr/Rr_System.h>
 
 #if defined(_MSC_VER) && !defined(__clang__) && !defined(__INTEL_COMPILER)
 #define RR_THREAD_LOCAL __declspec(thread)
@@ -45,20 +45,6 @@ struct Rr_System
 extern void Rr_InitSystem(void);
 
 extern Rr_System *Rr_GetSystem(void);
-
-extern uint64_t Rr_GetPerformanceCounter(void);
-
-extern uint64_t Rr_GetPerformanceFrequency(void);
-
-extern void *Rr_ReserveMemory(size_t Size);
-
-extern void Rr_ReleaseMemory(void *Data, size_t Size);
-
-extern bool Rr_CommitMemory(void *Data, size_t Size);
-
-extern void Rr_DecommitMemory(void *Data, size_t Size);
-
-extern void Rr_SleepNS(uint64_t Nanoseconds);
 
 typedef struct Rr_AtomicInt
 {

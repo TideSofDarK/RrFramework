@@ -1353,7 +1353,11 @@ public:
                     Rr_UIInputFloat3("Position", PointLight.Position.Elements);
                     Rr_UIInputColor3("Color", PointLight.Color.Elements);
                     Rr_UISliderFloat("Energy", &PointLight.Energy, 0.0f, 16.0f);
-                    Rr_UISliderFloat("Specular", &PointLight.Specular, 0.0f, 16.0f);
+                    Rr_UISliderFloat(
+                        "Specular",
+                        &PointLight.Specular,
+                        0.0f,
+                        16.0f);
                     Rr_UISliderFloat("Radius", &PointLight.Radius, 0.0f, 8.0f);
                     Rr_UISliderFloat(
                         "Falloff",
@@ -1396,7 +1400,11 @@ public:
                         SpotLight.Transform.Columns[3].Elements);
                     Rr_UIInputColor3("Color", SpotLight.Color.Elements);
                     Rr_UISliderFloat("Energy", &SpotLight.Energy, 0.0f, 16.0f);
-                    Rr_UISliderFloat("Specular", &SpotLight.Specular, 0.0f, 16.0f);
+                    Rr_UISliderFloat(
+                        "Specular",
+                        &SpotLight.Specular,
+                        0.0f,
+                        16.0f);
                     Rr_UISliderFloat(
                         "Inner Cone",
                         &SpotLight.InnerCone,

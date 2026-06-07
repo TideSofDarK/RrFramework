@@ -788,6 +788,11 @@ static inline Rr_Vec3 Rr_V3F(float X)
     return Rr_V3(X, X, X);
 }
 
+static inline Rr_Vec3 Rr_V3V(Rr_Vec2 Vector, float Z)
+{
+    return Rr_V3(Vector.X, Vector.Y, Z);
+}
+
 static inline Rr_Vec3 Rr_CastV3(Rr_IntVec3 A)
 {
     return Rr_V3((float)A.X, (float)A.Y, (float)A.Z);

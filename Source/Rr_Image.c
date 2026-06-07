@@ -542,12 +542,12 @@ float Rr_GetImage2DAspect(Rr_Image2D *Image)
     return (float)Image->Extent.width / (float)Image->Extent.height;
 }
 
-Rr_IntVec3 Rr_GetImage3DExtent(Rr_Image3D *Image3D)
+Rr_IntVec3 Rr_GetImageExtent(Rr_Image *Image)
 {
     return (Rr_IntVec3){
-        .Width = (int32_t)Image3D->Extent.width,
-        .Height = (int32_t)Image3D->Extent.height,
-        .Depth = (int32_t)Image3D->Extent.depth,
+        .Width = (int32_t)Image->Extent.width,
+        .Height = (int32_t)Image->Extent.height,
+        .Depth = (int32_t)Image->Extent.depth,
     };
 }
 

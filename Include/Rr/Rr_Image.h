@@ -149,7 +149,7 @@ extern Rr_IntVec2 RR_CC Rr_GetImage2DExtent(Rr_Image2D *Image);
 
 extern float RR_CC Rr_GetImage2DAspect(Rr_Image2D *Image);
 
-extern Rr_IntVec3 RR_CC Rr_GetImage3DExtent(Rr_Image3D *Image3D);
+extern Rr_IntVec3 RR_CC Rr_GetImageExtent(struct Rr_Image *Image);
 
 #ifdef __cplusplus
 }

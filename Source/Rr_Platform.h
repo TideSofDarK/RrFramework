@@ -67,8 +67,6 @@ extern void Rr_ProcessPlatformEvents(Rr_Arena *Arena);
 
 extern void Rr_ShowWindow(void);
 
-extern double Rr_GetDisplayRefreshRate(void);
-
 extern Rr_Vec2 Rr_QueryPlatformMousePosition(void);
 
 /* Common Functions */

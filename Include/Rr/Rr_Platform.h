@@ -320,6 +320,8 @@ extern Rr_IntVec2 RR_CC Rr_GetDisplaySize(void);
 
 extern float RR_CC Rr_GetDisplayScale(void);
 
+extern double Rr_GetDisplayRefreshRate(void);
+
 extern void RR_CC Rr_SetClipboardText(const char *CString);
 
 extern char const *RR_CC Rr_GetClipboardText(Rr_Arena *Arena);

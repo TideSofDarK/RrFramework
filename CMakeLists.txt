@@ -162,6 +162,7 @@ target_sources(
     Include/Rr/Rr_Log.h
     Include/Rr/Rr_Math.h
     Include/Rr/Rr_Pipeline.h
+    Include/Rr/Rr_System.h
     Include/Rr/Rr_Platform.h
     Include/Rr/Rr_Renderer.h
     Include/Rr/Rr_Serialization.h
