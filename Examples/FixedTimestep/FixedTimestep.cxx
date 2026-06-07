@@ -5,6 +5,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../Vendor/stb/stb_image.h"
 
+#include <cmath>
+
 Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 {
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
