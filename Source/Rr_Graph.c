@@ -2346,7 +2346,7 @@ static inline Rr_GraphImage *Rr_GetGraphHandle(
         *GraphHandle = Rr_Alloc(sizeof(Rr_GraphHandle), Graph->Arena);
         **GraphHandle = Handle;
 
-        Rr_IncrementAtomicRelaxed(RefCount);
+        Rr_IncrementAtomicIntRelaxed(RefCount);
     }
 
     return *GraphHandle;
@@ -2376,7 +2376,7 @@ void Rr_MarkSamplerUsed(Rr_Graph *Graph, Rr_Sampler *Sampler)
 {
     if (Rr_AddHandleToSet(&Graph->Samplers, Sampler, Graph->Arena))
     {
-        Rr_IncrementAtomicRelaxed(&Sampler->RefCount);
+        Rr_IncrementAtomicIntRelaxed(&Sampler->RefCount);
     }
 }
 
@@ -2389,7 +2389,7 @@ void Rr_MarkComputePipelineUsed(
             ComputePipeline,
             Graph->Arena))
     {
-        Rr_IncrementAtomicRelaxed(&ComputePipeline->RefCount);
+        Rr_IncrementAtomicIntRelaxed(&ComputePipeline->RefCount);
     }
 }
 
@@ -2402,7 +2402,7 @@ void Rr_MarkGraphicsPipelineUsed(
             GraphicsPipeline,
             Graph->Arena))
     {
-        Rr_IncrementAtomicRelaxed(&GraphicsPipeline->RefCount);
+        Rr_IncrementAtomicIntRelaxed(&GraphicsPipeline->RefCount);
     }
 }
 
@@ -2432,14 +2432,14 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
     {
         Rr_GraphResource *BufferResource = &Graph->BufferResources.Data[Index];
         Rr_Buffer *Buffer = (Rr_Buffer *)BufferResource->Container;
-        Rr_DecrementAtomicRelaxed(&Buffer->RefCount);
+        Rr_DecrementAtomicIntRelaxed(&Buffer->RefCount);
     }
 
     for (size_t Index = 0; Index < Graph->ImageResources.Count; ++Index)
     {
         Rr_GraphResource *ImageResource = &Graph->ImageResources.Data[Index];
         Rr_Image *Image = (Rr_Image *)ImageResource->Container;
-        Rr_DecrementAtomicRelaxed(&Image->RefCount);
+        Rr_DecrementAtomicIntRelaxed(&Image->RefCount);
     }
 
     for (Rr_HandleTrieHiveIterator It = Graph->Samplers.Hive.Begin;
@@ -2447,7 +2447,7 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
          Rr_AdvanceHandleTrieHiveIterator(&It))
     {
         Rr_Sampler *Sampler = (Rr_Sampler *)It.Element->Handle;
-        Rr_DecrementAtomicRelaxed(&Sampler->RefCount);
+        Rr_DecrementAtomicIntRelaxed(&Sampler->RefCount);
     }
 
     for (Rr_HandleTrieHiveIterator It = Graph->ComputePipelines.Hive.Begin;
@@ -2456,7 +2456,7 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
     {
         Rr_ComputePipeline *ComputePipeline =
             (Rr_ComputePipeline *)It.Element->Handle;
-        Rr_DecrementAtomicRelaxed(&ComputePipeline->RefCount);
+        Rr_DecrementAtomicIntRelaxed(&ComputePipeline->RefCount);
     }
 
     for (Rr_HandleTrieHiveIterator It = Graph->GraphicsPipelines.Hive.Begin;
@@ -2465,7 +2465,7 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
     {
         Rr_GraphicsPipeline *GraphicsPipeline =
             (Rr_GraphicsPipeline *)It.Element->Handle;
-        Rr_DecrementAtomicRelaxed(&GraphicsPipeline->RefCount);
+        Rr_DecrementAtomicIntRelaxed(&GraphicsPipeline->RefCount);
     }
 }
 

@@ -20,8 +20,7 @@
 
 #pragma once
 
-#if defined(__x86_64__) || defined(__i386__) || defined(_M_IX86) || \
-    defined(_M_X64)
+#if defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
 #include <xxHash/xxh_x86dispatch.h>
 #else
 #include <xxHash/xxhash.h>

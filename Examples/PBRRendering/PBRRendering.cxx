@@ -501,10 +501,10 @@ public:
                     IndexAccessor->count);
 
                 Primitives.emplace_back(
-                    IndexAccessor->count,
-                    FirstIndex,
-                    VertexOffset,
-                    cgltf_material_index(Data, Primitive.material));
+                    (uint32_t)IndexAccessor->count,
+                    (uint32_t)FirstIndex,
+                    (int32_t)VertexOffset,
+                    (uint32_t)cgltf_material_index(Data, Primitive.material));
             }
 
             Meshes.emplace_back(std::move(Primitives));

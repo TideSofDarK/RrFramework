@@ -21,7 +21,7 @@
 #ifndef RR_HIVE_H
 #define RR_HIVE_H
 
-#include "Rr_System.h"
+#include "Rr_Atomic.h"
 
 #include <Rr/Rr_Arena.h>
 #include <Rr/Rr_Math.h>

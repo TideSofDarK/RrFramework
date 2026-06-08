@@ -24,6 +24,7 @@
 #include "Rr_LogMacro.h"
 #include "Rr_Platform.h"
 #include "Rr_Renderer.h"
+#include "Rr_System.h"
 #include "Rr_UI.h"
 
 #include <assert.h>
@@ -176,7 +177,7 @@ void Rr_Run(Rr_AppConfig *Config)
     {
         Rr_DispatchEvents();
 
-        if (Rr_LoadAtomicRelaxed(&gApp->QuitRequested))
+        if (Rr_LoadAtomicIntRelaxed(&gApp->QuitRequested))
         {
             break;
         }
@@ -303,10 +304,10 @@ uint64_t Rr_GetTimeNS(void)
 
 void Rr_Quit(void)
 {
-    Rr_StoreAtomicRelaxed(&gApp->QuitRequested, 1);
+    Rr_StoreAtomicIntRelaxed(&gApp->QuitRequested, 1);
 }
 
 bool Rr_QuitRequested(void)
 {
-    return Rr_LoadAtomicRelaxed(&gApp->QuitRequested);
+    return Rr_LoadAtomicIntRelaxed(&gApp->QuitRequested);
 }

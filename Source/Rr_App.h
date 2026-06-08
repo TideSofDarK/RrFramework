@@ -22,7 +22,7 @@
 
 #include <Rr/Rr_App.h>
 
-#include "Rr_System.h"
+#include "Rr_Atomic.h"
 
 #include <Rr/Rr_Arena.h>
 

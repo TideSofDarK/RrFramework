@@ -23,6 +23,7 @@
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
 #include "Rr_App.h"
 #include "Rr_LogMacro.h"
+#include "Rr_System.h"
 
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Platform.h>
@@ -584,7 +585,7 @@ static inline void Rr_DestroyReleasedObjects(void)
          It.Element != gRenderer->ReleasedBuffers.End.Element;)
     {
         Rr_Buffer *Buffer = *(Rr_Buffer **)It.Element;
-        if (!Rr_LoadAtomicRelaxed(&Buffer->RefCount))
+        if (!Rr_LoadAtomicIntRelaxed(&Buffer->RefCount))
         {
             Rr_DestroyBuffer(Buffer);
             Rr_RemoveFromHandleHive(&gRenderer->ReleasedBuffers, &It);
@@ -601,7 +602,7 @@ static inline void Rr_DestroyReleasedObjects(void)
          It.Element != gRenderer->ReleasedImages.End.Element;)
     {
         Rr_Image *Image = *(Rr_Image **)It.Element;
-        if (!Rr_LoadAtomicRelaxed(&Image->RefCount))
+        if (!Rr_LoadAtomicIntRelaxed(&Image->RefCount))
         {
             Rr_DestroyImage(Image);
             Rr_RemoveFromHandleHive(&gRenderer->ReleasedImages, &It);
@@ -618,7 +619,7 @@ static inline void Rr_DestroyReleasedObjects(void)
          It.Element != gRenderer->ReleasedSamplers.End.Element;)
     {
         Rr_Sampler *Sampler = *(Rr_Sampler **)It.Element;
-        if (!Rr_LoadAtomicRelaxed(&Sampler->RefCount))
+        if (!Rr_LoadAtomicIntRelaxed(&Sampler->RefCount))
         {
             Rr_DestroySampler(Sampler);
             Rr_RemoveFromHandleHive(&gRenderer->ReleasedSamplers, &It);
@@ -636,7 +637,7 @@ static inline void Rr_DestroyReleasedObjects(void)
     {
         Rr_ComputePipeline *ComputePipeline =
             *(Rr_ComputePipeline **)It.Element;
-        if (!Rr_LoadAtomicRelaxed(&ComputePipeline->RefCount))
+        if (!Rr_LoadAtomicIntRelaxed(&ComputePipeline->RefCount))
         {
             Rr_DestroyComputePipeline(ComputePipeline);
             Rr_RemoveFromHandleHive(&gRenderer->ReleasedComputePipelines, &It);
@@ -654,7 +655,7 @@ static inline void Rr_DestroyReleasedObjects(void)
     {
         Rr_GraphicsPipeline *GraphicsPipeline =
             *(Rr_GraphicsPipeline **)It.Element;
-        if (!Rr_LoadAtomicRelaxed(&GraphicsPipeline->RefCount))
+        if (!Rr_LoadAtomicIntRelaxed(&GraphicsPipeline->RefCount))
         {
             Rr_DestroyGraphicsPipeline(GraphicsPipeline);
             Rr_RemoveFromHandleHive(&gRenderer->ReleasedGraphicsPipelines, &It);

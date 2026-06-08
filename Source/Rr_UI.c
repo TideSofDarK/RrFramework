@@ -33,6 +33,7 @@
 #include "Rr_LogMacro.h"
 #include "Rr_Platform.h"
 #include "Rr_Renderer.h"
+#include "Rr_System.h"
 
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Platform.h>

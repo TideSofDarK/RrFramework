@@ -14,6 +14,7 @@
 #include "../../Vendor/tinyexr/tinyexr.h"
 
 #include <algorithm>
+#include <array>
 
 Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
 {
@@ -229,11 +230,11 @@ struct SPrerenderedDepthApp
 
     void InitPipeline()
     {
-        std::array VertexAttributes = {
+        auto VertexAttributes = std::array{
             Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
         };
 
-        std::array VertexInputBindings = {
+        auto VertexInputBindings = std::array{
             Rr_VertexInputBinding{
                 .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
                 .AttributeCount = VertexAttributes.size(),
