@@ -20,21 +20,24 @@
 
 #pragma once
 
-#include <Rr/Rr_System.h>
+#include <Rr/Rr_Arena.h>
 
-#if defined(_MSC_VER) && !defined(__clang__) && !defined(__INTEL_COMPILER)
-#define RR_THREAD_LOCAL __declspec(thread)
-#else
-#define RR_THREAD_LOCAL __thread
-#endif
+#include "Rr_Atomic.h"
 
-typedef struct Rr_System Rr_System;
-struct Rr_System
+struct Rr_Arena
 {
-    bool Initialized;
-    size_t PageSize;
-    size_t AllocationGranularity;
-    uint64_t PerformanceFrequency;
+    uintptr_t Position;
+    uintptr_t ReserveSize;
+    uintptr_t CommitSize;
+    uintptr_t Reserved;
+    uintptr_t Commited;
 };
 
-extern Rr_System *Rr_GetSystem(void);
+struct Rr_TSArena
+{
+    Rr_AtomicInt Position;
+    uintptr_t ReserveSize;
+    uintptr_t CommitSize;
+    uintptr_t Reserved;
+    Rr_AtomicInt Commited;
+};

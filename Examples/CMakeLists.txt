@@ -1,3 +1,4 @@
+add_subdirectory(ArenaBenchmark)
 add_subdirectory(Triangle)
 add_subdirectory(GLTFCube)
 add_subdirectory(QuadTree)

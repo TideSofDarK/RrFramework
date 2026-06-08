@@ -18,7 +18,7 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#include <Rr/Rr_Arena.h>
+#include "Rr_Arena.h"
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_VULKAN
 #include "Rr_LogMacro.h"
@@ -132,6 +132,90 @@ void *Rr_Alloc(size_t Size, Rr_Arena *Arena)
 void *Rr_AllocCopy(void const *Source, size_t Size, Rr_Arena *Arena)
 {
     return memcpy(Rr_AllocNoZero(Size, Arena), Source, Size);
+}
+
+Rr_TSArena *Rr_CreateTSArena(size_t ReserveSize, size_t CommitSize)
+{
+    size_t PageSize = Rr_GetSystem()->PageSize;
+    ReserveSize = RR_ALIGN_POW2(ReserveSize, PageSize);
+    CommitSize = RR_ALIGN_POW2(CommitSize, PageSize);
+
+    Rr_TSArena *Arena = Rr_ReserveMemory(ReserveSize);
+    Rr_CommitMemory(Arena, CommitSize);
+    *Arena = (Rr_TSArena){
+        .ReserveSize = ReserveSize,
+        .CommitSize = CommitSize,
+        .Reserved = ReserveSize,
+        //
+        // .Position = sizeof(Rr_TSArena),
+        // .Commited = CommitSize,
+    };
+    Rr_StoreAtomicIntRelaxed(&Arena->Position, sizeof(Rr_TSArena));
+    Rr_StoreAtomicIntRelaxed(&Arena->Commited, (int64_t)CommitSize);
+
+    return Arena;
+}
+
+void Rr_DestroyTSArena(Rr_TSArena *Arena)
+{
+    if (Arena == NULL)
+    {
+        return;
+    }
+
+    Rr_ReleaseMemory((void *)Arena, Arena->ReserveSize);
+}
+
+void *Rr_TSAllocAlignedNoZero(size_t Size, size_t Align, Rr_TSArena *Arena)
+{
+    int64_t OldPosition = Rr_LoadAtomicIntRelaxed(&Arena->Position);
+    int64_t NewPosition = RR_ALIGN_POW2(OldPosition, (int64_t)Align);
+
+    while (!Rr_CompareExchangeAtomicIntRelaxed(
+        &Arena->Position,
+        &OldPosition,
+        NewPosition + (int64_t)Size))
+    {
+        NewPosition = RR_ALIGN_POW2(OldPosition, (int64_t)Align);
+    }
+
+    int64_t CurrentPosition = NewPosition + (int64_t)Size;
+
+    if (CurrentPosition > (int64_t)Arena->Reserved)
+    {
+        RR_LOG_ABORT("Arena reserved memory overflow!");
+    }
+
+    int64_t OldCommited = Rr_LoadAtomicIntRelaxed(&Arena->Commited);
+    if (CurrentPosition > OldCommited)
+    {
+        void *CommitPtr = (char *)Arena + OldCommited;
+        int64_t CommitTarget =
+            RR_ALIGN_POW2(CurrentPosition, (int64_t)Arena->CommitSize);
+        int64_t CommitSize = CommitTarget - OldCommited;
+        Rr_CommitMemory(CommitPtr, (uintptr_t)CommitSize);
+
+        Rr_MaxAtomicIntRelaxed(&Arena->Commited, CommitTarget);
+        // int64_t ExchangeWith = CommitTarget;
+        // int64_t Exchanged =
+        //     Rr_ExchangeAtomicIntRelaxed(&Arena->Commited, ExchangeWith);
+        // while (Exchanged > ExchangeWith)
+        // {
+        //     ExchangeWith = Exchanged;
+        //     Exchanged =
+        //         Rr_ExchangeAtomicIntRelaxed(&Arena->Commited, ExchangeWith);
+        // }
+    }
+
+    return (char *)Arena + NewPosition;
+}
+
+void *Rr_TSAlloc(size_t Size, Rr_TSArena *Arena)
+{
+    return memset(
+        Rr_TSAllocAlignedNoZero(Size, RR_SAFE_ALIGNMENT, Arena),
+        0,
+        Size);
 }
 
 Rr_Scratch Rr_CreateScratch(Rr_Arena *Arena)

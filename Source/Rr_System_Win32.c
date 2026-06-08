@@ -20,10 +20,13 @@
 
 #include "Rr_System.h"
 
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_SYSTEM
+#include "Rr_LogMacro.h"
+
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-void Rr_InitSystem()
+void Rr_InitSystem(void)
 {
     Rr_System *System = Rr_GetSystem();
     if (System->Initialized)
@@ -68,7 +71,14 @@ void Rr_ReleaseMemory(void *Data, size_t Size)
 
 bool Rr_CommitMemory(void *Data, size_t Size)
 {
-    return VirtualAlloc(Data, Size, MEM_COMMIT, PAGE_READWRITE) != NULL;
+    if(VirtualAlloc(Data, Size, MEM_COMMIT, PAGE_READWRITE) == NULL)
+    {
+        /* RR_LOG("error %d", GetLastError()); */
+
+        return false;
+    }
+
+    return true;
 }
 
 void Rr_DecommitMemory(void *Data, size_t Size)

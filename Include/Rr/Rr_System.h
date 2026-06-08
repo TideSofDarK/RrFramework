@@ -27,6 +27,8 @@
 extern "C" {
 #endif
 
+extern void Rr_InitSystem(void);
+
 extern uint64_t Rr_GetPerformanceCounter(void);
 
 extern uint64_t Rr_GetPerformanceFrequency(void);

@@ -24,14 +24,7 @@
 #include <Rr/Rr_Defines.h>
 
 typedef struct Rr_Arena Rr_Arena;
-struct Rr_Arena
-{
-    uintptr_t Position;
-    uintptr_t ReserveSize;
-    uintptr_t CommitSize;
-    uintptr_t Reserved;
-    uintptr_t Commited;
-};
+typedef struct Rr_TSArena Rr_TSArena;
 
 typedef struct Rr_Scratch Rr_Scratch;
 struct Rr_Scratch
@@ -63,6 +56,15 @@ extern void *RR_CC Rr_Alloc(size_t Size, Rr_Arena *Arena);
 
 extern void *RR_CC
 Rr_AllocCopy(void const *Source, size_t Size, Rr_Arena *Arena);
+
+extern Rr_TSArena *RR_CC Rr_CreateTSArena(size_t Reserve, size_t Commit);
+
+extern void RR_CC Rr_DestroyTSArena(Rr_TSArena *Arena);
+
+extern void *RR_CC
+Rr_TSAllocAlignedNoZero(size_t Size, size_t Align, Rr_TSArena *Arena);
+
+extern void *RR_CC Rr_TSAlloc(size_t Size, Rr_TSArena *Arena);
 
 extern Rr_Scratch RR_CC Rr_CreateScratch(Rr_Arena *Arena);
 

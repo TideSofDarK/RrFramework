@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #if defined(_MSC_VER)
@@ -113,9 +114,22 @@ static inline void Rr_StoreAtomicIntRelease(
 #endif
 }
 
+static inline int64_t Rr_ExchangeAtomicIntRelaxed(
+    Rr_AtomicInt *AtomicInt,
+    int64_t Value)
+{
+#if defined(RR_ATOMIC_MSC_X86)
+    return (int64_t)_InterlockedExchange64(&AtomicInt->Value, (LONG64)Value);
+#elif defined(RR_ATOMIC_MSC_ARM)
+    return (int64_t)_InterlockedExchange64_nf(&AtomicInt->Value, (LONG64)Value);
+#else
+    return __atomic_exchange_n(&AtomicInt->Value, Value, __ATOMIC_RELAXED);
+#endif
+}
+
 static inline int64_t Rr_ExchangeAtomicIntAcquire(
     Rr_AtomicInt *AtomicInt,
-    int Value)
+    int64_t Value)
 {
 #if defined(RR_ATOMIC_MSC_X86)
     return (int64_t)_InterlockedExchange64(&AtomicInt->Value, (LONG64)Value);
@@ -127,12 +141,15 @@ static inline int64_t Rr_ExchangeAtomicIntAcquire(
 #endif
 }
 
-static inline int64_t Rr_AddAtomicIntRelaxed(Rr_AtomicInt *AtomicInt, int64_t Value)
+static inline int64_t Rr_AddAtomicIntRelaxed(
+    Rr_AtomicInt *AtomicInt,
+    int64_t Value)
 {
 #if defined(RR_ATOMIC_MSC_X86)
     return (int64_t)_InterlockedExchangeAdd64(&AtomicInt->Value, (LONG64)Value);
 #elif defined(RR_ATOMIC_MSC_ARM)
-    return (int64_t)_InterlockedExchangeAdd64_nf(&AtomicInt->Value, (LONG64)Value);
+    return (
+        int64_t)_InterlockedExchangeAdd64_nf(&AtomicInt->Value, (LONG64)Value);
 #else
     return __atomic_fetch_add(&AtomicInt->Value, Value, __ATOMIC_RELAXED);
 #endif
@@ -160,30 +177,76 @@ static inline int64_t Rr_DecrementAtomicIntRelaxed(Rr_AtomicInt *AtomicInt)
 #endif
 }
 
-static inline bool Rr_CompareExchangeAtomicIntRelease(
+static inline bool Rr_CompareExchangeAtomicIntRelaxed(
     Rr_AtomicInt *AtomicInt,
-    int64_t Expected,
+    int64_t *Expected,
     int64_t Desired)
 {
 #if defined(RR_ATOMIC_MSC_X86)
-    return _InterlockedCompareExchange64(
+    int64_t OldExpected = *Expected;
+    *Expected = (int64_t)_InterlockedCompareExchange64(
         &AtomicInt->Value,
         (LONG64)Desired,
-        (LONG64)Expected) == (LONG64)Expected;
+        (LONG64)*Expected);
+
+    return OldExpected == *Expected;
 #elif defined(RR_ATOMIC_MSC_ARM)
-    return _InterlockedCompareExchange64_rel(
+    int64_t OldExpected = *Expected;
+    *Expected = (int64_t)_InterlockedCompareExchange64_nf(
         &AtomicInt->Value,
         (LONG64)Desired,
-        (LONG64)Expected) == (LONG64)Expected;
+        (LONG64)*Expected);
+
+    return OldExpected == *Expected;
 #else
     return __atomic_compare_exchange_n(
         &AtomicInt->Value,
-        &Expected,
+        Expected,
         Desired,
         true,
-        __ATOMIC_RELEASE,
+        __ATOMIC_RELAXED,
         __ATOMIC_RELAXED);
 #endif
+}
+
+static inline int64_t Rr_MinAtomicIntRelaxed(
+    Rr_AtomicInt *AtomicInt,
+    int64_t Value)
+{
+#if defined(__has_builtin)
+#if __has_builtin(__atomic_fetch_min)
+    return __atomic_fetch_min(&AtomicInt->Value, Value, __ATOMIC_RELAXED);
+#endif
+#endif
+
+    int64_t OldValue = Rr_LoadAtomicIntRelaxed(AtomicInt);
+    int64_t NewValue = OldValue < Value ? OldValue : Value;
+    while (!Rr_CompareExchangeAtomicIntRelaxed(AtomicInt, &OldValue, NewValue))
+    {
+        NewValue = OldValue < Value ? OldValue : Value;
+    }
+
+    return OldValue;
+}
+
+static inline int64_t Rr_MaxAtomicIntRelaxed(
+    Rr_AtomicInt *AtomicInt,
+    int64_t Value)
+{
+#if defined(__has_builtin)
+#if __has_builtin(__atomic_fetch_max)
+    return __atomic_fetch_max(&AtomicInt->Value, Value, __ATOMIC_RELAXED);
+#endif
+#endif
+
+    int64_t OldValue = Rr_LoadAtomicIntRelaxed(AtomicInt);
+    int64_t NewValue = OldValue > Value ? OldValue : Value;
+    while (!Rr_CompareExchangeAtomicIntRelaxed(AtomicInt, &OldValue, NewValue))
+    {
+        NewValue = OldValue > Value ? OldValue : Value;
+    }
+
+    return OldValue;
 }
 
 /* Spinlock */
@@ -197,7 +260,7 @@ static inline void Rr_LockSpinlock(Rr_Spinlock *Spinlock)
         if (!Rr_ExchangeAtomicIntAcquire(Spinlock, 1))
         {
             return;
-       }
+        }
         while (Rr_LoadAtomicIntRelaxed(Spinlock))
         {
 #if defined(RR_SPINLOCK_EMIT_PAUSE)
