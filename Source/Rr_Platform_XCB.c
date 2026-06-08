@@ -24,6 +24,7 @@
 #include "Rr_LogMacro.h"
 #include "Rr_Vulkan.h"
 
+#include <Rr/Rr_System.h>
 #include <Rr/Rr_Utility.h>
 
 #include <xcb/randr.h>
