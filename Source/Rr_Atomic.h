@@ -127,6 +127,17 @@ static inline int64_t Rr_ExchangeAtomicIntAcquire(
 #endif
 }
 
+static inline int64_t Rr_AddAtomicIntRelaxed(Rr_AtomicInt *AtomicInt, int64_t Value)
+{
+#if defined(RR_ATOMIC_MSC_X86)
+    return (int64_t)_InterlockedExchangeAdd64(&AtomicInt->Value, (LONG64)Value);
+#elif defined(RR_ATOMIC_MSC_ARM)
+    return (int64_t)_InterlockedExchangeAdd64_nf(&AtomicInt->Value, (LONG64)Value);
+#else
+    return __atomic_fetch_add(&AtomicInt->Value, Value, __ATOMIC_RELAXED);
+#endif
+}
+
 static inline int64_t Rr_IncrementAtomicIntRelaxed(Rr_AtomicInt *AtomicInt)
 {
 #if defined(RR_ATOMIC_MSC_X86)
@@ -149,21 +160,21 @@ static inline int64_t Rr_DecrementAtomicIntRelaxed(Rr_AtomicInt *AtomicInt)
 #endif
 }
 
-static inline int64_t Rr_CompareExchangeAtomicIntRelease(
+static inline bool Rr_CompareExchangeAtomicIntRelease(
     Rr_AtomicInt *AtomicInt,
     int64_t Expected,
     int64_t Desired)
 {
 #if defined(RR_ATOMIC_MSC_X86)
-    return (int64_t)_InterlockedCompareExchange64(
+    return _InterlockedCompareExchange64(
         &AtomicInt->Value,
         (LONG64)Desired,
-        (LONG64)Expected);
+        (LONG64)Expected) == (LONG64)Expected;
 #elif defined(RR_ATOMIC_MSC_ARM)
-    return (int64_t)_InterlockedCompareExchange64_rel(
+    return _InterlockedCompareExchange64_rel(
         &AtomicInt->Value,
         (LONG64)Desired,
-        (LONG64)Expected);
+        (LONG64)Expected) == (LONG64)Expected;
 #else
     return __atomic_compare_exchange_n(
         &AtomicInt->Value,
@@ -186,7 +197,7 @@ static inline void Rr_LockSpinlock(Rr_Spinlock *Spinlock)
         if (!Rr_ExchangeAtomicIntAcquire(Spinlock, 1))
         {
             return;
-        }
+       }
         while (Rr_LoadAtomicIntRelaxed(Spinlock))
         {
 #if defined(RR_SPINLOCK_EMIT_PAUSE)
