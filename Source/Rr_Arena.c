@@ -146,12 +146,9 @@ Rr_TSArena *Rr_CreateTSArena(size_t ReserveSize, size_t CommitSize)
         .ReserveSize = ReserveSize,
         .CommitSize = CommitSize,
         .Reserved = ReserveSize,
-        //
-        // .Position = sizeof(Rr_TSArena),
-        // .Commited = CommitSize,
+        .Commited = CommitSize,
     };
     Rr_StoreAtomicIntRelaxed(&Arena->Position, sizeof(Rr_TSArena));
-    Rr_StoreAtomicIntRelaxed(&Arena->Commited, (int64_t)CommitSize);
 
     return Arena;
 }
@@ -186,25 +183,23 @@ void *Rr_TSAllocAlignedNoZero(size_t Size, size_t Align, Rr_TSArena *Arena)
         RR_LOG_ABORT("Arena reserved memory overflow!");
     }
 
-    int64_t OldCommited = Rr_LoadAtomicIntRelaxed(&Arena->Commited);
-    if (CurrentPosition > OldCommited)
+    while (CurrentPosition > (int64_t)Arena->Commited)
     {
-        void *CommitPtr = (char *)Arena + OldCommited;
-        int64_t CommitTarget =
-            RR_ALIGN_POW2(CurrentPosition, (int64_t)Arena->CommitSize);
-        int64_t CommitSize = CommitTarget - OldCommited;
-        Rr_CommitMemory(CommitPtr, (uintptr_t)CommitSize);
+        if (Rr_TryLockSpinlock(&Arena->Lock))
+        {
+            void *CommitPtr = (char *)Arena + (int64_t)Arena->Commited;
+            int64_t CommitTarget = RR_ALIGN_POW2(
+                CurrentPosition,
+                (int64_t)Arena->CommitSize);
+            CommitTarget = RR_MIN((int64_t)Arena->Reserved, CommitTarget);
+            int64_t CommitSize = CommitTarget - (int64_t)Arena->Commited;
+            Rr_CommitMemory(CommitPtr, (uintptr_t)CommitSize);
+            Arena->Commited = (uintptr_t)CommitTarget;
 
-        Rr_MaxAtomicIntRelaxed(&Arena->Commited, CommitTarget);
-        // int64_t ExchangeWith = CommitTarget;
-        // int64_t Exchanged =
-        //     Rr_ExchangeAtomicIntRelaxed(&Arena->Commited, ExchangeWith);
-        // while (Exchanged > ExchangeWith)
-        // {
-        //     ExchangeWith = Exchanged;
-        //     Exchanged =
-        //         Rr_ExchangeAtomicIntRelaxed(&Arena->Commited, ExchangeWith);
-        // }
+            Rr_UnlockSpinlock(&Arena->Lock);
+
+            break;
+        }
     }
 
     return (char *)Arena + NewPosition;

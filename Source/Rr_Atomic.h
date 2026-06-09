@@ -50,7 +50,7 @@
  * _HLEAcquire/_HLERelease can be ignored since it's an obscure feature and GCC
  * doesn't emit xacquire/xrelease by default. */
 
-/* I couldn't look into _acq/_rel/_nf disassembly for some reason, godbolt.org
+/* I couldn't look into _acq/_rel/_nf disassembly as godbolt.org
  * shows them as function calls. With no access to an ARM box right now I'm not
  * really motivated to dig deeper. */
 

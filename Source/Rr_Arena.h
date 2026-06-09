@@ -39,5 +39,6 @@ struct Rr_TSArena
     uintptr_t ReserveSize;
     uintptr_t CommitSize;
     uintptr_t Reserved;
-    Rr_AtomicInt Commited;
+    uintptr_t Commited;
+    Rr_Spinlock Lock;
 };
