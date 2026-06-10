@@ -252,10 +252,11 @@ int main()
 {
     static SBindingTestApp App;
 
-    Rr_AppConfig Config = {};
-    Config.Title = "BindingTest";
-    Config.InitFunc = []() { App.Init(); };
-    Config.IterateFunc = []() { App.Iterate(); };
-    Config.CleanupFunc = []() { App.Cleanup(); };
+    Rr_Config Config = {
+        .WindowTitle = "BindingTest",
+        .InitFunc = []() { App.Init(); },
+        .IterateFunc = []() { App.Iterate(); },
+        .CleanupFunc = []() { App.Cleanup(); },
+    };
     Rr_Run(&Config);
 }

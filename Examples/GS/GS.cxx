@@ -351,11 +351,12 @@ int main()
 {
     static SGSApp *App{};
 
-    Rr_AppConfig Config = {};
-    Config.Title = "GS";
-    Config.InitFunc = []() { App = new SGSApp(); };
-    Config.EventFunc = [](Rr_Event const *Event) { App->Event(Event); };
-    Config.IterateFunc = []() { App->Iterate(); };
-    Config.CleanupFunc = []() { delete App; };
+    Rr_Config Config = {
+        .WindowTitle = "GS",
+        .InitFunc = []() { App = new SGSApp(); },
+        .EventFunc = [](Rr_Event const *Event) { App->Event(Event); },
+        .IterateFunc = []() { App->Iterate(); },
+        .CleanupFunc = []() { delete App; },
+    };
     Rr_Run(&Config);
 }

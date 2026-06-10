@@ -1256,12 +1256,13 @@ int main()
 {
     static SBlurApp *App{};
 
-    Rr_AppConfig Config = {};
-    Config.Title = "Blur";
-    Config.WindowFlags |= RR_WINDOW_FLAGS_RESIZE_BIT;
-    Config.InitFunc = []() { App = new SBlurApp(); };
-    Config.EventFunc = [](Rr_Event const *Event) { App->Event(Event); };
-    Config.IterateFunc = []() { App->Iterate(); };
-    Config.CleanupFunc = []() { delete App; };
+    Rr_Config Config = {
+        .WindowTitle = "Blur",
+        .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
+        .InitFunc = []() { App = new SBlurApp(); },
+        .EventFunc = [](Rr_Event const *Event) { App->Event(Event); },
+        .IterateFunc = []() { App->Iterate(); },
+        .CleanupFunc = []() { delete App; },
+    };
     Rr_Run(&Config);
 }

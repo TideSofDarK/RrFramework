@@ -98,7 +98,8 @@ struct STransferThread
 
             auto Scratch = Rr_GetScratch(nullptr);
 
-            Rr_Graph *Graph = Rr_BeginGraph(RR_QUEUE_TYPE_DEDICATED_TRANSFER, Scratch.Arena);
+            Rr_Graph *Graph =
+                Rr_BeginGraph(RR_QUEUE_TYPE_DEDICATED_TRANSFER, Scratch.Arena);
 
             Rr_Image2D *Image2D = CreateImage2D(Graph, Path.c_str());
 
@@ -404,11 +405,12 @@ int main()
 {
     static STransferThreadApp App;
 
-    Rr_AppConfig Config = {};
-    Config.Title = "TransferThread";
-    Config.InitFunc = []() { App.Init(); };
-    Config.EventFunc = [](Rr_Event const *Event) { App.Event(Event); };
-    Config.IterateFunc = []() { App.Iterate(); };
-    Config.CleanupFunc = []() { App.Cleanup(); };
+    Rr_Config Config = {
+        .WindowTitle = "TransferThread",
+        .InitFunc = []() { App.Init(); },
+        .EventFunc = [](Rr_Event const *Event) { App.Event(Event); },
+        .IterateFunc = []() { App.Iterate(); },
+        .CleanupFunc = []() { App.Cleanup(); },
+    };
     Rr_Run(&Config);
 }

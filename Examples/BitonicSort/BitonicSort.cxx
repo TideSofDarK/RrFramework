@@ -316,10 +316,11 @@ static void Cleanup()
 
 int main()
 {
-    Rr_AppConfig Config = {};
-    Config.Title = "BitonicSort";
-    Config.InitFunc = Init;
-    Config.CleanupFunc = Cleanup;
-    Config.IterateFunc = Iterate;
+    Rr_Config Config = {
+        .WindowTitle = "BitonicSort",
+        .InitFunc = Init,
+        .IterateFunc = Iterate,
+        .CleanupFunc = Cleanup,
+    };
     Rr_Run(&Config);
 }

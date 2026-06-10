@@ -120,10 +120,11 @@ int main()
 {
     static SReadbackApp App;
 
-    Rr_AppConfig Config = {};
-    Config.Title = "Readback";
-    Config.InitFunc = []() { App.Init(); };
-    Config.IterateFunc = []() { App.Iterate(); };
-    Config.CleanupFunc = []() { App.Cleanup(); };
+    Rr_Config Config = {
+        .WindowTitle = "Readback",
+        .InitFunc = []() { App.Init(); },
+        .IterateFunc = []() { App.Iterate(); },
+        .CleanupFunc = []() { App.Cleanup(); },
+    };
     Rr_Run(&Config);
 }

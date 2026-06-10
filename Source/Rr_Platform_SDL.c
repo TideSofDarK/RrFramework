@@ -62,7 +62,7 @@ static inline Rr_Vec2 Rr_SDLConvertMousePosition(Rr_Vec2 Scaled)
     return Scaled;
 }
 
-bool Rr_InitPlatform(Rr_AppConfig *Config)
+bool Rr_InitPlatform(Rr_Config *Config)
 {
     assert(!gSDL.Initialized);
 
@@ -100,7 +100,7 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
         (int32_t)((float)PrimaryDisplayBounds.h * RR_WINDOWED_RATIO),
     };
     gSDL.Window = SDL_CreateWindow(
-        Config->Title,
+        Config->WindowTitle,
         WindowSize.X,
         WindowSize.Y,
         SDLWindowFlags);

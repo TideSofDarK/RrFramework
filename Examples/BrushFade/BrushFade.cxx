@@ -181,10 +181,11 @@ int main()
 {
     static SBrushFadeApp App;
 
-    Rr_AppConfig Config = {};
-    Config.Title = "BrushFade";
-    Config.InitFunc = []() { App.Init(); };
-    Config.IterateFunc = []() { App.Iterate(); };
-    Config.CleanupFunc = []() { App.Cleanup(); };
+    Rr_Config Config = {
+        .WindowTitle = "BrushFade",
+        .InitFunc = []() { App.Init(); },
+        .IterateFunc = []() { App.Iterate(); },
+        .CleanupFunc = []() { App.Cleanup(); },
+    };
     Rr_Run(&Config);
 }

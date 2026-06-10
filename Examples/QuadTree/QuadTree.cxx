@@ -992,11 +992,12 @@ int main()
 {
     static SQuadTreeApp App;
 
-    Rr_AppConfig Config = {};
-    Config.Title = "QuadTree";
-    Config.InitFunc = []() { App.Init(); };
-    Config.EventFunc = [](Rr_Event const *Event) { App.Event(Event); };
-    Config.IterateFunc = []() { App.Iterate(); };
-    Config.CleanupFunc = []() { App.Cleanup(); };
+    Rr_Config Config = {
+        .WindowTitle = "QuadTree",
+        .InitFunc = []() { App.Init(); },
+        .EventFunc = [](Rr_Event const *Event) { App.Event(Event); },
+        .IterateFunc = []() { App.Iterate(); },
+        .CleanupFunc = []() { App.Cleanup(); },
+    };
     Rr_Run(&Config);
 }

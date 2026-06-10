@@ -265,10 +265,11 @@ int main()
 {
     static SLayeredImageApp App;
 
-    Rr_AppConfig Config = {};
-    Config.Title = "LayeredImage";
-    Config.InitFunc = []() { App.Init(); };
-    Config.IterateFunc = []() { App.Iterate(); };
-    Config.CleanupFunc = []() { App.Cleanup(); };
+    Rr_Config Config = {
+        .WindowTitle = "LayeredImage",
+        .InitFunc = []() { App.Init(); },
+        .IterateFunc = []() { App.Iterate(); },
+        .CleanupFunc = []() { App.Cleanup(); },
+    };
     Rr_Run(&Config);
 }

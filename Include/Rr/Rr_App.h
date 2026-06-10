@@ -23,22 +23,31 @@
 
 #include <Rr/Rr_Platform.h>
 
-typedef struct Rr_AppConfig Rr_AppConfig;
-struct Rr_AppConfig
+typedef void (*Rr_InitFunc)(void);
+typedef void (*Rr_EventFunc)(Rr_Event const *);
+typedef void (*Rr_IterateFunc)(void);
+typedef void (*Rr_CleanupFunc)(void);
+
+typedef struct Rr_Config Rr_Config;
+struct Rr_Config
 {
     const char *Title;
+
+    const char *WindowTitle;
+    Rr_IntVec2 WindowSize; /* TODO */
     Rr_WindowFlags WindowFlags;
-    void (*InitFunc)(void);
-    void (*EventFunc)(Rr_Event const *Event);
-    void (*IterateFunc)(void);
-    void (*CleanupFunc)(void);
+
+    Rr_InitFunc InitFunc;
+    Rr_EventFunc EventFunc;
+    Rr_IterateFunc IterateFunc;
+    Rr_CleanupFunc CleanupFunc;
 };
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern void RR_CC Rr_Run(Rr_AppConfig *Config);
+extern void RR_CC Rr_Run(Rr_Config *Config);
 
 extern void RR_CC Rr_SetTargetFrameRate(uint32_t FramesPerSecond);
 

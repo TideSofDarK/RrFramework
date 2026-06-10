@@ -356,8 +356,8 @@ static void Cleanup(void)
 
 int main(int ArgC, char **ArgV)
 {
-    Rr_AppConfig Config = {
-        .Title = "GLTFCube",
+    Rr_Config Config = {
+        .WindowTitle = "GLTFCube",
         .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
         .InitFunc = Init,
         .EventFunc = Event,

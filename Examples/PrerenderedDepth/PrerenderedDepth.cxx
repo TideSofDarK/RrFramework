@@ -433,10 +433,11 @@ int main()
 {
     static SPrerenderedDepthApp App;
 
-    Rr_AppConfig Config = {};
-    Config.Title = "PrerenderedDepth";
-    Config.InitFunc = []() { App.Init(); };
-    Config.IterateFunc = []() { App.Iterate(); };
-    Config.CleanupFunc = []() { App.Cleanup(); };
+    Rr_Config Config = {
+        .WindowTitle = "PrerenderedDepth",
+        .InitFunc = []() { App.Init(); },
+        .IterateFunc = []() { App.Iterate(); },
+        .CleanupFunc = []() { App.Cleanup(); },
+    };
     Rr_Run(&Config);
 }

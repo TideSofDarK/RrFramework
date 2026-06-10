@@ -186,9 +186,8 @@ void *Rr_TSAllocAlignedNoZero(size_t Size, size_t Align, Rr_TSArena *Arena)
         if (Rr_TryLockSpinlock(&Arena->Lock))
         {
             void *CommitPtr = (char *)Arena + (int64_t)Arena->Commited;
-            int64_t CommitTarget = RR_ALIGN_POW2(
-                CurrentPosition,
-                (int64_t)Arena->CommitSize);
+            int64_t CommitTarget =
+                RR_ALIGN_POW2(CurrentPosition, (int64_t)Arena->CommitSize);
             CommitTarget = RR_MIN((int64_t)Arena->Reserved, CommitTarget);
             int64_t CommitSize = CommitTarget - (int64_t)Arena->Commited;
             Rr_CommitMemory(CommitPtr, (uintptr_t)CommitSize);

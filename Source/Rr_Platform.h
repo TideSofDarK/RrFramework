@@ -24,7 +24,7 @@
 
 #define RR_WINDOWED_RATIO 0.85f
 
-struct Rr_AppConfig;
+struct Rr_Config;
 
 #define RR_HIVE_TYPE               Rr_Event
 #define RR_HIVE_TYPE_NAME          Event
@@ -53,7 +53,7 @@ extern Rr_Platform gPlatform;
 
 /* Platform-Specific Functions */
 
-extern bool Rr_InitPlatform(struct Rr_AppConfig *Config);
+extern bool Rr_InitPlatform(struct Rr_Config *Config);
 
 extern void Rr_CleanupPlatform(void);
 

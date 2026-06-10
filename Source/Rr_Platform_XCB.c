@@ -762,7 +762,7 @@ static inline void *Rr_OpenVulkanModuleLinux(void)
     return Module;
 }
 
-bool Rr_InitPlatform(Rr_AppConfig *Config)
+bool Rr_InitPlatform(Rr_Config *Config)
 {
     assert(!gXCB.Initialized);
 
@@ -946,7 +946,7 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
         0);
     xcb_free_pixmap(Connection, Pixmap);
 
-    Rr_SetWindowTitle(Config->Title);
+    Rr_SetWindowTitle(Config->WindowTitle);
 
     xcb_flush(Connection);
 

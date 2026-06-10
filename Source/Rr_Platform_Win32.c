@@ -25,8 +25,8 @@
 
 #include "Rr_Vulkan.h"
 
-#include <Rr/Rr_Utility.h>
 #include <Rr/Rr_Thread.h>
+#include <Rr/Rr_Utility.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -606,7 +606,7 @@ Rr_Win32WindowProcedure(HWND Window, UINT Message, WPARAM WParam, LPARAM LParam)
     return DefWindowProcW(Window, Message, WParam, LParam);
 }
 
-bool Rr_InitPlatform(Rr_AppConfig *Config)
+bool Rr_InitPlatform(Rr_Config *Config)
 {
     assert(!gWin32.Initialized);
 
@@ -665,7 +665,7 @@ bool Rr_InitPlatform(Rr_AppConfig *Config)
         WindowPosition = Rr_IntV2(WindowedRect.left, WindowedRect.top);
     }
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
-    WCHAR *WindowName = Rr_UTF8ToWin32(Config->Title, Scratch.Arena);
+    WCHAR *WindowName = Rr_UTF8ToWin32(Config->WindowTitle, Scratch.Arena);
     Style &= ~WS_VISIBLE;
     HWND Window = CreateWindowExW(
         (DWORD)ExStyle,

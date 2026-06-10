@@ -255,7 +255,8 @@ class CGLTFScene
 
         auto Scratch = Rr_GetScratch(nullptr);
 
-        auto Graph = Rr_BeginGraph(RR_QUEUE_TYPE_DEDICATED_TRANSFER, Scratch.Arena);
+        auto Graph =
+            Rr_BeginGraph(RR_QUEUE_TYPE_DEDICATED_TRANSFER, Scratch.Arena);
 
         for (auto Index = 0; Index < Data->materials_count; ++Index)
         {
@@ -2248,12 +2249,13 @@ int main()
 {
     static CPBRRenderingApp *App{};
 
-    Rr_AppConfig Config = {};
-    Config.Title = "PBRRendering";
-    Config.WindowFlags |= RR_WINDOW_FLAGS_RESIZE_BIT;
-    Config.InitFunc = []() { App = new CPBRRenderingApp(); };
-    Config.EventFunc = [](Rr_Event const *Event) { App->Event(Event); };
-    Config.IterateFunc = []() { App->Iterate(); };
-    Config.CleanupFunc = []() { delete App; };
+    Rr_Config Config = {
+        .WindowTitle = "PBRRendering",
+        .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
+        .InitFunc = []() { App = new CPBRRenderingApp(); },
+        .EventFunc = [](Rr_Event const *Event) { App->Event(Event); },
+        .IterateFunc = []() { App->Iterate(); },
+        .CleanupFunc = []() { delete App; },
+    };
     Rr_Run(&Config);
 }

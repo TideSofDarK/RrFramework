@@ -258,8 +258,8 @@ int main()
 {
     static CFixedTimestep *App{};
 
-    Rr_AppConfig Config = {
-        .Title = "FixedTimestep",
+    Rr_Config Config = {
+        .WindowTitle = "FixedTimestep",
         .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
         .InitFunc = []() { App = new CFixedTimestep(); },
         .IterateFunc = []() { App->Iterate(); },

@@ -73,7 +73,7 @@ void Rr_ReleaseMemory(void *Data, size_t Size)
 
 bool Rr_CommitMemory(void *Data, size_t Size)
 {
-    if(VirtualAlloc(Data, Size, MEM_COMMIT, PAGE_READWRITE) == NULL)
+    if (VirtualAlloc(Data, Size, MEM_COMMIT, PAGE_READWRITE) == NULL)
     {
         /* RR_LOG("error %d", GetLastError()); */
 
@@ -85,7 +85,14 @@ bool Rr_CommitMemory(void *Data, size_t Size)
 
 void Rr_DecommitMemory(void *Data, size_t Size)
 {
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 6250)
+#endif
     VirtualFree(Data, Size, MEM_DECOMMIT);
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 }
 
 static HANDLE Rr_GetWaitableEvent(void)

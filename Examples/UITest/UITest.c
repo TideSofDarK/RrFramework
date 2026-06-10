@@ -1073,8 +1073,8 @@ static void Cleanup(void)
 
 int main(int ArgC, char **ArgV)
 {
-    Rr_AppConfig Config = {
-        .Title = "UITest",
+    Rr_Config Config = {
+        .WindowTitle = "UITest",
         .InitFunc = Init,
         .IterateFunc = Iterate,
         .CleanupFunc = Cleanup,

@@ -31,7 +31,7 @@ extern void RR_CC Rr_InitThreadContext(void);
 
 extern void RR_CC Rr_CleanupThreadContext(void);
 
-extern Rr_Arena * RR_CC Rr_GetPermanent(void);
+extern Rr_Arena *RR_CC Rr_GetPermanent(void);
 
 extern Rr_Scratch RR_CC Rr_GetScratch(Rr_Arena *Conflict);
 

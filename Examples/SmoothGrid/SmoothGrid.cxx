@@ -260,12 +260,13 @@ int main()
 {
     static SSmoothGridApp *App;
 
-    Rr_AppConfig Config = {};
-    Config.Title = "SmoothGrid";
-    Config.WindowFlags |= RR_WINDOW_FLAGS_RESIZE_BIT;
-    Config.InitFunc = []() { App = new SSmoothGridApp(); };
-    Config.EventFunc = [](Rr_Event const *Event) { App->Event(Event); };
-    Config.IterateFunc = []() { App->Iterate(); };
-    Config.CleanupFunc = []() { delete App; };
+    Rr_Config Config = {
+        .WindowTitle = "SmoothGrid",
+        .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
+        .InitFunc = []() { App = new SSmoothGridApp(); },
+        .EventFunc = [](Rr_Event const *Event) { App->Event(Event); },
+        .IterateFunc = []() { App->Iterate(); },
+        .CleanupFunc = []() { delete App; },
+    };
     Rr_Run(&Config);
 }

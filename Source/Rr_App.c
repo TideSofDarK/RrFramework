@@ -125,10 +125,10 @@ static inline void Rr_DispatchEvents(void)
     Rr_DestroyScratch(Scratch);
 }
 
-void Rr_Run(Rr_AppConfig *Config)
+void Rr_Run(Rr_Config *Config)
 {
     assert(gApp == NULL && "You shouldn't call Rr_Run() more than once!");
-    assert(Config->Title != NULL);
+    assert(Config->WindowTitle != NULL);
     assert(Config->IterateFunc != NULL);
 
     Rr_InitSystem();
@@ -152,7 +152,7 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_InitFrameTime(&gApp->FrameTime);
 
-    Rr_InitRenderer(Config->Title);
+    Rr_InitRenderer(Config->Title ? Config->Title : Config->WindowTitle);
 
     Rr_NewFrame();
     Rr_BeginFrameSection("Rr.MainLoop");

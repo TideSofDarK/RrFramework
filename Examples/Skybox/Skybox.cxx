@@ -401,12 +401,13 @@ int main()
 {
     static SSkyboxApp App;
 
-    Rr_AppConfig Config = {};
-    Config.Title = "Skybox";
-    Config.WindowFlags |= RR_WINDOW_FLAGS_RESIZE_BIT;
-    Config.InitFunc = []() { App.Init(); };
-    Config.EventFunc = [](Rr_Event const *Event) { App.Event(Event); };
-    Config.IterateFunc = []() { App.Iterate(); };
-    Config.CleanupFunc = []() { App.Cleanup(); };
+    Rr_Config Config = {
+        .WindowTitle = "Skybox",
+        .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
+        .InitFunc = []() { App.Init(); },
+        .EventFunc = [](Rr_Event const *Event) { App.Event(Event); },
+        .IterateFunc = []() { App.Iterate(); },
+        .CleanupFunc = []() { App.Cleanup(); },
+    };
     Rr_Run(&Config);
 }

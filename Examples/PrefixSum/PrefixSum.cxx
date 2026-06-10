@@ -129,10 +129,11 @@ static void Cleanup()
 
 int main()
 {
-    Rr_AppConfig Config = {};
-    Config.Title = "PrefixSum";
-    Config.InitFunc = Init;
-    Config.CleanupFunc = Cleanup;
-    Config.IterateFunc = Iterate;
+    Rr_Config Config = {
+        .WindowTitle = "PrefixSum",
+        .InitFunc = Init,
+        .IterateFunc = Iterate,
+        .CleanupFunc = Cleanup,
+    };
     Rr_Run(&Config);
 }

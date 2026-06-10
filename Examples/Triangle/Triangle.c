@@ -95,8 +95,8 @@ static void Cleanup(void)
 
 int main(int ArgC, char **ArgV)
 {
-    Rr_AppConfig Config = {
-        .Title = "Triangle",
+    Rr_Config Config = {
+        .WindowTitle = "Triangle",
         .InitFunc = Init,
         .CleanupFunc = Cleanup,
         .IterateFunc = Iterate,
