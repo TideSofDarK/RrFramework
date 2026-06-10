@@ -144,10 +144,9 @@ Rr_PipelineLayout *Rr_GetPipelineLayout(
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
-    *MapRef = Rr_PushPipelineLayoutIntoHiveLocked(
+    *MapRef = Rr_PushPipelineLayoutIntoHive(
                   &gRenderer->PipelineLayoutStorage.Hive,
-                  gRenderer->Arena,
-                  &gRenderer->Lock)
+                  Rr_GetPermanent())
                   .Element;
     PipelineLayout = *MapRef;
     RR_ZERO_PTR(PipelineLayout);
@@ -314,10 +313,9 @@ Rr_ComputePipeline *Rr_CreateComputePipelineWithLayout(
     {
         Rr_LockSpinlock(&gRenderer->ComputePipelinesLock);
 
-        ComputePipeline = Rr_PushComputePipelineIntoHiveLocked(
+        ComputePipeline = Rr_PushComputePipelineIntoHive(
                               &gRenderer->ComputePipelines,
-                              gRenderer->Arena,
-                              &gRenderer->Lock)
+                              Rr_GetPermanent())
                               .Element;
 
         Rr_UnlockSpinlock(&gRenderer->ComputePipelinesLock);
@@ -358,10 +356,9 @@ void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline)
 
     Rr_LockSpinlock(&gRenderer->ReleasedComputePipelinesLock);
 
-    *Rr_PushHandleIntoHiveLocked(
+    *Rr_PushHandleIntoHive(
          &gRenderer->ReleasedComputePipelines,
-         gRenderer->Arena,
-         &gRenderer->Lock)
+         Rr_GetPermanent())
          .Element = ComputePipeline;
 
     Rr_UnlockSpinlock(&gRenderer->ReleasedComputePipelinesLock);
@@ -744,10 +741,9 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
     {
         Rr_LockSpinlock(&gRenderer->GraphicsPipelinesLock);
 
-        GraphicsPipeline = Rr_PushGraphicsPipelineIntoHiveLocked(
+        GraphicsPipeline = Rr_PushGraphicsPipelineIntoHive(
                                &gRenderer->GraphicsPipelines,
-                               gRenderer->Arena,
-                               &gRenderer->Lock)
+                               Rr_GetPermanent())
                                .Element;
 
         Rr_UnlockSpinlock(&gRenderer->GraphicsPipelinesLock);
@@ -795,10 +791,9 @@ void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 
     Rr_LockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
 
-    *Rr_PushHandleIntoHiveLocked(
+    *Rr_PushHandleIntoHive(
          &gRenderer->ReleasedGraphicsPipelines,
-         gRenderer->Arena,
-         &gRenderer->Lock)
+         Rr_GetPermanent())
          .Element = GraphicsPipeline;
 
     Rr_UnlockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
@@ -848,10 +843,9 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
-    *MapRef = Rr_PushDescriptorSetLayoutIntoHiveLocked(
+    *MapRef = Rr_PushDescriptorSetLayoutIntoHive(
                   &gRenderer->DescriptorSetLayoutStorage.Hive,
-                  gRenderer->Arena,
-                  &gRenderer->Lock)
+                  Rr_GetPermanent())
                   .Element;
     DescriptorSetLayout = *MapRef;
     RR_ZERO_PTR(DescriptorSetLayout);

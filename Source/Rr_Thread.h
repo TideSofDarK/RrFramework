@@ -31,11 +31,14 @@
 typedef struct Rr_ThreadContext Rr_ThreadContext;
 struct Rr_ThreadContext
 {
+    bool Initialized;
     bool Main;
     struct Rr_Graph *Graph;
     struct Rr_CommandPools *CommandPools;
-    Rr_Arena *Arena;
+    Rr_Arena *PermanentArena;
     Rr_Arena *ScratchArenas[2];
 };
+
+extern void Rr_SetMainThread(void);
 
 extern Rr_ThreadContext *Rr_GetThreadContext(void);

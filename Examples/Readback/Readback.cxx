@@ -31,9 +31,11 @@ struct SReadbackApp
             RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_READBACK_BIT);
     }
 
-    void Iterate()
+    void ComputeAndCopyToHost()
     {
-        Rr_Graph *SubGraph = Rr_BeginGraph(RR_QUEUE_TYPE_MAIN);
+        auto Scratch = Rr_GetScratch(nullptr);
+
+        Rr_Graph *SubGraph = Rr_BeginGraph(RR_QUEUE_TYPE_MAIN, Scratch.Arena);
 
         Rr_GraphNode *ComputeNode = Rr_AddComputeNode(SubGraph);
         Rr_BindComputePipeline(ComputeNode, ComputePipeline);
@@ -51,6 +53,13 @@ struct SReadbackApp
             0);
 
         Rr_EndGraph(SubGraph);
+
+        Rr_DestroyScratch(Scratch);
+    }
+
+    void Iterate()
+    {
+        ComputeAndCopyToHost();
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
         Rr_IntVec2 SwapchainExtent = Rr_GetImage2DExtent(SwapchainImage);

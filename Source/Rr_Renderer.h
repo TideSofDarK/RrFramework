@@ -151,7 +151,6 @@ struct Rr_Renderer
     Rr_Queue DedicatedTransferQueue;
     Rr_Queue AsyncComputeQueue;
 
-    /* TODO: Make sure this doesn't need synchronization in general case. */
     VmaAllocator Allocator;
 
     RR_ARRAY(VkSemaphore) Semaphores;
@@ -213,8 +212,8 @@ struct Rr_Renderer
     Rr_Spinlock DescriptorPoolListLock;
     uint32_t DescriptorPoolListCount;
 
-    Rr_Arena *Arena;
-    Rr_Spinlock Lock;
+    // Rr_Arena *Arena;
+    // Rr_Spinlock Lock;
 };
 
 extern void Rr_InitRenderer(const char *Title);

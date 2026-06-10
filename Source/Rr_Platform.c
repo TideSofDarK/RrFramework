@@ -23,8 +23,8 @@
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_PLATFORM
 #include "Rr_LogMacro.h"
 
-#include "Rr_Thread.h"
 #include "Rr_App.h"
+#include "Rr_Thread.h"
 
 #include <Rr/Rr_Utility.h>
 
@@ -91,11 +91,8 @@ Rr_MouseButtonFlags Rr_GetMouseState(void)
 
 static inline Rr_Event *Rr_AddEvent(void)
 {
-    Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
-
-    Rr_EventHiveIterator It =
-        Rr_PushEventIntoHive(&gPlatform.EventHive, ThreadContext->Arena);
-    return It.Element;
+    return Rr_PushEventIntoHive(&gPlatform.EventHive, Rr_GetPermanent())
+        .Element;
 }
 
 void Rr_AddQuitRequestedEvent(void)

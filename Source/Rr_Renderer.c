@@ -294,14 +294,10 @@ static bool Rr_InitSwapchain(void)
 
     if (gRenderer->SwapchainImages.Capacity < ImageCount)
     {
-        Rr_LockSpinlock(&gRenderer->Lock);
-
         RR_RESERVE_ARRAY(
             &gRenderer->SwapchainImages,
             ImageCount,
-            gRenderer->Arena);
-
-        Rr_UnlockSpinlock(&gRenderer->Lock);
+            Rr_GetPermanent());
     }
 
     gRenderer->SwapchainImages.Count = ImageCount;
@@ -545,12 +541,9 @@ static void Rr_CleanupEmptyDescriptorSet(void)
 
 void Rr_InitRenderer(const char *Title)
 {
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
-    Rr_Arena *Arena = Rr_CreateDefaultArena();
+    Rr_Arena *Arena = Rr_GetPermanent();
 
     gRenderer = Rr_Alloc(sizeof(Rr_Renderer), Arena);
-    gRenderer->Arena = Arena;
 
     Rr_InitLoader(&gRenderer->Loader);
     Rr_InitInstance(&gRenderer->Loader, Title, &gRenderer->Instance);
@@ -570,8 +563,6 @@ void Rr_InitRenderer(const char *Title)
 
     Rr_InitFramebufferMap(&gRenderer->FramebufferMap, Arena);
     Rr_InitRenderPassMap(&gRenderer->RenderPassMap, Arena);
-
-    Rr_DestroyScratch(Scratch);
 }
 
 void Rr_WaitIdle(void)
@@ -782,8 +773,6 @@ void Rr_CleanupRenderer(void)
     Instance->DestroySurfaceKHR(Instance->Handle, gRenderer->Surface, NULL);
     Device->DestroyDevice(Device->Handle, NULL);
     Instance->DestroyInstance(Instance->Handle, NULL);
-
-    Rr_DestroyArena(gRenderer->Arena);
 
     gRenderer = NULL;
 }
@@ -1348,15 +1337,13 @@ VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey *Key)
         &Handle);
 
     Rr_LockSpinlock(&gRenderer->RenderPassMapLock);
-    Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_InsertIntoRenderPassMap(
         &gRenderer->RenderPassMap,
         Key,
         &Handle,
-        gRenderer->Arena);
+        Rr_GetPermanent());
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
     Rr_UnlockSpinlock(&gRenderer->RenderPassMapLock);
 
     Rr_DestroyScratch(Scratch);
@@ -1399,15 +1386,13 @@ VkFramebuffer Rr_GetFramebuffer(Rr_FramebufferKey *Key)
     Device->CreateFramebuffer(Device->Handle, &CreateInfo, NULL, &Handle);
 
     Rr_LockSpinlock(&gRenderer->FramebufferMapLock);
-    Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_InsertIntoFramebufferMap(
         &gRenderer->FramebufferMap,
         Key,
         &Handle,
-        gRenderer->Arena);
+        Rr_GetPermanent());
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
     Rr_UnlockSpinlock(&gRenderer->FramebufferMapLock);
 
     return Handle;
@@ -1490,11 +1475,9 @@ void Rr_ReleaseVulkanSemaphore(VkSemaphore Semaphore)
     }
 
     Rr_LockSpinlock(&gRenderer->SemaphoresLock);
-    Rr_LockSpinlock(&gRenderer->Lock);
 
-    *RR_PUSH_INTO_ARRAY(&gRenderer->Semaphores, gRenderer->Arena) = Semaphore;
+    *RR_PUSH_INTO_ARRAY(&gRenderer->Semaphores, Rr_GetPermanent()) = Semaphore;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
     Rr_UnlockSpinlock(&gRenderer->SemaphoresLock);
 }
 
@@ -1539,11 +1522,9 @@ void Rr_ReleaseVulkanFence(VkFence Fence)
     Rr_Device *Device = &gRenderer->Device;
 
     Rr_LockSpinlock(&gRenderer->FencesLock);
-    Rr_LockSpinlock(&gRenderer->Lock);
 
-    *RR_PUSH_INTO_ARRAY(&gRenderer->Fences, gRenderer->Arena) = Fence;
+    *RR_PUSH_INTO_ARRAY(&gRenderer->Fences, Rr_GetPermanent()) = Fence;
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
     Rr_UnlockSpinlock(&gRenderer->FencesLock);
 
     Device->ResetFences(Device->Handle, 1, &Fence);
@@ -1573,10 +1554,8 @@ Rr_CommandPools *Rr_AcquireCommandPools(void)
     {
         Rr_UnlockSpinlock(&gRenderer->CommandPoolsLock);
 
-        Rr_LockSpinlock(&gRenderer->Lock);
         ThreadContext->CommandPools =
-            Rr_AllocNoZero(sizeof(Rr_CommandPools), gRenderer->Arena);
-        Rr_UnlockSpinlock(&gRenderer->Lock);
+            Rr_AllocNoZero(sizeof(Rr_CommandPools), Rr_GetPermanent());
 
         Device->CreateCommandPool(
             Device->Handle,

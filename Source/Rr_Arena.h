@@ -24,6 +24,9 @@
 
 #include "Rr_Atomic.h"
 
+static const size_t RR_ARENA_RESERVE_DEFAULT = RR_GIGABYTES(4);
+static const size_t RR_ARENA_COMMIT_DEFAULT = RR_KILOBYTES(64);
+
 struct Rr_Arena
 {
     uintptr_t Position;
@@ -31,6 +34,7 @@ struct Rr_Arena
     uintptr_t CommitSize;
     uintptr_t Reserved;
     uintptr_t Commited;
+    Rr_Arena *Next;
 };
 
 struct Rr_TSArena

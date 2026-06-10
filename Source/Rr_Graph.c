@@ -37,7 +37,7 @@ Rr_Graph *Rr_GetGraph(void)
     return Rr_GetCurrentFrame()->Graph;
 }
 
-Rr_Graph *Rr_BeginGraph(Rr_QueueType QueueType)
+Rr_Graph *Rr_BeginGraph(Rr_QueueType QueueType, Rr_Arena *Arena)
 {
     assert(Rr_HasQueue(QueueType));
 
@@ -47,13 +47,10 @@ Rr_Graph *Rr_BeginGraph(Rr_QueueType QueueType)
         !ThreadContext->Graph &&
         "Graph recording is already on; did you forget to call Rr_EndGraph()?");
 
-    size_t ArenaPosition = ThreadContext->Arena->Position;
-
-    ThreadContext->Graph = Rr_Alloc(sizeof(Rr_Graph), ThreadContext->Arena);
+    ThreadContext->Graph = Rr_Alloc(sizeof(Rr_Graph), Arena);
     ThreadContext->Graph->QueueType = QueueType;
     ThreadContext->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
-    ThreadContext->Graph->ArenaPosition = ArenaPosition;
-    ThreadContext->Graph->Arena = ThreadContext->Arena;
+    ThreadContext->Graph->Arena = Arena;
 
     return ThreadContext->Graph;
 }
@@ -150,7 +147,6 @@ Cleanup:
     /* TODO: Check whether semaphores are needed here considering that we always
      * wait on a fence. */
 
-    Graph->Arena->Position = Graph->ArenaPosition;
     Rr_GetThreadContext()->Graph = NULL;
 }
 

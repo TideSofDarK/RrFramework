@@ -39,11 +39,8 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
 
     Rr_LockSpinlock(&gRenderer->BuffersLock);
 
-    Rr_Buffer *Buffer = Rr_PushBufferIntoHiveLocked(
-                            &gRenderer->Buffers,
-                            gRenderer->Arena,
-                            &gRenderer->Lock)
-                            .Element;
+    Rr_Buffer *Buffer =
+        Rr_PushBufferIntoHive(&gRenderer->Buffers, Rr_GetPermanent()).Element;
 
     Rr_UnlockSpinlock(&gRenderer->BuffersLock);
 
@@ -135,8 +132,6 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
         AllocatedBuffer->SyncState = RR_EMPTY_SYNC;
 
-        Rr_LockSpinlock(&gRenderer->Lock);
-
         VmaAllocationInfo AllocationInfo;
         VkResult Result = vmaCreateBuffer(
             gRenderer->Allocator,
@@ -145,8 +140,6 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
             &AllocatedBuffer->Handle,
             &AllocatedBuffer->Allocation,
             &AllocationInfo);
-
-        Rr_UnlockSpinlock(&gRenderer->Lock);
 
         assert(Result == VK_SUCCESS);
 
@@ -186,10 +179,7 @@ void Rr_ReleaseBuffer(Rr_Buffer *Buffer)
 
     Rr_LockSpinlock(&gRenderer->ReleasedBuffersLock);
 
-    *Rr_PushHandleIntoHiveLocked(
-         &gRenderer->ReleasedBuffers,
-         gRenderer->Arena,
-         &gRenderer->Lock)
+    *Rr_PushHandleIntoHive(&gRenderer->ReleasedBuffers, Rr_GetPermanent())
          .Element = Buffer;
 
     Rr_UnlockSpinlock(&gRenderer->ReleasedBuffersLock);
@@ -203,14 +193,10 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
 
-        Rr_LockSpinlock(&gRenderer->Lock);
-
         vmaDestroyBuffer(
             gRenderer->Allocator,
             AllocatedBuffer->Handle,
             AllocatedBuffer->Allocation);
-
-        Rr_UnlockSpinlock(&gRenderer->Lock);
     }
 
     Rr_LockSpinlock(&gRenderer->BuffersLock);

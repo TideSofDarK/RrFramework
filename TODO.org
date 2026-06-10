@@ -37,18 +37,22 @@
 - [X] Framebuffers/SyncStates require different hash table implementation. Current implementation is a mess...
 - [X] Query platform mouse position before polling.
 - [X] Remove GLTF API.
+- [X] Make threads claim arenas from a free list.
 - [ ] Minimal error handling pass.
       Implement Rr_GetErrorString().
 	1) Image/buffer creation.
 	2) Graph node creation.
 	3) Binding resources.
+- [ ] Extend Rr_AppConfig.
+      More window options.
+      Arena sizes.
+      More?
 - [ ] Documentation.
 - [ ] Custom assertions.
 - [ ] Support for immutable buffers/images that don't require synchronization.
 - [ ] Public API should use const where applicable.
 - [ ] Does PushXXXIntoHive need to return iterator?
 - [ ] Releasing same resource (buffer, image, etc) twice leads to annoying bugs.
-- [ ] Implement thread-safe arenas for permanent storage.
 - [ ] Replace VMA with custom allocator.
 - [ ] Replace hash trie usage with Rr_HashTable.h where applicable.
 - [ ] Array implementation is a bit ugly...

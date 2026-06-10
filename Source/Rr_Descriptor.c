@@ -65,13 +65,10 @@ Rr_DescriptorPoolList *Rr_AcquireDescriptorPoolList(void)
         };
 
         VkDescriptorPool Pool;
-
         Device->CreateDescriptorPool(Device->Handle, &CreateInfo, NULL, &Pool);
 
-        Rr_LockSpinlock(&gRenderer->Lock);
         Result =
-            Rr_AllocNoZero(sizeof(Rr_DescriptorPoolList), gRenderer->Arena);
-        Rr_UnlockSpinlock(&gRenderer->Lock);
+            Rr_AllocNoZero(sizeof(Rr_DescriptorPoolList), Rr_GetPermanent());
 
         Result->Handle = Pool;
 

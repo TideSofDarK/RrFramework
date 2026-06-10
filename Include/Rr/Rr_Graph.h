@@ -36,7 +36,7 @@ extern "C" {
 
 extern Rr_Graph *RR_CC Rr_GetGraph(void);
 
-extern Rr_Graph *RR_CC Rr_BeginGraph(Rr_QueueType QueueType);
+extern Rr_Graph *RR_CC Rr_BeginGraph(Rr_QueueType QueueType, Rr_Arena *Arena);
 
 extern void RR_CC Rr_EndGraph(Rr_Graph *Graph);
 

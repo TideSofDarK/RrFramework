@@ -44,6 +44,17 @@
 #endif
 #endif
 
+static inline void *Rr_ExchangeAtomicPointerRelaxed(void **Pointer, void *Value)
+{
+#if defined(RR_ATOMIC_MSC_X86)
+    return _InterlockedExchangePointer(Pointer, Value);
+#elif defined(RR_ATOMIC_MSC_ARM)
+    return _InterlockedExchangePointer_nf(Pointer, Value);
+#else
+    return __atomic_exchange_n(Pointer, Value, __ATOMIC_RELAXED);
+#endif
+}
+
 /* I have tested some stuff on godbolt.org and learned that with MSVC + x86:
  * Load-relaxed and store-relaxed don't need intrinsics.
  * Load-acquire and store-release don't need intrinsics.

@@ -253,7 +253,9 @@ class CGLTFScene
     {
         Rr_InitThreadContext();
 
-        auto Graph = Rr_BeginGraph(RR_QUEUE_TYPE_DEDICATED_TRANSFER);
+        auto Scratch = Rr_GetScratch(nullptr);
+
+        auto Graph = Rr_BeginGraph(RR_QUEUE_TYPE_DEDICATED_TRANSFER, Scratch.Arena);
 
         for (auto Index = 0; Index < Data->materials_count; ++Index)
         {
@@ -312,6 +314,8 @@ class CGLTFScene
         }
 
         Rr_EndGraph(Graph);
+
+        Rr_DestroyScratch(Scratch);
 
         Rr_CleanupThreadContext();
     }

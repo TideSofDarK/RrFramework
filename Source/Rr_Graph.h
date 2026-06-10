@@ -397,7 +397,6 @@ struct Rr_Graph
 #endif
 
     Rr_Arena *Arena;
-    uintptr_t ArenaPosition;
 };
 
 extern void Rr_MarkSamplerUsed(Rr_Graph *Graph, Rr_Sampler *Sampler);

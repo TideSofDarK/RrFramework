@@ -36,11 +36,8 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
 
     Rr_LockSpinlock(&gRenderer->SamplersLock);
 
-    Rr_SamplerHiveIterator It = Rr_PushSamplerIntoHiveLocked(
-        &gRenderer->Samplers,
-        gRenderer->Arena,
-        &gRenderer->Lock);
-    Rr_Sampler *Sampler = It.Element;
+    Rr_Sampler *Sampler =
+        Rr_PushSamplerIntoHive(&gRenderer->Samplers, Rr_GetPermanent()).Element;
 
     Rr_UnlockSpinlock(&gRenderer->SamplersLock);
 
@@ -92,10 +89,7 @@ void Rr_ReleaseSampler(Rr_Sampler *Sampler)
 
     Rr_LockSpinlock(&gRenderer->ReleasedSamplersLock);
 
-    *Rr_PushHandleIntoHiveLocked(
-         &gRenderer->ReleasedSamplers,
-         gRenderer->Arena,
-         &gRenderer->Lock)
+    *Rr_PushHandleIntoHive(&gRenderer->ReleasedSamplers, Rr_GetPermanent())
          .Element = Sampler;
 
     Rr_UnlockSpinlock(&gRenderer->ReleasedSamplersLock);
@@ -120,17 +114,17 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
 
 Rr_ImageViewMap *Rr_CreateImageViewMap(void)
 {
+    Rr_Arena *Arena = Rr_GetPermanent();
+
     Rr_LockSpinlock(&gRenderer->ImageViewMapsLock);
-    Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_ImageViewMap *ImageViewMap =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->ImageViewMaps, gRenderer->Arena);
+        RR_GET_FREE_LIST_ITEM(&gRenderer->ImageViewMaps, Arena);
     if (!ImageViewMap->Capacity)
     {
-        Rr_InitImageViewMap(ImageViewMap, gRenderer->Arena);
+        Rr_InitImageViewMap(ImageViewMap, Arena);
     }
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
     Rr_UnlockSpinlock(&gRenderer->ImageViewMapsLock);
 
     return ImageViewMap;
@@ -228,15 +222,13 @@ VkImageView Rr_GetVulkanImageView(
 #endif
 
     Rr_LockSpinlock(&AllocatedImage->ImageViewMapLock);
-    Rr_LockSpinlock(&gRenderer->Lock);
 
     Rr_InsertIntoImageViewMap(
         AllocatedImage->ImageViewMap,
         Key,
         &Handle,
-        gRenderer->Arena);
+        Rr_GetPermanent());
 
-    Rr_UnlockSpinlock(&gRenderer->Lock);
     Rr_UnlockSpinlock(&AllocatedImage->ImageViewMapLock);
 
     return Handle;
@@ -259,11 +251,8 @@ static Rr_Image *Rr_CreateImage(
 {
     Rr_LockSpinlock(&gRenderer->ImagesLock);
 
-    Rr_ImageHiveIterator It = Rr_PushImageIntoHiveLocked(
-        &gRenderer->Images,
-        gRenderer->Arena,
-        &gRenderer->Lock);
-    Rr_Image *Image = It.Element;
+    Rr_Image *Image =
+        Rr_PushImageIntoHive(&gRenderer->Images, Rr_GetPermanent()).Element;
 
     Rr_UnlockSpinlock(&gRenderer->ImagesLock);
 
@@ -370,8 +359,6 @@ static Rr_Image *Rr_CreateImage(
         AllocatedImage->SyncState = RR_EMPTY_SYNC;
         AllocatedImage->Container = Image;
 
-        Rr_LockSpinlock(&gRenderer->Lock);
-
         VkResult Result = vmaCreateImage(
             gRenderer->Allocator,
             &ImageCreateInfo,
@@ -379,8 +366,6 @@ static Rr_Image *Rr_CreateImage(
             &AllocatedImage->Handle,
             &AllocatedImage->Allocation,
             NULL);
-
-        Rr_UnlockSpinlock(&gRenderer->Lock);
 
         assert(Result == VK_SUCCESS);
 
@@ -415,10 +400,7 @@ void Rr_ReleaseImage(Rr_Image *Image)
 
     Rr_LockSpinlock(&gRenderer->ReleasedImagesLock);
 
-    *Rr_PushHandleIntoHiveLocked(
-         &gRenderer->ReleasedImages,
-         gRenderer->Arena,
-         &gRenderer->Lock)
+    *Rr_PushHandleIntoHive(&gRenderer->ReleasedImages, Rr_GetPermanent())
          .Element = Image;
 
     Rr_UnlockSpinlock(&gRenderer->ReleasedImagesLock);
@@ -440,14 +422,10 @@ void Rr_DestroyImage(Rr_Image *Image)
             AllocatedImage->ImageViewMap,
             DestroyFramebuffers);
 
-        Rr_LockSpinlock(&gRenderer->Lock);
-
         vmaDestroyImage(
             gRenderer->Allocator,
             AllocatedImage->Handle,
             AllocatedImage->Allocation);
-
-        Rr_UnlockSpinlock(&gRenderer->Lock);
     }
 
     Rr_LockSpinlock(&gRenderer->ImagesLock);

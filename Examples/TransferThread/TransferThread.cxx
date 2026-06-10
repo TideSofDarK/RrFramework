@@ -96,7 +96,9 @@ struct STransferThread
 
             Thread->IsBusy = true;
 
-            Rr_Graph *Graph = Rr_BeginGraph(RR_QUEUE_TYPE_DEDICATED_TRANSFER);
+            auto Scratch = Rr_GetScratch(nullptr);
+
+            Rr_Graph *Graph = Rr_BeginGraph(RR_QUEUE_TYPE_DEDICATED_TRANSFER, Scratch.Arena);
 
             Rr_Image2D *Image2D = CreateImage2D(Graph, Path.c_str());
 
@@ -109,6 +111,8 @@ struct STransferThread
             Rr_TransferImageToQueue(Graph, Image2D, RR_QUEUE_TYPE_MAIN);
 
             Rr_EndGraph(Graph);
+
+            Rr_DestroyScratch(Scratch);
 
             std::unique_lock ImagesLock{ Thread->ImagesMutex };
             Thread->ImagesQueue.push(Image2D);

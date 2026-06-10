@@ -9322,8 +9322,10 @@ void Rr_UIDebugOverlay(void)
 
         Rr_UIBeginWindowEx("Memory", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
         {
-            Rr_UIDebugOverlayArena(Rr_GetThreadContext()->Arena, "Main Thread");
-            Rr_UIDebugOverlayArena(gRenderer->Arena, "Renderer");
+            Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
+            Rr_UIDebugOverlayArena(ThreadContext->PermanentArena, "Main Thread Permanent");
+            Rr_UIDebugOverlayArena(ThreadContext->ScratchArenas[0], "Main Thread Scratch#0");
+            Rr_UIDebugOverlayArena(ThreadContext->ScratchArenas[1], "Main Thread Scratch#1");
             for (uint32_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
             {
                 Rr_Frame *Frame = gRenderer->Frames + Index;
@@ -9332,7 +9334,6 @@ void Rr_UIDebugOverlay(void)
                 Rr_UIDebugOverlayArena(Frame->Arena, FrameString);
             }
             Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
-            /* Rr_UIDebugOverlayArena(Rr_GetPlatform()->Arena, "Window"); */
         }
         Rr_UIEndWindow();
 

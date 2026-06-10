@@ -135,10 +135,9 @@ void Rr_Run(Rr_AppConfig *Config)
 
     Rr_InitThreadContext();
 
-    Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
-    ThreadContext->Main = true;
+    Rr_SetMainThread();
 
-    Rr_Arena *Arena = ThreadContext->Arena;
+    Rr_Arena *Arena = Rr_GetPermanent();
 
     gApp = Rr_Alloc(sizeof(Rr_App), Arena);
     gApp->InitFunc = Config->InitFunc;

@@ -24,69 +24,166 @@
 #include "Rr_LogMacro.h"
 
 #include "Rr_Renderer.h"
-#include "Rr_System.h"
 
-static RR_THREAD_LOCAL Rr_ThreadContext *ThreadContext = NULL;
+static RR_THREAD_LOCAL Rr_ThreadContext gThreadContext = { 0 };
 
-void Rr_InitThreadContext(void)
+static Rr_Arena *gPermanentFreeList = NULL;
+static Rr_Spinlock gPermanentLock = { 0 };
+
+static Rr_Arena *gScratchFreeList = NULL;
+static Rr_Spinlock gScratchLock = { 0 };
+
+static inline Rr_Arena *Rr_GetFreeArena(
+    Rr_Arena **FreeList,
+    Rr_Spinlock *Lock,
+    size_t ReserveSize,
+    size_t CommitSize)
 {
-    if (ThreadContext)
+    Rr_Arena *Arena = NULL;
+
+    Rr_LockSpinlock(Lock);
+
+    if (*FreeList)
+    {
+        Arena = *FreeList;
+        *FreeList = Arena->Next;
+        Arena->Next = NULL;
+    }
+
+    Rr_UnlockSpinlock(Lock);
+
+    if (!Arena)
+    {
+        return Rr_CreateArena(ReserveSize, CommitSize);
+    }
+
+    return Arena;
+}
+
+static inline void Rr_ReturnFreeArena(
+    Rr_Arena **FreeList,
+    Rr_Arena *Arena,
+    Rr_Spinlock *Lock)
+{
+    if (!Arena)
     {
         return;
     }
 
-    Rr_Arena *Arena = Rr_CreateDefaultArena();
+    Rr_LockSpinlock(Lock);
 
-    ThreadContext = Rr_Alloc(sizeof(Rr_ThreadContext), Arena);
-    ThreadContext->Arena = Arena;
+    Arena->Next = *FreeList;
+    *FreeList = Arena;
+
+    Rr_UnlockSpinlock(Lock);
+}
+
+static inline void Rr_DestroyArenaFreeList(Rr_Arena *Head)
+{
+    while (Head)
+    {
+        Rr_Arena *Next = Head->Next;
+        Rr_DestroyArena(Head);
+        Head = Next;
+    }
+}
+
+void Rr_InitThreadContext(void)
+{
+    if (gThreadContext.Initialized)
+    {
+        return;
+    }
 
     for (size_t Index = 0; Index < 2; ++Index)
     {
-        ThreadContext->ScratchArenas[Index] = Rr_CreateDefaultArena();
+        gThreadContext.ScratchArenas[Index] = Rr_GetFreeArena(
+            &gScratchFreeList,
+            &gScratchLock,
+            RR_ARENA_RESERVE_DEFAULT,
+            RR_ARENA_COMMIT_DEFAULT);
     }
+
+    gThreadContext.Initialized = true;
 }
 
 void Rr_CleanupThreadContext(void)
 {
-    if (!ThreadContext)
+    if (!gThreadContext.Initialized)
     {
         return;
     }
 
-    if (!ThreadContext->Main)
+    if (!gThreadContext.Main)
     {
         Rr_ReleaseCommandPools();
     }
 
-    for (size_t Index = 0; Index < 2; ++Index)
+    Rr_ReturnFreeArena(
+        &gScratchFreeList,
+        gThreadContext.ScratchArenas[0],
+        &gScratchLock);
+    Rr_ReturnFreeArena(
+        &gScratchFreeList,
+        gThreadContext.ScratchArenas[1],
+        &gScratchLock);
+
+    Rr_ReturnFreeArena(
+        &gPermanentFreeList,
+        gThreadContext.PermanentArena,
+        &gPermanentLock);
+
+    if (gThreadContext.Main)
     {
-        Rr_DestroyArena(ThreadContext->ScratchArenas[Index]);
+        Rr_DestroyArenaFreeList(gScratchFreeList);
+        Rr_DestroyArenaFreeList(gPermanentFreeList);
     }
 
-    Rr_DestroyArena(ThreadContext->Arena);
+    RR_ZERO(gThreadContext);
+}
 
-    ThreadContext = NULL;
+void Rr_SetMainThread(void)
+{
+    gThreadContext.Main = true;
 }
 
 Rr_ThreadContext *Rr_GetThreadContext(void)
 {
-    return ThreadContext;
+    return &gThreadContext;
+}
+
+Rr_Arena *Rr_GetPermanent(void)
+{
+    assert(gThreadContext.Initialized);
+
+    if (!gThreadContext.PermanentArena)
+    {
+        gThreadContext.PermanentArena = Rr_GetFreeArena(
+            &gPermanentFreeList,
+            &gPermanentLock,
+            RR_ARENA_RESERVE_DEFAULT,
+            RR_ARENA_COMMIT_DEFAULT);
+    }
+
+    return gThreadContext.PermanentArena;
 }
 
 Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict)
 {
-    assert(ThreadContext && "Did you forget to call Rr_InitThreadContext()?");
+    assert(
+        gThreadContext.Initialized &&
+        "Did you forget to call Rr_InitThreadContext()?");
     if (Conflict == NULL)
     {
-        return Rr_CreateScratch(ThreadContext->ScratchArenas[0]);
+        return Rr_CreateScratch(gThreadContext.ScratchArenas[0]);
     }
     else
     {
         for (size_t Index = 0; Index < 2; ++Index)
         {
-            if (ThreadContext->ScratchArenas[Index] != Conflict)
+            if (gThreadContext.ScratchArenas[Index] != Conflict)
             {
-                return Rr_CreateScratch(ThreadContext->ScratchArenas[Index]);
+                return Rr_CreateScratch(gThreadContext.ScratchArenas[Index]);
             }
         }
     }
