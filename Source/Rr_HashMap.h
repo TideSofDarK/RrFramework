@@ -97,18 +97,6 @@ struct RR_HASH_MAP_BUCKET_TYPE
     bool Occupied;
 };
 
-#define RR_HASH_MAP_ITERATOR_TYPE \
-    RR_HASH_MAP_EXPAND_CONCAT(    \
-        RR_HASH_MAP_PREFIX,       \
-        RR_HASH_MAP_EXPAND_CONCAT(RR_HASH_MAP_NAME, Iterator))
-
-typedef struct RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_ITERATOR_TYPE;
-struct RR_HASH_MAP_ITERATOR_TYPE
-{
-    RR_HASH_MAP_BUCKET_TYPE *Data;
-    void *Metadata;
-};
-
 #define RR_HASH_MAP_NODE_TYPE  \
     RR_HASH_MAP_EXPAND_CONCAT( \
         RR_HASH_MAP_PREFIX,    \
@@ -121,6 +109,18 @@ struct RR_HASH_MAP_NODE_TYPE
     size_t Capacity;
     RR_HASH_MAP_NODE_TYPE *Next;
     RR_HASH_MAP_BUCKET_TYPE Buckets[];
+};
+
+#define RR_HASH_MAP_ITERATOR_TYPE \
+    RR_HASH_MAP_EXPAND_CONCAT(    \
+        RR_HASH_MAP_PREFIX,       \
+        RR_HASH_MAP_EXPAND_CONCAT(RR_HASH_MAP_NAME, Iterator))
+
+typedef struct RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_ITERATOR_TYPE;
+struct RR_HASH_MAP_ITERATOR_TYPE
+{
+    RR_HASH_MAP_BUCKET_TYPE *Data;
+    RR_HASH_MAP_NODE_TYPE *Node;
 };
 
 typedef struct RR_HASH_MAP_MAP_TYPE RR_HASH_MAP_MAP_TYPE;
@@ -180,7 +180,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_BEGIN_NAME(
             {
                 return (RR_HASH_MAP_ITERATOR_TYPE){
                     .Data = Bucket,
-                    .Metadata = Node,
+                    .Node = Node,
                 };
             }
         }
@@ -197,7 +197,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_BEGIN_NAME(
 
     return (RR_HASH_MAP_ITERATOR_TYPE){
         .Data = &Map->Last->Buckets[Map->Last->Capacity],
-        .Metadata = Map->Last,
+        .Node = Map->Last,
     };
 }
 
@@ -210,11 +210,10 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_BEGIN_NAME(
 
 static inline bool RR_HASH_MAP_IS_END_NAME(RR_HASH_MAP_ITERATOR_TYPE It)
 {
-    RR_HASH_MAP_NODE_TYPE *Node = It.Metadata;
+    RR_HASH_MAP_NODE_TYPE *Node = It.Node;
     RR_HASH_MAP_MAP_TYPE *Map = Node->Map;
     size_t IndexInNode = (size_t)(It.Data - Node->Buckets);
-    return (uintptr_t)It.Metadata == (uintptr_t)Map->Last &&
-           IndexInNode == Node->Capacity;
+    return It.Node == Map->Last && IndexInNode == Node->Capacity;
 }
 
 #define RR_HASH_MAP_NEXT_NAME  \
@@ -225,7 +224,7 @@ static inline bool RR_HASH_MAP_IS_END_NAME(RR_HASH_MAP_ITERATOR_TYPE It)
 static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_NEXT_NAME(
     RR_HASH_MAP_ITERATOR_TYPE It)
 {
-    RR_HASH_MAP_NODE_TYPE *Node = It.Metadata;
+    RR_HASH_MAP_NODE_TYPE *Node = It.Node;
     RR_HASH_MAP_MAP_TYPE *Map = Node->Map;
     size_t IndexInNode = (size_t)(It.Data - Node->Buckets);
     size_t Index = IndexInNode + 1;
@@ -238,7 +237,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_NEXT_NAME(
             {
                 return (RR_HASH_MAP_ITERATOR_TYPE){
                     .Data = Bucket,
-                    .Metadata = Node,
+                    .Node = Node,
                 };
             }
         }
@@ -255,7 +254,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_NEXT_NAME(
 
     return (RR_HASH_MAP_ITERATOR_TYPE){
         .Data = &Map->Last->Buckets[Map->Last->Capacity],
-        .Metadata = Map->Last,
+        .Node = Map->Last,
     };
 }
 
@@ -268,7 +267,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_ERASE_NAME(
     RR_HASH_MAP_ITERATOR_TYPE It)
 {
     It.Data->Occupied = false;
-    RR_HASH_MAP_NODE_TYPE *Node = It.Metadata;
+    RR_HASH_MAP_NODE_TYPE *Node = It.Node;
     RR_HASH_MAP_MAP_TYPE *Map = Node->Map;
     Map->Count--;
     return RR_HASH_MAP_NEXT_NAME(It);
@@ -332,7 +331,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_BUCKET_NAME(
     size_t LocalBucketIndex = BucketIndex - TotalCapacity;
     return (RR_HASH_MAP_ITERATOR_TYPE){
         .Data = &Node->Buckets[LocalBucketIndex],
-        .Metadata = Node,
+        .Node = Node,
     };
 }
 
@@ -462,7 +461,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_NAME(
         {
             return (RR_HASH_MAP_ITERATOR_TYPE){
                 .Data = &Map->Last->Buckets[Map->Last->Capacity],
-                .Metadata = Map->Last,
+                .Node = Map->Last,
             };
         }
     }
