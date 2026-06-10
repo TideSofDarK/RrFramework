@@ -24,6 +24,8 @@
 #include "Rr_Hash.h"
 #include "Rr_Memory.h"
 
+#include <Rr/Rr_Thread.h>
+
 #include <string.h>
 
 #if defined(__BMI__)

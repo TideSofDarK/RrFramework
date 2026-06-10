@@ -20,13 +20,15 @@
 
 #include "Rr_Graph.h"
 
-#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_GRAPH
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
+#include "Rr_LogMacro.h"
+
 #include "Rr_App.h"
 #include "Rr_Buffer.h"
 #include "Rr_Descriptor.h"
 #include "Rr_Image.h"
-#include "Rr_LogMacro.h"
 #include "Rr_Renderer.h"
+#include "Rr_Thread.h"
 
 #include <assert.h>
 

@@ -35,6 +35,7 @@
 #include <Rr/Rr_Renderer.h>
 #include <Rr/Rr_Serialization.h>
 #include <Rr/Rr_System.h>
+#include <Rr/Rr_Thread.h>
 #include <Rr/Rr_UI.h>
 #include <Rr/Rr_Utility.h>
 

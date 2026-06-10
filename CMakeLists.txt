@@ -137,15 +137,16 @@ target_sources(
     Source/Rr_Image.c
     Source/Rr_Log.c
     Source/Rr_Memory.c
-    Source/Rr_SPIRV.c
     Source/Rr_Pipeline.c
     Source/Rr_Platform.c
     Source/Rr_Profiler.c
     Source/Rr_Renderer.c
+    Source/Rr_SPIRV.c
     Source/Rr_Serialization.c
+    Source/Rr_System.c
+    Source/Rr_Thread.c
     Source/Rr_UI.c
     Source/Rr_Vulkan.c
-    Source/Rr_System.c
     Vendor/xxHash/xxhash.c
     PUBLIC
     FILE_SET HEADERS
@@ -162,10 +163,11 @@ target_sources(
     Include/Rr/Rr_Log.h
     Include/Rr/Rr_Math.h
     Include/Rr/Rr_Pipeline.h
-    Include/Rr/Rr_System.h
     Include/Rr/Rr_Platform.h
     Include/Rr/Rr_Renderer.h
     Include/Rr/Rr_Serialization.h
+    Include/Rr/Rr_System.h
+    Include/Rr/Rr_Thread.h
     Include/Rr/Rr_UI.h
     Include/Rr/Rr_Utility.h
 )

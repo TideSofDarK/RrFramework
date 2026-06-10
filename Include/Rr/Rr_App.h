@@ -40,10 +40,6 @@ extern "C" {
 
 extern void RR_CC Rr_Run(Rr_AppConfig *Config);
 
-extern void RR_CC Rr_InitThreadContext(void);
-
-extern void RR_CC Rr_CleanupThreadContext(void);
-
 extern void RR_CC Rr_SetTargetFrameRate(uint32_t FramesPerSecond);
 
 extern void RR_CC Rr_SetBackgroundFrameRate(uint32_t FramesPerSecond);

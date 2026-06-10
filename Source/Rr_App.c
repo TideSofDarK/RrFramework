@@ -22,17 +22,16 @@
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_APP
 #include "Rr_LogMacro.h"
+
 #include "Rr_Platform.h"
 #include "Rr_Renderer.h"
 #include "Rr_System.h"
+#include "Rr_Thread.h"
 #include "Rr_UI.h"
 
 #include <assert.h>
 
 static Rr_App *gApp = NULL;
-
-static RR_THREAD_LOCAL Rr_ThreadContext *ThreadContext = NULL;
-static RR_THREAD_LOCAL bool IsMainThread = false;
 
 static void Rr_CalculateDeltaTime(Rr_FrameTime *FrameTime)
 {
@@ -132,13 +131,14 @@ void Rr_Run(Rr_AppConfig *Config)
     assert(Config->Title != NULL);
     assert(Config->IterateFunc != NULL);
 
-    IsMainThread = true;
-
     Rr_InitSystem();
 
     Rr_InitThreadContext();
 
-    Rr_Arena *Arena = Rr_GetThreadContext()->Arena;
+    Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
+    ThreadContext->Main = true;
+
+    Rr_Arena *Arena = ThreadContext->Arena;
 
     gApp = Rr_Alloc(sizeof(Rr_App), Arena);
     gApp->InitFunc = Config->InitFunc;
@@ -231,39 +231,6 @@ void Rr_Run(Rr_AppConfig *Config)
     Rr_CleanupPlatform();
 
     Rr_CleanupThreadContext();
-}
-
-void Rr_InitThreadContext(void)
-{
-    Rr_InitScratchArena();
-
-    Rr_Arena *Arena = Rr_CreateDefaultArena();
-
-    ThreadContext = Rr_Alloc(sizeof(Rr_ThreadContext), Arena);
-    ThreadContext->Arena = Arena;
-}
-
-void Rr_CleanupThreadContext(void)
-{
-    if (!ThreadContext)
-    {
-        return;
-    }
-
-    if (!IsMainThread)
-    {
-        Rr_ReleaseCommandPools();
-    }
-
-    Rr_DestroyArena(ThreadContext->Arena);
-    ThreadContext = NULL;
-
-    Rr_CleanupScratchArena();
-}
-
-Rr_ThreadContext *Rr_GetThreadContext(void)
-{
-    return ThreadContext;
 }
 
 Rr_FrameTime *Rr_GetFrameTime(void)

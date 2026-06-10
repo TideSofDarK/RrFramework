@@ -18,42 +18,25 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#pragma once
+#ifndef RR_THREAD_H
+#define RR_THREAD_H
 
-#include <Rr/Rr_App.h>
+#include <Rr/Rr_Arena.h>
 
-#include "Rr_Atomic.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-typedef struct Rr_FrameTime Rr_FrameTime;
-struct Rr_FrameTime
-{
-    /* Frame Limiter */
+extern void RR_CC Rr_InitThreadContext(void);
 
-    uint32_t TargetFrameRate;
-    uint32_t BackgroundFrameRate;
-    uint64_t StartTime;
+extern void RR_CC Rr_CleanupThreadContext(void);
 
-    /* Delta Time Calculation */
+extern Rr_Arena * RR_CC Rr_GetPermanent(void);
 
-    uint64_t Last;
-    uint64_t Now;
-    double DeltaSeconds;
+extern Rr_Scratch RR_CC Rr_GetScratch(Rr_Arena *Conflict);
 
-    uint64_t InitTime;
-    uint64_t QPCToNS;
-};
+#ifdef __cplusplus
+}
+#endif
 
-typedef struct Rr_App Rr_App;
-struct Rr_App
-{
-    void (*InitFunc)(void);
-    void (*EventFunc)(Rr_Event const *Event);
-    void (*IterateFunc)(void);
-    void (*CleanupFunc)(void);
-
-    Rr_AtomicInt QuitRequested;
-
-    Rr_FrameTime FrameTime;
-};
-
-extern Rr_FrameTime *Rr_GetFrameTime(void);
+#endif

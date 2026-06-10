@@ -30,24 +30,22 @@ char const *Rr_LogCategoryString(Rr_LogCategory Category)
     {
         case RR_LOG_CATEGORY_APP:
             return "Application";
-        case RR_LOG_CATEGORY_SYSTEM:
-            return "System";
-        case RR_LOG_CATEGORY_PLATFORM:
-            return "Platform";
-        case RR_LOG_CATEGORY_SPIRV:
-            return "SPIR-V";
-        case RR_LOG_CATEGORY_VULKAN:
-            return "Vulkan";
-        case RR_LOG_CATEGORY_RENDERER:
-            return "Renderer";
-        case RR_LOG_CATEGORY_GRAPH:
-            return "Graph";
-        case RR_LOG_CATEGORY_DESCRIPTOR:
-            return "Descriptor";
-        case RR_LOG_CATEGORY_UI:
-            return "UI";
         case RR_LOG_CATEGORY_ARENA:
             return "Arena";
+        case RR_LOG_CATEGORY_PLATFORM:
+            return "Platform";
+        case RR_LOG_CATEGORY_RENDERER:
+            return "Renderer";
+        case RR_LOG_CATEGORY_SPIRV:
+            return "SPIR-V";
+        case RR_LOG_CATEGORY_SYSTEM:
+            return "System";
+        case RR_LOG_CATEGORY_THREAD:
+            return "Thread";
+        case RR_LOG_CATEGORY_UI:
+            return "UI";
+        case RR_LOG_CATEGORY_VULKAN:
+            return "Vulkan";
         default:
             return "Custom";
     }

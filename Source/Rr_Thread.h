@@ -20,40 +20,22 @@
 
 #pragma once
 
-#include <Rr/Rr_App.h>
+#include <Rr/Rr_Thread.h>
 
-#include "Rr_Atomic.h"
+#if defined(_MSC_VER) && !defined(__clang__)
+#define RR_THREAD_LOCAL __declspec(thread)
+#else
+#define RR_THREAD_LOCAL __thread
+#endif
 
-typedef struct Rr_FrameTime Rr_FrameTime;
-struct Rr_FrameTime
+typedef struct Rr_ThreadContext Rr_ThreadContext;
+struct Rr_ThreadContext
 {
-    /* Frame Limiter */
-
-    uint32_t TargetFrameRate;
-    uint32_t BackgroundFrameRate;
-    uint64_t StartTime;
-
-    /* Delta Time Calculation */
-
-    uint64_t Last;
-    uint64_t Now;
-    double DeltaSeconds;
-
-    uint64_t InitTime;
-    uint64_t QPCToNS;
+    bool Main;
+    struct Rr_Graph *Graph;
+    struct Rr_CommandPools *CommandPools;
+    Rr_Arena *Arena;
+    Rr_Arena *ScratchArenas[2];
 };
 
-typedef struct Rr_App Rr_App;
-struct Rr_App
-{
-    void (*InitFunc)(void);
-    void (*EventFunc)(Rr_Event const *Event);
-    void (*IterateFunc)(void);
-    void (*CleanupFunc)(void);
-
-    Rr_AtomicInt QuitRequested;
-
-    Rr_FrameTime FrameTime;
-};
-
-extern Rr_FrameTime *Rr_GetFrameTime(void);
+extern Rr_ThreadContext *Rr_GetThreadContext(void);

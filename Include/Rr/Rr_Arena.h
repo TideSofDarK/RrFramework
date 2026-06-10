@@ -70,12 +70,6 @@ extern Rr_Scratch RR_CC Rr_CreateScratch(Rr_Arena *Arena);
 
 extern void RR_CC Rr_DestroyScratch(Rr_Scratch Scratch);
 
-extern void RR_CC Rr_InitScratchArena(void);
-
-extern void RR_CC Rr_CleanupScratchArena(void);
-
-extern Rr_Scratch RR_CC Rr_GetScratch(Rr_Arena *Conflict);
-
 #ifdef __cplusplus
 }
 #endif

@@ -20,8 +20,9 @@
 
 #include "Rr_Descriptor.h"
 
-#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_DESCRIPTOR
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
 #include "Rr_LogMacro.h"
+
 #include "Rr_Pipeline.h"
 #include "Rr_Renderer.h"
 

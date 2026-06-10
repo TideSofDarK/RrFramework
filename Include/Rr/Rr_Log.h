@@ -23,7 +23,7 @@
 
 #include <Rr/Rr_Defines.h>
 
-#ifdef __cplusplis
+#ifdef __cplusplus
 #include <cstdarg>
 #else
 #include <stdarg.h>
@@ -32,15 +32,14 @@
 typedef enum
 {
     RR_LOG_CATEGORY_APP,
-    RR_LOG_CATEGORY_SYSTEM,
-    RR_LOG_CATEGORY_PLATFORM,
-    RR_LOG_CATEGORY_SPIRV,
-    RR_LOG_CATEGORY_VULKAN,
-    RR_LOG_CATEGORY_RENDERER,
-    RR_LOG_CATEGORY_GRAPH,
-    RR_LOG_CATEGORY_DESCRIPTOR,
-    RR_LOG_CATEGORY_UI,
     RR_LOG_CATEGORY_ARENA,
+    RR_LOG_CATEGORY_PLATFORM,
+    RR_LOG_CATEGORY_RENDERER,
+    RR_LOG_CATEGORY_SPIRV,
+    RR_LOG_CATEGORY_SYSTEM,
+    RR_LOG_CATEGORY_THREAD,
+    RR_LOG_CATEGORY_UI,
+    RR_LOG_CATEGORY_VULKAN,
     RR_LOG_CATEGORY_CUSTOM, /* Extend categories starting with this one. */
 } Rr_LogCategories;
 typedef uint32_t Rr_LogCategory;

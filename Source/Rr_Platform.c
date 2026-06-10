@@ -21,8 +21,10 @@
 #include "Rr_Platform.h"
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_PLATFORM
-#include "Rr_App.h"
 #include "Rr_LogMacro.h"
+
+#include "Rr_Thread.h"
+#include "Rr_App.h"
 
 #include <Rr/Rr_Utility.h>
 

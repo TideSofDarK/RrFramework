@@ -22,7 +22,10 @@
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_VULKAN
 #include "Rr_LogMacro.h"
+
 #include "Rr_Platform.h"
+
+#include <Rr/Rr_Thread.h>
 
 #include <stdio.h>
 #include <stdlib.h>

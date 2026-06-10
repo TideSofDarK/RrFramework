@@ -22,12 +22,6 @@
 
 #include <Rr/Rr_System.h>
 
-#if defined(_MSC_VER) && !defined(__clang__) && !defined(__INTEL_COMPILER)
-#define RR_THREAD_LOCAL __declspec(thread)
-#else
-#define RR_THREAD_LOCAL __thread
-#endif
-
 typedef struct Rr_System Rr_System;
 struct Rr_System
 {

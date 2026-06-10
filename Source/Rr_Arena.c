@@ -20,8 +20,9 @@
 
 #include "Rr_Arena.h"
 
-#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_VULKAN
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_ARENA
 #include "Rr_LogMacro.h"
+
 #include "Rr_System.h"
 
 #include <Rr/Rr_Math.h>
@@ -221,55 +222,4 @@ Rr_Scratch Rr_CreateScratch(Rr_Arena *Arena)
 void Rr_DestroyScratch(Rr_Scratch Scratch)
 {
     Scratch.Arena->Position = Scratch.Position;
-}
-
-static RR_THREAD_LOCAL Rr_Arena *ScratchArenas[2] = { 0 };
-static RR_THREAD_LOCAL bool ScratchInitialized = false;
-
-void Rr_CleanupScratchArena(void)
-{
-    if (!ScratchInitialized)
-    {
-        return;
-    }
-    for (size_t Index = 0; Index < 2; ++Index)
-    {
-        Rr_DestroyArena(ScratchArenas[Index]);
-    }
-}
-
-void Rr_InitScratchArena(void)
-{
-    if (ScratchInitialized)
-    {
-        return;
-    }
-    for (size_t Index = 0; Index < 2; ++Index)
-    {
-        ScratchArenas[Index] = Rr_CreateDefaultArena();
-    }
-}
-
-Rr_Scratch Rr_GetScratch(Rr_Arena *Conflict)
-{
-    assert(
-        ScratchArenas[0] != NULL && "Did you forget to call Rr_InitScratch()?");
-    if (Conflict == NULL)
-    {
-        return Rr_CreateScratch(ScratchArenas[0]);
-    }
-    else
-    {
-        for (size_t Index = 0; Index < 2; ++Index)
-        {
-            if (ScratchArenas[Index] != Conflict)
-            {
-                return Rr_CreateScratch(ScratchArenas[Index]);
-            }
-        }
-    }
-
-    RR_LOG_ABORT("Couldn't find appropriate arena for a scratch!");
-
-    return (Rr_Scratch){ 0 };
 }

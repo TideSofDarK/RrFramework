@@ -20,6 +20,9 @@
 
 #include "Rr_System.h"
 
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_SYSTEM
+#include "Rr_LogMacro.h"
+
 #define __USE_POSIX199309
 #include <assert.h>
 #include <time.h>

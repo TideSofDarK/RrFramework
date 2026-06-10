@@ -22,9 +22,11 @@
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_PLATFORM
 #include "Rr_LogMacro.h"
+
 #include "Rr_Vulkan.h"
 
 #include <Rr/Rr_Utility.h>
+#include <Rr/Rr_Thread.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
