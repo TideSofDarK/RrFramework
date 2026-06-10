@@ -1638,7 +1638,10 @@ void Rr_ReleaseCommandPools(void)
 
 bool Rr_IsSRGBFormat(Rr_ImageFormat Format)
 {
-    return Format == RR_IMAGE_FORMAT_R8G8B8A8_SRGB ||
+    return Format == RR_IMAGE_FORMAT_R8G8_SRGB ||
+           Format == RR_IMAGE_FORMAT_R8G8B8_SRGB ||
+           Format == RR_IMAGE_FORMAT_B8G8R8_SRGB ||
+           Format == RR_IMAGE_FORMAT_R8G8B8A8_SRGB ||
            Format == RR_IMAGE_FORMAT_B8G8R8A8_SRGB ||
            Format == RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32;
 }
