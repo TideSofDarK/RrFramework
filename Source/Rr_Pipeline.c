@@ -356,10 +356,10 @@ void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline)
 
     Rr_LockSpinlock(&gRenderer->ReleasedComputePipelinesLock);
 
-    *Rr_PushHandleIntoHive(
-         &gRenderer->ReleasedComputePipelines,
-         Rr_GetPermanent())
-         .Element = ComputePipeline;
+    Rr_InsertIntoHandleSet(
+        &gRenderer->ReleasedComputePipelines,
+        (Rr_Handle const *)&ComputePipeline,
+        Rr_GetPermanent());
 
     Rr_UnlockSpinlock(&gRenderer->ReleasedComputePipelinesLock);
 }
@@ -791,10 +791,10 @@ void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 
     Rr_LockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
 
-    *Rr_PushHandleIntoHive(
-         &gRenderer->ReleasedGraphicsPipelines,
-         Rr_GetPermanent())
-         .Element = GraphicsPipeline;
+    Rr_InsertIntoHandleSet(
+        &gRenderer->ReleasedGraphicsPipelines,
+        (Rr_Handle const *)&GraphicsPipeline,
+        Rr_GetPermanent());
 
     Rr_UnlockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
 }

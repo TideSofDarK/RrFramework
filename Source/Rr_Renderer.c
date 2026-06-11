@@ -491,9 +491,7 @@ static void Rr_InitEmptyDescriptorSet(void)
 {
     Rr_Device *Device = &gRenderer->Device;
 
-    VkResult Result;
-
-    Result = Device->CreateDescriptorPool(
+    VkResult Result = Device->CreateDescriptorPool(
         Device->Handle,
         &(VkDescriptorPoolCreateInfo){
             .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -563,6 +561,12 @@ void Rr_InitRenderer(const char *Title)
 
     Rr_InitFramebufferMap(&gRenderer->FramebufferMap, Arena);
     Rr_InitRenderPassMap(&gRenderer->RenderPassMap, Arena);
+
+    Rr_InitHandleSet(&gRenderer->ReleasedBuffers, Arena);
+    Rr_InitHandleSet(&gRenderer->ReleasedImages, Arena);
+    Rr_InitHandleSet(&gRenderer->ReleasedSamplers, Arena);
+    Rr_InitHandleSet(&gRenderer->ReleasedComputePipelines, Arena);
+    Rr_InitHandleSet(&gRenderer->ReleasedGraphicsPipelines, Arena);
 }
 
 void Rr_WaitIdle(void)
@@ -574,90 +578,105 @@ void Rr_WaitIdle(void)
 static inline void Rr_DestroyReleasedObjects(void)
 {
     Rr_LockSpinlock(&gRenderer->ReleasedBuffersLock);
-    for (Rr_HandleHiveIterator It = gRenderer->ReleasedBuffers.Begin;
-         It.Element != gRenderer->ReleasedBuffers.End.Element;)
+
+    for (Rr_HandleSetIterator It =
+             Rr_BeginInHandleSet(&gRenderer->ReleasedBuffers);
+         !Rr_IsHandleSetEnd(It);)
     {
-        Rr_Buffer *Buffer = *(Rr_Buffer **)It.Element;
+        Rr_Buffer *Buffer = (Rr_Buffer *)It.Data->Key;
         if (!Rr_LoadAtomicIntRelaxed(&Buffer->RefCount))
         {
             Rr_DestroyBuffer(Buffer);
-            Rr_RemoveFromHandleHive(&gRenderer->ReleasedBuffers, &It);
+            It = Rr_EraseFromHandleSet(It);
         }
         else
         {
-            Rr_AdvanceHandleHiveIterator(&It);
+            It = Rr_NextInHandleSet(It);
         }
     }
+
     Rr_UnlockSpinlock(&gRenderer->ReleasedBuffersLock);
 
     Rr_LockSpinlock(&gRenderer->ReleasedImagesLock);
-    for (Rr_HandleHiveIterator It = gRenderer->ReleasedImages.Begin;
-         It.Element != gRenderer->ReleasedImages.End.Element;)
+
+    for (Rr_HandleSetIterator It =
+             Rr_BeginInHandleSet(&gRenderer->ReleasedImages);
+         !Rr_IsHandleSetEnd(It);)
     {
-        Rr_Image *Image = *(Rr_Image **)It.Element;
+        Rr_Image *Image = (Rr_Image *)It.Data->Key;
         if (!Rr_LoadAtomicIntRelaxed(&Image->RefCount))
         {
             Rr_DestroyImage(Image);
-            Rr_RemoveFromHandleHive(&gRenderer->ReleasedImages, &It);
+            It = Rr_EraseFromHandleSet(It);
         }
         else
         {
-            Rr_AdvanceHandleHiveIterator(&It);
+            It = Rr_NextInHandleSet(It);
         }
     }
+
     Rr_UnlockSpinlock(&gRenderer->ReleasedImagesLock);
 
     Rr_LockSpinlock(&gRenderer->ReleasedSamplersLock);
-    for (Rr_HandleHiveIterator It = gRenderer->ReleasedSamplers.Begin;
-         It.Element != gRenderer->ReleasedSamplers.End.Element;)
+
+    for (Rr_HandleSetIterator It =
+             Rr_BeginInHandleSet(&gRenderer->ReleasedSamplers);
+         !Rr_IsHandleSetEnd(It);)
     {
-        Rr_Sampler *Sampler = *(Rr_Sampler **)It.Element;
+        Rr_Sampler *Sampler = (Rr_Sampler *)It.Data->Key;
         if (!Rr_LoadAtomicIntRelaxed(&Sampler->RefCount))
         {
             Rr_DestroySampler(Sampler);
-            Rr_RemoveFromHandleHive(&gRenderer->ReleasedSamplers, &It);
+            It = Rr_EraseFromHandleSet(It);
         }
         else
         {
-            Rr_AdvanceHandleHiveIterator(&It);
+            It = Rr_NextInHandleSet(It);
         }
     }
+
     Rr_UnlockSpinlock(&gRenderer->ReleasedSamplersLock);
 
     Rr_LockSpinlock(&gRenderer->ReleasedComputePipelinesLock);
-    for (Rr_HandleHiveIterator It = gRenderer->ReleasedComputePipelines.Begin;
-         It.Element != gRenderer->ReleasedComputePipelines.End.Element;)
+
+    for (Rr_HandleSetIterator It =
+             Rr_BeginInHandleSet(&gRenderer->ReleasedComputePipelines);
+         !Rr_IsHandleSetEnd(It);)
     {
         Rr_ComputePipeline *ComputePipeline =
-            *(Rr_ComputePipeline **)It.Element;
+            (Rr_ComputePipeline *)It.Data->Key;
         if (!Rr_LoadAtomicIntRelaxed(&ComputePipeline->RefCount))
         {
             Rr_DestroyComputePipeline(ComputePipeline);
-            Rr_RemoveFromHandleHive(&gRenderer->ReleasedComputePipelines, &It);
+            It = Rr_EraseFromHandleSet(It);
         }
         else
         {
-            Rr_AdvanceHandleHiveIterator(&It);
+            It = Rr_NextInHandleSet(It);
         }
     }
+
     Rr_UnlockSpinlock(&gRenderer->ReleasedComputePipelinesLock);
 
     Rr_LockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
-    for (Rr_HandleHiveIterator It = gRenderer->ReleasedGraphicsPipelines.Begin;
-         It.Element != gRenderer->ReleasedGraphicsPipelines.End.Element;)
+
+    for (Rr_HandleSetIterator It =
+             Rr_BeginInHandleSet(&gRenderer->ReleasedGraphicsPipelines);
+         !Rr_IsHandleSetEnd(It);)
     {
         Rr_GraphicsPipeline *GraphicsPipeline =
-            *(Rr_GraphicsPipeline **)It.Element;
+            (Rr_GraphicsPipeline *)It.Data->Key;
         if (!Rr_LoadAtomicIntRelaxed(&GraphicsPipeline->RefCount))
         {
             Rr_DestroyGraphicsPipeline(GraphicsPipeline);
-            Rr_RemoveFromHandleHive(&gRenderer->ReleasedGraphicsPipelines, &It);
+            It = Rr_EraseFromHandleSet(It);
         }
         else
         {
-            Rr_AdvanceHandleHiveIterator(&It);
+            It = Rr_NextInHandleSet(It);
         }
     }
+
     Rr_UnlockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
 }
 
@@ -839,12 +858,8 @@ void Rr_NewFrame(void)
     /* Acquire swapchain image. */
 
     uint32_t SwapchainImageIndex = UINT32_MAX;
-    for (;;)
+    while (Rr_RecreateSwapchainIfNeeded())
     {
-        if (!Rr_RecreateSwapchainIfNeeded())
-        {
-            break;
-        }
         Result = Device->AcquireNextImageKHR(
             Device->Handle,
             gRenderer->Swapchain.Handle,
@@ -899,12 +914,18 @@ void Rr_NewFrame(void)
         gRenderer->Swapchain.Unavailable = true;
     }
 
-    Frame->Graph = Rr_Alloc(sizeof(Rr_Graph), Frame->Arena);
-    Frame->Graph->QueueType = RR_QUEUE_TYPE_MAIN;
-    Frame->Graph->Primary = true;
-    Frame->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
-    Frame->Graph->Arena = Frame->Arena;
-    Frame->Graph->SwapchainImageHandle =
+    Rr_Graph *Graph = Rr_Alloc(sizeof(Rr_Graph), Frame->Arena);
+    Graph->QueueType = RR_QUEUE_TYPE_MAIN;
+    Graph->Primary = true;
+    Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
+    Graph->Arena = Frame->Arena;
+    Rr_InitHandleSet(&Graph->Samplers, Frame->Arena);
+    Rr_InitHandleSet(&Graph->ComputePipelines, Frame->Arena);
+    Rr_InitHandleSet(&Graph->GraphicsPipelines, Frame->Arena);
+
+    Frame->Graph = Graph;
+
+    Graph->SwapchainImageHandle =
         Rr_GetGraphImageHandle(Frame->Graph, &Frame->SwapchainImage->Container);
 }
 
@@ -1205,7 +1226,7 @@ bool Rr_SetPresentMode(Rr_PresentMode PresentMode)
     return true;
 }
 
-VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey *Key)
+VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey const *Key)
 {
     Rr_LockSpinlock(&gRenderer->RenderPassMapLock);
 

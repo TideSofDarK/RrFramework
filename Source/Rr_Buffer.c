@@ -179,8 +179,10 @@ void Rr_ReleaseBuffer(Rr_Buffer *Buffer)
 
     Rr_LockSpinlock(&gRenderer->ReleasedBuffersLock);
 
-    *Rr_PushHandleIntoHive(&gRenderer->ReleasedBuffers, Rr_GetPermanent())
-         .Element = Buffer;
+    Rr_InsertIntoHandleSet(
+        &gRenderer->ReleasedBuffers,
+        (Rr_Handle const *)&Buffer,
+        Rr_GetPermanent());
 
     Rr_UnlockSpinlock(&gRenderer->ReleasedBuffersLock);
 }

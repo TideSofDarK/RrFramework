@@ -47,12 +47,17 @@ Rr_Graph *Rr_BeginGraph(Rr_QueueType QueueType, Rr_Arena *Arena)
         !ThreadContext->Graph &&
         "Graph recording is already on; did you forget to call Rr_EndGraph()?");
 
-    ThreadContext->Graph = Rr_Alloc(sizeof(Rr_Graph), Arena);
-    ThreadContext->Graph->QueueType = QueueType;
-    ThreadContext->Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
-    ThreadContext->Graph->Arena = Arena;
+    Rr_Graph *Graph = Rr_Alloc(sizeof(Rr_Graph), Arena);
+    Graph->QueueType = QueueType;
+    Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
+    Graph->Arena = Arena;
+    Rr_InitHandleSet(&Graph->Samplers, Arena);
+    Rr_InitHandleSet(&Graph->ComputePipelines, Arena);
+    Rr_InitHandleSet(&Graph->GraphicsPipelines, Arena);
 
-    return ThreadContext->Graph;
+    ThreadContext->Graph = Graph;
+
+    return Graph;
 }
 
 void Rr_EndGraph(Rr_Graph *Graph)
@@ -2372,7 +2377,9 @@ Rr_GraphImage *Rr_GetGraphImageHandle(Rr_Graph *Graph, Rr_Image *Container)
 
 void Rr_MarkSamplerUsed(Rr_Graph *Graph, Rr_Sampler *Sampler)
 {
-    if (Rr_AddHandleToSet(&Graph->Samplers, Sampler, Graph->Arena))
+    size_t Count = Graph->Samplers.Count;
+    Rr_InsertIntoHandleSet(&Graph->Samplers, (void *)&Sampler, Graph->Arena);
+    if (Graph->Samplers.Count != Count)
     {
         Rr_IncrementAtomicIntRelaxed(&Sampler->RefCount);
     }
@@ -2382,10 +2389,12 @@ void Rr_MarkComputePipelineUsed(
     Rr_Graph *Graph,
     Rr_ComputePipeline *ComputePipeline)
 {
-    if (Rr_AddHandleToSet(
-            &Graph->ComputePipelines,
-            ComputePipeline,
-            Graph->Arena))
+    size_t Count = Graph->ComputePipelines.Count;
+    Rr_InsertIntoHandleSet(
+        &Graph->ComputePipelines,
+        (void *)&ComputePipeline,
+        Graph->Arena);
+    if (Graph->ComputePipelines.Count != Count)
     {
         Rr_IncrementAtomicIntRelaxed(&ComputePipeline->RefCount);
     }
@@ -2395,10 +2404,12 @@ void Rr_MarkGraphicsPipelineUsed(
     Rr_Graph *Graph,
     Rr_GraphicsPipeline *GraphicsPipeline)
 {
-    if (Rr_AddHandleToSet(
-            &Graph->GraphicsPipelines,
-            GraphicsPipeline,
-            Graph->Arena))
+    size_t Count = Graph->GraphicsPipelines.Count;
+    Rr_InsertIntoHandleSet(
+        &Graph->GraphicsPipelines,
+        (void *)&GraphicsPipeline,
+        Graph->Arena);
+    if (Graph->GraphicsPipelines.Count != Count)
     {
         Rr_IncrementAtomicIntRelaxed(&GraphicsPipeline->RefCount);
     }
@@ -2440,29 +2451,31 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
         Rr_DecrementAtomicIntRelaxed(&Image->RefCount);
     }
 
-    for (Rr_HandleTrieHiveIterator It = Graph->Samplers.Hive.Begin;
-         It.Element != Graph->Samplers.Hive.End.Element;
-         Rr_AdvanceHandleTrieHiveIterator(&It))
+    for (Rr_HandleSetIterator It = Rr_BeginInHandleSet(&Graph->Samplers);
+         !Rr_IsHandleSetEnd(It);
+         It = Rr_NextInHandleSet(It))
     {
-        Rr_Sampler *Sampler = (Rr_Sampler *)It.Element->Handle;
+        Rr_Sampler *Sampler = (Rr_Sampler *)It.Data->Key;
         Rr_DecrementAtomicIntRelaxed(&Sampler->RefCount);
     }
 
-    for (Rr_HandleTrieHiveIterator It = Graph->ComputePipelines.Hive.Begin;
-         It.Element != Graph->ComputePipelines.Hive.End.Element;
-         Rr_AdvanceHandleTrieHiveIterator(&It))
+    for (Rr_HandleSetIterator It =
+             Rr_BeginInHandleSet(&Graph->ComputePipelines);
+         !Rr_IsHandleSetEnd(It);
+         It = Rr_NextInHandleSet(It))
     {
         Rr_ComputePipeline *ComputePipeline =
-            (Rr_ComputePipeline *)It.Element->Handle;
+            (Rr_ComputePipeline *)It.Data->Key;
         Rr_DecrementAtomicIntRelaxed(&ComputePipeline->RefCount);
     }
 
-    for (Rr_HandleTrieHiveIterator It = Graph->GraphicsPipelines.Hive.Begin;
-         It.Element != Graph->GraphicsPipelines.Hive.End.Element;
-         Rr_AdvanceHandleTrieHiveIterator(&It))
+    for (Rr_HandleSetIterator It =
+             Rr_BeginInHandleSet(&Graph->GraphicsPipelines);
+         !Rr_IsHandleSetEnd(It);
+         It = Rr_NextInHandleSet(It))
     {
         Rr_GraphicsPipeline *GraphicsPipeline =
-            (Rr_GraphicsPipeline *)It.Element->Handle;
+            (Rr_GraphicsPipeline *)It.Data->Key;
         Rr_DecrementAtomicIntRelaxed(&GraphicsPipeline->RefCount);
     }
 }

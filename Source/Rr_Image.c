@@ -89,8 +89,10 @@ void Rr_ReleaseSampler(Rr_Sampler *Sampler)
 
     Rr_LockSpinlock(&gRenderer->ReleasedSamplersLock);
 
-    *Rr_PushHandleIntoHive(&gRenderer->ReleasedSamplers, Rr_GetPermanent())
-         .Element = Sampler;
+    Rr_InsertIntoHandleSet(
+        &gRenderer->ReleasedSamplers,
+        (Rr_Handle const *)&Sampler,
+        Rr_GetPermanent());
 
     Rr_UnlockSpinlock(&gRenderer->ReleasedSamplersLock);
 }
@@ -400,8 +402,10 @@ void Rr_ReleaseImage(Rr_Image *Image)
 
     Rr_LockSpinlock(&gRenderer->ReleasedImagesLock);
 
-    *Rr_PushHandleIntoHive(&gRenderer->ReleasedImages, Rr_GetPermanent())
-         .Element = Image;
+    Rr_InsertIntoHandleSet(
+        &gRenderer->ReleasedImages,
+        (Rr_Handle const *)&Image,
+        Rr_GetPermanent());
 
     Rr_UnlockSpinlock(&gRenderer->ReleasedImagesLock);
 }

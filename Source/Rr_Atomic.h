@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <Rr/Rr_Defines.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 

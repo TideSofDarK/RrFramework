@@ -387,9 +387,9 @@ struct Rr_Graph
 
     Rr_GraphImage *SwapchainImageHandle;
 
+    Rr_HandleSet Samplers;
     Rr_HandleSet ComputePipelines;
     Rr_HandleSet GraphicsPipelines;
-    Rr_HandleSet Samplers;
 
 #ifdef RR_USE_GPU_DEBUG_UTILS
     RR_ARRAY(bool) DebugLabelStates;

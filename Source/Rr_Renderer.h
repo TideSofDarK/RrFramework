@@ -134,7 +134,7 @@ struct Rr_RenderPassKey
 #define RR_HASH_MAP_VALUE_TYPE VkRenderPass
 #include "Rr_HashMap.h"
 
-extern VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey *Key);
+extern VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey const *Key);
 
 struct Rr_Renderer
 {
@@ -172,17 +172,22 @@ struct Rr_Renderer
 
     Rr_BufferHive Buffers;
     Rr_Spinlock BuffersLock;
-    Rr_HandleHive ReleasedBuffers;
+    Rr_HandleSet ReleasedBuffers;
     Rr_Spinlock ReleasedBuffersLock;
 
     Rr_ImageHive Images;
     Rr_Spinlock ImagesLock;
-    Rr_HandleHive ReleasedImages;
+    Rr_HandleSet ReleasedImages;
     Rr_Spinlock ReleasedImagesLock;
     RR_FREE_LIST(Rr_ImageViewMap) ImageViewMaps;
     Rr_Spinlock ImageViewMapsLock;
     Rr_FramebufferMap FramebufferMap;
     Rr_Spinlock FramebufferMapLock;
+
+    Rr_SamplerHive Samplers;
+    Rr_Spinlock SamplersLock;
+    Rr_HandleSet ReleasedSamplers;
+    Rr_Spinlock ReleasedSamplersLock;
 
     Rr_DescriptorSetLayoutStorage DescriptorSetLayoutStorage;
     Rr_Spinlock DescriptorSetLayoutStorageLock;
@@ -192,18 +197,13 @@ struct Rr_Renderer
 
     Rr_ComputePipelineHive ComputePipelines;
     Rr_Spinlock ComputePipelinesLock;
-    Rr_HandleHive ReleasedComputePipelines;
+    Rr_HandleSet ReleasedComputePipelines;
     Rr_Spinlock ReleasedComputePipelinesLock;
 
     Rr_GraphicsPipelineHive GraphicsPipelines;
     Rr_Spinlock GraphicsPipelinesLock;
-    Rr_HandleHive ReleasedGraphicsPipelines;
+    Rr_HandleSet ReleasedGraphicsPipelines;
     Rr_Spinlock ReleasedGraphicsPipelinesLock;
-
-    Rr_SamplerHive Samplers;
-    Rr_Spinlock SamplersLock;
-    Rr_HandleHive ReleasedSamplers;
-    Rr_Spinlock ReleasedSamplersLock;
 
     Rr_RenderPassMap RenderPassMap;
     Rr_Spinlock RenderPassMapLock;
@@ -211,9 +211,6 @@ struct Rr_Renderer
     Rr_DescriptorPoolList *DescriptorPoolList;
     Rr_Spinlock DescriptorPoolListLock;
     uint32_t DescriptorPoolListCount;
-
-    // Rr_Arena *Arena;
-    // Rr_Spinlock Lock;
 };
 
 extern void Rr_InitRenderer(const char *Title);

@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "Rr_Atomic.h"
 #include "Rr_Memory.h"
 
 #include <Rr/Rr_Image.h>

@@ -22,7 +22,6 @@
 #define RR_HASH_MAP_H
 
 #include "Rr_Hash.h"
-#include "Rr_Memory.h"
 
 #include <Rr/Rr_Thread.h>
 
@@ -86,11 +85,6 @@ static inline uint64_t Rr_HashMapLog2(uint64_t Value)
 #define RR_HASH_MAP_KEY_TYPE int
 #endif
 
-#ifndef RR_HASH_MAP_VALUE_TYPE
-#error RR_HASH_MAP_VALUE_TYPE is not set!
-#define RR_HASH_MAP_VALUE_TYPE int
-#endif
-
 #ifndef RR_HASH_MAP_NAME
 #error RR_HASH_MAP_NAME
 #endif
@@ -116,7 +110,9 @@ static inline uint64_t Rr_HashMapLog2(uint64_t Value)
 typedef struct RR_HASH_MAP_BUCKET_TYPE RR_HASH_MAP_BUCKET_TYPE;
 struct RR_HASH_MAP_BUCKET_TYPE
 {
+#if defined(RR_HASH_MAP_VALUE_TYPE)
     RR_HASH_MAP_VALUE_TYPE Value;
+#endif
     RR_HASH_MAP_KEY_TYPE Key;
     uint64_t Hash;
     bool Occupied;
@@ -348,7 +344,15 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_BUCKET_NAME(
     else
     {
         Steps = Rr_HashMapLog2(BucketIndex);
-        Steps -= RR_MIN(Steps, RR_HASH_MAP_STEPS);
+        if (RR_HASH_MAP_STEPS > Steps)
+        {
+            Steps -= Steps;
+        }
+        else
+        {
+            Steps -= RR_HASH_MAP_STEPS;
+        }
+        /* Steps -= RR_MIN(Steps, RR_HASH_MAP_STEPS); */
     }
     RR_HASH_MAP_NODE_TYPE *Node = Map->First;
     for (size_t Index = 0; Index < Steps; ++Index)
@@ -374,7 +378,9 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_BUCKET_NAME(
 static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_WITH_HASH_NAME(
     RR_HASH_MAP_MAP_TYPE *Map,
     RR_HASH_MAP_KEY_TYPE const *Key,
+#if defined(RR_HASH_MAP_VALUE_TYPE)
     RR_HASH_MAP_VALUE_TYPE const *Value,
+#endif
     uint64_t Hash,
     Rr_Arena *Arena)
 {
@@ -407,15 +413,19 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_WITH_HASH_NAME(
                 ;
             if (EqualKey)
             {
+#if defined(RR_HASH_MAP_VALUE_TYPE)
                 Bucket->Value = *Value;
+#endif
 
                 return It;
             }
         }
         else
         {
-            Bucket->Key = *Key;
+#if defined(RR_HASH_MAP_VALUE_TYPE)
             Bucket->Value = *Value;
+#endif
+            Bucket->Key = *Key;
             Bucket->Hash = Hash;
             Bucket->Occupied = true;
             Bucket->Reusable = false;
@@ -437,12 +447,21 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_WITH_HASH_NAME(
 static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_NAME(
     RR_HASH_MAP_MAP_TYPE *Map,
     RR_HASH_MAP_KEY_TYPE const *Key,
+#if defined(RR_HASH_MAP_VALUE_TYPE)
     RR_HASH_MAP_VALUE_TYPE const *Value,
+#endif
     Rr_Arena *Arena)
 {
     uint64_t Hash = Rr_Hash64(sizeof(*Key), Key);
 
-    return RR_HASH_MAP_INSERT_WITH_HASH_NAME(Map, Key, Value, Hash, Arena);
+    return RR_HASH_MAP_INSERT_WITH_HASH_NAME(
+        Map,
+        Key,
+#if defined(RR_HASH_MAP_VALUE_TYPE)
+        Value,
+#endif
+        Hash,
+        Arena);
 }
 
 #define RR_HASH_MAP_FIND_NAME  \
@@ -507,7 +526,9 @@ static inline void RR_HASH_MAP_REHASH_NAME(
     typedef struct TempBucket TempBucket;
     struct TempBucket
     {
+#if defined(RR_HASH_MAP_VALUE_TYPE)
         RR_HASH_MAP_VALUE_TYPE Value;
+#endif
         RR_HASH_MAP_KEY_TYPE Key;
         uint64_t Hash;
     };
@@ -524,7 +545,9 @@ static inline void RR_HASH_MAP_REHASH_NAME(
             if (Bucket->Occupied)
             {
                 *RR_PUSH_INTO_ARRAY(&OldBuckets, NULL) = (TempBucket){
+#if defined(RR_HASH_MAP_VALUE_TYPE)
                     .Value = Bucket->Value,
+#endif
                     .Key = Bucket->Key,
                     .Hash = Bucket->Hash,
                 };
@@ -557,7 +580,9 @@ static inline void RR_HASH_MAP_REHASH_NAME(
         RR_HASH_MAP_INSERT_WITH_HASH_NAME(
             Map,
             &Bucket->Key,
+#if defined(RR_HASH_MAP_VALUE_TYPE)
             &Bucket->Value,
+#endif
             Bucket->Hash,
             NULL);
     }

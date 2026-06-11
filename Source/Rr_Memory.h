@@ -149,43 +149,15 @@ extern void **Rr_FindInHashTrie(
     (*(void **)Rr_FindInHashTrie((Map), (Rr_HashTrieKey)Key, Arena))
 
 /*
- * Handle Hive
+ * Handle Set
  */
 
 typedef void *Rr_Handle;
 
-#define RR_HIVE_TYPE      Rr_Handle
-#define RR_HIVE_TYPE_NAME Handle
-#define RR_HIVE_PREFIX    Rr_
-#include "Rr_Hive.h"
-
-/*
- * Handle Set
- */
-
-typedef struct Rr_HandleTrie Rr_HandleTrie;
-struct Rr_HandleTrie
-{
-    void *Handle;
-    Rr_HandleTrie *Children[4];
-};
-
-#define RR_HIVE_TYPE      Rr_HandleTrie
-#define RR_HIVE_TYPE_NAME HandleTrie
-#define RR_HIVE_PREFIX    Rr_
-#include "Rr_Hive.h"
-
-typedef struct Rr_HandleSet Rr_HandleSet;
-struct Rr_HandleSet
-{
-    Rr_HandleTrie *Trie;
-    Rr_HandleTrieHive Hive;
-};
-
-extern bool Rr_AddHandleToSet(
-    Rr_HandleSet *Set,
-    Rr_Handle Handle,
-    Rr_Arena *Arena);
+#define RR_HASH_MAP_PREFIX   Rr_
+#define RR_HASH_MAP_NAME     HandleSet
+#define RR_HASH_MAP_KEY_TYPE Rr_Handle
+#include "Rr_HashMap.h"
 
 /*
  * Free List

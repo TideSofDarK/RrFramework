@@ -99,29 +99,6 @@ void **Rr_FindInHashTrie(Rr_HashTrie **Map, Rr_HashTrieKey Key, Rr_Arena *Arena)
     return &(*Map)->Value;
 }
 
-bool Rr_AddHandleToSet(Rr_HandleSet *Set, Rr_Handle Handle, Rr_Arena *Arena)
-{
-    Rr_HandleTrie **Trie = &Set->Trie;
-    if (*Trie != NULL)
-    {
-        for (uint64_t Hash = Rr_Hash64(sizeof(Handle), &Handle); *Trie;
-             Hash <<= 2)
-        {
-            if (Handle == (*Trie)->Handle)
-            {
-                return false;
-            }
-            static const int Shift = (sizeof(Rr_HashTrieKey) * CHAR_BIT) - 2;
-            Trie = &(*Trie)->Children[Hash >> Shift];
-        }
-    }
-    assert(Arena != NULL && "Arena is NULL!");
-    *Trie = Rr_PushHandleTrieIntoHive(&Set->Hive, Arena).Element;
-    RR_ZERO((*Trie)->Children);
-    (*Trie)->Handle = Handle;
-    return true;
-}
-
 typedef struct Rr_FreeList Rr_FreeList;
 struct Rr_FreeList
 {
