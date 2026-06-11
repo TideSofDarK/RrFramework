@@ -23,32 +23,19 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#if defined(_MSC_VER)
+#if defined(RR_MSVC)
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <intrin.h>
-#if defined(_M_AMD64)
-#define RR_ATOMIC_MSC_X86
-#define RR_SPINLOCK_EMIT_PAUSE
-#elif defined(_M_ARM64)
-#define RR_ATOMIC_MSC_ARM
-#define RR_SPINLOCK_EMIT_ISB
-#endif
-#else
-#define RR_ATOMIC_GNU
-#if defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
+#elif defined(RR_X86)
 #include <immintrin.h>
-#define RR_SPINLOCK_EMIT_PAUSE
-#elif defined(__arm__) || defined(__aarch64__)
-#define RR_SPINLOCK_EMIT_ISB_ASM
-#endif
 #endif
 
 static inline void *Rr_ExchangeAtomicPointerRelaxed(void **Pointer, void *Value)
 {
-#if defined(RR_ATOMIC_MSC_X86)
+#if defined(RR_MSVC_X86)
     return _InterlockedExchangePointer(Pointer, Value);
-#elif defined(RR_ATOMIC_MSC_ARM)
+#elif defined(RR_MSVC_ARM)
     return _InterlockedExchangePointer_nf(Pointer, Value);
 #else
     return __atomic_exchange_n(Pointer, Value, __ATOMIC_RELAXED);
@@ -70,7 +57,7 @@ static inline void *Rr_ExchangeAtomicPointerRelaxed(void **Pointer, void *Value)
 typedef struct Rr_AtomicInt Rr_AtomicInt;
 struct Rr_AtomicInt
 {
-#ifdef _MSC_VER
+#if defined(RR_MSVC)
     LONG64 Value;
 #else
     int64_t Value;
@@ -79,9 +66,9 @@ struct Rr_AtomicInt
 
 static inline int64_t Rr_LoadAtomicIntRelaxed(Rr_AtomicInt *AtomicInt)
 {
-#if defined(RR_ATOMIC_MSC_X86)
+#if defined(RR_MSVC_X86)
     return (int64_t)AtomicInt->Value;
-#elif defined(RR_ATOMIC_MSC_ARM)
+#elif defined(RR_MSVC_ARM)
     return (int64_t)_InterlockedOr64_nf(&AtomicInt->Value, (LONG64)0);
 #else
     return __atomic_load_n(&AtomicInt->Value, __ATOMIC_RELAXED);
@@ -90,9 +77,9 @@ static inline int64_t Rr_LoadAtomicIntRelaxed(Rr_AtomicInt *AtomicInt)
 
 static inline int64_t Rr_LoadAtomicIntAcquire(Rr_AtomicInt *AtomicInt)
 {
-#if defined(RR_ATOMIC_MSC_X86)
+#if defined(RR_MSVC_X86)
     return (int64_t)AtomicInt->Value;
-#elif defined(RR_ATOMIC_MSC_ARM)
+#elif defined(RR_MSVC_ARM)
     return (int64_t)_InterlockedOr64_acq(&AtomicInt->Value, (LONG64)0);
 #else
     return __atomic_load_n(&AtomicInt->Value, __ATOMIC_ACQUIRE);
@@ -103,9 +90,9 @@ static inline void Rr_StoreAtomicIntRelaxed(
     Rr_AtomicInt *AtomicInt,
     int64_t Value)
 {
-#if defined(RR_ATOMIC_MSC_X86)
+#if defined(RR_MSVC_X86)
     AtomicInt->Value = (LONG64)Value;
-#elif defined(RR_ATOMIC_MSC_ARM)
+#elif defined(RR_MSVC_ARM)
     _InterlockedExchange64_nf(&AtomicInt->Value, (LONG64)Value);
 #else
     __atomic_store_n(&AtomicInt->Value, Value, __ATOMIC_RELAXED);
@@ -116,9 +103,9 @@ static inline void Rr_StoreAtomicIntRelease(
     Rr_AtomicInt *AtomicInt,
     int64_t Value)
 {
-#if defined(RR_ATOMIC_MSC_X86)
+#if defined(RR_MSVC_X86)
     AtomicInt->Value = (LONG64)Value;
-#elif defined(RR_ATOMIC_MSC_ARM)
+#elif defined(RR_MSVC_ARM)
     _InterlockedExchange64_rel(&AtomicInt->Value, (LONG64)Value);
 #else
     __atomic_store_n(&AtomicInt->Value, Value, __ATOMIC_RELEASE);
@@ -129,9 +116,9 @@ static inline int64_t Rr_ExchangeAtomicIntRelaxed(
     Rr_AtomicInt *AtomicInt,
     int64_t Value)
 {
-#if defined(RR_ATOMIC_MSC_X86)
+#if defined(RR_MSVC_X86)
     return (int64_t)_InterlockedExchange64(&AtomicInt->Value, (LONG64)Value);
-#elif defined(RR_ATOMIC_MSC_ARM)
+#elif defined(RR_MSVC_ARM)
     return (int64_t)_InterlockedExchange64_nf(&AtomicInt->Value, (LONG64)Value);
 #else
     return __atomic_exchange_n(&AtomicInt->Value, Value, __ATOMIC_RELAXED);
@@ -142,9 +129,9 @@ static inline int64_t Rr_ExchangeAtomicIntAcquire(
     Rr_AtomicInt *AtomicInt,
     int64_t Value)
 {
-#if defined(RR_ATOMIC_MSC_X86)
+#if defined(RR_MSVC_X86)
     return (int64_t)_InterlockedExchange64(&AtomicInt->Value, (LONG64)Value);
-#elif defined(RR_ATOMIC_MSC_ARM)
+#elif defined(RR_MSVC_ARM)
     return (
         int64_t)_InterlockedExchange64_acq(&AtomicInt->Value, (LONG64)Value);
 #else
@@ -156,9 +143,9 @@ static inline int64_t Rr_AddAtomicIntRelaxed(
     Rr_AtomicInt *AtomicInt,
     int64_t Value)
 {
-#if defined(RR_ATOMIC_MSC_X86)
+#if defined(RR_MSVC_X86)
     return (int64_t)_InterlockedExchangeAdd64(&AtomicInt->Value, (LONG64)Value);
-#elif defined(RR_ATOMIC_MSC_ARM)
+#elif defined(RR_MSVC_ARM)
     return (
         int64_t)_InterlockedExchangeAdd64_nf(&AtomicInt->Value, (LONG64)Value);
 #else
@@ -168,9 +155,9 @@ static inline int64_t Rr_AddAtomicIntRelaxed(
 
 static inline int64_t Rr_IncrementAtomicIntRelaxed(Rr_AtomicInt *AtomicInt)
 {
-#if defined(RR_ATOMIC_MSC_X86)
+#if defined(RR_MSVC_X86)
     return (int64_t)_InterlockedIncrement64(&AtomicInt->Value);
-#elif defined(RR_ATOMIC_MSC_ARM)
+#elif defined(RR_MSVC_ARM)
     return (int64_t)_InterlockedIncrement64_nf(&AtomicInt->Value);
 #else
     return __atomic_fetch_add(&AtomicInt->Value, 1, __ATOMIC_RELAXED);
@@ -179,9 +166,9 @@ static inline int64_t Rr_IncrementAtomicIntRelaxed(Rr_AtomicInt *AtomicInt)
 
 static inline int64_t Rr_DecrementAtomicIntRelaxed(Rr_AtomicInt *AtomicInt)
 {
-#if defined(RR_ATOMIC_MSC_X86)
+#if defined(RR_MSVC_X86)
     return (int64_t)_InterlockedDecrement64(&AtomicInt->Value);
-#elif defined(RR_ATOMIC_MSC_ARM)
+#elif defined(RR_MSVC_ARM)
     return (int64_t)_InterlockedDecrement64_nf(&AtomicInt->Value);
 #else
     return __atomic_fetch_sub(&AtomicInt->Value, 1, __ATOMIC_RELAXED);
@@ -193,7 +180,7 @@ static inline bool Rr_CompareExchangeAtomicIntRelaxed(
     int64_t *Expected,
     int64_t Desired)
 {
-#if defined(RR_ATOMIC_MSC_X86)
+#if defined(RR_MSVC_X86)
     int64_t OldExpected = *Expected;
     *Expected = (int64_t)_InterlockedCompareExchange64(
         &AtomicInt->Value,
@@ -201,7 +188,7 @@ static inline bool Rr_CompareExchangeAtomicIntRelaxed(
         (LONG64)*Expected);
 
     return OldExpected == *Expected;
-#elif defined(RR_ATOMIC_MSC_ARM)
+#elif defined(RR_MSVC_ARM)
     int64_t OldExpected = *Expected;
     *Expected = (int64_t)_InterlockedCompareExchange64_nf(
         &AtomicInt->Value,
@@ -274,11 +261,11 @@ static inline void Rr_LockSpinlock(Rr_Spinlock *Spinlock)
         }
         while (Rr_LoadAtomicIntRelaxed(Spinlock))
         {
-#if defined(RR_SPINLOCK_EMIT_PAUSE)
+#if defined(RR_X86)
             _mm_pause();
-#elif defined(RR_SPINLOCK_EMIT_ISB)
+#elif defined(RR_MSVC_ARM)
             __isb(0);
-#elif defined(RR_SPINLOCK_EMIT_ISB_ASM)
+#else
             __asm__ __volatile__("isb\n");
 #endif
         }

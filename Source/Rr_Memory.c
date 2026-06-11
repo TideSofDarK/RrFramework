@@ -31,7 +31,7 @@
 
 void *Rr_AlignedAlloc(size_t Size, size_t Alignment)
 {
-#ifdef _MSC_VER
+#if defined(RR_MSVC)
     return _aligned_malloc(Size, Alignment);
 #else
     return _mm_malloc(Size, Alignment);
@@ -40,7 +40,7 @@ void *Rr_AlignedAlloc(size_t Size, size_t Alignment)
 
 void Rr_AlignedFree(void *Ptr)
 {
-#ifdef _MSC_VER
+#if defined(RR_MSVC)
     _aligned_free(Ptr);
 #else
     _mm_free(Ptr);

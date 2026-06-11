@@ -59,7 +59,7 @@ void Rr_SetLogPriority(Rr_LogPriority Priority)
 }
 
 static void
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(RR_GNU) || defined(RR_CLANG)
     __attribute__((format(printf, 3, 0)))
 #endif
     Rr_DefaultLogFunction(

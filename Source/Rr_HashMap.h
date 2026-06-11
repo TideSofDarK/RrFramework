@@ -26,25 +26,50 @@
 
 #include <Rr/Rr_Thread.h>
 
+#include <stdio.h>
 #include <string.h>
 
 #if defined(__BMI__)
 #include <immintrin.h>
-#elif defined(_MSC_VER)
+#elif defined(RR_MSVC)
 #include <intrin.h>
 #endif
 
+static inline uint64_t Rr_HashMapMod(uint64_t Hash, uint64_t Count)
+{
+    uint64_t Result;
+#if defined(RR_MSVC_X86)
+    (void)_umul128(Hash, Count, &Result);
+#elif defined(RR_MSVC_ARM)
+    Result = _umulh(Hash, Count);
+#else
+    Result = (uint64_t)(((__uint128_t)Hash * Count) >> 64);
+#endif
+
+    return Result;
+}
+
 static inline uint64_t Rr_HashMapLog2(uint64_t Value)
 {
-    return 63 -
+    uint64_t Result;
 #if defined(__BMI__)
-           (uint64_t)_lzcnt_u64(Value)
-#elif defined(_MSC_VER)
-           (uint64_t)__lzcnt64(Value)
+    Result = (uint64_t)_lzcnt_u64(Value);
+#elif defined(RR_MSVC_X86)
+    Result = (uint64_t)__lzcnt64(Value);
+#elif defined(RR_MSVC_ARM)
+    if (_BitScanReverse64((unsigned long *)&Result, Value))
+    {
+        Result ^= 63;
+    }
+    else
+    {
+        Result = 64;
+    }
 #else
-           (uint64_t)__builtin_clzll((unsigned long long)Value)
+    Result = (uint64_t)__builtin_clzll((unsigned long long)Value);
 #endif
-        ;
+
+    return 63 - Result;
 }
 
 #define RR_HASH_MAP_CONCAT(A, B)        A##B
@@ -95,6 +120,7 @@ struct RR_HASH_MAP_BUCKET_TYPE
     RR_HASH_MAP_KEY_TYPE Key;
     uint64_t Hash;
     bool Occupied;
+    bool Reusable;
 };
 
 #define RR_HASH_MAP_NODE_TYPE  \
@@ -213,6 +239,7 @@ static inline bool RR_HASH_MAP_IS_END_NAME(RR_HASH_MAP_ITERATOR_TYPE It)
     RR_HASH_MAP_NODE_TYPE *Node = It.Node;
     RR_HASH_MAP_MAP_TYPE *Map = Node->Map;
     size_t IndexInNode = (size_t)(It.Data - Node->Buckets);
+
     return It.Node == Map->Last && IndexInNode == Node->Capacity;
 }
 
@@ -267,9 +294,11 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_ERASE_NAME(
     RR_HASH_MAP_ITERATOR_TYPE It)
 {
     It.Data->Occupied = false;
+    It.Data->Reusable = true;
     RR_HASH_MAP_NODE_TYPE *Node = It.Node;
     RR_HASH_MAP_MAP_TYPE *Map = Node->Map;
     Map->Count--;
+
     return RR_HASH_MAP_NEXT_NAME(It);
 }
 
@@ -322,13 +351,13 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_BUCKET_NAME(
         Steps -= RR_MIN(Steps, RR_HASH_MAP_STEPS);
     }
     RR_HASH_MAP_NODE_TYPE *Node = Map->First;
-    size_t TotalCapacity = 0;
     for (size_t Index = 0; Index < Steps; ++Index)
     {
-        TotalCapacity += Node->Capacity;
         Node = Node->Next;
     }
+    size_t TotalCapacity = Map->First->Capacity << ((int)Steps - 1);
     size_t LocalBucketIndex = BucketIndex - TotalCapacity;
+
     return (RR_HASH_MAP_ITERATOR_TYPE){
         .Data = &Node->Buckets[LocalBucketIndex],
         .Node = Node,
@@ -355,8 +384,8 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_WITH_HASH_NAME(
         RR_HASH_MAP_REHASH_NAME(Map, 1, Arena);
     }
 
+    size_t Mod = Rr_HashMapMod(Hash, Map->Capacity);
     size_t QuadraticProber = 1;
-    size_t Mod = Hash % Map->Capacity;
 
     RR_HASH_MAP_BUCKET_TYPE *Bucket;
     while (true)
@@ -382,11 +411,6 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_WITH_HASH_NAME(
 
                 return It;
             }
-            else
-            {
-                Mod = (Mod + QuadraticProber * QuadraticProber) % Map->Capacity;
-                QuadraticProber++;
-            }
         }
         else
         {
@@ -394,9 +418,14 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_WITH_HASH_NAME(
             Bucket->Value = *Value;
             Bucket->Hash = Hash;
             Bucket->Occupied = true;
+            Bucket->Reusable = false;
             Map->Count++;
+
             return It;
         }
+
+        Mod = (Mod + QuadraticProber * QuadraticProber) % Map->Capacity;
+        QuadraticProber++;
     }
 }
 
@@ -426,7 +455,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_NAME(
     RR_HASH_MAP_KEY_TYPE const *Key)
 {
     uint64_t Hash = Rr_Hash64(sizeof(*Key), Key);
-    size_t Mod = Hash % Map->Capacity;
+    size_t Mod = Rr_HashMapMod(Hash, Map->Capacity);
     size_t QuadraticProber = 1;
 
     RR_HASH_MAP_BUCKET_TYPE *Bucket;
@@ -434,7 +463,10 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_NAME(
     {
         RR_HASH_MAP_ITERATOR_TYPE It = RR_HASH_MAP_FIND_BUCKET_NAME(Map, Mod);
         Bucket = It.Data;
-        if (Bucket->Occupied)
+        if (Bucket->Reusable)
+        {
+        }
+        else if (Bucket->Occupied)
         {
             bool EqualHash = Hash == Bucket->Hash;
             bool EqualKey = EqualHash &&
@@ -451,11 +483,6 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_NAME(
             {
                 return It;
             }
-            else
-            {
-                Mod = (Mod + QuadraticProber * QuadraticProber) % Map->Capacity;
-                QuadraticProber++;
-            }
         }
         else
         {
@@ -464,6 +491,9 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_NAME(
                 .Node = Map->Last,
             };
         }
+
+        Mod = (Mod + QuadraticProber * QuadraticProber) % Map->Capacity;
+        QuadraticProber++;
     }
 }
 
@@ -472,11 +502,6 @@ static inline void RR_HASH_MAP_REHASH_NAME(
     size_t Steps,
     Rr_Arena *Arena)
 {
-    if (Steps == 0)
-    {
-        return;
-    }
-
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
     typedef struct TempBucket TempBucket;
@@ -498,16 +523,17 @@ static inline void RR_HASH_MAP_REHASH_NAME(
             RR_HASH_MAP_BUCKET_TYPE *Bucket = &Node->Buckets[Index];
             if (Bucket->Occupied)
             {
-                *RR_PUSH_INTO_ARRAY(&OldBuckets, Scratch.Arena) = (TempBucket){
+                *RR_PUSH_INTO_ARRAY(&OldBuckets, NULL) = (TempBucket){
                     .Value = Bucket->Value,
                     .Key = Bucket->Key,
                     .Hash = Bucket->Hash,
                 };
                 ;
                 Bucket->Occupied = false;
-                RR_ZERO_PTR(Bucket);
+                Bucket->Reusable = false;
             }
         }
+
         Node = Node->Next;
     }
 
@@ -520,19 +546,20 @@ static inline void RR_HASH_MAP_REHASH_NAME(
         NewNode->Capacity = Map->Capacity;
         Map->Last->Next = NewNode;
         Map->Last = NewNode;
-        Map->Capacity += NewNode->Capacity;
+        Map->Capacity *= 2;
     }
     Map->Count = 0;
 
     for (size_t Index = 0; Index < OldBuckets.Count; ++Index)
     {
         TempBucket *Bucket = &OldBuckets.Data[Index];
+
         RR_HASH_MAP_INSERT_WITH_HASH_NAME(
             Map,
             &Bucket->Key,
             &Bucket->Value,
             Bucket->Hash,
-            Arena);
+            NULL);
     }
 
     Rr_DestroyScratch(Scratch);

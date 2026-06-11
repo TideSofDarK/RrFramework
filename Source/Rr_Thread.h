@@ -22,7 +22,7 @@
 
 #include <Rr/Rr_Thread.h>
 
-#if defined(_MSC_VER) && !defined(__clang__)
+#if defined(RR_MSVC)
 #define RR_THREAD_LOCAL __declspec(thread)
 #else
 #define RR_THREAD_LOCAL __thread

@@ -85,12 +85,12 @@ bool Rr_CommitMemory(void *Data, size_t Size)
 
 void Rr_DecommitMemory(void *Data, size_t Size)
 {
-#ifdef _MSC_VER
+#if defined(RR_MSVC)
 #pragma warning(push)
 #pragma warning(disable : 6250)
 #endif
     VirtualFree(Data, Size, MEM_DECOMMIT);
-#ifdef _MSC_VER
+#if defined(RR_MSVC)
 #pragma warning(pop)
 #endif
 }

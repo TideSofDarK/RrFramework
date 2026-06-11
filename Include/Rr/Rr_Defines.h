@@ -34,6 +34,35 @@
 #define RR_CC
 #endif
 
+#if defined(_MSC_VER)
+#define RR_MSVC
+#if defined(_M_AMD64)
+#define RR_X86
+#define RR_MSVC_X86
+#elif defined(_M_ARM64)
+#define RR_ARM
+#define RR_MSVC_ARM
+#else
+#error Unknown architecture!
+#endif
+#else
+#if defined(__clang__)
+#define RR_CLANG
+#elif defined(__GNUC__)
+#define RR_GNU
+#else
+#error Unknown compiler!
+#endif
+#define RR_COMPILER_GNU_OR_CLANG
+#if defined(__x86_64__)
+#define RR_X86
+#elif defined(__arm__) || defined(__aarch64__)
+#define RR_ARM
+#else
+#error Unknown architecture!
+#endif
+#endif
+
 #define RR_UNUSED(Var) (void)Var
 
 #define RR_ZERO(x)     memset(&(x), 0, sizeof((x)))

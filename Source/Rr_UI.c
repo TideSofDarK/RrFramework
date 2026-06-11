@@ -5085,11 +5085,7 @@ void Rr_UIText(char const *Text)
     Rr_UIAdvance(TextSize, Rr_V2F(0.0f));
 }
 
-void
-#if defined(__GNUC__) || defined(__clang__)
-    __attribute__((format(printf, 1, 2)))
-#endif
-    Rr_UITextF(char const *Format, ...)
+void Rr_UITextF(char const *Format, ...)
 {
     if (Rr_UISkipItems())
     {
