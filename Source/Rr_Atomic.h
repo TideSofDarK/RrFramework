@@ -22,9 +22,6 @@
 
 #include <Rr/Rr_Defines.h>
 
-#include <stdbool.h>
-#include <stdint.h>
-
 #if defined(RR_MSVC)
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
