@@ -24,6 +24,7 @@
 #include "Rr_LogMacro.h"
 
 #include "Rr_Renderer.h"
+#include "Rr_Arena.h"
 
 static RR_THREAD_LOCAL Rr_ThreadContext gThreadContext = { 0 };
 

@@ -68,9 +68,9 @@
 #define RR_ZERO(x)     memset(&(x), 0, sizeof((x)))
 #define RR_ZERO_PTR(x) memset((x), 0, sizeof(*(x)))
 
-#define RR_KILOBYTES(Value) ((Value) * 1024ull)
-#define RR_MEGABYTES(Value) ((Value) * RR_KILOBYTES(1024))
-#define RR_GIGABYTES(Value) ((Value) * RR_MEGABYTES(1024))
+#define RR_KIBIBYTES(Value) ((Value) * 1024ull)
+#define RR_MIBIBYTES(Value) ((Value) * RR_KIBIBYTES(1024))
+#define RR_GIBIBYTES(Value) ((Value) * RR_MIBIBYTES(1024))
 
 #define RR_ARRAY_COUNT(array) (sizeof(array) / sizeof((array)[0]))
 

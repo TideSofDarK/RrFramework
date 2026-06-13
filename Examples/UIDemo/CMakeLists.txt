@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(UITest LANGUAGES C)
+project(UIDemo LANGUAGES C)
 
-add_executable(${PROJECT_NAME} UITest.c)
+add_executable(${PROJECT_NAME} UIDemo.c)
 target_compile_features(${PROJECT_NAME} PRIVATE c_std_11)
 set_target_properties(${PROJECT_NAME} PROPERTIES C_EXTENSIONS OFF)
 target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)

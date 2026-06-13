@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "Rr_Memory.h"
+#include <Rr/Rr_Arena.h>
 
 typedef struct Rr_ProfilerSection Rr_ProfilerSection;
 struct Rr_ProfilerSection

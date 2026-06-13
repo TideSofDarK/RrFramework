@@ -26,6 +26,7 @@
 #include "Rr_App.h"
 #include "Rr_System.h"
 #include "Rr_Thread.h"
+#include "Rr_Allocator.h"
 
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Platform.h>
@@ -484,7 +485,7 @@ static void Rr_InitVMA(void)
         .pVulkanFunctions = &VulkanFunctions,
         .instance = gRenderer->Instance.Handle,
     };
-    vmaCreateAllocator(&AllocatorInfo, &gRenderer->Allocator);
+    vmaCreateAllocator(&AllocatorInfo, &gRenderer->VMA);
 }
 
 static void Rr_InitEmptyDescriptorSet(void)
@@ -555,6 +556,7 @@ void Rr_InitRenderer(const char *Title)
         &gRenderer->DedicatedTransferQueue);
 
     Rr_InitVMA();
+    Rr_InitAllocator(&gRenderer->Allocator);
     Rr_InitFrames();
     Rr_InitSwapchain();
     Rr_InitEmptyDescriptorSet();
@@ -787,7 +789,8 @@ void Rr_CleanupRenderer(void)
             NULL);
     }
 
-    vmaDestroyAllocator(gRenderer->Allocator);
+    vmaDestroyAllocator(gRenderer->VMA);
+    Rr_CleanupAllocator(&gRenderer->Allocator);
 
     Instance->DestroySurfaceKHR(Instance->Handle, gRenderer->Surface, NULL);
     Device->DestroyDevice(Device->Handle, NULL);

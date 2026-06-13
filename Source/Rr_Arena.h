@@ -24,8 +24,8 @@
 
 #include "Rr_Atomic.h"
 
-static const size_t RR_ARENA_RESERVE_DEFAULT = RR_GIGABYTES(4);
-static const size_t RR_ARENA_COMMIT_DEFAULT = RR_KILOBYTES(64);
+static const size_t RR_ARENA_RESERVE_DEFAULT = RR_GIBIBYTES(4);
+static const size_t RR_ARENA_COMMIT_DEFAULT = RR_KIBIBYTES(64);
 
 struct Rr_Arena
 {

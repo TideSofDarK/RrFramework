@@ -29,7 +29,9 @@
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_UI
 #include "Rr_LogMacro.h"
 
+#include "Rr_Allocator.h"
 #include "Rr_App.h"
+#include "Rr_Arena.h"
 #include "Rr_Hash.h"
 #include "Rr_Image.h"
 #include "Rr_Platform.h"
@@ -2925,7 +2927,7 @@ void Rr_UIAdvance(Rr_Vec2 RigidSize, Rr_Vec2 FlexibleSize)
         if (!Flexible)
         {
             Layout->DeferredMaxRigidWidth =
-                RR_MAX(Layout->DeferredMaxRigidWidth, Size.X);
+                RR_MAX(Layout->DeferredMaxRigidWidth, TotalWidth);
         }
     }
 }
@@ -8704,13 +8706,13 @@ void Rr_InitUI(void)
 
     Rr_SetNextObjectName("Rr.UI.VertexBuffer");
     gUIContext->VertexBuffer = Rr_CreateBuffer(
-        RR_MEGABYTES(8),
+        RR_MIBIBYTES(8),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
     Rr_SetNextObjectName("Rr.UI.IndexBuffer");
     gUIContext->IndexBuffer = Rr_CreateBuffer(
-        RR_MEGABYTES(8),
+        RR_MIBIBYTES(8),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
@@ -9129,6 +9131,72 @@ static inline void Rr_UIDebugOverlayArena(Rr_Arena *Arena, char const *Name)
         Arena->Reserved / 1024 / 1024);
 }
 
+static inline void Rr_UIDebugOverlayAllocator(Rr_Allocator *Allocator)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    size_t const LENGTH = 64;
+
+    Rr_UITextF(
+        "Hard Allocations: %lld\n"
+        "Soft Allocations: %lld",
+        Rr_LoadAtomicIntRelaxed(&Allocator->HardAllocations),
+        Rr_LoadAtomicIntRelaxed(&Allocator->SoftAllocations));
+    for (uint32_t Index = 0; Index < Allocator->MemoryTypeCount; ++Index)
+    {
+        Rr_MemoryType *MemoryType = &Allocator->MemoryTypes[Index];
+
+        char *MemoryTypeName = Rr_AllocNoZero(LENGTH, Scratch.Arena);
+        snprintf(
+            MemoryTypeName,
+            LENGTH,
+            "Memory Type #%d (%zuMiB)",
+            Index,
+            MemoryType->HeapSize / RR_MIBIBYTES(1));
+        if (Rr_UIBeginTree(MemoryTypeName))
+        {
+            uint32_t ChunkIndex = 0;
+            Rr_Chunk *Chunk = MemoryType->FirstChunk;
+            while (Chunk)
+            {
+                char *ChunkName = Rr_AllocNoZero(LENGTH, Scratch.Arena);
+                snprintf(
+                    ChunkName,
+                    LENGTH,
+                    "Chunk #%d (%zuMiB, %lld allocations)###%d",
+                    ChunkIndex,
+                    Chunk->Size / RR_MIBIBYTES(1),
+                    Rr_LoadAtomicIntRelaxed(&Chunk->SoftAllocations),
+                    ChunkIndex);
+
+                if (Rr_UIBeginTree(ChunkName))
+                {
+                    Rr_Range *Range = Chunk->FirstRange;
+                    while (Range)
+                    {
+                        Rr_UITextF(
+                            "Range 0x%08X-0x%08X %s",
+                            (uint32_t)Range->Offset,
+                            (uint32_t)(Range->Offset + Range->Size),
+                            Range->Free ? "(free)" : "");
+
+                        Range = Range->Next;
+                    }
+
+                    Rr_UIEndTree();
+                }
+
+                Chunk = Chunk->Next;
+                ChunkIndex++;
+            }
+
+            Rr_UIEndTree();
+        }
+    }
+
+    Rr_DestroyScratch(Scratch);
+}
+
 void Rr_UIDebugOverlay(void)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
@@ -9316,7 +9384,7 @@ void Rr_UIDebugOverlay(void)
         }
         Rr_UIEndWindow();
 
-        Rr_UIBeginWindowEx("Memory", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+        Rr_UIBeginWindowEx("RAM", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
         {
             Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
             Rr_UIDebugOverlayArena(
@@ -9336,6 +9404,12 @@ void Rr_UIDebugOverlay(void)
                 Rr_UIDebugOverlayArena(Frame->Arena, FrameString);
             }
             Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
+        }
+        Rr_UIEndWindow();
+
+        Rr_UIBeginWindowEx("VRAM", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+        {
+            Rr_UIDebugOverlayAllocator(&gRenderer->Allocator);
         }
         Rr_UIEndWindow();
 

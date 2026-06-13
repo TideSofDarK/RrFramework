@@ -23,6 +23,7 @@
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
 #include "Rr_LogMacro.h"
 
+#include "Rr_Allocator.h"
 #include "Rr_Renderer.h"
 
 #include <assert.h>
@@ -32,10 +33,12 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
 {
     if (Size == 0)
     {
-        Rr_LogWarning(RR_LOG_CATEGORY_RENDERER, "Buffer size can't be zero!");
+        RR_LOG_ERROR("Buffer size can't be zero!");
 
         return NULL;
     }
+
+    Size = RR_MAX(Size, RR_MINIMAL_ALLOCATION);
 
     Rr_LockSpinlock(&gRenderer->BuffersLock);
 
@@ -75,75 +78,37 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
     Buffer->Usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     Buffer->Usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
-    /* Fixing VMA issues with small buffers. */
-
-    Size = RR_MAX(Size, 128);
-
-    VkBufferCreateInfo BufferCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .pNext = NULL,
-        .size = Size,
-        .usage = Buffer->Usage,
-    };
-
-    VmaAllocationCreateInfo AllocationCreateInfo = { 0 };
-    AllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
-
-    if (Flags & RR_BUFFER_FLAGS_MAPPED_BIT)
-    {
-        AllocationCreateInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
-    }
-    if (Flags & RR_BUFFER_FLAGS_READBACK_BIT)
-    {
-        AllocationCreateInfo.requiredFlags |=
-            VK_MEMORY_PROPERTY_HOST_CACHED_BIT |
-            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        AllocationCreateInfo.flags |=
-            VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-    }
-
-    if (Flags & RR_BUFFER_FLAGS_STAGING_BIT)
-    {
-        AllocationCreateInfo.requiredFlags |=
-            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        if (!(AllocationCreateInfo.flags &
-              VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT))
-        {
-
-            AllocationCreateInfo.flags |=
-                VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-        }
-    }
-    else if (Flags & RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT)
-    {
-        AllocationCreateInfo.preferredFlags |=
-            VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-        AllocationCreateInfo.flags |=
-            VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-    }
-
     Buffer->AllocatedBufferCount = 1;
     if (Flags & RR_BUFFER_FLAGS_PER_FRAME_BIT)
     {
         Buffer->AllocatedBufferCount = RR_FRAME_OVERLAP;
     }
+
+    VkBufferCreateInfo BufferCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = Size,
+        .usage = Buffer->Usage,
+    };
+
+    Rr_Device *Device = &gRenderer->Device;
+
     for (uint32_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
         AllocatedBuffer->SyncState = RR_EMPTY_SYNC;
 
-        VmaAllocationInfo AllocationInfo;
-        VkResult Result = vmaCreateBuffer(
-            gRenderer->Allocator,
-            &BufferCreateInfo,
-            &AllocationCreateInfo,
-            &AllocatedBuffer->Handle,
-            &AllocatedBuffer->Allocation,
-            &AllocationInfo);
+        if (Device->CreateBuffer(
+                Device->Handle,
+                &BufferCreateInfo,
+                NULL,
+                &AllocatedBuffer->Handle) != VK_SUCCESS)
+        {
+            RR_LOG_ERROR("Failed to create buffer!");
 
-        assert(Result == VK_SUCCESS);
+            Rr_DestroyBuffer(Buffer);
 
-        AllocatedBuffer->MappedData = AllocationInfo.pMappedData;
+            return NULL;
+        }
 
 #ifdef RR_USE_GPU_DEBUG_UTILS
         char ObjectName[RR_MAX_OBJECT_NAME_LENGTH];
@@ -160,6 +125,13 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
             (uint64_t)AllocatedBuffer->Handle,
             ObjectName);
 #endif
+    }
+
+    if (!Rr_AllocBufferMemory(&gRenderer->Allocator, Buffer))
+    {
+        Rr_DestroyBuffer(Buffer);
+
+        return NULL;
     }
 
     return Buffer;
@@ -189,17 +161,24 @@ void Rr_ReleaseBuffer(Rr_Buffer *Buffer)
 
 void Rr_DestroyBuffer(Rr_Buffer *Buffer)
 {
-    assert(Buffer && Buffer->AllocatedBufferCount > 0);
+    assert(Buffer);
+
+    Rr_Device *Device = &gRenderer->Device;
 
     for (uint32_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
 
-        vmaDestroyBuffer(
-            gRenderer->Allocator,
-            AllocatedBuffer->Handle,
-            AllocatedBuffer->Allocation);
+        if (AllocatedBuffer->Handle != VK_NULL_HANDLE)
+        {
+            Device->DestroyBuffer(
+                Device->Handle,
+                AllocatedBuffer->Handle,
+                NULL);
+        }
     }
+
+    Rr_FreeBufferMemory(&gRenderer->Allocator, Buffer);
 
     Rr_LockSpinlock(&gRenderer->BuffersLock);
 
@@ -213,49 +192,47 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
 void *Rr_GetMappedBufferData(Rr_Buffer *Buffer)
 {
     assert(Buffer);
+
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
 
     return AllocatedBuffer->MappedData;
 }
 
-void *Rr_MapBuffer(Rr_Buffer *Buffer)
-{
-    Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
-    if (Buffer->Flags & RR_BUFFER_FLAGS_MAPPED_BIT)
-    {
-        return AllocatedBuffer->MappedData;
-    }
+// void *Rr_MapBuffer(Rr_Buffer *Buffer)
+// {
+//     Rr_AllocatedBuffer *AllocatedBuffer =
+//     Rr_GetCurrentAllocatedBuffer(Buffer); if (Buffer->Flags &
+//     RR_BUFFER_FLAGS_MAPPED_BIT)
+//     {
+//         return AllocatedBuffer->MappedData;
+//     }
 
-    void *MappedData;
-    vmaMapMemory(
-        gRenderer->Allocator,
-        AllocatedBuffer->Allocation,
-        &MappedData);
+//     void *MappedData;
+//     vmaMapMemory(
+//         gRenderer->Allocator,
+//         AllocatedBuffer->Allocation,
+//         &MappedData);
 
-    return MappedData;
-}
+//     return MappedData;
+// }
 
-void Rr_UnmapBuffer(Rr_Buffer *Buffer)
-{
-    if (Buffer->Flags & RR_BUFFER_FLAGS_MAPPED_BIT)
-    {
-        return;
-    }
+// void Rr_UnmapBuffer(Rr_Buffer *Buffer)
+// {
+//     if (Buffer->Flags & RR_BUFFER_FLAGS_MAPPED_BIT)
+//     {
+//         return;
+//     }
 
-    Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
+//     Rr_AllocatedBuffer *AllocatedBuffer =
+//     Rr_GetCurrentAllocatedBuffer(Buffer);
 
-    vmaUnmapMemory(gRenderer->Allocator, AllocatedBuffer->Allocation);
-}
+//     vmaUnmapMemory(gRenderer->Allocator, AllocatedBuffer->Allocation);
+// }
 
 void Rr_FlushBufferRange(Rr_Buffer *Buffer, uint64_t Offset, uint64_t Size)
 {
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
-
-    vmaFlushAllocation(
-        gRenderer->Allocator,
-        AllocatedBuffer->Allocation,
-        Offset,
-        Size);
+    Rr_FlushBufferMemory(&gRenderer->Allocator, AllocatedBuffer, Offset, Size);
 }
 
 Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_Buffer *Buffer)

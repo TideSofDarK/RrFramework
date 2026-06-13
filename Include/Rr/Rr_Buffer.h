@@ -32,11 +32,11 @@ typedef enum
     RR_BUFFER_FLAGS_VERTEX_BIT = 1U << 2,
     RR_BUFFER_FLAGS_INDEX_BIT = 1U << 3,
     RR_BUFFER_FLAGS_INDIRECT_BIT = 1U << 4,
-    RR_BUFFER_FLAGS_READBACK_BIT = 1U << 5,
-    RR_BUFFER_FLAGS_STAGING_BIT = 1U << 6,
+    RR_BUFFER_FLAGS_MAPPED_BIT = 1U << 5,
+    RR_BUFFER_FLAGS_PER_FRAME_BIT = 1U << 6,
     RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT = 1U << 7,
-    RR_BUFFER_FLAGS_MAPPED_BIT = 1U << 8,
-    RR_BUFFER_FLAGS_PER_FRAME_BIT = 1U << 9,
+    RR_BUFFER_FLAGS_STAGING_BIT = 1U << 8,
+    RR_BUFFER_FLAGS_READBACK_BIT = 1U << 9,
 } Rr_BufferFlagsBits;
 typedef uint32_t Rr_BufferFlags;
 
@@ -52,9 +52,9 @@ extern void RR_CC Rr_ReleaseBuffer(Rr_Buffer *Buffer);
 
 extern void *RR_CC Rr_GetMappedBufferData(Rr_Buffer *Buffer);
 
-extern void *RR_CC Rr_MapBuffer(Rr_Buffer *Buffer);
+/* extern void *RR_CC Rr_MapBuffer(Rr_Buffer *Buffer); */
 
-extern void RR_CC Rr_UnmapBuffer(Rr_Buffer *Buffer);
+/* extern void RR_CC Rr_UnmapBuffer(Rr_Buffer *Buffer); */
 
 extern void RR_CC
 Rr_FlushBufferRange(Rr_Buffer *Buffer, uint64_t Offset, uint64_t Size);

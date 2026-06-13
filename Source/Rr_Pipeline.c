@@ -23,6 +23,7 @@
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
 #include "Rr_LogMacro.h"
 
+#include "Rr_Arena.h"
 #include "Rr_Hash.h"
 #include "Rr_Renderer.h"
 #include "Rr_SPIRV.h"

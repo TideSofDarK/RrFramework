@@ -25,9 +25,10 @@
 
 #include "Rr_Platform.h"
 #include "Rr_Renderer.h"
-#include "Rr_System.h"
 #include "Rr_Thread.h"
 #include "Rr_UI.h"
+
+#include <Rr/Rr_System.h>
 
 #include <assert.h>
 
@@ -128,7 +129,7 @@ static inline void Rr_DispatchEvents(void)
 void Rr_Run(Rr_Config *Config)
 {
     assert(gApp == NULL && "You shouldn't call Rr_Run() more than once!");
-    assert(Config->WindowTitle != NULL);
+    assert(Config->Title != NULL || Config->WindowTitle != NULL);
     assert(Config->IterateFunc != NULL);
 
     Rr_InitSystem();

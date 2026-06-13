@@ -24,11 +24,15 @@
 
 #include "Rr_Vulkan.h"
 
+struct Rr_Chunk;
+struct Rr_Range;
+
 typedef struct Rr_AllocatedBuffer Rr_AllocatedBuffer;
 struct Rr_AllocatedBuffer
 {
     VkBuffer Handle;
-    VmaAllocation Allocation;
+    struct Rr_Chunk *Chunk;
+    struct Rr_Range *Range;
     void *MappedData;
     Rr_SyncState SyncState;
 };

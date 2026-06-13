@@ -22,13 +22,15 @@
 
 #include <Rr/Rr_Renderer.h>
 
-#include "Rr_Arena.h"
+#include "Rr_Allocator.h"
 #include "Rr_Buffer.h"
 #include "Rr_Graph.h"
 #include "Rr_Image.h"
 #include "Rr_Pipeline.h"
 #include "Rr_Profiler.h"
 #include "Rr_Vulkan.h"
+
+#include <Rr/Rr_Arena.h>
 
 typedef struct Rr_SwapchainImage Rr_SwapchainImage;
 struct Rr_SwapchainImage
@@ -151,7 +153,8 @@ struct Rr_Renderer
     Rr_Queue DedicatedTransferQueue;
     Rr_Queue AsyncComputeQueue;
 
-    VmaAllocator Allocator;
+    VmaAllocator VMA;
+    Rr_Allocator Allocator;
 
     RR_ARRAY(VkSemaphore) Semaphores;
     Rr_Spinlock SemaphoresLock;

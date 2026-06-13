@@ -681,7 +681,7 @@ struct SQuadTreeApp
             sizeof(SGPUDraw) * MAX_DRAWS,
             RR_BUFFER_FLAGS_STORAGE_BIT);
         StagingBuffer = Rr_CreateBuffer(
-            RR_MEGABYTES(64),
+            RR_MIBIBYTES(64),
             RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
                 RR_BUFFER_FLAGS_PER_FRAME_BIT);
 

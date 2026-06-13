@@ -127,6 +127,7 @@ target_compile_definitions(
 target_sources(
     ${PROJECT_NAME}
     PRIVATE
+    Source/Rr_Allocator.c
     Source/Rr_App.c
     Source/Rr_Arena.c
     Source/Rr_Asset.c

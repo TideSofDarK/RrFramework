@@ -268,7 +268,7 @@ struct SBoxBlur2D
         RecreatePipelines(KernelSize);
 
         UniformBuffer = Rr_CreateBuffer(
-            RR_KILOBYTES(1),
+            RR_KIBIBYTES(1),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
                 RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
     }
@@ -422,7 +422,7 @@ struct SKawaseBlur2D
         Sampler = Rr_CreateSampler(&SamplerInfo);
 
         UniformBuffer = Rr_CreateBuffer(
-            RR_KILOBYTES(1),
+            RR_KIBIBYTES(1),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
                 RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
     }
@@ -634,7 +634,7 @@ struct SDualKawaseBlur2D
         Sampler = Rr_CreateSampler(&SamplerInfo);
 
         UniformBuffer = Rr_CreateBuffer(
-            RR_MEGABYTES(1),
+            RR_MIBIBYTES(1),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
                 RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
     }

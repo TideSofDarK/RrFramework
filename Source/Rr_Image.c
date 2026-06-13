@@ -362,7 +362,7 @@ static Rr_Image *Rr_CreateImage(
         AllocatedImage->Container = Image;
 
         VkResult Result = vmaCreateImage(
-            gRenderer->Allocator,
+            gRenderer->VMA,
             &ImageCreateInfo,
             &AllocationCreateInfo,
             &AllocatedImage->Handle,
@@ -427,7 +427,7 @@ void Rr_DestroyImage(Rr_Image *Image)
             DestroyFramebuffers);
 
         vmaDestroyImage(
-            gRenderer->Allocator,
+            gRenderer->VMA,
             AllocatedImage->Handle,
             AllocatedImage->Allocation);
     }
