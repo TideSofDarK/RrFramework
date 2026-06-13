@@ -533,8 +533,9 @@ static inline void RR_HASH_MAP_REHASH_NAME(
         uint64_t Hash;
     };
 
-    RR_ARRAY(TempBucket) OldBuckets = { 0 };
-    RR_RESERVE_ARRAY(&OldBuckets, Map->Count, Scratch.Arena);
+    TempBucket *OldBuckets =
+        Rr_AllocNoZero(sizeof(TempBucket) * Map->Count, Scratch.Arena);
+    size_t OldBucketIndex = 0;
 
     RR_HASH_MAP_NODE_TYPE *Node = Map->First;
     while (Node)
@@ -544,7 +545,7 @@ static inline void RR_HASH_MAP_REHASH_NAME(
             RR_HASH_MAP_BUCKET_TYPE *Bucket = &Node->Buckets[Index];
             if (Bucket->Occupied)
             {
-                *RR_PUSH_INTO_ARRAY(&OldBuckets, NULL) = (TempBucket){
+                OldBuckets[OldBucketIndex++] = (TempBucket){
 #if defined(RR_HASH_MAP_VALUE_TYPE)
                     .Value = Bucket->Value,
 #endif
@@ -573,9 +574,9 @@ static inline void RR_HASH_MAP_REHASH_NAME(
     }
     Map->Count = 0;
 
-    for (size_t Index = 0; Index < OldBuckets.Count; ++Index)
+    for (size_t Index = 0; Index < OldBucketIndex; ++Index)
     {
-        TempBucket *Bucket = &OldBuckets.Data[Index];
+        TempBucket *Bucket = &OldBuckets[Index];
 
         RR_HASH_MAP_INSERT_WITH_HASH_NAME(
             Map,
