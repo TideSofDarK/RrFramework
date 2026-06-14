@@ -29,29 +29,30 @@ void Rr_InitAllocator(
     Rr_Allocator *Allocator,
     Rr_PhysicalDevice *PhysicalDevice)
 {
-    VkPhysicalDeviceMemoryProperties *MemoryProperties =
-        &PhysicalDevice->MemoryProperties;
+    uint32_t MemoryTypeCount = PhysicalDevice->MemoryProperties.memoryTypeCount;
+    VkMemoryType *MemoryTypes = PhysicalDevice->MemoryProperties.memoryTypes;
+    VkMemoryHeap *MemoryHeaps = PhysicalDevice->MemoryProperties.memoryHeaps;
+    VkPhysicalDeviceLimits *Limits = &PhysicalDevice->Properties.limits;
 
     Rr_Arena *Arena = Rr_GetPermanent();
 
-    Allocator->BufferImageGranularity =
-        PhysicalDevice->Properties.limits.bufferImageGranularity;
-    Allocator->NonCoherentAtomSize =
-        PhysicalDevice->Properties.limits.nonCoherentAtomSize;
+    Allocator->BufferImageGranularity = Limits->bufferImageGranularity;
+    Allocator->NonCoherentAtomSize = Limits->nonCoherentAtomSize;
     Allocator->BigChunkSize = RR_BIG_CHUNK_SIZE;
     Allocator->SmallChunkSize = RR_SMALL_CHUNK_SIZE;
 
-    Allocator->MemoryTypeCount = MemoryProperties->memoryTypeCount;
+    Allocator->MemoryTypeCount = MemoryTypeCount;
     Allocator->MemoryTypes =
-        Rr_Alloc(sizeof(Rr_MemoryType) * Allocator->MemoryTypeCount, Arena);
+        Rr_Alloc(sizeof(Rr_MemoryType) * MemoryTypeCount, Arena);
 
-    for (uint32_t Index = 0; Index < MemoryProperties->memoryTypeCount; ++Index)
+    for (uint32_t Index = 0; Index < MemoryTypeCount; ++Index)
     {
-        VkMemoryType *MemoryType = &MemoryProperties->memoryTypes[Index];
-        VkMemoryHeap *MemoryHeap =
-            &MemoryProperties->memoryHeaps[MemoryType->heapIndex];
+        VkMemoryType *MemoryType = &MemoryTypes[Index];
+        VkMemoryHeap *MemoryHeap = &MemoryHeaps[MemoryType->heapIndex];
 
         Allocator->MemoryTypes[Index].HeapSize = MemoryHeap->size;
+        Allocator->MemoryTypes[Index].DeviceLocalHeap =
+            MemoryHeap->flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
         if (MemoryHeap->size > Allocator->BigChunkSize)
         {
             Allocator->MemoryTypes[Index].ChunkSize = Allocator->BigChunkSize;
@@ -64,10 +65,7 @@ void Rr_InitAllocator(
         {
             Allocator->MemoryTypes[Index].ChunkSize = MemoryHeap->size / 2;
         }
-        Allocator->MemoryTypes[Index].DeviceLocal =
-            MemoryHeap->flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
-        Allocator->MemoryTypes[Index].HostVisible =
-            MemoryType->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        Allocator->MemoryTypes[Index].PropertyFlags = MemoryType->propertyFlags;
     }
 }
 
@@ -75,6 +73,9 @@ void Rr_CleanupAllocator(Rr_Allocator *Allocator)
 {
     Rr_Device *Device = Rr_GetDevice();
 
+    Rr_LockSpinlock(&Allocator->Lock);
+
+    uint32_t LeakedMappings = 0;
     size_t MemoryFreed = 0;
     for (size_t Index = 0; Index < Allocator->MemoryTypeCount; ++Index)
     {
@@ -83,11 +84,17 @@ void Rr_CleanupAllocator(Rr_Allocator *Allocator)
 
         while (Chunk)
         {
+            if (Chunk->MappedData)
+            {
+                Device->UnmapMemory(Device->Handle, Chunk->Memory);
+            }
+
             Device->FreeMemory(Device->Handle, Chunk->Memory, NULL);
 
+            LeakedMappings += Chunk->MappingCount;
             MemoryFreed += Chunk->Size;
 
-            Rr_DecrementAtomicIntRelaxed(&Allocator->HardAllocations);
+            Allocator->HardAllocationCount--;
 
             Chunk = Chunk->Next;
         }
@@ -96,19 +103,25 @@ void Rr_CleanupAllocator(Rr_Allocator *Allocator)
     Rr_ClearRangeHive(&Allocator->RangeHive);
     Rr_ClearChunkHive(&Allocator->ChunkHive);
 
-    int64_t SoftAllocations =
-        Rr_LoadAtomicIntRelaxed(&Allocator->SoftAllocations);
-    if (SoftAllocations)
+    if (Allocator->SoftAllocationCount)
     {
-        RR_LOG_WARNING("Leaked %zu soft allocations", (size_t)SoftAllocations);
+        RR_LOG_WARNING(
+            "Leaked %u soft allocations",
+            Allocator->SoftAllocationCount);
     }
-    int64_t HardAllocations =
-        Rr_LoadAtomicIntRelaxed(&Allocator->HardAllocations);
-    if (HardAllocations)
+    if (Allocator->HardAllocationCount)
     {
-        RR_LOG_WARNING("Leaked %zu hard allocations", (size_t)HardAllocations);
+        RR_LOG_WARNING(
+            "Leaked %u hard allocations",
+            Allocator->HardAllocationCount);
+    }
+    if (LeakedMappings)
+    {
+        RR_LOG_WARNING("Leaked %u memory mappings", LeakedMappings);
     }
     RR_LOG_INFO("Freed %zu bytes of memory", MemoryFreed);
+
+    Rr_UnlockSpinlock(&Allocator->Lock);
 }
 
 static inline Rr_Range *Rr_GetRange(Rr_Allocator *Allocator, Rr_Arena *Arena)
@@ -197,8 +210,6 @@ static inline Rr_Chunk *Rr_AllocateChunk(
 {
     Rr_Device *Device = Rr_GetDevice();
 
-    Rr_MemoryType *MemoryType = &Allocator->MemoryTypes[MemoryTypeIndex];
-
     VkMemoryAllocateInfo MemoryAllocateInfo = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .allocationSize = Size,
@@ -216,33 +227,13 @@ static inline Rr_Chunk *Rr_AllocateChunk(
 
         return NULL;
     }
-    Rr_IncrementAtomicIntRelaxed(&Allocator->HardAllocations);
-    void *MappedData = NULL;
-    if (MemoryType->HostVisible)
-    {
-        Result = Device->MapMemory(
-            Device->Handle,
-            DeviceMemory,
-            0,
-            Size,
-            0,
-            &MappedData);
-        if (Result != VK_SUCCESS)
-        {
-            RR_LOG_ERROR("Couldn't not map a chunk of memory!");
-
-            Device->FreeMemory(Device->Handle, DeviceMemory, NULL);
-
-            return NULL;
-        }
-    }
+    Allocator->HardAllocationCount++;
 
     Rr_Arena *Arena = Rr_GetPermanent();
 
     Rr_Chunk *Chunk = Rr_GetChunk(Allocator, Arena);
     Chunk->Size = Size;
     Chunk->Memory = DeviceMemory;
-    Chunk->MappedData = MappedData;
     Chunk->FirstRange = Rr_GetRange(Allocator, Arena);
     Chunk->FirstRange->Size = Size;
     Chunk->FirstRange->Free = true;
@@ -272,16 +263,15 @@ static inline bool Rr_FindChunkAndRange(
 {
     Rr_MemoryType *MemoryType = &Allocator->MemoryTypes[MemoryTypeIndex];
 
+    VkDeviceSize Size = MemoryRequirements->size;
+
     Rr_LockSpinlock(&Allocator->Lock);
 
-    if (MemoryRequirements->size > MemoryType->ChunkSize)
+    if (Size > MemoryType->ChunkSize)
     {
-        /* Dedicated allocation. */
+        /* NOTE: Dedicated allocation. */
 
-        Rr_Chunk *Chunk = Rr_AllocateChunk(
-            Allocator,
-            MemoryTypeIndex,
-            MemoryRequirements->size);
+        Rr_Chunk *Chunk = Rr_AllocateChunk(Allocator, MemoryTypeIndex, Size);
 
         if (!Chunk)
         {
@@ -317,12 +307,10 @@ static inline bool Rr_FindChunkAndRange(
 
     Rr_Chunk *Chunk = MemoryType->FirstChunk;
 
+    VkDeviceSize Alignment = MemoryRequirements->alignment;
     /* TODO: Technically aligning to buffer image granularity is not always
      * necessary. */
-
-    VkDeviceSize Alignment = RR_MAX(
-        MemoryRequirements->alignment,
-        Allocator->BufferImageGranularity);
+    Alignment = RR_MAX(Alignment, Allocator->BufferImageGranularity);
 
     while (Chunk)
     {
@@ -333,13 +321,13 @@ static inline bool Rr_FindChunkAndRange(
         {
             VkDeviceSize AlignedOffset =
                 Rr_AlignVulkanOffset(Range->Offset, Alignment);
-            VkDeviceSize AlignedSize =
+            VkDeviceSize AlignedAvailableSize =
                 Range->Size - (AlignedOffset - Range->Offset);
-            if (MemoryRequirements->size <= AlignedSize)
+            if (Size <= AlignedAvailableSize)
             {
                 /* Claim this range; put leftovers (if any) into a new one. */
 
-                VkDeviceSize Leftovers = AlignedSize - MemoryRequirements->size;
+                VkDeviceSize Leftovers = AlignedAvailableSize - Size;
                 Rr_Range *NewRange = NULL;
                 if (Leftovers >= RR_MINIMAL_ALLOCATION)
                 {
@@ -398,7 +386,8 @@ static inline bool Rr_BindAllocatedBuffer(
     Rr_Allocator *Allocator,
     Rr_AllocatedBuffer *AllocatedBuffer,
     VkMemoryRequirements *MemoryRequirements,
-    uint32_t MemoryTypeIndex)
+    uint32_t MemoryTypeIndex,
+    bool Mapped)
 {
     if (AllocatedBuffer->Chunk || AllocatedBuffer->Range)
     {
@@ -421,6 +410,11 @@ static inline bool Rr_BindAllocatedBuffer(
         return false;
     }
 
+    if (Mapped && !Rr_MapAllocatedBufferMemory(Allocator, AllocatedBuffer))
+    {
+        return false;
+    }
+
     if (Device->BindBufferMemory(
             Device->Handle,
             AllocatedBuffer->Handle,
@@ -432,17 +426,14 @@ static inline bool Rr_BindAllocatedBuffer(
         return false;
     }
 
-    if (AllocatedBuffer->Chunk->MappedData)
-    {
-        AllocatedBuffer->MappedData =
-            (char *)AllocatedBuffer->Chunk->MappedData +
-            AllocatedBuffer->Range->AlignedOffset;
-    }
-
     if (!AllocatedBuffer->Chunk->Dedicated)
     {
-        Rr_IncrementAtomicIntRelaxed(&AllocatedBuffer->Chunk->SoftAllocations);
-        Rr_IncrementAtomicIntRelaxed(&Allocator->SoftAllocations);
+        Rr_LockSpinlock(&Allocator->Lock);
+
+        AllocatedBuffer->Chunk->SoftAllocationCount++;
+        Allocator->SoftAllocationCount++;
+
+        Rr_UnlockSpinlock(&Allocator->Lock);
     }
 
     return true;
@@ -507,11 +498,14 @@ bool Rr_AllocBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
 
         for (; AllocatedIndex < Buffer->AllocatedBufferCount; ++AllocatedIndex)
         {
+            Rr_AllocatedBuffer *AllocatedBuffer =
+                &Buffer->AllocatedBuffers[AllocatedIndex];
             if (!Rr_BindAllocatedBuffer(
                     Allocator,
-                    &Buffer->AllocatedBuffers[AllocatedIndex],
+                    AllocatedBuffer,
                     &MemoryRequirements,
-                    MemoryTypeIndex))
+                    MemoryTypeIndex,
+                    Buffer->Flags & RR_BUFFER_FLAGS_MAPPED_BIT))
             {
                 break;
             }
@@ -532,8 +526,6 @@ bool Rr_AllocBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
 
 void Rr_FreeBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
 {
-    Rr_LockSpinlock(&Allocator->Lock);
-
     for (size_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
         Rr_AllocatedBuffer *AllocatedBuffer = &Buffer->AllocatedBuffers[Index];
@@ -544,6 +536,13 @@ void Rr_FreeBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
             continue;
         }
 
+        if (Buffer->Flags & RR_BUFFER_FLAGS_MAPPED_BIT)
+        {
+            Rr_UnmapAllocatedBufferMemory(Allocator, AllocatedBuffer);
+        }
+
+        Rr_LockSpinlock(&Allocator->Lock);
+
         if (Chunk->Dedicated)
         {
             Rr_Device *Device = Rr_GetDevice();
@@ -553,7 +552,9 @@ void Rr_FreeBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
             Rr_ReturnRange(Allocator, Range);
             Rr_ReturnChunk(Allocator, Chunk);
 
-            Rr_DecrementAtomicIntRelaxed(&Allocator->HardAllocations);
+            Allocator->HardAllocationCount--;
+
+            Rr_UnlockSpinlock(&Allocator->Lock);
 
             continue;
         }
@@ -617,14 +618,88 @@ void Rr_FreeBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
             Range->PreviousFree->NextFree = Range;
         }
 
-        Rr_DecrementAtomicIntRelaxed(&Chunk->SoftAllocations);
-        Rr_DecrementAtomicIntRelaxed(&Allocator->SoftAllocations);
+        Chunk->SoftAllocationCount--;
+        Allocator->SoftAllocationCount--;
+
+        Rr_UnlockSpinlock(&Allocator->Lock);
+    }
+}
+
+void *Rr_MapAllocatedBufferMemory(
+    Rr_Allocator *Allocator,
+    Rr_AllocatedBuffer *AllocatedBuffer)
+{
+    if (AllocatedBuffer->MappedData)
+    {
+        return AllocatedBuffer->MappedData;
+    }
+
+    Rr_Device *Device = Rr_GetDevice();
+
+    Rr_Chunk *Chunk = AllocatedBuffer->Chunk;
+    Rr_Range *Range = AllocatedBuffer->Range;
+
+    Rr_LockSpinlock(&Allocator->Lock);
+
+    if (!Chunk->MappedData)
+    {
+        if (Device->MapMemory(
+                Device->Handle,
+                Chunk->Memory,
+                0,
+                VK_WHOLE_SIZE,
+                0,
+                &Chunk->MappedData) != VK_SUCCESS)
+        {
+            Rr_UnlockSpinlock(&Allocator->Lock);
+
+            RR_LOG_ERROR("Failed to map a chunk of memory!");
+
+            return NULL;
+        }
+    }
+
+    AllocatedBuffer->MappedData =
+        (uint8_t *)Chunk->MappedData + Range->AlignedOffset;
+
+    Chunk->MappingCount++;
+
+    Rr_UnlockSpinlock(&Allocator->Lock);
+
+    return (uint8_t *)Chunk->MappedData + Range->AlignedOffset;
+}
+
+void Rr_UnmapAllocatedBufferMemory(
+    Rr_Allocator *Allocator,
+    Rr_AllocatedBuffer *AllocatedBuffer)
+{
+    if (!AllocatedBuffer->MappedData)
+    {
+        return;
+    }
+
+    Rr_Chunk *Chunk = AllocatedBuffer->Chunk;
+
+    Rr_LockSpinlock(&Allocator->Lock);
+
+    if (Chunk->MappedData)
+    {
+        AllocatedBuffer->MappedData = NULL;
+
+        if (--Chunk->MappingCount == 0)
+        {
+            Rr_Device *Device = Rr_GetDevice();
+
+            Device->UnmapMemory(Device->Handle, Chunk->Memory);
+
+            Chunk->MappedData = NULL;
+        }
     }
 
     Rr_UnlockSpinlock(&Allocator->Lock);
 }
 
-void Rr_FlushBufferMemory(
+void Rr_FlushAllocatedBufferMemory(
     Rr_Allocator *Allocator,
     Rr_AllocatedBuffer *AllocatedBuffer,
     size_t Offset,

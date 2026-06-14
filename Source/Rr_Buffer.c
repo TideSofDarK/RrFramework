@@ -190,48 +190,33 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
 
 void *Rr_GetMappedBufferData(Rr_Buffer *Buffer)
 {
-    assert(Buffer);
-
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
 
     return AllocatedBuffer->MappedData;
 }
 
-// void *Rr_MapBuffer(Rr_Buffer *Buffer)
-// {
-//     Rr_AllocatedBuffer *AllocatedBuffer =
-//     Rr_GetCurrentAllocatedBuffer(Buffer); if (Buffer->Flags &
-//     RR_BUFFER_FLAGS_MAPPED_BIT)
-//     {
-//         return AllocatedBuffer->MappedData;
-//     }
+void *Rr_MapBuffer(Rr_Buffer *Buffer)
+{
+    Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
 
-//     void *MappedData;
-//     vmaMapMemory(
-//         gRHI->Allocator,
-//         AllocatedBuffer->Allocation,
-//         &MappedData);
+    return Rr_MapAllocatedBufferMemory(&gRHI->Allocator, AllocatedBuffer);
+}
 
-//     return MappedData;
-// }
+void Rr_UnmapBuffer(Rr_Buffer *Buffer)
+{
+    Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
 
-// void Rr_UnmapBuffer(Rr_Buffer *Buffer)
-// {
-//     if (Buffer->Flags & RR_BUFFER_FLAGS_MAPPED_BIT)
-//     {
-//         return;
-//     }
-
-//     Rr_AllocatedBuffer *AllocatedBuffer =
-//     Rr_GetCurrentAllocatedBuffer(Buffer);
-
-//     vmaUnmapMemory(gRHI->Allocator, AllocatedBuffer->Allocation);
-// }
+    Rr_UnmapAllocatedBufferMemory(&gRHI->Allocator, AllocatedBuffer);
+}
 
 void Rr_FlushBufferRange(Rr_Buffer *Buffer, uint64_t Offset, uint64_t Size)
 {
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
-    Rr_FlushBufferMemory(&gRHI->Allocator, AllocatedBuffer, Offset, Size);
+    Rr_FlushAllocatedBufferMemory(
+        &gRHI->Allocator,
+        AllocatedBuffer,
+        Offset,
+        Size);
 }
 
 Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_Buffer *Buffer)

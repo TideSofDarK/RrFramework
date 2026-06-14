@@ -363,6 +363,14 @@ extern bool RR_CC Rr_UIInputUnsignedIntRange(
     uint32_t Min,
     uint32_t Max);
 
+extern bool RR_CC Rr_UIInputUnsignedInt64(char const *Title, uint64_t *Value);
+
+extern bool RR_CC Rr_UIInputUnsignedInt64Range(
+    char const *Title,
+    uint64_t *Value,
+    uint64_t Min,
+    uint64_t Max);
+
 extern bool RR_CC Rr_UIInputColor3(char const *Title, float *Channels);
 
 extern bool RR_CC Rr_UIInputColor4(char const *Title, float *Channels);

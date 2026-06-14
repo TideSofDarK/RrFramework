@@ -34,8 +34,8 @@ static void Iterate(void)
         Rr_UICheckbox("Uniform", &Uniform);
         static bool PerFrame = false;
         Rr_UICheckbox("Per Frame", &PerFrame);
-        static uint32_t Size = RR_KIBIBYTES(16);
-        Rr_UIInputUnsignedInt("Size", &Size);
+        static uint64_t Size = RR_KIBIBYTES(16);
+        Rr_UIInputUnsignedInt64("Size", &Size);
         if ((Host || Uniform) && BufferCount < MAX_BUFFERS &&
             Rr_UIButton("Create Buffer"))
         {
@@ -52,7 +52,11 @@ static void Iterate(void)
             {
                 Flags |= RR_BUFFER_FLAGS_PER_FRAME_BIT;
             }
-            Buffers[BufferCount++] = Rr_CreateBuffer(Size, Flags);
+            Rr_Buffer *Buffer = Rr_CreateBuffer(Size, Flags);
+            if (Buffer)
+            {
+                Buffers[BufferCount++] = Buffer;
+            }
         }
         Rr_UISeparator();
         if (Rr_UIBeginTree("Buffers"))

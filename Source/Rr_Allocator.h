@@ -56,8 +56,9 @@ struct Rr_Chunk
 {
     VkDeviceSize Size;
     VkDeviceMemory Memory;
+    uint32_t SoftAllocationCount;
+    uint32_t MappingCount;
     void *MappedData;
-    Rr_AtomicInt SoftAllocations;
     bool Dedicated;
 
     Rr_Range *FirstRange;
@@ -75,11 +76,11 @@ struct Rr_Chunk
 typedef struct Rr_MemoryType Rr_MemoryType;
 struct Rr_MemoryType
 {
-    Rr_Chunk *FirstChunk;
     VkDeviceSize HeapSize;
+    bool DeviceLocalHeap;
     VkDeviceSize ChunkSize;
-    bool DeviceLocal;
-    bool HostVisible;
+    VkMemoryPropertyFlags PropertyFlags;
+    Rr_Chunk *FirstChunk;
 };
 
 typedef struct Rr_Allocator Rr_Allocator;
@@ -93,8 +94,8 @@ struct Rr_Allocator
     Rr_MemoryType *MemoryTypes;
     Rr_RangeHive RangeHive;
     Rr_ChunkHive ChunkHive;
-    Rr_AtomicInt HardAllocations;
-    Rr_AtomicInt SoftAllocations;
+    uint32_t HardAllocationCount;
+    uint32_t SoftAllocationCount;
     Rr_Spinlock Lock;
 };
 
@@ -112,7 +113,15 @@ extern void Rr_FreeBufferMemory(
     Rr_Allocator *Allocator,
     struct Rr_Buffer *Buffer);
 
-extern void Rr_FlushBufferMemory(
+extern void *Rr_MapAllocatedBufferMemory(
+    Rr_Allocator *Allocator,
+    struct Rr_AllocatedBuffer *AllocatedBuffer);
+
+extern void Rr_UnmapAllocatedBufferMemory(
+    Rr_Allocator *Allocator,
+    struct Rr_AllocatedBuffer *AllocatedBuffer);
+
+extern void Rr_FlushAllocatedBufferMemory(
     Rr_Allocator *Allocator,
     struct Rr_AllocatedBuffer *AllocatedBuffer,
     size_t Offset,

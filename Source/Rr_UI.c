@@ -49,6 +49,7 @@
 
 #include <assert.h>
 #include <float.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -271,7 +272,9 @@ struct Rr_UIContext
     union
     {
         int32_t Int32;
+        int64_t Int64;
         uint32_t UnsignedInt32;
+        uint64_t UnsignedInt64;
         float Float;
         double Double;
     } DragScalarValue;
@@ -639,8 +642,8 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     Rr_SetNextObjectName("Rr.UI.StagingBuffer");
     Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
         AtlasBufferSize,
-        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT);
-    uint32_t *StagingData = Rr_GetMappedBufferData(StagingBuffer);
+        RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT);
+    uint32_t *StagingData = Rr_MapBuffer(StagingBuffer);
     for (int32_t Y = 0; Y < ATLAS_SIZE; ++Y)
     {
         for (int32_t X = 0; X < ATLAS_SIZE; ++X)
@@ -658,6 +661,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
     }
     StagingData[0] = 0xFFFFFFFF; /* Opaque pixel at [0,0]. */
     Rr_FlushBufferRange(StagingBuffer, 0, AtlasBufferSize);
+    Rr_UnmapBuffer(StagingBuffer);
     Rr_CopyBufferToImage2D(
         Rr_GetGraph(),
         StagingBuffer,
@@ -665,7 +669,6 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
         ATLAS_EXTENT,
         Font->Image,
         0);
-
     Rr_ReleaseBuffer(StagingBuffer);
 
     Rr_DestroyScratch(Scratch);
@@ -6399,7 +6402,9 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
 typedef enum
 {
     RR_UI_SCALAR_TYPE_INT,
+    RR_UI_SCALAR_TYPE_INT64,
     RR_UI_SCALAR_TYPE_UINT,
+    RR_UI_SCALAR_TYPE_UINT64,
     RR_UI_SCALAR_TYPE_FLOAT,
     RR_UI_SCALAR_TYPE_DOUBLE,
 } Rr_UIScalarType;
@@ -6481,7 +6486,20 @@ static inline void Rr_UIFormatScalar(
     {
         case RR_UI_SCALAR_TYPE_INT:
         {
-            snprintf(Buffer, BufferCapacity, "%d", *(int *)ElementData);
+            snprintf(
+                Buffer,
+                BufferCapacity,
+                "%" PRIi32,
+                *(int32_t *)ElementData);
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_INT64:
+        {
+            snprintf(
+                Buffer,
+                BufferCapacity,
+                "%" PRIi64,
+                *(int64_t *)ElementData);
         }
         break;
         case RR_UI_SCALAR_TYPE_UINT:
@@ -6489,8 +6507,17 @@ static inline void Rr_UIFormatScalar(
             snprintf(
                 Buffer,
                 BufferCapacity,
-                "%u",
-                *(unsigned int *)ElementData);
+                "%" PRIu32,
+                *(uint32_t *)ElementData);
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_UINT64:
+        {
+            snprintf(
+                Buffer,
+                BufferCapacity,
+                "%" PRIu64,
+                *(uint64_t *)ElementData);
         }
         break;
         case RR_UI_SCALAR_TYPE_FLOAT:
@@ -6527,9 +6554,19 @@ static inline float Rr_UICalculateGenericInputScalarMultiWidth(
             ComponentSize = sizeof(int32_t);
         }
         break;
+        case RR_UI_SCALAR_TYPE_INT64:
+        {
+            ComponentSize = sizeof(int64_t);
+        }
+        break;
         case RR_UI_SCALAR_TYPE_UINT:
         {
             ComponentSize = sizeof(uint32_t);
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_UINT64:
+        {
+            ComponentSize = sizeof(uint64_t);
         }
         break;
         case RR_UI_SCALAR_TYPE_FLOAT:
@@ -6584,9 +6621,19 @@ static inline void Rr_UIRecordDragScalar(void *Data, Rr_UIScalarType Type)
             gUIContext->DragScalarValue.Int32 = *(int32_t *)Data;
         }
         break;
+        case RR_UI_SCALAR_TYPE_INT64:
+        {
+            gUIContext->DragScalarValue.Int64 = *(int64_t *)Data;
+        }
+        break;
         case RR_UI_SCALAR_TYPE_UINT:
         {
             gUIContext->DragScalarValue.UnsignedInt32 = *(uint32_t *)Data;
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_UINT64:
+        {
+            gUIContext->DragScalarValue.UnsignedInt64 = *(uint64_t *)Data;
         }
         break;
         case RR_UI_SCALAR_TYPE_FLOAT:
@@ -6619,8 +6666,8 @@ static inline void Rr_UIModifyUnsignedInt(
     {
         if (Old + Abs < Old)
         {
-
             *UnsignedInt = UINT32_MAX;
+
             return;
         }
         *UnsignedInt = gUIContext->DragScalarValue.UnsignedInt32 + Abs;
@@ -6638,6 +6685,37 @@ static inline void Rr_UIModifyUnsignedInt(
     *UnsignedInt = RR_CLAMP(Min, *UnsignedInt, Max);
 }
 
+static inline void Rr_UIModifyUnsignedInt64(
+    uint64_t *UnsignedInt,
+    uint64_t Min,
+    uint64_t Max,
+    float Amount)
+{
+    uint64_t Abs = (uint64_t)fabsf(Amount);
+    uint64_t Old = gUIContext->DragScalarValue.UnsignedInt64;
+    if (Amount > 0.0f)
+    {
+        if (Old + Abs < Old)
+        {
+            *UnsignedInt = UINT64_MAX;
+
+            return;
+        }
+        *UnsignedInt = gUIContext->DragScalarValue.UnsignedInt64 + Abs;
+    }
+    if (Amount < 0.0f)
+    {
+        if (Old - Abs > Old)
+        {
+            *UnsignedInt = Min;
+
+            return;
+        }
+        *UnsignedInt = gUIContext->DragScalarValue.UnsignedInt64 - Abs;
+    }
+    *UnsignedInt = RR_CLAMP(Min, *UnsignedInt, Max);
+}
+
 static inline void Rr_UIModifyDragScalar(
     void *Data,
     Rr_UIScalarType Type,
@@ -6651,10 +6729,22 @@ static inline void Rr_UIModifyDragScalar(
                 gUIContext->DragScalarValue.Int32 + (int32_t)Amount;
         }
         break;
+        case RR_UI_SCALAR_TYPE_INT64:
+        {
+            *(int64_t *)Data =
+                gUIContext->DragScalarValue.Int64 + (int64_t)Amount;
+        }
+        break;
         case RR_UI_SCALAR_TYPE_UINT:
         {
             uint32_t *UnsignedInt = (uint32_t *)Data;
             Rr_UIModifyUnsignedInt(UnsignedInt, 0, UINT32_MAX, Amount);
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_UINT64:
+        {
+            uint64_t *UnsignedInt = (uint64_t *)Data;
+            Rr_UIModifyUnsignedInt64(UnsignedInt, 0, UINT64_MAX, Amount);
         }
         break;
         case RR_UI_SCALAR_TYPE_FLOAT:
@@ -6695,6 +6785,17 @@ static inline void Rr_UIModifyDragScalarRange(
             *Int = RR_CLAMP(Min, *Int, Max);
         }
         break;
+        case RR_UI_SCALAR_TYPE_INT64:
+        {
+            int64_t Min = *(int64_t const *)DataMin;
+            int64_t Max = *(int64_t const *)DataMax;
+            int64_t Range = Max - Min;
+            int64_t *Int = (int64_t *)Data;
+            *Int = gUIContext->DragScalarValue.Int64 +
+                   (int64_t)(Amount * (float)Range);
+            *Int = RR_CLAMP(Min, *Int, Max);
+        }
+        break;
         case RR_UI_SCALAR_TYPE_UINT:
         {
             uint32_t Min = *(uint32_t const *)DataMin;
@@ -6702,6 +6803,19 @@ static inline void Rr_UIModifyDragScalarRange(
             uint32_t Range = Max - Min;
             uint32_t *UnsignedInt = (uint32_t *)Data;
             Rr_UIModifyUnsignedInt(
+                UnsignedInt,
+                Min,
+                Max,
+                Amount * (float)Range);
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_UINT64:
+        {
+            uint64_t Min = *(uint64_t const *)DataMin;
+            uint64_t Max = *(uint64_t const *)DataMax;
+            uint64_t Range = Max - Min;
+            uint64_t *UnsignedInt = (uint64_t *)Data;
+            Rr_UIModifyUnsignedInt64(
                 UnsignedInt,
                 Min,
                 Max,
@@ -6752,11 +6866,27 @@ static inline void Rr_UIClampScalarRange(
             *Int = RR_CLAMP(Min, *Int, Max);
         }
         break;
+        case RR_UI_SCALAR_TYPE_INT64:
+        {
+            int64_t Min = *(int64_t const *)DataMin;
+            int64_t Max = *(int64_t const *)DataMax;
+            int64_t *Int = (int64_t *)Data;
+            *Int = RR_CLAMP(Min, *Int, Max);
+        }
+        break;
         case RR_UI_SCALAR_TYPE_UINT:
         {
             uint32_t Min = *(uint32_t const *)DataMin;
             uint32_t Max = *(uint32_t const *)DataMax;
             uint32_t *UnsignedInt = (uint32_t *)Data;
+            *UnsignedInt = RR_CLAMP(Min, *UnsignedInt, Max);
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_UINT64:
+        {
+            uint64_t Min = *(uint64_t const *)DataMin;
+            uint64_t Max = *(uint64_t const *)DataMax;
+            uint64_t *UnsignedInt = (uint64_t *)Data;
             *UnsignedInt = RR_CLAMP(Min, *UnsignedInt, Max);
         }
         break;
@@ -6812,9 +6942,21 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
             FilterFunc = Rr_UIIntegerFilter;
         }
         break;
+        case RR_UI_SCALAR_TYPE_INT64:
+        {
+            ComponentSize = sizeof(int64_t);
+            FilterFunc = Rr_UIIntegerFilter;
+        }
+        break;
         case RR_UI_SCALAR_TYPE_UINT:
         {
             ComponentSize = sizeof(uint32_t);
+            FilterFunc = Rr_UIUnsignedIntegerFilter;
+        }
+        break;
+        case RR_UI_SCALAR_TYPE_UINT64:
+        {
+            ComponentSize = sizeof(uint64_t);
             FilterFunc = Rr_UIUnsignedIntegerFilter;
         }
         break;
@@ -6935,16 +7077,32 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
                         {
                             (void)sscanf(
                                 ComponentBuffer,
-                                "%i",
-                                (int *)ComponentData);
+                                "%" SCNi32,
+                                (int32_t *)ComponentData);
+                        }
+                        break;
+                        case RR_UI_SCALAR_TYPE_INT64:
+                        {
+                            (void)sscanf(
+                                ComponentBuffer,
+                                "%" SCNi64,
+                                (int64_t *)ComponentData);
                         }
                         break;
                         case RR_UI_SCALAR_TYPE_UINT:
                         {
                             (void)sscanf(
                                 ComponentBuffer,
-                                "%u",
-                                (unsigned int *)ComponentData);
+                                "%" SCNu32,
+                                (uint32_t *)ComponentData);
+                        }
+                        break;
+                        case RR_UI_SCALAR_TYPE_UINT64:
+                        {
+                            (void)sscanf(
+                                ComponentBuffer,
+                                "%" SCNu64,
+                                (uint64_t *)ComponentData);
                         }
                         break;
                         case RR_UI_SCALAR_TYPE_FLOAT:
@@ -7483,6 +7641,34 @@ bool Rr_UIInputUnsignedIntRange(
         1,
         1,
         RR_UI_SCALAR_TYPE_UINT);
+}
+
+bool Rr_UIInputUnsignedInt64(char const *Title, uint64_t *Value)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        NULL,
+        NULL,
+        1,
+        1,
+        RR_UI_SCALAR_TYPE_UINT64);
+}
+
+bool Rr_UIInputUnsignedInt64Range(
+    char const *Title,
+    uint64_t *Value,
+    uint64_t Min,
+    uint64_t Max)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        &Min,
+        &Max,
+        1,
+        1,
+        RR_UI_SCALAR_TYPE_UINT64);
 }
 
 static inline void Rr_UIRGBAToHexString(
@@ -9137,11 +9323,13 @@ static inline void Rr_UIDebugOverlayAllocator(Rr_Allocator *Allocator)
 
     size_t const LENGTH = 64;
 
+    Rr_LockSpinlock(&Allocator->Lock);
+
     Rr_UITextF(
-        "Hard Allocations: %lld\n"
-        "Soft Allocations: %lld",
-        Rr_LoadAtomicIntRelaxed(&Allocator->HardAllocations),
-        Rr_LoadAtomicIntRelaxed(&Allocator->SoftAllocations));
+        "Hard Allocations: %u\n"
+        "Soft Allocations: %u",
+        Allocator->HardAllocationCount,
+        Allocator->SoftAllocationCount);
     for (uint32_t Index = 0; Index < Allocator->MemoryTypeCount; ++Index)
     {
         Rr_MemoryType *MemoryType = &Allocator->MemoryTypes[Index];
@@ -9163,10 +9351,10 @@ static inline void Rr_UIDebugOverlayAllocator(Rr_Allocator *Allocator)
                 snprintf(
                     ChunkName,
                     LENGTH,
-                    "Chunk #%d (%zuMiB, %lld allocations)###%d",
+                    "Chunk #%d (%zuMiB, %u allocations)###%d",
                     ChunkIndex,
                     Chunk->Size / RR_MIBIBYTES(1),
-                    Rr_LoadAtomicIntRelaxed(&Chunk->SoftAllocations),
+                    Chunk->SoftAllocationCount,
                     ChunkIndex);
 
                 if (Rr_UIBeginTree(ChunkName))
@@ -9193,6 +9381,8 @@ static inline void Rr_UIDebugOverlayAllocator(Rr_Allocator *Allocator)
             Rr_UIEndTree();
         }
     }
+
+    Rr_UnlockSpinlock(&Allocator->Lock);
 
     Rr_DestroyScratch(Scratch);
 }
