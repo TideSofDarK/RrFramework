@@ -115,9 +115,9 @@ static inline void Rr_DispatchEvents(void)
 
     Rr_EndPlatformEvents();
 
-    for (Rr_EventHiveIterator It = gPlatform.EventHive.Begin;
-         It.Element != gPlatform.EventHive.End.Element;
-         Rr_AdvanceEventHiveIterator(&It))
+    for (Rr_EventHiveIterator It = Rr_BeginInEventHive(&gPlatform.EventHive);
+         !Rr_IsEventHiveEnd(&gPlatform.EventHive, &It);
+         Rr_NextInEventHive(&It))
     {
         Rr_HandleEvent(It.Element);
     }

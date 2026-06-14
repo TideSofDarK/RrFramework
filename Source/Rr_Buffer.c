@@ -181,7 +181,7 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
     Rr_LockSpinlock(&gRHI->BuffersLock);
 
     Rr_BufferHiveIterator It = Rr_GetBufferHiveIterator(&gRHI->Buffers, Buffer);
-    Rr_RemoveFromBufferHive(&gRHI->Buffers, &It);
+    Rr_EraseFromBufferHive(&gRHI->Buffers, &It);
 
     Rr_UnlockSpinlock(&gRHI->BuffersLock);
 }

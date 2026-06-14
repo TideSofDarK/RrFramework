@@ -85,8 +85,8 @@ void Rr_CleanupAllocator(Rr_Allocator *Allocator)
     {
         Rr_MemoryType *MemoryType = &Allocator->MemoryTypes[Index];
 
-        Rr_ChunkHiveIterator It = MemoryType->ChunkHive.Begin;
-        while (It.Element != MemoryType->ChunkHive.End.Element)
+        Rr_ChunkHiveIterator It = Rr_BeginInChunkHive(&MemoryType->ChunkHive);
+        while (!Rr_IsChunkHiveEnd(&MemoryType->ChunkHive, &It))
         {
             Rr_Chunk *Chunk = It.Element;
 
@@ -106,7 +106,7 @@ void Rr_CleanupAllocator(Rr_Allocator *Allocator)
 
             Allocator->HardAllocationCount--;
 
-            Rr_AdvanceChunkHiveIterator(&It);
+            Rr_NextInChunkHive(&It);
         }
 
         Rr_ClearChunkHive(&MemoryType->ChunkHive);
@@ -152,7 +152,7 @@ static inline void Rr_ReturnRange(Rr_Allocator *Allocator, Rr_Range *Range)
 {
     Rr_RangeHiveIterator It =
         Rr_GetRangeHiveIterator(&Allocator->RangeHive, Range);
-    Rr_RemoveFromRangeHive(&Allocator->RangeHive, &It);
+    Rr_EraseFromRangeHive(&Allocator->RangeHive, &It);
 }
 
 static inline uint32_t Rr_FindMemoryType(
@@ -300,12 +300,12 @@ static inline bool Rr_FindChunkAndRange(
         return true;
     }
 
-    Rr_ChunkHiveIterator It = MemoryType->ChunkHive.Begin;
+    Rr_ChunkHiveIterator It = Rr_BeginInChunkHive(&MemoryType->ChunkHive);
     while (true)
     {
         Rr_Chunk *Chunk = It.Element;
 
-        if (It.Element == MemoryType->ChunkHive.End.Element)
+        if (Rr_IsChunkHiveEnd(&MemoryType->ChunkHive, &It))
         {
             Chunk = Rr_AllocateChunk(
                 Allocator,
@@ -318,10 +318,12 @@ static inline bool Rr_FindChunkAndRange(
 
                 return false;
             }
+
+            It = Rr_GetChunkHiveIterator(&MemoryType->ChunkHive, Chunk);
         }
         else if (Chunk->Dedicated)
         {
-            Rr_AdvanceChunkHiveIterator(&It);
+            Rr_NextInChunkHive(&It);
 
             continue;
         }
@@ -379,7 +381,7 @@ static inline bool Rr_FindChunkAndRange(
             Range = *RangeRef;
         }
 
-        Rr_AdvanceChunkHiveIterator(&It);
+        Rr_NextInChunkHive(&It);
     }
 
     Rr_UnlockSpinlock(&Allocator->Lock);
@@ -406,7 +408,7 @@ static inline void Rr_FreeChunkAndRange(
             &Allocator->MemoryTypes[Chunk->MemoryTypeIndex];
         Rr_ChunkHiveIterator It =
             Rr_GetChunkHiveIterator(&MemoryType->ChunkHive, Chunk);
-        Rr_RemoveFromChunkHive(&MemoryType->ChunkHive, &It);
+        Rr_EraseFromChunkHive(&MemoryType->ChunkHive, &It);
 
         Allocator->HardAllocationCount--;
 

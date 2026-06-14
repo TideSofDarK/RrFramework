@@ -527,17 +527,17 @@ static inline void Rr_DestroyReleasedObjects(void)
     Rr_LockSpinlock(&gRHI->ReleasedBuffersLock);
 
     for (Rr_HandleSetIterator It = Rr_BeginInHandleSet(&gRHI->ReleasedBuffers);
-         !Rr_IsHandleSetEnd(It);)
+         !Rr_IsHandleSetEnd(&It);)
     {
         Rr_Buffer *Buffer = (Rr_Buffer *)It.Data->Key;
         if (!Rr_LoadAtomicIntRelaxed(&Buffer->RefCount))
         {
             Rr_DestroyBuffer(Buffer);
-            It = Rr_EraseFromHandleSet(It);
+            Rr_EraseFromHandleSet(&It);
         }
         else
         {
-            It = Rr_NextInHandleSet(It);
+            Rr_NextInHandleSet(&It);
         }
     }
 
@@ -546,17 +546,17 @@ static inline void Rr_DestroyReleasedObjects(void)
     Rr_LockSpinlock(&gRHI->ReleasedImagesLock);
 
     for (Rr_HandleSetIterator It = Rr_BeginInHandleSet(&gRHI->ReleasedImages);
-         !Rr_IsHandleSetEnd(It);)
+         !Rr_IsHandleSetEnd(&It);)
     {
         Rr_Image *Image = (Rr_Image *)It.Data->Key;
         if (!Rr_LoadAtomicIntRelaxed(&Image->RefCount))
         {
             Rr_DestroyImage(Image);
-            It = Rr_EraseFromHandleSet(It);
+            Rr_EraseFromHandleSet(&It);
         }
         else
         {
-            It = Rr_NextInHandleSet(It);
+            Rr_NextInHandleSet(&It);
         }
     }
 
@@ -565,17 +565,17 @@ static inline void Rr_DestroyReleasedObjects(void)
     Rr_LockSpinlock(&gRHI->ReleasedSamplersLock);
 
     for (Rr_HandleSetIterator It = Rr_BeginInHandleSet(&gRHI->ReleasedSamplers);
-         !Rr_IsHandleSetEnd(It);)
+         !Rr_IsHandleSetEnd(&It);)
     {
         Rr_Sampler *Sampler = (Rr_Sampler *)It.Data->Key;
         if (!Rr_LoadAtomicIntRelaxed(&Sampler->RefCount))
         {
             Rr_DestroySampler(Sampler);
-            It = Rr_EraseFromHandleSet(It);
+            Rr_EraseFromHandleSet(&It);
         }
         else
         {
-            It = Rr_NextInHandleSet(It);
+            Rr_NextInHandleSet(&It);
         }
     }
 
@@ -585,18 +585,18 @@ static inline void Rr_DestroyReleasedObjects(void)
 
     for (Rr_HandleSetIterator It =
              Rr_BeginInHandleSet(&gRHI->ReleasedComputePipelines);
-         !Rr_IsHandleSetEnd(It);)
+         !Rr_IsHandleSetEnd(&It);)
     {
         Rr_ComputePipeline *ComputePipeline =
             (Rr_ComputePipeline *)It.Data->Key;
         if (!Rr_LoadAtomicIntRelaxed(&ComputePipeline->RefCount))
         {
             Rr_DestroyComputePipeline(ComputePipeline);
-            It = Rr_EraseFromHandleSet(It);
+            Rr_EraseFromHandleSet(&It);
         }
         else
         {
-            It = Rr_NextInHandleSet(It);
+            Rr_NextInHandleSet(&It);
         }
     }
 
@@ -606,18 +606,18 @@ static inline void Rr_DestroyReleasedObjects(void)
 
     for (Rr_HandleSetIterator It =
              Rr_BeginInHandleSet(&gRHI->ReleasedGraphicsPipelines);
-         !Rr_IsHandleSetEnd(It);)
+         !Rr_IsHandleSetEnd(&It);)
     {
         Rr_GraphicsPipeline *GraphicsPipeline =
             (Rr_GraphicsPipeline *)It.Data->Key;
         if (!Rr_LoadAtomicIntRelaxed(&GraphicsPipeline->RefCount))
         {
             Rr_DestroyGraphicsPipeline(GraphicsPipeline);
-            It = Rr_EraseFromHandleSet(It);
+            Rr_EraseFromHandleSet(&It);
         }
         else
         {
-            It = Rr_NextInHandleSet(It);
+            Rr_NextInHandleSet(&It);
         }
     }
 
@@ -644,22 +644,25 @@ void Rr_CleanupRHI(void)
     Rr_DestroyReleasedObjects();
 
     for (Rr_PipelineLayoutHiveIterator It =
-             gRHI->PipelineLayoutStorage.Hive.Begin;
-         It.Element != gRHI->PipelineLayoutStorage.Hive.End.Element;)
+             Rr_BeginInPipelineLayoutHive(&gRHI->PipelineLayoutStorage.Hive);
+         !Rr_IsPipelineLayoutHiveEnd(&gRHI->PipelineLayoutStorage.Hive, &It);
+         Rr_NextInPipelineLayoutHive(&It))
     {
         Device->DestroyPipelineLayout(Device->Handle, It.Element->Handle, NULL);
-        Rr_AdvancePipelineLayoutHiveIterator(&It);
     }
 
     for (Rr_DescriptorSetLayoutHiveIterator It =
-             gRHI->DescriptorSetLayoutStorage.Hive.Begin;
-         It.Element != gRHI->DescriptorSetLayoutStorage.Hive.End.Element;)
+             Rr_BeginInDescriptorSetLayoutHive(
+                 &gRHI->DescriptorSetLayoutStorage.Hive);
+         !Rr_IsDescriptorSetLayoutHiveEnd(
+             &gRHI->DescriptorSetLayoutStorage.Hive,
+             &It);
+         Rr_NextInDescriptorSetLayoutHive(&It))
     {
         Device->DestroyDescriptorSetLayout(
             Device->Handle,
             It.Element->Handle,
             NULL);
-        Rr_AdvanceDescriptorSetLayoutHiveIterator(&It);
     }
 
     Rr_CleanupEmptyDescriptorSet();
@@ -670,8 +673,8 @@ void Rr_CleanupRHI(void)
 
     for (Rr_RenderPassMapIterator It =
              Rr_BeginInRenderPassMap(&gRHI->RenderPassMap);
-         !Rr_IsRenderPassMapEnd(It);
-         It = Rr_NextInRenderPassMap(It))
+         !Rr_IsRenderPassMapEnd(&It);
+         Rr_NextInRenderPassMap(&It))
     {
         Device->DestroyRenderPass(Device->Handle, It.Data->Value, NULL);
     }
@@ -1187,7 +1190,7 @@ VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey const *Key)
 
     Rr_RenderPassMapIterator It =
         Rr_FindInRenderPassMap(&gRHI->RenderPassMap, Key);
-    if (!Rr_IsRenderPassMapEnd(It))
+    if (!Rr_IsRenderPassMapEnd(&It))
     {
         Rr_UnlockSpinlock(&gRHI->RenderPassMapLock);
 
@@ -1333,7 +1336,7 @@ VkFramebuffer Rr_GetFramebuffer(Rr_FramebufferKey *Key)
 
     Rr_FramebufferMapIterator It =
         Rr_FindInFramebufferMap(&gRHI->FramebufferMap, Key);
-    if (!Rr_IsFramebufferMapEnd(It))
+    if (!Rr_IsFramebufferMapEnd(&It))
     {
         Rr_UnlockSpinlock(&gRHI->FramebufferMapLock);
 
@@ -1382,7 +1385,7 @@ void Rr_DestroyFramebuffers(VkImageView ImageView)
 
     Rr_FramebufferMapIterator It =
         Rr_BeginInFramebufferMap(&gRHI->FramebufferMap);
-    while (!Rr_IsFramebufferMapEnd(It))
+    while (!Rr_IsFramebufferMapEnd(&It))
     {
         Rr_FramebufferKey *Key = &It.Data->Key;
         bool Destroy = false;
@@ -1401,11 +1404,11 @@ void Rr_DestroyFramebuffers(VkImageView ImageView)
         if (Destroy)
         {
             Device->DestroyFramebuffer(Device->Handle, It.Data->Value, NULL);
-            It = Rr_EraseFromFramebufferMap(It);
+            Rr_EraseFromFramebufferMap(&It);
         }
         else
         {
-            It = Rr_NextInFramebufferMap(It);
+            Rr_NextInFramebufferMap(&It);
         }
     }
 

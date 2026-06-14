@@ -378,7 +378,7 @@ void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
     Rr_ComputePipelineHiveIterator It = Rr_GetComputePipelineHiveIterator(
         &gRHI->ComputePipelines,
         ComputePipeline);
-    Rr_RemoveFromComputePipelineHive(&gRHI->ComputePipelines, &It);
+    Rr_EraseFromComputePipelineHive(&gRHI->ComputePipelines, &It);
 
     Rr_UnlockSpinlock(&gRHI->ComputePipelinesLock);
 }
@@ -813,7 +813,7 @@ void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
     Rr_GraphicsPipelineHiveIterator It = Rr_GetGraphicsPipelineHiveIterator(
         &gRHI->GraphicsPipelines,
         GraphicsPipeline);
-    Rr_RemoveFromGraphicsPipelineHive(&gRHI->GraphicsPipelines, &It);
+    Rr_EraseFromGraphicsPipelineHive(&gRHI->GraphicsPipelines, &It);
 
     Rr_UnlockSpinlock(&gRHI->GraphicsPipelinesLock);
 }

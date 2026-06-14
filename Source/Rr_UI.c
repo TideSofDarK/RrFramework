@@ -9377,8 +9377,9 @@ static inline void Rr_UIDebugOverlayAllocator(Rr_Allocator *Allocator)
         if (Rr_UIBeginTree(MemoryTypeName))
         {
             uint32_t ChunkIndex = 0;
-            Rr_ChunkHiveIterator It = MemoryType->ChunkHive.Begin;
-            while (It.Element != MemoryType->ChunkHive.End.Element)
+            Rr_ChunkHiveIterator It =
+                Rr_BeginInChunkHive(&MemoryType->ChunkHive);
+            while (!Rr_IsChunkHiveEnd(&MemoryType->ChunkHive, &It))
             {
                 Rr_Chunk *Chunk = It.Element;
 
@@ -9423,7 +9424,7 @@ static inline void Rr_UIDebugOverlayAllocator(Rr_Allocator *Allocator)
                 }
 
                 ChunkIndex++;
-                Rr_AdvanceChunkHiveIterator(&It);
+                Rr_NextInChunkHive(&It);
             }
 
             Rr_UIEndTree();

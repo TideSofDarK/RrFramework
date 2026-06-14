@@ -230,13 +230,13 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_BEGIN_NAME(
             Is,                    \
             RR_HASH_MAP_EXPAND_CONCAT(RR_HASH_MAP_NAME, End)))
 
-static inline bool RR_HASH_MAP_IS_END_NAME(RR_HASH_MAP_ITERATOR_TYPE It)
+static inline bool RR_HASH_MAP_IS_END_NAME(RR_HASH_MAP_ITERATOR_TYPE *It)
 {
-    RR_HASH_MAP_NODE_TYPE *Node = It.Node;
+    RR_HASH_MAP_NODE_TYPE *Node = It->Node;
     RR_HASH_MAP_MAP_TYPE *Map = Node->Map;
-    size_t IndexInNode = (size_t)(It.Data - Node->Buckets);
+    size_t IndexInNode = (size_t)(It->Data - Node->Buckets);
 
-    return It.Node == Map->Last && IndexInNode == Node->Capacity;
+    return It->Node == Map->Last && IndexInNode == Node->Capacity;
 }
 
 #define RR_HASH_MAP_NEXT_NAME  \
@@ -244,12 +244,11 @@ static inline bool RR_HASH_MAP_IS_END_NAME(RR_HASH_MAP_ITERATOR_TYPE It)
         RR_HASH_MAP_PREFIX,    \
         RR_HASH_MAP_EXPAND_CONCAT(NextIn, RR_HASH_MAP_NAME))
 
-static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_NEXT_NAME(
-    RR_HASH_MAP_ITERATOR_TYPE It)
+static inline void RR_HASH_MAP_NEXT_NAME(RR_HASH_MAP_ITERATOR_TYPE *It)
 {
-    RR_HASH_MAP_NODE_TYPE *Node = It.Node;
+    RR_HASH_MAP_NODE_TYPE *Node = It->Node;
     RR_HASH_MAP_MAP_TYPE *Map = Node->Map;
-    size_t IndexInNode = (size_t)(It.Data - Node->Buckets);
+    size_t IndexInNode = (size_t)(It->Data - Node->Buckets);
     size_t Index = IndexInNode + 1;
     while (Node)
     {
@@ -258,10 +257,10 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_NEXT_NAME(
             RR_HASH_MAP_BUCKET_TYPE *Bucket = &Node->Buckets[Index];
             if (Bucket->Occupied)
             {
-                return (RR_HASH_MAP_ITERATOR_TYPE){
-                    .Data = Bucket,
-                    .Node = Node,
-                };
+                It->Data = Bucket;
+                It->Node = Node;
+
+                return;
             }
         }
         if (Node->Next)
@@ -275,10 +274,8 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_NEXT_NAME(
         }
     }
 
-    return (RR_HASH_MAP_ITERATOR_TYPE){
-        .Data = &Map->Last->Buckets[Map->Last->Capacity],
-        .Node = Map->Last,
-    };
+    It->Data = &Map->Last->Buckets[Map->Last->Capacity];
+    It->Node = Map->Last;
 }
 
 #define RR_HASH_MAP_ERASE_NAME \
@@ -286,16 +283,15 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_NEXT_NAME(
         RR_HASH_MAP_PREFIX,    \
         RR_HASH_MAP_EXPAND_CONCAT(EraseFrom, RR_HASH_MAP_NAME))
 
-static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_ERASE_NAME(
-    RR_HASH_MAP_ITERATOR_TYPE It)
+static inline void RR_HASH_MAP_ERASE_NAME(RR_HASH_MAP_ITERATOR_TYPE *It)
 {
-    It.Data->Occupied = false;
-    It.Data->Reusable = true;
-    RR_HASH_MAP_NODE_TYPE *Node = It.Node;
+    It->Data->Occupied = false;
+    It->Data->Reusable = true;
+    RR_HASH_MAP_NODE_TYPE *Node = It->Node;
     RR_HASH_MAP_MAP_TYPE *Map = Node->Map;
     Map->Count--;
 
-    return RR_HASH_MAP_NEXT_NAME(It);
+    RR_HASH_MAP_NEXT_NAME(It);
 }
 
 #define RR_HASH_MAP_RESERVE_NAME \
@@ -629,7 +625,7 @@ static inline void RR_HASH_MAP_CLEAR_NAME(RR_HASH_MAP_MAP_TYPE *Map)
 #undef RR_HASH_MAP_RESERVE_NAME
 #undef RR_HASH_MAP_FIND_BUCKET_NAME
 #undef RR_HASH_MAP_INSERT_WITH_HASH_NAME
-#undef RR_HASH_MAP_INSERT_NAME
+
 #undef RR_HASH_MAP_FIND_NAME
 #undef RR_HASH_MAP_REHASH_NAME
 #undef RR_HASH_MAP_CLEAR_NAME

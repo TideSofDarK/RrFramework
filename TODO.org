@@ -40,6 +40,7 @@
 - [X] Make threads claim arenas from a free list.
 - [X] Does PushXXXIntoHive need to return iterator?
 - [X] Releasing same resource (buffer, image, etc) twice leads to annoying bugs.
+- [X] Replace VMA with custom allocator.
 - [ ] Minimal error handling pass.
       Implement Rr_GetErrorString().
 	1) Image/buffer creation.
@@ -53,7 +54,6 @@
 - [ ] Custom assertions.
 - [ ] Support for immutable buffers/images that don't require synchronization.
 - [ ] Public API should use const where applicable.
-- [ ] Replace VMA with custom allocator.
 - [ ] Replace hash trie usage with Rr_HashTable.h where applicable.
 - [ ] Array implementation is a bit ugly...
 - [ ] Rr_ReleaseXXX functions can validate input pointer via getting hive iterator.
@@ -132,7 +132,7 @@
       Otherwise stick to types that correspond to underlying Vulkan structs.
 - [X] With GLFW swapchain gets recreated immediately after launch.
 - [X] Own implementation of Windows/Linux platform layers.
-- [ ] Make Rr_HashMap and Rr_Hive follow somewhat similar conventions.
+- [X] Make Rr_HashMap and Rr_Hive follow somewhat similar conventions.
 - [ ] Convert Rr_HashTrie into inline header-based collection.
 - [ ] Header-based stuff should probably be internal.
       The goal is API that's 100% accessible from other languages.

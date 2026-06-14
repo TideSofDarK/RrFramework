@@ -2449,8 +2449,8 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
     }
 
     for (Rr_HandleSetIterator It = Rr_BeginInHandleSet(&Graph->Samplers);
-         !Rr_IsHandleSetEnd(It);
-         It = Rr_NextInHandleSet(It))
+         !Rr_IsHandleSetEnd(&It);
+         Rr_NextInHandleSet(&It))
     {
         Rr_Sampler *Sampler = (Rr_Sampler *)It.Data->Key;
         Rr_DecrementAtomicIntRelaxed(&Sampler->RefCount);
@@ -2458,8 +2458,8 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
 
     for (Rr_HandleSetIterator It =
              Rr_BeginInHandleSet(&Graph->ComputePipelines);
-         !Rr_IsHandleSetEnd(It);
-         It = Rr_NextInHandleSet(It))
+         !Rr_IsHandleSetEnd(&It);
+         Rr_NextInHandleSet(&It))
     {
         Rr_ComputePipeline *ComputePipeline =
             (Rr_ComputePipeline *)It.Data->Key;
@@ -2468,8 +2468,8 @@ void Rr_DecrementRefCounts(Rr_Graph *Graph)
 
     for (Rr_HandleSetIterator It =
              Rr_BeginInHandleSet(&Graph->GraphicsPipelines);
-         !Rr_IsHandleSetEnd(It);
-         It = Rr_NextInHandleSet(It))
+         !Rr_IsHandleSetEnd(&It);
+         Rr_NextInHandleSet(&It))
     {
         Rr_GraphicsPipeline *GraphicsPipeline =
             (Rr_GraphicsPipeline *)It.Data->Key;

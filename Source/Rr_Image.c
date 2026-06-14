@@ -109,7 +109,7 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
 
     Rr_SamplerHiveIterator It =
         Rr_GetSamplerHiveIterator(&gRHI->Samplers, Sampler);
-    Rr_RemoveFromSamplerHive(&gRHI->Samplers, &It);
+    Rr_EraseFromSamplerHive(&gRHI->Samplers, &It);
 
     Rr_UnlockSpinlock(&gRHI->SamplersLock);
 }
@@ -139,7 +139,7 @@ void Rr_DestroyImageViewMap(
     Rr_Device *Device = &gRHI->Device;
 
     Rr_ImageViewMapIterator It = Rr_BeginInImageViewMap(ImageViewMap);
-    while (!Rr_IsImageViewMapEnd(It))
+    while (!Rr_IsImageViewMapEnd(&It))
     {
         VkImageView Handle = It.Data->Value;
         if (DestroyFramebuffers)
@@ -147,7 +147,7 @@ void Rr_DestroyImageViewMap(
             Rr_DestroyFramebuffers(Handle);
         }
         Device->DestroyImageView(Device->Handle, Handle, NULL);
-        It = Rr_EraseFromImageViewMap(It);
+        Rr_EraseFromImageViewMap(&It);
     }
 
     Rr_LockSpinlock(&gRHI->ImageViewMapsLock);
@@ -165,7 +165,7 @@ VkImageView Rr_GetVulkanImageView(
 
     Rr_ImageViewMapIterator It =
         Rr_FindInImageViewMap(AllocatedImage->ImageViewMap, Key);
-    if (!Rr_IsImageViewMapEnd(It))
+    if (!Rr_IsImageViewMapEnd(&It))
     {
         Rr_UnlockSpinlock(&AllocatedImage->ImageViewMapLock);
 
@@ -441,7 +441,7 @@ void Rr_DestroyImage(Rr_Image *Image)
     Rr_LockSpinlock(&gRHI->ImagesLock);
 
     Rr_ImageHiveIterator It = Rr_GetImageHiveIterator(&gRHI->Images, Image);
-    Rr_RemoveFromImageHive(&gRHI->Images, &It);
+    Rr_EraseFromImageHive(&gRHI->Images, &It);
 
     Rr_UnlockSpinlock(&gRHI->ImagesLock);
 }

@@ -82,11 +82,11 @@ int main(int ArgCount, char **Args)
     {
         size_t Count = 0;
         TestMapIterator It = BeginInTestMap(&Map);
-        while (!IsTestMapEnd(It))
+        while (!IsTestMapEnd(&It))
         {
             Count++;
 
-            It = NextInTestMap(It);
+            NextInTestMap(&It);
         }
         assert(Count == Map.Count);
     }
@@ -101,7 +101,7 @@ int main(int ArgCount, char **Args)
         TestMapIterator It = FindInTestMap(&Map, &Key);
         assert(strcmp(It.Data->Key.String, Key.String) == 0);
         assert(It.Data->Value.Integer == Index);
-        EraseFromTestMap(It);
+        EraseFromTestMap(&It);
     }
 
     /* Make sure we have halved the count. */
@@ -137,7 +137,7 @@ int main(int ArgCount, char **Args)
 
     snprintf(Key.String, sizeof(Key.String), "k%u", 1338U);
     It = FindInTestMap(&Map, &Key);
-    assert(IsTestMapEnd(It));
+    assert(IsTestMapEnd(&It));
 
     /* Insert it again and make sure we can find it. */
 
