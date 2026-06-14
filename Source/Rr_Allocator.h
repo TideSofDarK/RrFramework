@@ -57,19 +57,17 @@ struct Rr_Chunk
     VkDeviceMemory Memory;
     uint32_t SoftAllocationCount;
     uint32_t MappingCount;
-    void *MappedData;
+    uint32_t MemoryTypeIndex;
     bool Dedicated;
+    void *MappedData;
 
     Rr_Range *FirstRange;
     Rr_Range *FirstFreeRange;
-
-    Rr_Chunk *Next;
 };
 
-#define RR_HIVE_TYPE               Rr_Chunk
-#define RR_HIVE_TYPE_NAME          Chunk
-#define RR_HIVE_PREFIX             Rr_
-#define RR_HIVE_MIN_BLOCK_CAPACITY 64
+#define RR_HIVE_TYPE      Rr_Chunk
+#define RR_HIVE_TYPE_NAME Chunk
+#define RR_HIVE_PREFIX    Rr_
 #include "Rr_Hive.h"
 
 typedef struct Rr_MemoryType Rr_MemoryType;
@@ -79,7 +77,7 @@ struct Rr_MemoryType
     bool DeviceLocalHeap;
     VkDeviceSize ChunkSize;
     VkMemoryPropertyFlags PropertyFlags;
-    Rr_Chunk *FirstChunk;
+    Rr_ChunkHive ChunkHive;
 };
 
 typedef struct Rr_Allocator Rr_Allocator;
@@ -92,7 +90,6 @@ struct Rr_Allocator
     uint32_t MemoryTypeCount;
     Rr_MemoryType *MemoryTypes;
     Rr_RangeHive RangeHive;
-    Rr_ChunkHive ChunkHive;
     uint32_t HardAllocationCount;
     uint32_t SoftAllocationCount;
     Rr_Spinlock Lock;

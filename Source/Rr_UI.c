@@ -9373,22 +9373,37 @@ static inline void Rr_UIDebugOverlayAllocator(Rr_Allocator *Allocator)
             LENGTH,
             "Memory Type #%d (%zuMiB)",
             Index,
-            MemoryType->HeapSize / RR_MEBIBYTES(1));
+            MemoryType->HeapSize / (size_t)RR_MEBIBYTES(1));
         if (Rr_UIBeginTree(MemoryTypeName))
         {
             uint32_t ChunkIndex = 0;
-            Rr_Chunk *Chunk = MemoryType->FirstChunk;
-            while (Chunk)
+            Rr_ChunkHiveIterator It = MemoryType->ChunkHive.Begin;
+            while (It.Element != MemoryType->ChunkHive.End.Element)
             {
+                Rr_Chunk *Chunk = It.Element;
+
                 char *ChunkName = Rr_AllocNoZero(LENGTH, Scratch.Arena);
-                snprintf(
-                    ChunkName,
-                    LENGTH,
-                    "Chunk #%d (%zuMiB, %u allocations)###%d",
-                    ChunkIndex,
-                    Chunk->Size / RR_MEBIBYTES(1),
-                    Chunk->SoftAllocationCount,
-                    ChunkIndex);
+                if (Chunk->Dedicated)
+                {
+                    snprintf(
+                        ChunkName,
+                        LENGTH,
+                        "Chunk #%d (%zuMiB, dedicated)###%d",
+                        ChunkIndex,
+                        Chunk->Size / (size_t)RR_MEBIBYTES(1),
+                        ChunkIndex);
+                }
+                else
+                {
+                    snprintf(
+                        ChunkName,
+                        LENGTH,
+                        "Chunk #%d (%zuMiB, %u allocations)###%d",
+                        ChunkIndex,
+                        Chunk->Size / (size_t)RR_MEBIBYTES(1),
+                        Chunk->SoftAllocationCount,
+                        ChunkIndex);
+                }
 
                 if (Rr_UIBeginTree(ChunkName))
                 {
@@ -9407,8 +9422,8 @@ static inline void Rr_UIDebugOverlayAllocator(Rr_Allocator *Allocator)
                     Rr_UIEndTree();
                 }
 
-                Chunk = Chunk->Next;
                 ChunkIndex++;
+                Rr_AdvanceChunkHiveIterator(&It);
             }
 
             Rr_UIEndTree();
@@ -9426,7 +9441,7 @@ void Rr_UIDebugOverlay(void)
 
     Rr_UIBeginWindowEx("DebugOverlayTabs", NULL, RR_UI_WINDOW_FLAGS_TABS_BIT);
     {
-        Rr_UIBeginWindowEx("General", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+        if (Rr_UIBeginWindowEx("General", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
         {
             Rr_IntVec2 WindowSize = Rr_GetWindowSize();
             Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
@@ -9542,7 +9557,7 @@ void Rr_UIDebugOverlay(void)
         }
         Rr_UIEndWindow();
 
-        Rr_UIBeginWindowEx("UI", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+        if (Rr_UIBeginWindowEx("UI", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
         {
             Rr_UITextF(
                 "Vertices Capacity: %zu\n"
@@ -9607,7 +9622,7 @@ void Rr_UIDebugOverlay(void)
         }
         Rr_UIEndWindow();
 
-        Rr_UIBeginWindowEx("RAM", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+        if (Rr_UIBeginWindowEx("RAM", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
         {
             Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
             Rr_UIDebugOverlayArena(
@@ -9630,13 +9645,13 @@ void Rr_UIDebugOverlay(void)
         }
         Rr_UIEndWindow();
 
-        Rr_UIBeginWindowEx("VRAM", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+        if (Rr_UIBeginWindowEx("VRAM", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
         {
             Rr_UIDebugOverlayAllocator(&gRHI->Allocator);
         }
         Rr_UIEndWindow();
 
-        Rr_UIBeginWindowEx("RHI", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+        if (Rr_UIBeginWindowEx("RHI", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
         {
             Rr_UITextF("Frame: %zu", gRHI->FrameNumber);
             Rr_UITextF(
