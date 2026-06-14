@@ -1498,7 +1498,7 @@ public:
         ShadowPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         UniformBuffer = Rr_CreateBuffer(
-            RR_MIBIBYTES(1),
+            RR_MEBIBYTES(1),
             RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
                 RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_UNIFORM_BIT);
 

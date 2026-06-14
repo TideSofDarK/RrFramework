@@ -30,7 +30,6 @@
 #include <Rr/Rr_RHI.h>
 
 #define VK_NO_PROTOTYPES
-#include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
 #define RR_VULKAN_VERSION VK_MAKE_API_VERSION(0, 1, 1, 0)

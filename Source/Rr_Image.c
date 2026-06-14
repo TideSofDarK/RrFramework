@@ -273,15 +273,10 @@ static Rr_Image *Rr_CreateImage(
         .Extent.depth = (uint32_t)Extent.Depth,
         .LayerCount = LayerCount,
         .LevelCount = LevelCount,
+        .AllocatedImageCount = 1,
     };
 
     Rr_ConsumeNextObjectName(Image->Name);
-
-    Image->AllocatedImageCount = 1;
-    if (Flags & RR_IMAGE_FLAGS_PER_FRAME_BIT)
-    {
-        Image->AllocatedImageCount = RR_FRAME_OVERLAP;
-    }
 
     VkImageUsageFlags UsageFlags = 0;
     if (Flags & RR_IMAGE_FLAGS_STORAGE_BIT)
@@ -350,10 +345,7 @@ static Rr_Image *Rr_CreateImage(
         Image->AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
     }
 
-    VmaAllocationCreateInfo AllocationCreateInfo = {
-        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-    };
+    Rr_Device *Device = Rr_GetDevice();
 
     for (uint32_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
     {
@@ -361,15 +353,18 @@ static Rr_Image *Rr_CreateImage(
         AllocatedImage->SyncState = RR_EMPTY_SYNC;
         AllocatedImage->Container = Image;
 
-        VkResult Result = vmaCreateImage(
-            gRHI->VMA,
-            &ImageCreateInfo,
-            &AllocationCreateInfo,
-            &AllocatedImage->Handle,
-            &AllocatedImage->Allocation,
-            NULL);
+        if (Device->CreateImage(
+                Device->Handle,
+                &ImageCreateInfo,
+                NULL,
+                &AllocatedImage->Handle) != VK_SUCCESS)
+        {
+            RR_LOG_ERROR("Failed to create image!");
 
-        assert(Result == VK_SUCCESS);
+            Rr_DestroyImage(Image);
+
+            return NULL;
+        }
 
         AllocatedImage->ImageViewMap = Rr_CreateImageViewMap();
 
@@ -390,7 +385,14 @@ static Rr_Image *Rr_CreateImage(
 #endif
     }
 
-    return (Rr_Image *)Image;
+    if (!Rr_AllocImageMemory(&gRHI->Allocator, Image))
+    {
+        Rr_DestroyImage(Image);
+
+        return NULL;
+    }
+
+    return Image;
 }
 
 void Rr_ReleaseImage(Rr_Image *Image)
@@ -412,7 +414,9 @@ void Rr_ReleaseImage(Rr_Image *Image)
 
 void Rr_DestroyImage(Rr_Image *Image)
 {
-    assert(Image && Image->AllocatedImageCount > 0);
+    assert(Image);
+
+    Rr_Device *Device = &gRHI->Device;
 
     bool DestroyFramebuffers =
         (Image->Flags & RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT) ||
@@ -426,11 +430,13 @@ void Rr_DestroyImage(Rr_Image *Image)
             AllocatedImage->ImageViewMap,
             DestroyFramebuffers);
 
-        vmaDestroyImage(
-            gRHI->VMA,
-            AllocatedImage->Handle,
-            AllocatedImage->Allocation);
+        if (AllocatedImage->Handle)
+        {
+            Device->DestroyImage(Device->Handle, AllocatedImage->Handle, NULL);
+        }
     }
+
+    Rr_FreeImageMemory(&gRHI->Allocator, Image);
 
     Rr_LockSpinlock(&gRHI->ImagesLock);
 

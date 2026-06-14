@@ -440,41 +440,6 @@ static void Rr_CleanupFrames(void)
     }
 }
 
-static void Rr_InitVMA(void)
-{
-    Rr_Instance *Instance = &gRHI->Instance;
-    Rr_Device *Device = &gRHI->Device;
-
-    VmaVulkanFunctions VulkanFunctions = {
-        .vkGetPhysicalDeviceProperties = Instance->GetPhysicalDeviceProperties,
-        .vkGetPhysicalDeviceMemoryProperties =
-            Instance->GetPhysicalDeviceMemoryProperties,
-        .vkAllocateMemory = Device->AllocateMemory,
-        .vkFreeMemory = Device->FreeMemory,
-        .vkMapMemory = Device->MapMemory,
-        .vkUnmapMemory = Device->UnmapMemory,
-        .vkFlushMappedMemoryRanges = Device->FlushMappedMemoryRanges,
-        .vkInvalidateMappedMemoryRanges = Device->InvalidateMappedMemoryRanges,
-        .vkBindBufferMemory = Device->BindBufferMemory,
-        .vkBindImageMemory = Device->BindImageMemory,
-        .vkGetBufferMemoryRequirements = Device->GetBufferMemoryRequirements,
-        .vkGetImageMemoryRequirements = Device->GetImageMemoryRequirements,
-        .vkCreateBuffer = Device->CreateBuffer,
-        .vkDestroyBuffer = Device->DestroyBuffer,
-        .vkCreateImage = Device->CreateImage,
-        .vkDestroyImage = Device->DestroyImage,
-        .vkCmdCopyBuffer = Device->CmdCopyBuffer,
-    };
-    VmaAllocatorCreateInfo AllocatorInfo = {
-        .flags = 0,
-        .physicalDevice = gRHI->PhysicalDevice.Handle,
-        .device = gRHI->Device.Handle,
-        .pVulkanFunctions = &VulkanFunctions,
-        .instance = gRHI->Instance.Handle,
-    };
-    vmaCreateAllocator(&AllocatorInfo, &gRHI->VMA);
-}
-
 static void Rr_InitEmptyDescriptorSet(void)
 {
     Rr_Device *Device = &gRHI->Device;
@@ -542,7 +507,6 @@ void Rr_InitRHI(const char *Title)
         &gRHI->MainQueue,
         &gRHI->DedicatedTransferQueue);
 
-    Rr_InitVMA();
     Rr_InitAllocator(&gRHI->Allocator, &gRHI->PhysicalDevice);
     Rr_InitFrames();
     Rr_InitSwapchain();
@@ -763,7 +727,6 @@ void Rr_CleanupRHI(void)
         Device->DestroyFence(Device->Handle, gRHI->Fences.Data[Index], NULL);
     }
 
-    vmaDestroyAllocator(gRHI->VMA);
     Rr_CleanupAllocator(&gRHI->Allocator);
 
     Instance->DestroySurfaceKHR(Instance->Handle, gRHI->Surface, NULL);

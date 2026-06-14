@@ -154,7 +154,6 @@ struct Rr_RHI
     Rr_Queue DedicatedTransferQueue;
     Rr_Queue AsyncComputeQueue;
 
-    VmaAllocator VMA;
     Rr_Allocator Allocator;
 
     RR_ARRAY(VkSemaphore) Semaphores;

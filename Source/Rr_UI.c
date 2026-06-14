@@ -8920,13 +8920,13 @@ void Rr_InitUI(void)
 
     Rr_SetNextObjectName("Rr.UI.VertexBuffer");
     gUIContext->VertexBuffer = Rr_CreateBuffer(
-        RR_MIBIBYTES(8),
+        RR_MEBIBYTES(8),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
     Rr_SetNextObjectName("Rr.UI.IndexBuffer");
     gUIContext->IndexBuffer = Rr_CreateBuffer(
-        RR_MIBIBYTES(8),
+        RR_MEBIBYTES(8),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
@@ -9354,6 +9354,11 @@ static inline void Rr_UIDebugOverlayAllocator(Rr_Allocator *Allocator)
     Rr_LockSpinlock(&Allocator->Lock);
 
     Rr_UITextF(
+        "Buffer Image Granularity: %u\n"
+        "Non Coherent Atom Size: %u",
+        Allocator->BufferImageGranularity,
+        Allocator->NonCoherentAtomSize);
+    Rr_UITextF(
         "Hard Allocations: %u\n"
         "Soft Allocations: %u",
         Allocator->HardAllocationCount,
@@ -9368,7 +9373,7 @@ static inline void Rr_UIDebugOverlayAllocator(Rr_Allocator *Allocator)
             LENGTH,
             "Memory Type #%d (%zuMiB)",
             Index,
-            MemoryType->HeapSize / RR_MIBIBYTES(1));
+            MemoryType->HeapSize / RR_MEBIBYTES(1));
         if (Rr_UIBeginTree(MemoryTypeName))
         {
             uint32_t ChunkIndex = 0;
@@ -9381,7 +9386,7 @@ static inline void Rr_UIDebugOverlayAllocator(Rr_Allocator *Allocator)
                     LENGTH,
                     "Chunk #%d (%zuMiB, %u allocations)###%d",
                     ChunkIndex,
-                    Chunk->Size / RR_MIBIBYTES(1),
+                    Chunk->Size / RR_MEBIBYTES(1),
                     Chunk->SoftAllocationCount,
                     ChunkIndex);
 

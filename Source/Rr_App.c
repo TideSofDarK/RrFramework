@@ -189,6 +189,7 @@ void Rr_Run(Rr_Config *Config)
         Rr_EndUI();
 
         Rr_DrawFrame();
+        Rr_EndFrameSection("Rr.MainLoop");
 
         if (Rr_IsWindowMinimized())
         {
@@ -204,8 +205,6 @@ void Rr_Run(Rr_Config *Config)
         }
 
         Rr_CalculateDeltaTime(&gApp->FrameTime);
-
-        Rr_EndFrameSection("Rr.MainLoop");
 
         /* NOTE: The reason Rr_NewFrame() is called before event processing
          * is to allow it to use temporary frame arena to buffer

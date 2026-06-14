@@ -105,12 +105,14 @@ endfunction()
 add_library(${PROJECT_NAME} OBJECT)
 
 target_compile_features(${PROJECT_NAME} PRIVATE c_std_99)
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
 target_compile_options(${PROJECT_NAME} PRIVATE $<$<STREQUAL:$<COMPILE_LANGUAGE>,C>:${RR_C_FLAGS}>)
 target_compile_options(${PROJECT_NAME} PRIVATE $<$<STREQUAL:$<COMPILE_LANGUAGE>,CXX>:${RR_CXX_FLAGS}>)
 set_target_properties(${PROJECT_NAME} PROPERTIES C_EXTENSIONS OFF)
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF)
 set_target_properties(${PROJECT_NAME} PROPERTIES VERIFY_INTERFACE_HEADER_SETS ON)
+
+if (NOT WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE m)
+endif ()
 
 target_compile_definitions(
     ${PROJECT_NAME}
@@ -132,7 +134,6 @@ target_sources(
     Source/Rr_Arena.c
     Source/Rr_Asset.c
     Source/Rr_Buffer.c
-    Source/Rr_Dependencies.cxx
     Source/Rr_Descriptor.c
     Source/Rr_Graph.c
     Source/Rr_Image.c

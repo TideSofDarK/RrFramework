@@ -38,8 +38,6 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
         return NULL;
     }
 
-    Size = RR_MAX(Size, RR_MINIMAL_ALLOCATION);
-
     Rr_LockSpinlock(&gRHI->BuffersLock);
 
     Rr_Buffer *Buffer =
@@ -90,7 +88,7 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
         .usage = Buffer->Usage,
     };
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     for (uint32_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
@@ -199,6 +197,11 @@ void *Rr_MapBuffer(Rr_Buffer *Buffer)
 {
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
 
+    if (Buffer->Flags & RR_BUFFER_FLAGS_MAPPED_BIT)
+    {
+        return AllocatedBuffer->MappedData;
+    }
+
     return Rr_MapAllocatedBufferMemory(&gRHI->Allocator, AllocatedBuffer);
 }
 
@@ -206,12 +209,18 @@ void Rr_UnmapBuffer(Rr_Buffer *Buffer)
 {
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
 
+    if (Buffer->Flags & RR_BUFFER_FLAGS_MAPPED_BIT)
+    {
+        return;
+    }
+
     Rr_UnmapAllocatedBufferMemory(&gRHI->Allocator, AllocatedBuffer);
 }
 
 void Rr_FlushBufferRange(Rr_Buffer *Buffer, uint64_t Offset, uint64_t Size)
 {
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
+
     Rr_FlushAllocatedBufferMemory(
         &gRHI->Allocator,
         AllocatedBuffer,

@@ -20,32 +20,12 @@
 
 #include "Rr_Memory.h"
 
-#include "Rr_Hash.h"
-
 #include <Rr/Rr_Math.h>
 #include <Rr/Rr_Platform.h>
 
 #include <assert.h>
 #include <limits.h>
 #include <string.h>
-
-void *Rr_AlignedAlloc(size_t Size, size_t Alignment)
-{
-#if defined(RR_MSVC)
-    return _aligned_malloc(Size, Alignment);
-#else
-    return _mm_malloc(Size, Alignment);
-#endif
-}
-
-void Rr_AlignedFree(void *Ptr)
-{
-#if defined(RR_MSVC)
-    _aligned_free(Ptr);
-#else
-    _mm_free(Ptr);
-#endif
-}
 
 void Rr_GrowArray(void *Array, size_t Size, size_t MinCount, Rr_Arena *Arena)
 {

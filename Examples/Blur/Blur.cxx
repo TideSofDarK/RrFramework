@@ -634,7 +634,7 @@ struct SDualKawaseBlur2D
         Sampler = Rr_CreateSampler(&SamplerInfo);
 
         UniformBuffer = Rr_CreateBuffer(
-            RR_MIBIBYTES(1),
+            RR_MEBIBYTES(1),
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
                 RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
     }

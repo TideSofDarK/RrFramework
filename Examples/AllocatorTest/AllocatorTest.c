@@ -6,6 +6,10 @@
 static Rr_Buffer *Buffers[MAX_BUFFERS] = { 0 };
 static uint32_t BufferCount = 0;
 
+#define MAX_IMAGES 128
+static Rr_Image2D *Images[MAX_IMAGES] = { 0 };
+static uint32_t ImageCount = 0;
+
 static void Init(void)
 {
 }
@@ -21,68 +25,116 @@ static void Iterate(void)
         (Rr_ColorClear){ 0.01f, 0.01f, 0.02f, 1.0f },
         Rr_GetSwapchainImage());
 
-    Rr_UIBeginWindowEx(
-        "AllocatorTest.c",
-        NULL,
-        RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+    Rr_UIBeginWindowEx("AllocatorTest.c", NULL, RR_UI_WINDOW_FLAGS_TABS_BIT);
     {
-        Rr_UIText("Use debug overlay to track created allocations.");
+        Rr_UIBeginWindowEx("Buffers", NULL, 0);
+        {
+            Rr_UIText("Use debug overlay to track created allocations.");
 
-        static bool Host = true;
-        Rr_UICheckbox("Staging", &Host);
-        static bool Uniform = false;
-        Rr_UICheckbox("Uniform", &Uniform);
-        static bool PerFrame = false;
-        Rr_UICheckbox("Per Frame", &PerFrame);
-        static uint64_t Size = RR_KIBIBYTES(16);
-        Rr_UIInputUnsignedInt64("Size", &Size);
-        if ((Host || Uniform) && BufferCount < MAX_BUFFERS &&
-            Rr_UIButton("Create Buffer"))
-        {
-            Rr_BufferFlags Flags = 0;
-            if (Host)
+            static bool Host = true;
+            Rr_UICheckbox("Staging", &Host);
+            static bool Uniform = false;
+            Rr_UICheckbox("Uniform", &Uniform);
+            static bool PerFrame = false;
+            Rr_UICheckbox("Per Frame", &PerFrame);
+            static uint64_t Size = RR_KIBIBYTES(16);
+            Rr_UIInputUnsignedInt64("Size", &Size);
+            if ((Host || Uniform) && BufferCount < MAX_BUFFERS &&
+                Rr_UIButton("Create Buffer"))
             {
-                Flags |= RR_BUFFER_FLAGS_STAGING_BIT;
-            }
-            if (Uniform)
-            {
-                Flags |= RR_BUFFER_FLAGS_UNIFORM_BIT;
-            }
-            if (PerFrame)
-            {
-                Flags |= RR_BUFFER_FLAGS_PER_FRAME_BIT;
-            }
-            Rr_Buffer *Buffer = Rr_CreateBuffer(Size, Flags);
-            if (Buffer)
-            {
-                Buffers[BufferCount++] = Buffer;
-            }
-        }
-        Rr_UISeparator();
-        if (Rr_UIBeginTree("Buffers"))
-        {
-            for (uint32_t Index = 0; Index < BufferCount; ++Index)
-            {
-                if (!Buffers[Index])
+                Rr_BufferFlags Flags = 0;
+                if (Host)
                 {
-                    continue;
+                    Flags |= RR_BUFFER_FLAGS_STAGING_BIT;
                 }
-                char BufferName[64];
-                snprintf(
-                    BufferName,
-                    64,
-                    "Release Buffer (%zuKiB)###%d",
-                    Rr_GetBufferSize(Buffers[Index]),
-                    Index);
-                if (Rr_UIButton(BufferName))
+                if (Uniform)
                 {
-                    Rr_ReleaseBuffer(Buffers[Index]);
-                    Buffers[Index] = NULL;
+                    Flags |= RR_BUFFER_FLAGS_UNIFORM_BIT;
+                }
+                if (PerFrame)
+                {
+                    Flags |= RR_BUFFER_FLAGS_PER_FRAME_BIT;
+                }
+                Rr_Buffer *Buffer = Rr_CreateBuffer(Size, Flags);
+                if (Buffer)
+                {
+                    Buffers[BufferCount++] = Buffer;
                 }
             }
+            Rr_UISeparator();
+            if (Rr_UIBeginTree("Buffers"))
+            {
+                for (uint32_t Index = 0; Index < BufferCount; ++Index)
+                {
+                    if (!Buffers[Index])
+                    {
+                        continue;
+                    }
+                    char BufferName[64];
+                    snprintf(
+                        BufferName,
+                        64,
+                        "Release Buffer (%zuKiB)###%d",
+                        Rr_GetBufferSize(Buffers[Index]),
+                        Index);
+                    if (Rr_UIButton(BufferName))
+                    {
+                        Rr_ReleaseBuffer(Buffers[Index]);
+                        Buffers[Index] = NULL;
+                    }
+                }
 
-            Rr_UIEndTree();
+                Rr_UIEndTree();
+            }
         }
+        Rr_UIEndWindow();
+
+        Rr_UIBeginWindowEx("Images", NULL, 0);
+        {
+            Rr_UIText("Use debug overlay to track created allocations.");
+
+            static Rr_IntVec2 Extent = { 256, 256 };
+            Rr_UIInputInt2("Extent", Extent.Elements);
+            if (ImageCount < MAX_IMAGES && Rr_UIButton("Create Image"))
+            {
+                Rr_ImageFlags Flags = RR_IMAGE_FLAGS_STORAGE_BIT;
+                Rr_Image2D *Image = Rr_CreateImage2D(
+                    Extent,
+                    RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
+                    Flags);
+                if (Image)
+                {
+                    Images[ImageCount++] = Image;
+                }
+            }
+            Rr_UISeparator();
+            if (Rr_UIBeginTree("Images"))
+            {
+                for (uint32_t Index = 0; Index < ImageCount; ++Index)
+                {
+                    if (!Images[Index])
+                    {
+                        continue;
+                    }
+                    char ImageName[64];
+                    snprintf(
+                        ImageName,
+                        64,
+                        "Release Image (%dx%d)###%d",
+                        Rr_GetImage2DExtent(Images[Index]).X,
+                        Rr_GetImage2DExtent(Images[Index]).Y,
+                        Index);
+                    if (Rr_UIButton(ImageName))
+                    {
+                        Rr_ReleaseImage(Images[Index]);
+                        Images[Index] = NULL;
+                    }
+                }
+
+                Rr_UIEndTree();
+            }
+        }
+        Rr_UIEndWindow();
     }
     Rr_UIEndWindow();
 }

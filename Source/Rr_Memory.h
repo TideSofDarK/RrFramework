@@ -26,10 +26,6 @@
 extern "C" {
 #endif
 
-extern void *Rr_AlignedAlloc(size_t Alignment, size_t Bytes);
-
-extern void Rr_AlignedFree(void *Ptr);
-
 /*
  * Dynamic Array
  *

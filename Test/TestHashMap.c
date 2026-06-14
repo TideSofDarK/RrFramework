@@ -1,9 +1,9 @@
 #include <Rr/Rr.h>
 
+#include <assert.h>
 #include <limits.h>
 #include <stdio.h>
 #include <time.h>
-#include <assert.h>
 
 typedef struct TestKey TestKey;
 struct TestKey

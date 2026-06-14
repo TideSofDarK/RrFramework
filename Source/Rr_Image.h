@@ -22,10 +22,10 @@
 
 #include <Rr/Rr_Image.h>
 
-#include "Rr_Platform.h"
 #include "Rr_Vulkan.h"
 
-#include <vma/vk_mem_alloc.h>
+struct Rr_Chunk;
+struct Rr_Range;
 
 struct Rr_Sampler
 {
@@ -69,7 +69,8 @@ struct Rr_AllocatedImage
     VkImage Handle;
     Rr_ImageViewMap *ImageViewMap;
     Rr_Spinlock ImageViewMapLock;
-    VmaAllocation Allocation;
+    struct Rr_Chunk *Chunk;
+    struct Rr_Range *Range;
     struct Rr_Image *Container;
     Rr_SyncState SyncState;
 };
@@ -87,7 +88,7 @@ struct Rr_Image
     Rr_ImageFlags Flags;
     uint32_t LayerCount;
     uint32_t LevelCount;
-    uint32_t AllocatedImageCount;
+    uint32_t AllocatedImageCount; /* Always 1 for now. */
     Rr_AllocatedImage AllocatedImages[RR_FRAME_OVERLAP];
 
     char Name[RR_MAX_OBJECT_NAME_LENGTH];

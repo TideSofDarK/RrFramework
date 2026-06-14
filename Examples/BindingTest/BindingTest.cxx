@@ -77,7 +77,7 @@ struct SBindingTestApp
 
         {
             UniformBufferA = Rr_CreateBuffer(
-                RR_MIBIBYTES(1),
+                RR_MEBIBYTES(1),
                 RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
                     RR_BUFFER_FLAGS_MAPPED_BIT);
 
@@ -95,7 +95,7 @@ struct SBindingTestApp
 
         {
             UniformBufferB = Rr_CreateBuffer(
-                RR_MIBIBYTES(1),
+                RR_MEBIBYTES(1),
                 RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
                     RR_BUFFER_FLAGS_MAPPED_BIT);
 
@@ -121,7 +121,7 @@ struct SBindingTestApp
 
         {
             StorageBuffer = Rr_CreateBuffer(
-                RR_MIBIBYTES(1),
+                RR_MEBIBYTES(1),
                 RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
                     RR_BUFFER_FLAGS_MAPPED_BIT);
             SS2Element *Data =
@@ -137,7 +137,7 @@ struct SBindingTestApp
 
         {
             ReadonlyStorageBuffer = Rr_CreateBuffer(
-                RR_MIBIBYTES(1),
+                RR_MEBIBYTES(1),
                 RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
                     RR_BUFFER_FLAGS_MAPPED_BIT);
             void *Data = Rr_GetMappedBufferData(ReadonlyStorageBuffer);

@@ -27,9 +27,8 @@ struct Rr_AllocatedBuffer;
 struct Rr_Image;
 struct Rr_AllocatedImage;
 
-#define RR_MINIMAL_ALLOCATION 256
-#define RR_BIG_CHUNK_SIZE     RR_MIBIBYTES(256)
-#define RR_SMALL_CHUNK_SIZE   RR_MIBIBYTES(64)
+#define RR_BIG_CHUNK_SIZE   RR_MEBIBYTES(256)
+#define RR_SMALL_CHUNK_SIZE RR_MEBIBYTES(64)
 
 typedef struct Rr_Range Rr_Range;
 struct Rr_Range

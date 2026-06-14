@@ -25,6 +25,11 @@
 
 #include "Rr_RHI.h"
 
+#define RR_MIN_LEFTOVERS_SIZE 1024
+
+/* TODO: Reduuce buffer image granularity wastage. */
+/* TODO: Per memory type locking? */
+
 void Rr_InitAllocator(
     Rr_Allocator *Allocator,
     Rr_PhysicalDevice *PhysicalDevice)
@@ -76,7 +81,7 @@ void Rr_CleanupAllocator(Rr_Allocator *Allocator)
     Rr_LockSpinlock(&Allocator->Lock);
 
     uint32_t LeakedMappings = 0;
-    size_t MemoryFreed = 0;
+    size_t DeviceLocalMemoryFreed = 0;
     for (size_t Index = 0; Index < Allocator->MemoryTypeCount; ++Index)
     {
         Rr_MemoryType *MemoryType = &Allocator->MemoryTypes[Index];
@@ -92,7 +97,11 @@ void Rr_CleanupAllocator(Rr_Allocator *Allocator)
             Device->FreeMemory(Device->Handle, Chunk->Memory, NULL);
 
             LeakedMappings += Chunk->MappingCount;
-            MemoryFreed += Chunk->Size;
+
+            if (MemoryType->DeviceLocalHeap)
+            {
+                DeviceLocalMemoryFreed += Chunk->Size;
+            }
 
             Allocator->HardAllocationCount--;
 
@@ -119,7 +128,12 @@ void Rr_CleanupAllocator(Rr_Allocator *Allocator)
     {
         RR_LOG_WARNING("Leaked %u memory mappings", LeakedMappings);
     }
-    RR_LOG_INFO("Freed %zu bytes of memory", MemoryFreed);
+    if (DeviceLocalMemoryFreed)
+    {
+        RR_LOG_INFO(
+            "Freed %.2f mebibytes of pooled device local memory",
+            (double)DeviceLocalMemoryFreed / (double)RR_MEBIBYTES(1));
+    }
 
     Rr_UnlockSpinlock(&Allocator->Lock);
 }
@@ -216,12 +230,11 @@ static inline Rr_Chunk *Rr_AllocateChunk(
         .memoryTypeIndex = MemoryTypeIndex,
     };
     VkDeviceMemory DeviceMemory;
-    VkResult Result = Device->AllocateMemory(
-        Device->Handle,
-        &MemoryAllocateInfo,
-        NULL,
-        &DeviceMemory);
-    if (Result != VK_SUCCESS)
+    if (Device->AllocateMemory(
+            Device->Handle,
+            &MemoryAllocateInfo,
+            NULL,
+            &DeviceMemory) != VK_SUCCESS)
     {
         RR_LOG_ERROR("Couldn't not allocate a chunk of memory!");
 
@@ -329,7 +342,7 @@ static inline bool Rr_FindChunkAndRange(
 
                 VkDeviceSize Leftovers = AlignedAvailableSize - Size;
                 Rr_Range *NewRange = NULL;
-                if (Leftovers >= RR_MINIMAL_ALLOCATION)
+                if (Leftovers >= RR_MIN_LEFTOVERS_SIZE)
                 {
                     Range->Size -= Leftovers;
 
@@ -380,6 +393,94 @@ static inline bool Rr_FindChunkAndRange(
     Rr_UnlockSpinlock(&Allocator->Lock);
 
     return false;
+}
+
+static inline void Rr_FreeChunkAndRange(
+    Rr_Allocator *Allocator,
+    Rr_Chunk *Chunk,
+    Rr_Range *Range)
+{
+    Rr_LockSpinlock(&Allocator->Lock);
+
+    if (Chunk->Dedicated)
+    {
+        Rr_Device *Device = Rr_GetDevice();
+
+        Device->FreeMemory(Device->Handle, Chunk->Memory, NULL);
+
+        Rr_ReturnRange(Allocator, Range);
+        Rr_ReturnChunk(Allocator, Chunk);
+
+        Allocator->HardAllocationCount--;
+
+        Rr_UnlockSpinlock(&Allocator->Lock);
+
+        return;
+    }
+
+    Range->Free = true;
+
+    /* Coalesce in both directions. */
+
+    Rr_Range *RangeToTheLeft = Range->Previous;
+    if (RangeToTheLeft && RangeToTheLeft->Free)
+    {
+        Range->Offset = RangeToTheLeft->Offset;
+        Range->Size += RangeToTheLeft->Size;
+
+        Range->Previous = RangeToTheLeft->Previous;
+        Range->PreviousFree = RangeToTheLeft->PreviousFree;
+
+        if (Chunk->FirstFreeRange == RangeToTheLeft)
+        {
+            Chunk->FirstFreeRange = Range;
+        }
+
+        if (Chunk->FirstRange == RangeToTheLeft)
+        {
+            Chunk->FirstRange = Range;
+        }
+
+        Rr_ReturnRange(Allocator, RangeToTheLeft);
+    }
+
+    Rr_Range *RangeToTheRight = Range->Next;
+    if (RangeToTheRight && RangeToTheRight->Free)
+    {
+        Range->Size += RangeToTheRight->Size;
+
+        Range->Next = RangeToTheRight->Next;
+        Range->NextFree = RangeToTheRight->NextFree;
+
+        if (Chunk->FirstFreeRange == RangeToTheRight)
+        {
+            Chunk->FirstFreeRange = Range;
+        }
+
+        Rr_ReturnRange(Allocator, RangeToTheRight);
+    }
+
+    if (Range->Next)
+    {
+        Range->Next->Previous = Range;
+    }
+    if (Range->Previous)
+    {
+        Range->Previous->Next = Range;
+    }
+    if (Range->NextFree)
+    {
+        Range->NextFree->PreviousFree = Range;
+    }
+    if (Range->PreviousFree)
+    {
+        Range->PreviousFree->NextFree = Range;
+    }
+
+    Chunk->SoftAllocationCount--;
+    Allocator->SoftAllocationCount--;
+
+    Rr_UnlockSpinlock(&Allocator->Lock);
 }
 
 static inline bool Rr_BindAllocatedBuffer(
@@ -448,8 +549,12 @@ bool Rr_AllocBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
         Device->Handle,
         Buffer->AllocatedBuffers[0].Handle,
         &MemoryRequirements);
-    MemoryRequirements.size =
-        RR_MAX(MemoryRequirements.size, RR_MINIMAL_ALLOCATION);
+    if (MemoryRequirements.size == 0)
+    {
+        RR_LOG_ERROR("Invalid memory requirements for buffer!");
+
+        return false;
+    }
 
     VkMemoryPropertyFlags RequiredFlags = 0;
     VkMemoryPropertyFlags PreferredFlags = 0;
@@ -541,87 +646,7 @@ void Rr_FreeBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
             Rr_UnmapAllocatedBufferMemory(Allocator, AllocatedBuffer);
         }
 
-        Rr_LockSpinlock(&Allocator->Lock);
-
-        if (Chunk->Dedicated)
-        {
-            Rr_Device *Device = Rr_GetDevice();
-
-            Device->FreeMemory(Device->Handle, Chunk->Memory, NULL);
-
-            Rr_ReturnRange(Allocator, Range);
-            Rr_ReturnChunk(Allocator, Chunk);
-
-            Allocator->HardAllocationCount--;
-
-            Rr_UnlockSpinlock(&Allocator->Lock);
-
-            continue;
-        }
-
-        Range->Free = true;
-
-        /* Coalesce in both directions. */
-
-        Rr_Range *RangeToTheLeft = Range->Previous;
-        if (RangeToTheLeft && RangeToTheLeft->Free)
-        {
-            Range->Offset = RangeToTheLeft->Offset;
-            Range->Size += RangeToTheLeft->Size;
-
-            Range->Previous = RangeToTheLeft->Previous;
-            Range->PreviousFree = RangeToTheLeft->PreviousFree;
-
-            if (Chunk->FirstFreeRange == RangeToTheLeft)
-            {
-                Chunk->FirstFreeRange = Range;
-            }
-
-            if (Chunk->FirstRange == RangeToTheLeft)
-            {
-                Chunk->FirstRange = Range;
-            }
-
-            Rr_ReturnRange(Allocator, RangeToTheLeft);
-        }
-
-        Rr_Range *RangeToTheRight = Range->Next;
-        if (RangeToTheRight && RangeToTheRight->Free)
-        {
-            Range->Size += RangeToTheRight->Size;
-
-            Range->Next = RangeToTheRight->Next;
-            Range->NextFree = RangeToTheRight->NextFree;
-
-            if (Chunk->FirstFreeRange == RangeToTheRight)
-            {
-                Chunk->FirstFreeRange = Range;
-            }
-
-            Rr_ReturnRange(Allocator, RangeToTheRight);
-        }
-
-        if (Range->Next)
-        {
-            Range->Next->Previous = Range;
-        }
-        if (Range->Previous)
-        {
-            Range->Previous->Next = Range;
-        }
-        if (Range->NextFree)
-        {
-            Range->NextFree->PreviousFree = Range;
-        }
-        if (Range->PreviousFree)
-        {
-            Range->PreviousFree->NextFree = Range;
-        }
-
-        Chunk->SoftAllocationCount--;
-        Allocator->SoftAllocationCount--;
-
-        Rr_UnlockSpinlock(&Allocator->Lock);
+        Rr_FreeChunkAndRange(Allocator, Chunk, Range);
     }
 }
 
@@ -721,11 +746,129 @@ void Rr_FlushAllocatedBufferMemory(
     }
 }
 
-bool Rr_AllocImageMemory(Rr_Allocator *Allocator, struct Rr_Image *Image)
+static inline bool Rr_BindAllocatedImage(
+    Rr_Allocator *Allocator,
+    Rr_AllocatedImage *AllocatedImage,
+    VkMemoryRequirements *MemoryRequirements,
+    uint32_t MemoryTypeIndex)
 {
+    if (AllocatedImage->Chunk || AllocatedImage->Range)
+    {
+        RR_LOG_ERROR("Image memory is already bound!");
+
+        return false;
+    }
+
+    Rr_Device *Device = Rr_GetDevice();
+
+    if (!Rr_FindChunkAndRange(
+            Allocator,
+            MemoryTypeIndex,
+            MemoryRequirements,
+            &AllocatedImage->Chunk,
+            &AllocatedImage->Range))
+    {
+        RR_LOG_ERROR("Failed to find appropriate sub allocation!");
+
+        return false;
+    }
+
+    if (Device->BindImageMemory(
+            Device->Handle,
+            AllocatedImage->Handle,
+            AllocatedImage->Chunk->Memory,
+            AllocatedImage->Range->AlignedOffset) != VK_SUCCESS)
+    {
+        RR_LOG_ERROR("Failed to bind image memory!");
+
+        return false;
+    }
+
+    if (!AllocatedImage->Chunk->Dedicated)
+    {
+        Rr_LockSpinlock(&Allocator->Lock);
+
+        AllocatedImage->Chunk->SoftAllocationCount++;
+        Allocator->SoftAllocationCount++;
+
+        Rr_UnlockSpinlock(&Allocator->Lock);
+    }
+
+    return true;
+}
+
+bool Rr_AllocImageMemory(Rr_Allocator *Allocator, Rr_Image *Image)
+{
+    Rr_Device *Device = Rr_GetDevice();
+
+    VkMemoryRequirements MemoryRequirements;
+    Device->GetImageMemoryRequirements(
+        Device->Handle,
+        Image->AllocatedImages[0].Handle,
+        &MemoryRequirements);
+    if (MemoryRequirements.size == 0)
+    {
+        RR_LOG_ERROR("Invalid memory requirements for image!");
+
+        return false;
+    }
+
+    VkMemoryPropertyFlags RequiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    size_t AllocatedIndex = 0;
+    uint32_t MemoryTypeFilter = MemoryRequirements.memoryTypeBits;
+    while (true)
+    {
+        /* NOTE: This loop allows to allocate from different memory types. */
+
+        uint32_t MemoryTypeIndex =
+            Rr_FindMemoryType(Allocator, MemoryTypeFilter, RequiredFlags, 0);
+        if (MemoryTypeIndex == VK_MAX_MEMORY_TYPES)
+        {
+            RR_LOG_ERROR("Failed to find appropriate memory type!");
+
+            break;
+        }
+
+        for (; AllocatedIndex < Image->AllocatedImageCount; ++AllocatedIndex)
+        {
+            Rr_AllocatedImage *AllocatedImage =
+                &Image->AllocatedImages[AllocatedIndex];
+            if (!Rr_BindAllocatedImage(
+                    Allocator,
+                    AllocatedImage,
+                    &MemoryRequirements,
+                    MemoryTypeIndex))
+            {
+                break;
+            }
+        }
+
+        if (AllocatedIndex == Image->AllocatedImageCount)
+        {
+            return true;
+        }
+
+        MemoryTypeFilter &= ~(1U << MemoryTypeIndex);
+    }
+
+    Rr_FreeImageMemory(Allocator, Image);
+
     return false;
 }
 
-void Rr_FreeImageMemory(Rr_Allocator *Allocator, struct Rr_Image *Image)
+void Rr_FreeImageMemory(Rr_Allocator *Allocator, Rr_Image *Image)
 {
+    for (size_t Index = 0; Index < Image->AllocatedImageCount; ++Index)
+    {
+        Rr_AllocatedImage *AllocatedImage = &Image->AllocatedImages[Index];
+        Rr_Chunk *Chunk = AllocatedImage->Chunk;
+        Rr_Range *Range = AllocatedImage->Range;
+        if (!Chunk || !Range)
+        {
+            continue;
+        }
+
+        Rr_FreeChunkAndRange(Allocator, Chunk, Range);
+    }
 }
