@@ -27,7 +27,7 @@
 #define RR_UI_MIN_FONT_SIZE (6.0f)
 #define RR_UI_MAX_FONT_SIZE (48.0f)
 
-struct Rr_Renderer;
+struct Rr_RHI;
 struct Rr_String;
 struct Rr_Graph;
 struct Rr_Image;

@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <Rr/Rr_Renderer.h>
+#include <Rr/Rr_RHI.h>
 
 #include "Rr_Allocator.h"
 #include "Rr_Buffer.h"
@@ -138,7 +138,8 @@ struct Rr_RenderPassKey
 
 extern VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey const *Key);
 
-struct Rr_Renderer
+typedef struct Rr_RHI Rr_RHI;
+struct Rr_RHI
 {
     Rr_VulkanLoader Loader;
     Rr_Instance Instance;
@@ -216,11 +217,11 @@ struct Rr_Renderer
     uint32_t DescriptorPoolListCount;
 };
 
-extern void Rr_InitRenderer(const char *Title);
+extern void Rr_InitRHI(const char *Title);
+
+extern void Rr_CleanupRHI(void);
 
 extern void Rr_WaitIdle(void);
-
-extern void Rr_CleanupRenderer(void);
 
 extern void Rr_SetSwapchainDirty(bool Dirty);
 
@@ -259,4 +260,4 @@ extern void Rr_BeginVulkanCommandBufferLabel(
 
 extern void Rr_EndVulkanCommandBufferLabel(VkCommandBuffer CommandBuffer);
 
-extern Rr_Renderer *gRenderer;
+extern Rr_RHI *gRHI;

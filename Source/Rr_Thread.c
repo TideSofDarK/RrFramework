@@ -23,8 +23,8 @@
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_THREAD
 #include "Rr_LogMacro.h"
 
-#include "Rr_Renderer.h"
 #include "Rr_Arena.h"
+#include "Rr_RHI.h"
 
 static RR_THREAD_LOCAL Rr_ThreadContext gThreadContext = { 0 };
 

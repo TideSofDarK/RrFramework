@@ -32,7 +32,7 @@
 #include <Rr/Rr_Math.h>
 #include <Rr/Rr_Pipeline.h>
 #include <Rr/Rr_Platform.h>
-#include <Rr/Rr_Renderer.h>
+#include <Rr/Rr_RHI.h>
 #include <Rr/Rr_Serialization.h>
 #include <Rr/Rr_System.h>
 #include <Rr/Rr_Thread.h>

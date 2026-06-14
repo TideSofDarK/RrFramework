@@ -20,11 +20,11 @@
 
 #include "Rr_Buffer.h"
 
-#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RHI
 #include "Rr_LogMacro.h"
 
 #include "Rr_Allocator.h"
-#include "Rr_Renderer.h"
+#include "Rr_RHI.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -40,12 +40,12 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
 
     Size = RR_MAX(Size, RR_MINIMAL_ALLOCATION);
 
-    Rr_LockSpinlock(&gRenderer->BuffersLock);
+    Rr_LockSpinlock(&gRHI->BuffersLock);
 
     Rr_Buffer *Buffer =
-        Rr_PushBufferIntoHive(&gRenderer->Buffers, Rr_GetPermanent()).Element;
+        Rr_PushBufferIntoHive(&gRHI->Buffers, Rr_GetPermanent()).Element;
 
-    Rr_UnlockSpinlock(&gRenderer->BuffersLock);
+    Rr_UnlockSpinlock(&gRHI->BuffersLock);
 
     *Buffer = (Rr_Buffer){
         .Flags = Flags,
@@ -90,7 +90,7 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
         .usage = Buffer->Usage,
     };
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     for (uint32_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
@@ -127,7 +127,7 @@ Rr_Buffer *Rr_CreateBuffer(uint64_t Size, Rr_BufferFlags Flags)
 #endif
     }
 
-    if (!Rr_AllocBufferMemory(&gRenderer->Allocator, Buffer))
+    if (!Rr_AllocBufferMemory(&gRHI->Allocator, Buffer))
     {
         Rr_DestroyBuffer(Buffer);
 
@@ -149,21 +149,21 @@ void Rr_ReleaseBuffer(Rr_Buffer *Buffer)
         return;
     }
 
-    Rr_LockSpinlock(&gRenderer->ReleasedBuffersLock);
+    Rr_LockSpinlock(&gRHI->ReleasedBuffersLock);
 
     Rr_InsertIntoHandleSet(
-        &gRenderer->ReleasedBuffers,
+        &gRHI->ReleasedBuffers,
         (Rr_Handle const *)&Buffer,
         Rr_GetPermanent());
 
-    Rr_UnlockSpinlock(&gRenderer->ReleasedBuffersLock);
+    Rr_UnlockSpinlock(&gRHI->ReleasedBuffersLock);
 }
 
 void Rr_DestroyBuffer(Rr_Buffer *Buffer)
 {
     assert(Buffer);
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     for (uint32_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
@@ -178,15 +178,14 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
         }
     }
 
-    Rr_FreeBufferMemory(&gRenderer->Allocator, Buffer);
+    Rr_FreeBufferMemory(&gRHI->Allocator, Buffer);
 
-    Rr_LockSpinlock(&gRenderer->BuffersLock);
+    Rr_LockSpinlock(&gRHI->BuffersLock);
 
-    Rr_BufferHiveIterator It =
-        Rr_GetBufferHiveIterator(&gRenderer->Buffers, Buffer);
-    Rr_RemoveFromBufferHive(&gRenderer->Buffers, &It);
+    Rr_BufferHiveIterator It = Rr_GetBufferHiveIterator(&gRHI->Buffers, Buffer);
+    Rr_RemoveFromBufferHive(&gRHI->Buffers, &It);
 
-    Rr_UnlockSpinlock(&gRenderer->BuffersLock);
+    Rr_UnlockSpinlock(&gRHI->BuffersLock);
 }
 
 void *Rr_GetMappedBufferData(Rr_Buffer *Buffer)
@@ -209,7 +208,7 @@ void *Rr_GetMappedBufferData(Rr_Buffer *Buffer)
 
 //     void *MappedData;
 //     vmaMapMemory(
-//         gRenderer->Allocator,
+//         gRHI->Allocator,
 //         AllocatedBuffer->Allocation,
 //         &MappedData);
 
@@ -226,17 +225,17 @@ void *Rr_GetMappedBufferData(Rr_Buffer *Buffer)
 //     Rr_AllocatedBuffer *AllocatedBuffer =
 //     Rr_GetCurrentAllocatedBuffer(Buffer);
 
-//     vmaUnmapMemory(gRenderer->Allocator, AllocatedBuffer->Allocation);
+//     vmaUnmapMemory(gRHI->Allocator, AllocatedBuffer->Allocation);
 // }
 
 void Rr_FlushBufferRange(Rr_Buffer *Buffer, uint64_t Offset, uint64_t Size)
 {
     Rr_AllocatedBuffer *AllocatedBuffer = Rr_GetCurrentAllocatedBuffer(Buffer);
-    Rr_FlushBufferMemory(&gRenderer->Allocator, AllocatedBuffer, Offset, Size);
+    Rr_FlushBufferMemory(&gRHI->Allocator, AllocatedBuffer, Offset, Size);
 }
 
 Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_Buffer *Buffer)
 {
     return &Buffer->AllocatedBuffers
-                [gRenderer->FrameIndex % Buffer->AllocatedBufferCount];
+                [gRHI->FrameIndex % Buffer->AllocatedBufferCount];
 }

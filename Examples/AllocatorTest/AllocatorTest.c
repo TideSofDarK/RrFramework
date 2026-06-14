@@ -59,7 +59,7 @@ static void Iterate(void)
         {
             for (uint32_t Index = 0; Index < BufferCount; ++Index)
             {
-                if(!Buffers[Index])
+                if (!Buffers[Index])
                 {
                     continue;
                 }

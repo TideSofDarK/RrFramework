@@ -20,32 +20,32 @@
 
 #include "Rr_Descriptor.h"
 
-#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RHI
 #include "Rr_LogMacro.h"
 
 #include "Rr_Pipeline.h"
-#include "Rr_Renderer.h"
+#include "Rr_RHI.h"
 
 #include <string.h>
 
 Rr_DescriptorPoolList *Rr_AcquireDescriptorPoolList(void)
 {
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     Rr_DescriptorPoolList *Result = NULL;
 
-    Rr_LockSpinlock(&gRenderer->DescriptorPoolListLock);
+    Rr_LockSpinlock(&gRHI->DescriptorPoolListLock);
 
-    if (gRenderer->DescriptorPoolList)
+    if (gRHI->DescriptorPoolList)
     {
-        Result = gRenderer->DescriptorPoolList;
-        gRenderer->DescriptorPoolList = Result->Next;
+        Result = gRHI->DescriptorPoolList;
+        gRHI->DescriptorPoolList = Result->Next;
 
-        Rr_UnlockSpinlock(&gRenderer->DescriptorPoolListLock);
+        Rr_UnlockSpinlock(&gRHI->DescriptorPoolListLock);
     }
     else
     {
-        Rr_UnlockSpinlock(&gRenderer->DescriptorPoolListLock);
+        Rr_UnlockSpinlock(&gRHI->DescriptorPoolListLock);
 
         VkDescriptorPoolSize Sizes[] = {
             { VK_DESCRIPTOR_TYPE_SAMPLER, RR_DESCRIPTOR_POOL_SIZE },
@@ -72,7 +72,7 @@ Rr_DescriptorPoolList *Rr_AcquireDescriptorPoolList(void)
 
         Result->Handle = Pool;
 
-        gRenderer->DescriptorPoolListCount++;
+        gRHI->DescriptorPoolListCount++;
     }
 
     Result->Next = NULL;
@@ -87,7 +87,7 @@ void Rr_ReleaseDescriptorPoolList(Rr_DescriptorPoolList *List)
         return;
     }
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     Rr_DescriptorPoolList *First = List;
 
@@ -99,12 +99,12 @@ void Rr_ReleaseDescriptorPoolList(Rr_DescriptorPoolList *List)
 
     Device->ResetDescriptorPool(Device->Handle, List->Handle, 0);
 
-    Rr_LockSpinlock(&gRenderer->DescriptorPoolListLock);
+    Rr_LockSpinlock(&gRHI->DescriptorPoolListLock);
 
-    List->Next = gRenderer->DescriptorPoolList;
-    gRenderer->DescriptorPoolList = First;
+    List->Next = gRHI->DescriptorPoolList;
+    gRHI->DescriptorPoolList = First;
 
-    Rr_UnlockSpinlock(&gRenderer->DescriptorPoolListLock);
+    Rr_UnlockSpinlock(&gRHI->DescriptorPoolListLock);
 }
 
 void Rr_AllocateDescriptorSets(
@@ -113,7 +113,7 @@ void Rr_AllocateDescriptorSets(
     VkDescriptorSetLayout *Layouts,
     VkDescriptorSet *OutSets)
 {
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     VkDescriptorSetAllocateInfo AllocateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,

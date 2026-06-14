@@ -20,12 +20,12 @@
 
 #include "Rr_Pipeline.h"
 
-#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RHI
 #include "Rr_LogMacro.h"
 
 #include "Rr_Arena.h"
 #include "Rr_Hash.h"
-#include "Rr_Renderer.h"
+#include "Rr_RHI.h"
 #include "Rr_SPIRV.h"
 
 #include <assert.h>
@@ -122,10 +122,10 @@ Rr_PipelineLayout *Rr_GetPipelineLayout(
     }
 
     size_t HashSize = sizeof(Rr_PipelineLayoutKey);
-    Rr_PipelineLayout **MapRef = &gRenderer->PipelineLayoutStorage.Map;
+    Rr_PipelineLayout **MapRef = &gRHI->PipelineLayoutStorage.Map;
     Rr_PipelineLayout *PipelineLayout = NULL;
 
-    Rr_LockSpinlock(&gRenderer->PipelineLayoutStorageLock);
+    Rr_LockSpinlock(&gRHI->PipelineLayoutStorageLock);
 
     for (uint64_t Hash = Rr_Hash64(HashSize, &PipelineLayoutKey); *MapRef;
          Hash <<= 2)
@@ -139,14 +139,14 @@ Rr_PipelineLayout *Rr_GetPipelineLayout(
         }
         if (memcmp(&PipelineLayoutKey, &(*MapRef)->Key, HashSize) == 0)
         {
-            Rr_UnlockSpinlock(&gRenderer->PipelineLayoutStorageLock);
+            Rr_UnlockSpinlock(&gRHI->PipelineLayoutStorageLock);
 
             return *MapRef;
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
     *MapRef = Rr_PushPipelineLayoutIntoHive(
-                  &gRenderer->PipelineLayoutStorage.Hive,
+                  &gRHI->PipelineLayoutStorage.Hive,
                   Rr_GetPermanent())
                   .Element;
     PipelineLayout = *MapRef;
@@ -158,7 +158,7 @@ FoundEmpty:
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     VkDescriptorSetLayout VulkanDescriptorSetLayouts[RR_MAX_SETS];
     for (size_t Index = 0; Index < PipelineLayoutKey.DescriptorSetLayoutCount;
@@ -181,7 +181,7 @@ FoundEmpty:
         &PipelineLayout->Handle);
     assert(Result == VK_SUCCESS);
 
-    Rr_UnlockSpinlock(&gRenderer->PipelineLayoutStorageLock);
+    Rr_UnlockSpinlock(&gRHI->PipelineLayoutStorageLock);
 
     Rr_DestroyScratch(Scratch);
 
@@ -262,7 +262,7 @@ Rr_ComputePipeline *Rr_CreateComputePipelineWithLayout(
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -312,14 +312,14 @@ Rr_ComputePipeline *Rr_CreateComputePipelineWithLayout(
 
     if (Result == VK_SUCCESS)
     {
-        Rr_LockSpinlock(&gRenderer->ComputePipelinesLock);
+        Rr_LockSpinlock(&gRHI->ComputePipelinesLock);
 
         ComputePipeline = Rr_PushComputePipelineIntoHive(
-                              &gRenderer->ComputePipelines,
+                              &gRHI->ComputePipelines,
                               Rr_GetPermanent())
                               .Element;
 
-        Rr_UnlockSpinlock(&gRenderer->ComputePipelinesLock);
+        Rr_UnlockSpinlock(&gRHI->ComputePipelinesLock);
 
         *ComputePipeline = (Rr_ComputePipeline){
             .Layout = PipelineLayout,
@@ -355,32 +355,32 @@ void Rr_ReleaseComputePipeline(Rr_ComputePipeline *ComputePipeline)
         return;
     }
 
-    Rr_LockSpinlock(&gRenderer->ReleasedComputePipelinesLock);
+    Rr_LockSpinlock(&gRHI->ReleasedComputePipelinesLock);
 
     Rr_InsertIntoHandleSet(
-        &gRenderer->ReleasedComputePipelines,
+        &gRHI->ReleasedComputePipelines,
         (Rr_Handle const *)&ComputePipeline,
         Rr_GetPermanent());
 
-    Rr_UnlockSpinlock(&gRenderer->ReleasedComputePipelinesLock);
+    Rr_UnlockSpinlock(&gRHI->ReleasedComputePipelinesLock);
 }
 
 void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
 {
     assert(ComputePipeline && ComputePipeline->Handle != VK_NULL_HANDLE);
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     Device->DestroyPipeline(Device->Handle, ComputePipeline->Handle, NULL);
 
-    Rr_LockSpinlock(&gRenderer->ComputePipelinesLock);
+    Rr_LockSpinlock(&gRHI->ComputePipelinesLock);
 
     Rr_ComputePipelineHiveIterator It = Rr_GetComputePipelineHiveIterator(
-        &gRenderer->ComputePipelines,
+        &gRHI->ComputePipelines,
         ComputePipeline);
-    Rr_RemoveFromComputePipelineHive(&gRenderer->ComputePipelines, &It);
+    Rr_RemoveFromComputePipelineHive(&gRHI->ComputePipelines, &It);
 
-    Rr_UnlockSpinlock(&gRenderer->ComputePipelinesLock);
+    Rr_UnlockSpinlock(&gRHI->ComputePipelinesLock);
 }
 
 Rr_ColorTargetBlend Rr_AlphaBlend(void)
@@ -448,7 +448,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     VkResult Result;
 
@@ -740,14 +740,14 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
 
     if (Result == VK_SUCCESS)
     {
-        Rr_LockSpinlock(&gRenderer->GraphicsPipelinesLock);
+        Rr_LockSpinlock(&gRHI->GraphicsPipelinesLock);
 
         GraphicsPipeline = Rr_PushGraphicsPipelineIntoHive(
-                               &gRenderer->GraphicsPipelines,
+                               &gRHI->GraphicsPipelines,
                                Rr_GetPermanent())
                                .Element;
 
-        Rr_UnlockSpinlock(&gRenderer->GraphicsPipelinesLock);
+        Rr_UnlockSpinlock(&gRHI->GraphicsPipelinesLock);
 
         *GraphicsPipeline = (Rr_GraphicsPipeline){
             .Layout = PipelineLayout,
@@ -790,42 +790,41 @@ void Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
         return;
     }
 
-    Rr_LockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
+    Rr_LockSpinlock(&gRHI->ReleasedGraphicsPipelinesLock);
 
     Rr_InsertIntoHandleSet(
-        &gRenderer->ReleasedGraphicsPipelines,
+        &gRHI->ReleasedGraphicsPipelines,
         (Rr_Handle const *)&GraphicsPipeline,
         Rr_GetPermanent());
 
-    Rr_UnlockSpinlock(&gRenderer->ReleasedGraphicsPipelinesLock);
+    Rr_UnlockSpinlock(&gRHI->ReleasedGraphicsPipelinesLock);
 }
 
 void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 {
     assert(GraphicsPipeline && GraphicsPipeline->Handle != VK_NULL_HANDLE);
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     Device->DestroyPipeline(Device->Handle, GraphicsPipeline->Handle, NULL);
 
-    Rr_LockSpinlock(&gRenderer->GraphicsPipelinesLock);
+    Rr_LockSpinlock(&gRHI->GraphicsPipelinesLock);
 
     Rr_GraphicsPipelineHiveIterator It = Rr_GetGraphicsPipelineHiveIterator(
-        &gRenderer->GraphicsPipelines,
+        &gRHI->GraphicsPipelines,
         GraphicsPipeline);
-    Rr_RemoveFromGraphicsPipelineHive(&gRenderer->GraphicsPipelines, &It);
+    Rr_RemoveFromGraphicsPipelineHive(&gRHI->GraphicsPipelines, &It);
 
-    Rr_UnlockSpinlock(&gRenderer->GraphicsPipelinesLock);
+    Rr_UnlockSpinlock(&gRHI->GraphicsPipelinesLock);
 }
 
 Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
     Rr_DescriptorSetLayoutKey const *Key)
 {
-    Rr_LockSpinlock(&gRenderer->DescriptorSetLayoutStorageLock);
+    Rr_LockSpinlock(&gRHI->DescriptorSetLayoutStorageLock);
 
     size_t HashSize = sizeof(Rr_DescriptorSetLayoutKey);
-    Rr_DescriptorSetLayout **MapRef =
-        &gRenderer->DescriptorSetLayoutStorage.Map;
+    Rr_DescriptorSetLayout **MapRef = &gRHI->DescriptorSetLayoutStorage.Map;
     Rr_DescriptorSetLayout *DescriptorSetLayout = NULL;
 
     for (uint64_t Hash = Rr_Hash64(HashSize, Key); *MapRef; Hash <<= 2)
@@ -838,14 +837,14 @@ Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
         }
         if (memcmp(Key, &(*MapRef)->Key, HashSize) == 0)
         {
-            Rr_UnlockSpinlock(&gRenderer->DescriptorSetLayoutStorageLock);
+            Rr_UnlockSpinlock(&gRHI->DescriptorSetLayoutStorageLock);
 
             return *MapRef;
         }
         MapRef = &(*MapRef)->Children[Hash >> 62];
     }
     *MapRef = Rr_PushDescriptorSetLayoutIntoHive(
-                  &gRenderer->DescriptorSetLayoutStorage.Hive,
+                  &gRHI->DescriptorSetLayoutStorage.Hive,
                   Rr_GetPermanent())
                   .Element;
     DescriptorSetLayout = *MapRef;
@@ -857,7 +856,7 @@ FoundEmpty:
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     RR_ARRAY(VkDescriptorSetLayoutBinding) VkBindings = { 0 };
 
@@ -892,7 +891,7 @@ FoundEmpty:
         NULL,
         &DescriptorSetLayout->Handle);
 
-    Rr_UnlockSpinlock(&gRenderer->DescriptorSetLayoutStorageLock);
+    Rr_UnlockSpinlock(&gRHI->DescriptorSetLayoutStorageLock);
 
     Rr_DestroyScratch(Scratch);
 

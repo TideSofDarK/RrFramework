@@ -35,7 +35,7 @@
 #include "Rr_Hash.h"
 #include "Rr_Image.h"
 #include "Rr_Platform.h"
-#include "Rr_Renderer.h"
+#include "Rr_RHI.h"
 #include "Rr_System.h"
 #include "Rr_Thread.h"
 
@@ -8835,7 +8835,7 @@ void Rr_ProcessUIEvent(Rr_Event const *Event)
 
 void Rr_NewUIFrame(void)
 {
-    Rr_Arena *FrameArena = gRenderer->Frames[gRenderer->FrameIndex].Arena;
+    Rr_Arena *FrameArena = gRHI->Frames[gRHI->FrameIndex].Arena;
     gUIContext->FrameArena = FrameArena;
 
     RR_RESET_ARRAY(&gUIContext->LayoutStack, FrameArena);
@@ -9244,7 +9244,7 @@ void Rr_UIDebugOverlay(void)
             uint32_t CurrentPresentModeIndex;
             for (uint32_t Index = 0; Index < PresentModeCount; ++Index)
             {
-                if (gRenderer->Swapchain.PresentMode == PresentModes[Index])
+                if (gRHI->Swapchain.PresentMode == PresentModes[Index])
                 {
                     CurrentPresentModeIndex = Index;
                 }
@@ -9294,9 +9294,9 @@ void Rr_UIDebugOverlay(void)
                 MainLoopMS,
                 FrameGraphMS);
 
-            if (gRenderer->MainQueue.TimestampsEnabled)
+            if (gRHI->MainQueue.TimestampsEnabled)
             {
-                Rr_UITextF("GPU: %.3fms", gRenderer->LastFrameMS);
+                Rr_UITextF("GPU: %.3fms", gRHI->LastFrameMS);
             }
             else
             {
@@ -9398,7 +9398,7 @@ void Rr_UIDebugOverlay(void)
                 "Main Thread Scratch#1");
             for (uint32_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
             {
-                Rr_Frame *Frame = gRenderer->Frames + Index;
+                Rr_Frame *Frame = gRHI->Frames + Index;
                 char FrameString[64];
                 sprintf(FrameString, "Frame#%d", Index);
                 Rr_UIDebugOverlayArena(Frame->Arena, FrameString);
@@ -9409,55 +9409,51 @@ void Rr_UIDebugOverlay(void)
 
         Rr_UIBeginWindowEx("VRAM", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
         {
-            Rr_UIDebugOverlayAllocator(&gRenderer->Allocator);
+            Rr_UIDebugOverlayAllocator(&gRHI->Allocator);
         }
         Rr_UIEndWindow();
 
-        Rr_UIBeginWindowEx("Renderer", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+        Rr_UIBeginWindowEx("RHI", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
         {
-            Rr_UITextF("Frame: %zu", gRenderer->FrameNumber);
+            Rr_UITextF("Frame: %zu", gRHI->FrameNumber);
             Rr_UITextF(
                 "Images: %zu/%zu",
-                gRenderer->Images.Count,
-                gRenderer->Images.Capacity);
+                gRHI->Images.Count,
+                gRHI->Images.Capacity);
             Rr_UITextF(
                 "Buffers: %zu/%zu",
-                gRenderer->Buffers.Count,
-                gRenderer->Buffers.Capacity);
+                gRHI->Buffers.Count,
+                gRHI->Buffers.Capacity);
             Rr_UITextF(
                 "DescriptorSetLayouts: %zu/%zu",
-                gRenderer->DescriptorSetLayoutStorage.Hive.Count,
-                gRenderer->DescriptorSetLayoutStorage.Hive.Capacity);
-            Rr_UITextF(
-                "DescriptorPools: %d",
-                gRenderer->DescriptorPoolListCount);
+                gRHI->DescriptorSetLayoutStorage.Hive.Count,
+                gRHI->DescriptorSetLayoutStorage.Hive.Capacity);
+            Rr_UITextF("DescriptorPools: %d", gRHI->DescriptorPoolListCount);
             Rr_UITextF(
                 "PipelineLayouts: %zu/%zu",
-                gRenderer->PipelineLayoutStorage.Hive.Count,
-                gRenderer->PipelineLayoutStorage.Hive.Capacity);
+                gRHI->PipelineLayoutStorage.Hive.Count,
+                gRHI->PipelineLayoutStorage.Hive.Capacity);
             Rr_UITextF(
                 "ComputePipelines: %zu/%zu",
-                gRenderer->ComputePipelines.Count,
-                gRenderer->ComputePipelines.Capacity);
+                gRHI->ComputePipelines.Count,
+                gRHI->ComputePipelines.Capacity);
             Rr_UITextF(
                 "GraphicsPipelines: %zu/%zu",
-                gRenderer->GraphicsPipelines.Count,
-                gRenderer->GraphicsPipelines.Capacity);
+                gRHI->GraphicsPipelines.Count,
+                gRHI->GraphicsPipelines.Capacity);
             Rr_UITextF(
                 "Samplers: %zu/%zu",
-                gRenderer->Samplers.Count,
-                gRenderer->Samplers.Capacity);
+                gRHI->Samplers.Count,
+                gRHI->Samplers.Capacity);
             Rr_UITextF(
                 "Render Passes: %zu/%zu",
-                gRenderer->RenderPassMap.Count,
-                gRenderer->RenderPassMap.Capacity);
+                gRHI->RenderPassMap.Count,
+                gRHI->RenderPassMap.Capacity);
             Rr_UITextF(
                 "Framebuffers: %zu/%zu",
-                gRenderer->FramebufferMap.Count,
-                gRenderer->FramebufferMap.Capacity);
-            Rr_UITextF(
-                "SwapchainImages: %zu",
-                gRenderer->SwapchainImages.Count);
+                gRHI->FramebufferMap.Count,
+                gRHI->FramebufferMap.Capacity);
+            Rr_UITextF("SwapchainImages: %zu", gRHI->SwapchainImages.Count);
         }
         Rr_UIEndWindow();
     }

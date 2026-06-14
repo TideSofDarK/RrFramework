@@ -20,20 +20,20 @@
 
 #include "Rr_Allocator.h"
 
-#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RHI
 #include "Rr_LogMacro.h"
 
-#include "Rr_Renderer.h"
+#include "Rr_RHI.h"
 
 void Rr_InitAllocator(Rr_Allocator *Allocator)
 {
     VkPhysicalDeviceMemoryProperties *MemoryProperties =
-        &gRenderer->PhysicalDevice.MemoryProperties;
+        &gRHI->PhysicalDevice.MemoryProperties;
 
     Rr_Arena *Arena = Rr_GetPermanent();
 
     Allocator->BufferImageGranularity =
-        gRenderer->PhysicalDevice.Properties.limits.bufferImageGranularity;
+        gRHI->PhysicalDevice.Properties.limits.bufferImageGranularity;
     Allocator->BigChunkSize = RR_BIG_CHUNK_SIZE;
     Allocator->SmallChunkSize = RR_SMALL_CHUNK_SIZE;
 
@@ -69,7 +69,7 @@ void Rr_InitAllocator(Rr_Allocator *Allocator)
 
 void Rr_CleanupAllocator(Rr_Allocator *Allocator)
 {
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     size_t MemoryFreed = 0;
     for (size_t Index = 0; Index < Allocator->MemoryTypeCount; ++Index)
@@ -130,7 +130,7 @@ static inline uint32_t Rr_FindMemoryType(
     VkMemoryPropertyFlags PreferredFlags)
 {
     VkPhysicalDeviceMemoryProperties *MemoryProperties =
-        &gRenderer->PhysicalDevice.MemoryProperties;
+        &gRHI->PhysicalDevice.MemoryProperties;
 
     /* First pass: required and preferred. */
 
@@ -177,7 +177,7 @@ static inline Rr_Chunk *Rr_AllocateChunk(
     uint32_t MemoryTypeIndex,
     VkDeviceSize Size)
 {
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     Rr_MemoryType *MemoryType = &Allocator->MemoryTypes[MemoryTypeIndex];
 
@@ -389,7 +389,7 @@ static inline bool Rr_BindAllocatedBuffer(
         return false;
     }
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     if (!Rr_FindChunkAndRange(
             Allocator,
@@ -432,7 +432,7 @@ static inline bool Rr_BindAllocatedBuffer(
 
 bool Rr_AllocBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
 {
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     VkMemoryRequirements MemoryRequirements;
     Device->GetBufferMemoryRequirements(
@@ -531,7 +531,7 @@ void Rr_FreeBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
 
         if (Chunk->Dedicated)
         {
-            Rr_Device *Device = &gRenderer->Device;
+            Rr_Device *Device = &gRHI->Device;
 
             Device->FreeMemory(Device->Handle, Chunk->Memory, NULL);
 
@@ -615,8 +615,8 @@ void Rr_FlushBufferMemory(
     size_t Offset,
     size_t Size)
 {
-    if (gRenderer->Device.FlushMappedMemoryRanges(
-            gRenderer->Device.Handle,
+    if (gRHI->Device.FlushMappedMemoryRanges(
+            gRHI->Device.Handle,
             1,
             &(VkMappedMemoryRange){
                 .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,

@@ -24,7 +24,7 @@
 #include "Rr_LogMacro.h"
 
 #include "Rr_Platform.h"
-#include "Rr_Renderer.h"
+#include "Rr_RHI.h"
 #include "Rr_Thread.h"
 #include "Rr_UI.h"
 
@@ -102,11 +102,11 @@ static inline void Rr_DispatchEvents(void)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    if (gRenderer->Swapchain.RecreateEventPending)
+    if (gRHI->Swapchain.RecreateEventPending)
     {
         Rr_AddSwapchainCreatedEvent();
 
-        gRenderer->Swapchain.RecreateEventPending = false;
+        gRHI->Swapchain.RecreateEventPending = false;
     }
 
     Rr_BeginPlatformEvents();
@@ -153,7 +153,7 @@ void Rr_Run(Rr_Config *Config)
 
     Rr_InitFrameTime(&gApp->FrameTime);
 
-    Rr_InitRenderer(Config->Title ? Config->Title : Config->WindowTitle);
+    Rr_InitRHI(Config->Title ? Config->Title : Config->WindowTitle);
 
     Rr_NewFrame();
     Rr_BeginFrameSection("Rr.MainLoop");
@@ -226,7 +226,7 @@ void Rr_Run(Rr_Config *Config)
 
     Rr_CleanupUI();
 
-    Rr_CleanupRenderer();
+    Rr_CleanupRHI();
 
     Rr_CleanupPlatform();
 

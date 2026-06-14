@@ -142,7 +142,6 @@ struct SBitonicSorter
         uint32_t Algorithm;
     };
 
-    Rr_Renderer *Renderer;
     SSortList SortList;
     uint32_t ThreadsPerWorkgroup{};
     Rr_ComputePipeline *Pipeline;

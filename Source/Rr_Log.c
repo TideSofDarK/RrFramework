@@ -34,8 +34,8 @@ char const *Rr_LogCategoryString(Rr_LogCategory Category)
             return "Arena";
         case RR_LOG_CATEGORY_PLATFORM:
             return "Platform";
-        case RR_LOG_CATEGORY_RENDERER:
-            return "Renderer";
+        case RR_LOG_CATEGORY_RHI:
+            return "RHI";
         case RR_LOG_CATEGORY_SPIRV:
             return "SPIR-V";
         case RR_LOG_CATEGORY_SYSTEM:

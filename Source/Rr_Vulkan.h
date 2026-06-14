@@ -27,7 +27,7 @@
 #include <Rr/Rr_Log.h>
 #include <Rr/Rr_Math.h>
 #include <Rr/Rr_Pipeline.h>
-#include <Rr/Rr_Renderer.h>
+#include <Rr/Rr_RHI.h>
 
 #define VK_NO_PROTOTYPES
 #include <vma/vk_mem_alloc.h>

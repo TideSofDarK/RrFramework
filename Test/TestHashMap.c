@@ -38,7 +38,7 @@ struct TestPair
 #define RR_HASH_MAP_INITIAL_CAPACITY INITIAL_CAPACITY
 #include "../Source/Rr_HashMap.h"
 
-#define TEST_COUNT 10000
+#define TEST_COUNT 999998
 
 int main(int ArgCount, char **Args)
 {
@@ -128,14 +128,14 @@ int main(int ArgCount, char **Args)
 
     /* Make sure an odd '1337' is still present. */
 
-    snprintf(Key.String, sizeof(Key.String), "k%zu", 1337ULL);
+    snprintf(Key.String, sizeof(Key.String), "k%u", 1337U);
     TestMapIterator It = FindInTestMap(&Map, &Key);
     assert(It.Data);
     assert(It.Data->Value.Integer == 1337ULL);
 
     /* Make sure an even '1338' is erased. */
 
-    snprintf(Key.String, sizeof(Key.String), "k%zu", 1338ULL);
+    snprintf(Key.String, sizeof(Key.String), "k%u", 1338U);
     It = FindInTestMap(&Map, &Key);
     assert(IsTestMapEnd(It));
 

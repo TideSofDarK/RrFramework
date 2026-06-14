@@ -20,10 +20,10 @@
 
 #include "Rr_Image.h"
 
-#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RENDERER
+#define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RHI
 #include "Rr_LogMacro.h"
 
-#include "Rr_Renderer.h"
+#include "Rr_RHI.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -32,14 +32,14 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
 {
     assert(Info != NULL);
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
-    Rr_LockSpinlock(&gRenderer->SamplersLock);
+    Rr_LockSpinlock(&gRHI->SamplersLock);
 
     Rr_Sampler *Sampler =
-        Rr_PushSamplerIntoHive(&gRenderer->Samplers, Rr_GetPermanent()).Element;
+        Rr_PushSamplerIntoHive(&gRHI->Samplers, Rr_GetPermanent()).Element;
 
-    Rr_UnlockSpinlock(&gRenderer->SamplersLock);
+    Rr_UnlockSpinlock(&gRHI->SamplersLock);
 
     RR_ZERO_PTR(Sampler);
 
@@ -87,47 +87,47 @@ void Rr_ReleaseSampler(Rr_Sampler *Sampler)
         return;
     }
 
-    Rr_LockSpinlock(&gRenderer->ReleasedSamplersLock);
+    Rr_LockSpinlock(&gRHI->ReleasedSamplersLock);
 
     Rr_InsertIntoHandleSet(
-        &gRenderer->ReleasedSamplers,
+        &gRHI->ReleasedSamplers,
         (Rr_Handle const *)&Sampler,
         Rr_GetPermanent());
 
-    Rr_UnlockSpinlock(&gRenderer->ReleasedSamplersLock);
+    Rr_UnlockSpinlock(&gRHI->ReleasedSamplersLock);
 }
 
 void Rr_DestroySampler(Rr_Sampler *Sampler)
 {
     assert(Sampler != NULL && Sampler->Handle != VK_NULL_HANDLE);
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     Device->DestroySampler(Device->Handle, Sampler->Handle, NULL);
 
-    Rr_LockSpinlock(&gRenderer->SamplersLock);
+    Rr_LockSpinlock(&gRHI->SamplersLock);
 
     Rr_SamplerHiveIterator It =
-        Rr_GetSamplerHiveIterator(&gRenderer->Samplers, Sampler);
-    Rr_RemoveFromSamplerHive(&gRenderer->Samplers, &It);
+        Rr_GetSamplerHiveIterator(&gRHI->Samplers, Sampler);
+    Rr_RemoveFromSamplerHive(&gRHI->Samplers, &It);
 
-    Rr_UnlockSpinlock(&gRenderer->SamplersLock);
+    Rr_UnlockSpinlock(&gRHI->SamplersLock);
 }
 
 Rr_ImageViewMap *Rr_CreateImageViewMap(void)
 {
     Rr_Arena *Arena = Rr_GetPermanent();
 
-    Rr_LockSpinlock(&gRenderer->ImageViewMapsLock);
+    Rr_LockSpinlock(&gRHI->ImageViewMapsLock);
 
     Rr_ImageViewMap *ImageViewMap =
-        RR_GET_FREE_LIST_ITEM(&gRenderer->ImageViewMaps, Arena);
+        RR_GET_FREE_LIST_ITEM(&gRHI->ImageViewMaps, Arena);
     if (!ImageViewMap->Capacity)
     {
         Rr_InitImageViewMap(ImageViewMap, Arena);
     }
 
-    Rr_UnlockSpinlock(&gRenderer->ImageViewMapsLock);
+    Rr_UnlockSpinlock(&gRHI->ImageViewMapsLock);
 
     return ImageViewMap;
 }
@@ -136,7 +136,7 @@ void Rr_DestroyImageViewMap(
     Rr_ImageViewMap *ImageViewMap,
     bool DestroyFramebuffers)
 {
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     Rr_ImageViewMapIterator It = Rr_BeginInImageViewMap(ImageViewMap);
     while (!Rr_IsImageViewMapEnd(It))
@@ -150,11 +150,11 @@ void Rr_DestroyImageViewMap(
         It = Rr_EraseFromImageViewMap(It);
     }
 
-    Rr_LockSpinlock(&gRenderer->ImageViewMapsLock);
+    Rr_LockSpinlock(&gRHI->ImageViewMapsLock);
 
-    RR_RETURN_FREE_LIST_ITEM(&gRenderer->ImageViewMaps, ImageViewMap);
+    RR_RETURN_FREE_LIST_ITEM(&gRHI->ImageViewMaps, ImageViewMap);
 
-    Rr_UnlockSpinlock(&gRenderer->ImageViewMapsLock);
+    Rr_UnlockSpinlock(&gRHI->ImageViewMapsLock);
 }
 
 VkImageView Rr_GetVulkanImageView(
@@ -174,7 +174,7 @@ VkImageView Rr_GetVulkanImageView(
 
     Rr_UnlockSpinlock(&AllocatedImage->ImageViewMapLock);
 
-    Rr_Device *Device = &gRenderer->Device;
+    Rr_Device *Device = &gRHI->Device;
 
     VkImageViewCreateInfo ImageViewCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -251,12 +251,12 @@ static Rr_Image *Rr_CreateImage(
     VkImageType ImageType,
     VkImageCreateFlags AdditionalFlags)
 {
-    Rr_LockSpinlock(&gRenderer->ImagesLock);
+    Rr_LockSpinlock(&gRHI->ImagesLock);
 
     Rr_Image *Image =
-        Rr_PushImageIntoHive(&gRenderer->Images, Rr_GetPermanent()).Element;
+        Rr_PushImageIntoHive(&gRHI->Images, Rr_GetPermanent()).Element;
 
-    Rr_UnlockSpinlock(&gRenderer->ImagesLock);
+    Rr_UnlockSpinlock(&gRHI->ImagesLock);
 
     uint32_t LevelCount = 1;
     if (Flags & RR_IMAGE_FLAGS_MIP_MAPPED_BIT)
@@ -362,7 +362,7 @@ static Rr_Image *Rr_CreateImage(
         AllocatedImage->Container = Image;
 
         VkResult Result = vmaCreateImage(
-            gRenderer->VMA,
+            gRHI->VMA,
             &ImageCreateInfo,
             &AllocationCreateInfo,
             &AllocatedImage->Handle,
@@ -400,14 +400,14 @@ void Rr_ReleaseImage(Rr_Image *Image)
         return;
     }
 
-    Rr_LockSpinlock(&gRenderer->ReleasedImagesLock);
+    Rr_LockSpinlock(&gRHI->ReleasedImagesLock);
 
     Rr_InsertIntoHandleSet(
-        &gRenderer->ReleasedImages,
+        &gRHI->ReleasedImages,
         (Rr_Handle const *)&Image,
         Rr_GetPermanent());
 
-    Rr_UnlockSpinlock(&gRenderer->ReleasedImagesLock);
+    Rr_UnlockSpinlock(&gRHI->ReleasedImagesLock);
 }
 
 void Rr_DestroyImage(Rr_Image *Image)
@@ -427,18 +427,17 @@ void Rr_DestroyImage(Rr_Image *Image)
             DestroyFramebuffers);
 
         vmaDestroyImage(
-            gRenderer->VMA,
+            gRHI->VMA,
             AllocatedImage->Handle,
             AllocatedImage->Allocation);
     }
 
-    Rr_LockSpinlock(&gRenderer->ImagesLock);
+    Rr_LockSpinlock(&gRHI->ImagesLock);
 
-    Rr_ImageHiveIterator It =
-        Rr_GetImageHiveIterator(&gRenderer->Images, Image);
-    Rr_RemoveFromImageHive(&gRenderer->Images, &It);
+    Rr_ImageHiveIterator It = Rr_GetImageHiveIterator(&gRHI->Images, Image);
+    Rr_RemoveFromImageHive(&gRHI->Images, &It);
 
-    Rr_UnlockSpinlock(&gRenderer->ImagesLock);
+    Rr_UnlockSpinlock(&gRHI->ImagesLock);
 }
 
 Rr_Image2D *Rr_CreateImage2D(
@@ -537,5 +536,5 @@ Rr_IntVec3 Rr_GetImageExtent(Rr_Image *Image)
 Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_Image *Image)
 {
     return &Image->AllocatedImages
-                [gRenderer->FrameIndex % Image->AllocatedImageCount];
+                [gRHI->FrameIndex % Image->AllocatedImageCount];
 }

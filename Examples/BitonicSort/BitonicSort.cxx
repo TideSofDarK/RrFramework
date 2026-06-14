@@ -16,7 +16,6 @@ const uint32_t TOTAL_SIZE = sizeof(uint32_t) * COUNT;
 
 struct SValidator
 {
-    Rr_Renderer *Renderer;
     uint32_t DispatchSize;
     Rr_ComputePipeline *Pipeline;
     Rr_Image2D *ResultImage;

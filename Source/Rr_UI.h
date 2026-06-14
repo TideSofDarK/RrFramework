@@ -21,7 +21,7 @@
 #pragma once
 
 #include <Rr/Rr_Platform.h>
-#include <Rr/Rr_Renderer.h>
+#include <Rr/Rr_RHI.h>
 #include <Rr/Rr_UI.h>
 
 extern void Rr_InitUI(void);

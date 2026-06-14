@@ -33,7 +33,7 @@
 - [X] Check if descriptor set layouts are properly hashed.
 - [X] Refactor Rr_AddXXXNode functions to ensure better type safety.
 - [X] See if it's possible to get rid of descriptor allocator arenas.
-- [X] Make locking more granular. gRenderer->Lock should only be locked when allocating.
+- [X] Make locking more granular. gRHI->Lock should only be locked when allocating.
 - [X] Framebuffers/SyncStates require different hash table implementation. Current implementation is a mess...
 - [X] Query platform mouse position before polling.
 - [X] Remove GLTF API.

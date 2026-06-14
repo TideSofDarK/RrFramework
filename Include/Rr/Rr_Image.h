@@ -21,7 +21,7 @@
 #ifndef RR_IMAGE_H
 #define RR_IMAGE_H
 
-#include <Rr/Rr_Renderer.h>
+#include <Rr/Rr_RHI.h>
 
 typedef struct Rr_Sampler Rr_Sampler;
 typedef struct Rr_Image Rr_Image2D;

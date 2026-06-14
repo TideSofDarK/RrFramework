@@ -30,8 +30,6 @@
 struct Rr_Graph;
 struct Rr_Image;
 
-typedef struct Rr_Renderer Rr_Renderer;
-
 typedef enum
 {
     RR_QUEUE_TYPE_MAIN,

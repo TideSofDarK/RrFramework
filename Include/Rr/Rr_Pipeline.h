@@ -22,7 +22,7 @@
 #define RR_PIPELINE_H
 
 #include <Rr/Rr_App.h>
-#include <Rr/Rr_Renderer.h>
+#include <Rr/Rr_RHI.h>
 
 #define RR_MAX_BINDINGS 16
 #define RR_MAX_SETS     4

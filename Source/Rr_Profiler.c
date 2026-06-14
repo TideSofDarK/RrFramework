@@ -21,8 +21,9 @@
 #include "Rr_Profiler.h"
 
 #include "Rr_Hash.h"
-#include "Rr_Renderer.h"
-#include "Rr_System.h"
+#include "Rr_RHI.h"
+
+#include <Rr/Rr_System.h>
 
 Rr_Profiler *Rr_CreateProfiler(Rr_Arena *Arena)
 {

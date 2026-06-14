@@ -21,7 +21,7 @@
 #ifndef RR_BUFFER_H
 #define RR_BUFFER_H
 
-#include <Rr/Rr_Renderer.h>
+#include <Rr/Rr_RHI.h>
 
 typedef struct Rr_Buffer Rr_Buffer;
 

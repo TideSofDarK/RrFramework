@@ -24,7 +24,7 @@
 #include <Rr/Rr_Buffer.h>
 #include <Rr/Rr_Image.h>
 #include <Rr/Rr_Pipeline.h>
-#include <Rr/Rr_Renderer.h>
+#include <Rr/Rr_RHI.h>
 
 typedef struct Rr_Graph Rr_Graph;
 typedef struct Rr_GraphNode Rr_GraphNode;
