@@ -1951,8 +1951,6 @@ void Rr_ExecuteGraph(
         }
     }
 
-    size_t DependencyLevel = SortedNodes.Data[0]->DependencyLevel;
-
     Rr_BarrierBatch BarrierBatch = { 0 };
     RR_RESERVE_ARRAY(
         &BarrierBatch.BufferBarriers,
@@ -1972,7 +1970,7 @@ void Rr_ExecuteGraph(
     {
         Rr_GraphNode *Node = SortedNodes.Data[Index];
         UseLateCommandBuffer |= Node->UsesLateCommandBuffer;
-        DependencyLevel = Node->DependencyLevel;
+        size_t DependencyLevel = Node->DependencyLevel;
 
         for (size_t DepIndex = 0; DepIndex < Node->BufferDeps.Count; ++DepIndex)
         {

@@ -373,7 +373,7 @@ void Rr_SetWindowSize(Rr_IntVec2 Size)
 
 void Rr_SetCursor(Rr_CursorType Type)
 {
-    if (Type < RR_CURSOR_TYPE_NORMAL || Type >= RR_CURSOR_TYPE_COUNT)
+    if (Type >= RR_CURSOR_TYPE_COUNT)
     {
         return;
     }

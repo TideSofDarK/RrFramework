@@ -491,7 +491,6 @@ bool Rr_ProcessXKBEvent(xkb_generic_event_t *Event)
 
             return true;
         }
-        break;
         case XCB_XKB_STATE_NOTIFY:
         {
             xcb_xkb_state_notify_event_t *StateNotifyEvent =

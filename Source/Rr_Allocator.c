@@ -471,8 +471,7 @@ bool Rr_AllocBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
 
     size_t AllocatedIndex = 0;
     uint32_t MemoryTypeFilter = MemoryRequirements.memoryTypeBits;
-    bool Allocating = true;
-    while (Allocating)
+    while (true)
     {
         /* NOTE: This loop allows to allocate from different memory types. */
 
@@ -485,9 +484,7 @@ bool Rr_AllocBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
         {
             RR_LOG_ERROR("Failed to find appropriate memory type!");
 
-            Rr_FreeBufferMemory(Allocator, Buffer);
-
-            return false;
+            break;
         }
 
         for (; AllocatedIndex < Buffer->AllocatedBufferCount; ++AllocatedIndex)
@@ -611,7 +608,7 @@ void Rr_FreeBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
 
 void Rr_FlushBufferMemory(
     Rr_Allocator *Allocator,
-    struct Rr_AllocatedBuffer *AllocatedBuffer,
+    Rr_AllocatedBuffer *AllocatedBuffer,
     size_t Offset,
     size_t Size)
 {
