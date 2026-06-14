@@ -25,15 +25,19 @@
 
 #include "Rr_RHI.h"
 
-void Rr_InitAllocator(Rr_Allocator *Allocator)
+void Rr_InitAllocator(
+    Rr_Allocator *Allocator,
+    Rr_PhysicalDevice *PhysicalDevice)
 {
     VkPhysicalDeviceMemoryProperties *MemoryProperties =
-        &gRHI->PhysicalDevice.MemoryProperties;
+        &PhysicalDevice->MemoryProperties;
 
     Rr_Arena *Arena = Rr_GetPermanent();
 
     Allocator->BufferImageGranularity =
-        gRHI->PhysicalDevice.Properties.limits.bufferImageGranularity;
+        PhysicalDevice->Properties.limits.bufferImageGranularity;
+    Allocator->NonCoherentAtomSize =
+        PhysicalDevice->Properties.limits.nonCoherentAtomSize;
     Allocator->BigChunkSize = RR_BIG_CHUNK_SIZE;
     Allocator->SmallChunkSize = RR_SMALL_CHUNK_SIZE;
 
@@ -69,7 +73,7 @@ void Rr_InitAllocator(Rr_Allocator *Allocator)
 
 void Rr_CleanupAllocator(Rr_Allocator *Allocator)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     size_t MemoryFreed = 0;
     for (size_t Index = 0; Index < Allocator->MemoryTypeCount; ++Index)
@@ -83,6 +87,8 @@ void Rr_CleanupAllocator(Rr_Allocator *Allocator)
 
             MemoryFreed += Chunk->Size;
 
+            Rr_DecrementAtomicIntRelaxed(&Allocator->HardAllocations);
+
             Chunk = Chunk->Next;
         }
     }
@@ -90,6 +96,18 @@ void Rr_CleanupAllocator(Rr_Allocator *Allocator)
     Rr_ClearRangeHive(&Allocator->RangeHive);
     Rr_ClearChunkHive(&Allocator->ChunkHive);
 
+    int64_t SoftAllocations =
+        Rr_LoadAtomicIntRelaxed(&Allocator->SoftAllocations);
+    if (SoftAllocations)
+    {
+        RR_LOG_WARNING("Leaked %zu soft allocations", (size_t)SoftAllocations);
+    }
+    int64_t HardAllocations =
+        Rr_LoadAtomicIntRelaxed(&Allocator->HardAllocations);
+    if (HardAllocations)
+    {
+        RR_LOG_WARNING("Leaked %zu hard allocations", (size_t)HardAllocations);
+    }
     RR_LOG_INFO("Freed %zu bytes of memory", MemoryFreed);
 }
 
@@ -177,7 +195,7 @@ static inline Rr_Chunk *Rr_AllocateChunk(
     uint32_t MemoryTypeIndex,
     VkDeviceSize Size)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_MemoryType *MemoryType = &Allocator->MemoryTypes[MemoryTypeIndex];
 
@@ -389,7 +407,7 @@ static inline bool Rr_BindAllocatedBuffer(
         return false;
     }
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     if (!Rr_FindChunkAndRange(
             Allocator,
@@ -432,7 +450,7 @@ static inline bool Rr_BindAllocatedBuffer(
 
 bool Rr_AllocBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     VkMemoryRequirements MemoryRequirements;
     Device->GetBufferMemoryRequirements(
@@ -528,7 +546,7 @@ void Rr_FreeBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
 
         if (Chunk->Dedicated)
         {
-            Rr_Device *Device = &gRHI->Device;
+            Rr_Device *Device = Rr_GetDevice();
 
             Device->FreeMemory(Device->Handle, Chunk->Memory, NULL);
 
@@ -612,8 +630,10 @@ void Rr_FlushBufferMemory(
     size_t Offset,
     size_t Size)
 {
-    if (gRHI->Device.FlushMappedMemoryRanges(
-            gRHI->Device.Handle,
+    Rr_Device *Device = Rr_GetDevice();
+
+    if (Device->FlushMappedMemoryRanges(
+            Device->Handle,
             1,
             &(VkMappedMemoryRange){
                 .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
@@ -624,4 +644,13 @@ void Rr_FlushBufferMemory(
     {
         RR_LOG_ERROR("Failed to flush buffer memory!");
     }
+}
+
+bool Rr_AllocImageMemory(Rr_Allocator *Allocator, struct Rr_Image *Image)
+{
+    return false;
+}
+
+void Rr_FreeImageMemory(Rr_Allocator *Allocator, struct Rr_Image *Image)
+{
 }

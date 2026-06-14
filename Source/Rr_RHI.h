@@ -221,6 +221,8 @@ extern void Rr_InitRHI(const char *Title);
 
 extern void Rr_CleanupRHI(void);
 
+extern Rr_Device *Rr_GetDevice(void);
+
 extern void Rr_WaitIdle(void);
 
 extern void Rr_SetSwapchainDirty(bool Dirty);

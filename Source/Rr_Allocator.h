@@ -86,6 +86,7 @@ typedef struct Rr_Allocator Rr_Allocator;
 struct Rr_Allocator
 {
     VkDeviceSize BufferImageGranularity;
+    VkDeviceSize NonCoherentAtomSize;
     VkDeviceSize BigChunkSize;
     VkDeviceSize SmallChunkSize;
     uint32_t MemoryTypeCount;
@@ -97,7 +98,9 @@ struct Rr_Allocator
     Rr_Spinlock Lock;
 };
 
-extern void Rr_InitAllocator(Rr_Allocator *Allocator);
+extern void Rr_InitAllocator(
+    Rr_Allocator *Allocator,
+    Rr_PhysicalDevice *PhysicalDevice);
 
 extern void Rr_CleanupAllocator(Rr_Allocator *Allocator);
 
@@ -115,7 +118,7 @@ extern void Rr_FlushBufferMemory(
     size_t Offset,
     size_t Size);
 
-extern void Rr_AllocImageMemory(
+extern bool Rr_AllocImageMemory(
     Rr_Allocator *Allocator,
     struct Rr_Image *Image);
 

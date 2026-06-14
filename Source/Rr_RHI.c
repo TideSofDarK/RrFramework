@@ -24,8 +24,6 @@
 #include "Rr_LogMacro.h"
 
 #include "Rr_Allocator.h"
-#include "Rr_App.h"
-#include "Rr_System.h"
 #include "Rr_Thread.h"
 
 #include <Rr/Rr_Graph.h>
@@ -545,7 +543,7 @@ void Rr_InitRHI(const char *Title)
         &gRHI->DedicatedTransferQueue);
 
     Rr_InitVMA();
-    Rr_InitAllocator(&gRHI->Allocator);
+    Rr_InitAllocator(&gRHI->Allocator, &gRHI->PhysicalDevice);
     Rr_InitFrames();
     Rr_InitSwapchain();
     Rr_InitEmptyDescriptorSet();
@@ -775,9 +773,15 @@ void Rr_CleanupRHI(void)
     gRHI = NULL;
 }
 
+Rr_Device *Rr_GetDevice(void)
+{
+    return &gRHI->Device;
+}
+
 void Rr_WaitIdle(void)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
+
     Device->DeviceWaitIdle(Device->Handle);
 }
 
