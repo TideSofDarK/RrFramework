@@ -355,6 +355,14 @@ extern bool RR_CC Rr_UIInputInt3(char const *Title, int32_t *Values);
 
 extern bool RR_CC Rr_UIInputInt4(char const *Title, int32_t *Values);
 
+extern bool RR_CC Rr_UIInputInt64(char const *Title, int64_t *Value);
+
+extern bool RR_CC Rr_UIInputInt64Range(
+    char const *Title,
+    int64_t *Value,
+    int64_t Min,
+    int64_t Max);
+
 extern bool RR_CC Rr_UIInputUnsignedInt(char const *Title, uint32_t *Value);
 
 extern bool RR_CC Rr_UIInputUnsignedIntRange(

@@ -7615,6 +7615,34 @@ bool Rr_UIInputInt4(char const *Title, int32_t *Values)
         RR_UI_SCALAR_TYPE_INT);
 }
 
+bool Rr_UIInputInt64(char const *Title, int64_t *Value)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        NULL,
+        NULL,
+        1,
+        1,
+        RR_UI_SCALAR_TYPE_INT64);
+}
+
+bool Rr_UIInputInt64Range(
+    char const *Title,
+    int64_t *Value,
+    int64_t Min,
+    int64_t Max)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        &Min,
+        &Max,
+        1,
+        1,
+        RR_UI_SCALAR_TYPE_INT64);
+}
+
 bool Rr_UIInputUnsignedInt(char const *Title, uint32_t *Value)
 {
     return Rr_UIInputScalarMulti(
