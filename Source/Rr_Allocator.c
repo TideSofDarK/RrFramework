@@ -27,7 +27,6 @@
 
 #define RR_MIN_LEFTOVERS_SIZE 1024
 
-/* TODO: Reduuce buffer image granularity wastage. */
 /* TODO: Per memory type locking? */
 
 void Rr_InitAllocator(
@@ -270,13 +269,12 @@ static inline VkDeviceSize Rr_AlignVulkanOffset(
 static inline bool Rr_FindChunkAndRange(
     Rr_Allocator *Allocator,
     uint32_t MemoryTypeIndex,
-    VkMemoryRequirements *MemoryRequirements,
+    VkDeviceSize Size,
+    VkDeviceSize Alignment,
     Rr_Chunk **OutChunk,
     Rr_Range **OutRange)
 {
     Rr_MemoryType *MemoryType = &Allocator->MemoryTypes[MemoryTypeIndex];
-
-    VkDeviceSize Size = MemoryRequirements->size;
 
     Rr_LockSpinlock(&Allocator->Lock);
 
@@ -320,11 +318,6 @@ static inline bool Rr_FindChunkAndRange(
 
     Rr_Chunk *Chunk = MemoryType->FirstChunk;
 
-    VkDeviceSize Alignment = MemoryRequirements->alignment;
-    /* TODO: Technically aligning to buffer image granularity is not always
-     * necessary. */
-    Alignment = RR_MAX(Alignment, Allocator->BufferImageGranularity);
-
     while (Chunk)
     {
         Rr_Range *PreviousRange = NULL;
@@ -334,8 +327,8 @@ static inline bool Rr_FindChunkAndRange(
         {
             VkDeviceSize AlignedOffset =
                 Rr_AlignVulkanOffset(Range->Offset, Alignment);
-            VkDeviceSize AlignedAvailableSize =
-                Range->Size - (AlignedOffset - Range->Offset);
+            VkDeviceSize AlignedDelta = AlignedOffset - Range->Offset;
+            VkDeviceSize AlignedAvailableSize = Range->Size - AlignedDelta;
             if (Size <= AlignedAvailableSize)
             {
                 /* Claim this range; put leftovers (if any) into a new one. */
@@ -486,7 +479,8 @@ static inline void Rr_FreeChunkAndRange(
 static inline bool Rr_BindAllocatedBuffer(
     Rr_Allocator *Allocator,
     Rr_AllocatedBuffer *AllocatedBuffer,
-    VkMemoryRequirements *MemoryRequirements,
+    VkDeviceSize Size,
+    VkDeviceSize Alignment,
     uint32_t MemoryTypeIndex,
     bool Mapped)
 {
@@ -502,7 +496,8 @@ static inline bool Rr_BindAllocatedBuffer(
     if (!Rr_FindChunkAndRange(
             Allocator,
             MemoryTypeIndex,
-            MemoryRequirements,
+            Size,
+            Alignment,
             &AllocatedBuffer->Chunk,
             &AllocatedBuffer->Range))
     {
@@ -608,7 +603,8 @@ bool Rr_AllocBufferMemory(Rr_Allocator *Allocator, Rr_Buffer *Buffer)
             if (!Rr_BindAllocatedBuffer(
                     Allocator,
                     AllocatedBuffer,
-                    &MemoryRequirements,
+                    MemoryRequirements.size,
+                    MemoryRequirements.alignment,
                     MemoryTypeIndex,
                     Buffer->Flags & RR_BUFFER_FLAGS_MAPPED_BIT))
             {
@@ -749,7 +745,8 @@ void Rr_FlushAllocatedBufferMemory(
 static inline bool Rr_BindAllocatedImage(
     Rr_Allocator *Allocator,
     Rr_AllocatedImage *AllocatedImage,
-    VkMemoryRequirements *MemoryRequirements,
+    VkDeviceSize Size,
+    VkDeviceSize Alignment,
     uint32_t MemoryTypeIndex)
 {
     if (AllocatedImage->Chunk || AllocatedImage->Range)
@@ -764,7 +761,8 @@ static inline bool Rr_BindAllocatedImage(
     if (!Rr_FindChunkAndRange(
             Allocator,
             MemoryTypeIndex,
-            MemoryRequirements,
+            Size,
+            Alignment,
             &AllocatedImage->Chunk,
             &AllocatedImage->Range))
     {
@@ -837,7 +835,12 @@ bool Rr_AllocImageMemory(Rr_Allocator *Allocator, Rr_Image *Image)
             if (!Rr_BindAllocatedImage(
                     Allocator,
                     AllocatedImage,
-                    &MemoryRequirements,
+                    RR_ALIGN_POW2(
+                        MemoryRequirements.size,
+                        Allocator->BufferImageGranularity),
+                    RR_MAX(
+                        MemoryRequirements.alignment,
+                        Allocator->BufferImageGranularity),
                     MemoryTypeIndex))
             {
                 break;
