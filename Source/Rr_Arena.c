@@ -71,14 +71,14 @@ void Rr_DestroyArena(Rr_Arena *Arena)
 
 void *Rr_AllocAlignedNoZero(size_t Size, size_t Align, Rr_Arena *Arena)
 {
+    if (Size == 0)
+    {
+        return NULL;
+    }
+
     if (Arena == NULL)
     {
         RR_LOG_ABORT("Allocating from NULL arena!");
-    }
-
-    if (Size == 0)
-    {
-        RR_LOG_ABORT("Allocating 0 bytes from an arena is not allowed!");
     }
 
     uintptr_t PositionAligned = RR_ALIGN_POW2(Arena->Position, Align);
@@ -163,6 +163,11 @@ void Rr_DestroyTSArena(Rr_TSArena *Arena)
 
 void *Rr_TSAllocAlignedNoZero(size_t Size, size_t Align, Rr_TSArena *Arena)
 {
+    if (Size == 0)
+    {
+        return NULL;
+    }
+
     int64_t OldPosition = Rr_LoadAtomicIntRelaxed(&Arena->Position);
     int64_t NewPosition = RR_ALIGN_POW2(OldPosition, (int64_t)Align);
 

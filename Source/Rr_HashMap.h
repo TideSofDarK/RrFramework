@@ -34,6 +34,16 @@
 #include <intrin.h>
 #endif
 
+static inline uint64_t Rr_HashMapProbe(
+    uint64_t Mod,
+    size_t *ProbeIndex,
+    size_t Capacity)
+{
+    uint64_t QuadraticProbe = (*ProbeIndex)++;
+
+    return (Mod + QuadraticProbe * QuadraticProbe) % Capacity;
+}
+
 static inline uint64_t Rr_HashMapMod(uint64_t Hash, uint64_t Count)
 {
     uint64_t Result;
@@ -150,6 +160,7 @@ struct RR_HASH_MAP_MAP_TYPE
 {
     RR_HASH_MAP_NODE_TYPE *First;
     RR_HASH_MAP_NODE_TYPE *Last;
+    size_t ReusableCount;
     size_t Count;
     size_t Capacity;
 };
@@ -285,11 +296,17 @@ static inline void RR_HASH_MAP_NEXT_NAME(RR_HASH_MAP_ITERATOR_TYPE *It)
 
 static inline void RR_HASH_MAP_ERASE_NAME(RR_HASH_MAP_ITERATOR_TYPE *It)
 {
+    if (!It->Data->Occupied)
+    {
+        return;
+    }
+
     It->Data->Occupied = false;
     It->Data->Reusable = true;
     RR_HASH_MAP_NODE_TYPE *Node = It->Node;
     RR_HASH_MAP_MAP_TYPE *Map = Node->Map;
     Map->Count--;
+    Map->ReusableCount++;
 
     RR_HASH_MAP_NEXT_NAME(It);
 }
@@ -299,28 +316,37 @@ static inline void RR_HASH_MAP_ERASE_NAME(RR_HASH_MAP_ITERATOR_TYPE *It)
         RR_HASH_MAP_PREFIX,      \
         RR_HASH_MAP_EXPAND_CONCAT(Reserve, RR_HASH_MAP_NAME))
 
-static inline void RR_HASH_MAP_RESERVE_NAME(
+static inline bool RR_HASH_MAP_RESERVE_NAME(
     RR_HASH_MAP_MAP_TYPE *Map,
     size_t Size,
     Rr_Arena *Arena)
 {
     if (Size == 0)
     {
-        return;
+        return false;
     }
 
-    double Load = (double)Size / (double)Map->Capacity;
-    if (Load >= RR_HASH_MAP_LOAD_FACTOR)
+    double Load = (double)(Size + Map->ReusableCount);
+    Load /= (double)Map->Capacity;
+    bool NeedRehashing = Load >= RR_HASH_MAP_LOAD_FACTOR;
+    if (NeedRehashing)
     {
         size_t Capacity = Map->Capacity;
+        double CurrentLoad = (double)(Size);
+        double TargetLoad = (double)Capacity * RR_HASH_MAP_LOAD_FACTOR;
         size_t Steps = 0;
-        while (((double)Capacity * RR_HASH_MAP_LOAD_FACTOR) < (double)Size)
+        while (TargetLoad <= CurrentLoad)
         {
             Capacity *= 2;
+            TargetLoad = (double)Capacity * RR_HASH_MAP_LOAD_FACTOR;
             Steps++;
         }
         RR_HASH_MAP_REHASH_NAME(Map, Steps, Arena);
+
+        return true;
     }
+
+    return false;
 }
 
 #define RR_HASH_MAP_FIND_BUCKET_NAME \
@@ -380,14 +406,8 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_WITH_HASH_NAME(
     uint64_t Hash,
     Rr_Arena *Arena)
 {
-    double Load = (double)Map->Count / (double)Map->Capacity;
-    if (Load >= RR_HASH_MAP_LOAD_FACTOR)
-    {
-        RR_HASH_MAP_REHASH_NAME(Map, 1, Arena);
-    }
-
+    size_t ProbeIndex = 0;
     size_t Mod = Rr_HashMapMod(Hash, Map->Capacity);
-    size_t QuadraticProber = 1;
 
     RR_HASH_MAP_BUCKET_TYPE *Bucket;
     while (true)
@@ -418,20 +438,38 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_INSERT_WITH_HASH_NAME(
         }
         else
         {
+            if (RR_HASH_MAP_RESERVE_NAME(
+                    Map,
+                    Map->Count + (Bucket->Reusable ? 0 : 1),
+                    Arena))
+            {
+                return RR_HASH_MAP_INSERT_WITH_HASH_NAME(
+                    Map,
+                    Key,
+#if defined(RR_HASH_MAP_VALUE_TYPE)
+                    Value,
+#endif
+                    Hash,
+                    Arena);
+            }
+
 #if defined(RR_HASH_MAP_VALUE_TYPE)
             Bucket->Value = *Value;
 #endif
             Bucket->Key = *Key;
             Bucket->Hash = Hash;
             Bucket->Occupied = true;
-            Bucket->Reusable = false;
+            if (Bucket->Reusable)
+            {
+                Bucket->Reusable = false;
+                Map->ReusableCount--;
+            }
             Map->Count++;
 
             return It;
         }
 
-        Mod = (Mod + QuadraticProber * QuadraticProber) % Map->Capacity;
-        QuadraticProber++;
+        Mod = Rr_HashMapProbe(Mod, &ProbeIndex, Map->Capacity);
     }
 }
 
@@ -470,8 +508,8 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_NAME(
     RR_HASH_MAP_KEY_TYPE const *Key)
 {
     uint64_t Hash = Rr_Hash64(sizeof(*Key), Key);
+    size_t ProbeIndex = 0;
     size_t Mod = Rr_HashMapMod(Hash, Map->Capacity);
-    size_t QuadraticProber = 1;
 
     RR_HASH_MAP_BUCKET_TYPE *Bucket;
     while (true)
@@ -507,8 +545,7 @@ static inline RR_HASH_MAP_ITERATOR_TYPE RR_HASH_MAP_FIND_NAME(
             };
         }
 
-        Mod = (Mod + QuadraticProber * QuadraticProber) % Map->Capacity;
-        QuadraticProber++;
+        Mod = Rr_HashMapProbe(Mod, &ProbeIndex, Map->Capacity);
     }
 }
 
@@ -519,7 +556,6 @@ static inline void RR_HASH_MAP_REHASH_NAME(
 {
     Rr_Scratch Scratch = Rr_GetScratch(Arena);
 
-    typedef struct TempBucket TempBucket;
     struct TempBucket
     {
 #if defined(RR_HASH_MAP_VALUE_TYPE)
@@ -529,8 +565,8 @@ static inline void RR_HASH_MAP_REHASH_NAME(
         uint64_t Hash;
     };
 
-    TempBucket *OldBuckets =
-        Rr_AllocNoZero(sizeof(TempBucket) * Map->Count, Scratch.Arena);
+    struct TempBucket *OldBuckets =
+        Rr_AllocNoZero(sizeof(struct TempBucket) * Map->Count, Scratch.Arena);
     size_t OldBucketIndex = 0;
 
     RR_HASH_MAP_NODE_TYPE *Node = Map->First;
@@ -541,17 +577,16 @@ static inline void RR_HASH_MAP_REHASH_NAME(
             RR_HASH_MAP_BUCKET_TYPE *Bucket = &Node->Buckets[Index];
             if (Bucket->Occupied)
             {
-                OldBuckets[OldBucketIndex++] = (TempBucket){
+                OldBuckets[OldBucketIndex++] = (struct TempBucket){
 #if defined(RR_HASH_MAP_VALUE_TYPE)
                     .Value = Bucket->Value,
 #endif
                     .Key = Bucket->Key,
                     .Hash = Bucket->Hash,
                 };
-                ;
-                Bucket->Occupied = false;
-                Bucket->Reusable = false;
             }
+            Bucket->Occupied = false;
+            Bucket->Reusable = false;
         }
 
         Node = Node->Next;
@@ -569,19 +604,35 @@ static inline void RR_HASH_MAP_REHASH_NAME(
         Map->Capacity *= 2;
     }
     Map->Count = 0;
+    Map->ReusableCount = 0;
 
     for (size_t Index = 0; Index < OldBucketIndex; ++Index)
     {
-        TempBucket *Bucket = &OldBuckets[Index];
+        struct TempBucket *TempBucket = &OldBuckets[Index];
 
-        RR_HASH_MAP_INSERT_WITH_HASH_NAME(
-            Map,
-            &Bucket->Key,
+        size_t ProbeIndex = 0;
+        size_t Mod = Rr_HashMapMod(TempBucket->Hash, Map->Capacity);
+
+        while (true)
+        {
+            RR_HASH_MAP_ITERATOR_TYPE It =
+                RR_HASH_MAP_FIND_BUCKET_NAME(Map, Mod);
+            RR_HASH_MAP_BUCKET_TYPE *Bucket = It.Data;
+            if (!Bucket->Occupied)
+            {
 #if defined(RR_HASH_MAP_VALUE_TYPE)
-            &Bucket->Value,
+                Bucket->Value = TempBucket->Value;
 #endif
-            Bucket->Hash,
-            NULL);
+                Bucket->Key = TempBucket->Key;
+                Bucket->Hash = TempBucket->Hash;
+                Bucket->Occupied = true;
+                Map->Count++;
+
+                break;
+            }
+
+            Mod = Rr_HashMapProbe(Mod, &ProbeIndex, Map->Capacity);
+        }
     }
 
     Rr_DestroyScratch(Scratch);

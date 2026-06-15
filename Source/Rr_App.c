@@ -156,6 +156,7 @@ void Rr_Run(Rr_Config *Config)
     Rr_InitRHI(Config->Title ? Config->Title : Config->WindowTitle);
 
     Rr_NewFrame();
+
     Rr_BeginFrameSection("Rr.MainLoop");
 
     /* NOTE: Order is important! UI initialization will create GPU
@@ -184,11 +185,16 @@ void Rr_Run(Rr_Config *Config)
 
         Rr_BeginUI();
 
+        Rr_BeginFrameSection("Rr.Iterate");
+
         gApp->IterateFunc();
+
+        Rr_EndFrameSection("Rr.Iterate");
 
         Rr_EndUI();
 
         Rr_DrawFrame();
+
         Rr_EndFrameSection("Rr.MainLoop");
 
         if (Rr_IsWindowMinimized())
@@ -211,6 +217,7 @@ void Rr_Run(Rr_Config *Config)
          * stuff such as text input. */
 
         Rr_NewFrame();
+
         Rr_BeginFrameSection("Rr.MainLoop");
 
         Rr_NewUIFrame();

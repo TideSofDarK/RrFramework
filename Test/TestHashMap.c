@@ -50,6 +50,9 @@ int main(int ArgCount, char **Args)
 
     TestMap Map = { 0 };
     InitTestMap(&Map, Arena);
+    TestMapIterator It;
+    TestKey Key = { 0 };
+    TestValue Value = { 0 };
 
     assert(Map.Capacity == INITIAL_CAPACITY);
     assert(RR_IS_POW2(Map.Capacity));
@@ -71,6 +74,37 @@ int main(int ArgCount, char **Args)
 
         InsertIntoTestMap(&Map, &TestPair->Key, &TestPair->Value, Arena);
     }
+
+    /* Make sure we can erase every bucket. */
+
+    size_t Count = 0;
+    It = BeginInTestMap(&Map);
+    while (!IsTestMapEnd(&It))
+    {
+        Count++;
+
+        EraseFromTestMap(&It);
+    }
+    assert(Map.Count == 0);
+
+    /* Make sure lookup still works. */
+
+    {
+        TestKey Key = { 0 };
+        snprintf(Key.String, sizeof(Key.String), "k%u", 1337U);
+        It = FindInTestMap(&Map, &Key);
+        assert(IsTestMapEnd(&It));
+    }
+
+    /* Insert everything again. */
+
+    for (size_t Index = 0; Index < TEST_COUNT; ++Index)
+    {
+        TestPair *TestPair = &TestPairs[Index];
+
+        InsertIntoTestMap(&Map, &TestPair->Key, &TestPair->Value, Arena);
+    }
+    assert(Map.Count == TEST_COUNT);
 
     /* Make sure we are at the correct count. */
 
@@ -124,12 +158,10 @@ int main(int ArgCount, char **Args)
     assert(Map.Count == (TEST_COUNT / 2));
     assert(Map.Capacity == (CurrentCapacity * 2));
 
-    TestKey Key = { 0 };
-
     /* Make sure an odd '1337' is still present. */
 
     snprintf(Key.String, sizeof(Key.String), "k%u", 1337U);
-    TestMapIterator It = FindInTestMap(&Map, &Key);
+    It = FindInTestMap(&Map, &Key);
     assert(It.Data);
     assert(It.Data->Value.Integer == 1337ULL);
 
@@ -141,7 +173,7 @@ int main(int ArgCount, char **Args)
 
     /* Insert it again and make sure we can find it. */
 
-    TestValue Value = { 1338ULL };
+    Value.Integer = 1338ULL;
     InsertIntoTestMap(&Map, &Key, &Value, NULL);
     It = FindInTestMap(&Map, &Key);
     assert(It.Data);

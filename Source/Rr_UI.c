@@ -9523,14 +9523,19 @@ void Rr_UIDebugOverlay(void)
             double MainLoopMS =
                 (double)(Rr_GetFrameSectionTicks("Rr.MainLoop") * 1000) /
                 (double)Rr_GetPerformanceFrequency();
+            double IterateMS =
+                (double)(Rr_GetFrameSectionTicks("Rr.Iterate") * 1000) /
+                (double)Rr_GetPerformanceFrequency();
             double FrameGraphMS =
                 (double)(Rr_GetFrameSectionTicks("Rr.FrameGraph") * 1000) /
                 (double)Rr_GetPerformanceFrequency();
 
             Rr_UITextF(
                 "Main Loop: %.3fms\n"
+                "Iterate: %.3fms\n"
                 "Frame Graph: %.3fms",
                 MainLoopMS,
+                IterateMS,
                 FrameGraphMS);
 
             if (gRHI->MainQueue.TimestampsEnabled)

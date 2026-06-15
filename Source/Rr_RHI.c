@@ -764,6 +764,7 @@ void Rr_NewFrame(void)
     gRHI->FrameIndex = gRHI->FrameNumber % RR_FRAME_OVERLAP;
 
     Rr_Frame *Frame = Rr_GetCurrentFrame();
+    Rr_Arena *Arena = Frame->Arena;
 
     VkResult Result;
 
@@ -801,8 +802,22 @@ void Rr_NewFrame(void)
         Frame->SubmitFence = VK_NULL_HANDLE;
     }
 
+    size_t NodeCount = 0;
+    size_t BufferCount = 0;
+    size_t ImageCount = 0;
+    size_t SamplerCount = 0;
+    size_t ComputePipelineCount = 0;
+    size_t GraphicsPipelineCount = 0;
+
     if (Frame->Graph)
     {
+        NodeCount = Frame->Graph->Nodes.Count;
+        BufferCount = Frame->Graph->BufferResources.Count;
+        ImageCount = Frame->Graph->ImageResources.Count;
+        SamplerCount = Frame->Graph->Samplers.Count;
+        ComputePipelineCount = Frame->Graph->ComputePipelines.Count;
+        GraphicsPipelineCount = Frame->Graph->GraphicsPipelines.Count;
+
         Rr_ReleaseGraphResources(Frame->Graph);
     }
 
@@ -810,9 +825,9 @@ void Rr_NewFrame(void)
 
     /* NOTE: Resets everything allocated last time! */
 
-    Rr_ResetArena(Frame->Arena);
+    Rr_ResetArena(Arena);
 
-    Frame->Profiler = Rr_CreateProfiler(Frame->Arena);
+    Frame->Profiler = Rr_CreateProfiler(Arena);
 
     /* Acquire swapchain image. */
 
@@ -873,14 +888,24 @@ void Rr_NewFrame(void)
         gRHI->Swapchain.Unavailable = true;
     }
 
-    Rr_Graph *Graph = Rr_Alloc(sizeof(Rr_Graph), Frame->Arena);
+    Rr_Graph *Graph = Rr_Alloc(sizeof(Rr_Graph), Arena);
     Graph->QueueType = RR_QUEUE_TYPE_MAIN;
     Graph->Primary = true;
     Graph->DescriptorPoolList = Rr_AcquireDescriptorPoolList();
-    Graph->Arena = Frame->Arena;
-    Rr_InitHandleSet(&Graph->Samplers, Frame->Arena);
-    Rr_InitHandleSet(&Graph->ComputePipelines, Frame->Arena);
-    Rr_InitHandleSet(&Graph->GraphicsPipelines, Frame->Arena);
+    Graph->Arena = Arena;
+    Rr_InitHandleSet(&Graph->Samplers, Arena);
+    Rr_InitHandleSet(&Graph->ComputePipelines, Arena);
+    Rr_InitHandleSet(&Graph->GraphicsPipelines, Arena);
+
+    RR_RESERVE_ARRAY(&Graph->Nodes, NodeCount, Arena);
+    RR_RESERVE_ARRAY(&Graph->BufferResources, BufferCount, Arena);
+    RR_RESERVE_ARRAY(&Graph->ImageResources, ImageCount, Arena);
+    Rr_ReserveHandleSet(&Graph->Samplers, SamplerCount, Arena);
+    Rr_ReserveHandleSet(&Graph->ComputePipelines, ComputePipelineCount, Arena);
+    Rr_ReserveHandleSet(
+        &Graph->GraphicsPipelines,
+        GraphicsPipelineCount,
+        Arena);
 
     Frame->Graph = Graph;
 
