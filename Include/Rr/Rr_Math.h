@@ -103,13 +103,19 @@ extern "C" {
 #endif
 
 #if !defined(RR_MATH_PROVIDE_MATH_FUNCTIONS)
+
+#endif
+#ifndef __cplusplus
 #include <math.h>
+#else
+#include <cmath>
+#endif
+
 #define RR_SINF  sinf
 #define RR_COSF  cosf
 #define RR_TANF  tanf
 #define RR_SQRTF sqrtf
 #define RR_ACOSF acosf
-#endif
 
 #if !defined(RR_ANGLE_USER_TO_INTERNAL)
 #define RR_ANGLE_USER_TO_INTERNAL(a) (Rr_ToRad(a))
