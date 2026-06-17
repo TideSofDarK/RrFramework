@@ -390,8 +390,7 @@ class CGLTFAnimation
 
                 Rr_Mat4 InverseBind;
                 cgltf_accessor_read_float(Skin->inverse_bind_matrices, Index, &InverseBind.Elements[0][0], 16);
-                auto BoneMatrix =
-                    Rr_MulM4(Rr_InvGeneralM4(Transform), Rr_MulM4(Nodes[JointNodeIndex].Transform, InverseBind));
+                auto BoneMatrix = Rr_InvGeneralM4(Transform) * Nodes[JointNodeIndex].Transform * InverseBind;
                 Bones[FirstJoint + Index] = BoneMatrix;
             }
         }

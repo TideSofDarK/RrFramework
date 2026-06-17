@@ -67,7 +67,7 @@ static void Init(void)
 static void Iterate(void)
 {
     Rr_UIBeginDebugOverlayTabs();
-    if(Rr_UIBeginWindow("Triangle.c"))
+    if (Rr_UIBeginWindow("Triangle.c"))
     {
         Rr_UIText("This example shows drawing a simple triangle.");
     }
