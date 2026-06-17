@@ -12,13 +12,8 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
     int32_t DesiredChannels = 4;
     int32_t Width, Height, Channels;
-    char *Data = (char *)stbi_load_from_memory(
-        (stbi_uc *)Asset.Data,
-        (int32_t)Asset.Size,
-        &Width,
-        &Height,
-        &Channels,
-        DesiredChannels);
+    char *Data = (char *)
+        stbi_load_from_memory((stbi_uc *)Asset.Data, (int32_t)Asset.Size, &Width, &Height, &Channels, DesiredChannels);
 
     Rr_Image2D *ColorImage = Rr_CreateImage2D(
         { Width, Height },
@@ -27,19 +22,11 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 
     size_t Size = Width * Height * DesiredChannels;
 
-    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        Size,
-        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(Size, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
     std::memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
 
-    Rr_CopyBufferToImage2D(
-        Rr_GetGraph(),
-        StagingBuffer,
-        0,
-        { Width, Height },
-        ColorImage,
-        0);
+    Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, { Width, Height }, ColorImage, 0);
 
     Rr_ReleaseBuffer(StagingBuffer);
 
@@ -75,8 +62,7 @@ struct SBrushFadeApp
             .SPVData = VertexShader.Data,
         };
 
-        Rr_Asset FragmentShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_BRUSHFADE_FRAG_SPV);
+        Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_BRUSHFADE_FRAG_SPV);
         Rr_ShaderInfo FragmentShaderInfo = {
             .SPVSize = FragmentShader.Size,
             .SPVData = FragmentShader.Data,
@@ -107,8 +93,8 @@ struct SBrushFadeApp
     {
         UniformBuffer = Rr_CreateBuffer(
             sizeof(SGPUUniform),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-                RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
+                RR_BUFFER_FLAGS_MAPPED_BIT);
     }
 
     void Init()
@@ -127,10 +113,7 @@ struct SBrushFadeApp
         Rr_UISliderFloat("Time", &Uniform.Time, 0.0f, 1.0f);
         Rr_UISliderFloat("Smoothstep", &Uniform.Smoothstep, 0.0f, 1.0f);
         Rr_UIEndWindow();
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &Uniform,
-            sizeof(Uniform));
+        std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &Uniform, sizeof(Uniform));
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
         Rr_IntVec2 SwapchainExtent = Rr_GetImage2DExtent(SwapchainImage);
@@ -142,27 +125,14 @@ struct SBrushFadeApp
             .Clear = Rr_ColorClear{ 1.0f, 1.0f, 1.0f, 1.0f },
         };
 
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
 
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindUniformBuffer(
-            GraphicsNode,
-            UniformBuffer,
-            0,
-            0,
-            0,
-            sizeof(SGPUUniform));
+        Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(SGPUUniform));
         std::array Masks = { FadeMaskImage, ColorMaskImage };
         for (std::uint32_t Index = 0; Index < Masks.size(); ++Index)
         {
-            Rr_BindCombinedImage2DSamplerAt(
-                GraphicsNode,
-                Masks[Index],
-                Sampler,
-                0,
-                1,
-                Index);
+            Rr_BindCombinedImage2DSamplerAt(GraphicsNode, Masks[Index], Sampler, 0, 1, Index);
         }
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
     }

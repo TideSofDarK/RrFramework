@@ -17,11 +17,7 @@ struct SCamera
 
     void UpdatePerspective(Rr_IntVec2 Size)
     {
-        ProjMatrix = Rr_Perspective_RH(
-            RR_ANGLE_DEG(FOVDegrees),
-            (float)Size.X / (float)Size.Y,
-            NEAR_PLANE,
-            FAR_PLANE);
+        ProjMatrix = Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), (float)Size.X / (float)Size.Y, NEAR_PLANE, FAR_PLANE);
         ProjMatrix.Elements[1][1] *= -1.0f;
     }
 
@@ -82,8 +78,7 @@ struct SCamera
         Yaw = Rr_WrapMax(Yaw, 360.0f);
         Pitch = RR_CLAMP(-90.0f, Pitch, 90.0f);
 
-        Transform = Rr_Translate(Position) *
-                    Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
+        Transform = Rr_Translate(Position) * Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
                     Rr_Rotate_RH(RR_ANGLE_DEG(Pitch), Rr_V3(1.0f, 0.0f, 0.0f));
     }
 };
@@ -123,8 +118,7 @@ struct SSmoothGridApp
             .SPVData = VertexShader.Data,
         };
 
-        Rr_Asset FragmentShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_SMOOTHGRID_FRAG_SPV);
+        Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_SMOOTHGRID_FRAG_SPV);
         Rr_ShaderInfo FragmentShaderInfo = {
             .SPVSize = FragmentShader.Size,
             .SPVData = FragmentShader.Data,
@@ -147,8 +141,8 @@ struct SSmoothGridApp
     {
         UniformBuffer = Rr_CreateBuffer(
             sizeof(SGPUUniform),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-                RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
+                RR_BUFFER_FLAGS_PER_FRAME_BIT);
     }
 
     void InitDepthImage()
@@ -209,10 +203,7 @@ struct SSmoothGridApp
             .GridSmall = 1.0f,
             .GridBig = 10.0f,
         };
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &Uniform,
-            sizeof(SGPUUniform));
+        std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &Uniform, sizeof(SGPUUniform));
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
@@ -235,16 +226,9 @@ struct SSmoothGridApp
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = Rr_DepthClear(1.0f, 0),
         };
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, &DepthTarget);
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Graph, 1, &ColorTarget, &DepthTarget);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindUniformBuffer(
-            GraphicsNode,
-            UniformBuffer,
-            0,
-            0,
-            0,
-            sizeof(SGPUUniform));
+        Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(SGPUUniform));
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
     }
 

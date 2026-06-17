@@ -20,14 +20,11 @@ Rr_Image2D *CreateImage2D(Rr_Graph *Graph, const char *Path)
     std::int32_t ImageWidth;
     std::int32_t ImageHeight;
     std::int32_t ImageChannels;
-    char *Data =
-        (char *)stbi_load(Path, &ImageWidth, &ImageHeight, &ImageChannels, 4);
+    char *Data = (char *)stbi_load(Path, &ImageWidth, &ImageHeight, &ImageChannels, 4);
 
     std::size_t ImageDataSize = ImageWidth * ImageHeight * 4;
 
-    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        ImageDataSize,
-        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(ImageDataSize, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
     std::memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, ImageDataSize);
 
@@ -38,13 +35,7 @@ Rr_Image2D *CreateImage2D(Rr_Graph *Graph, const char *Path)
         RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
-    Rr_CopyBufferToImage2D(
-        Graph,
-        StagingBuffer,
-        0,
-        { ImageWidth, ImageHeight },
-        Image2D,
-        0);
+    Rr_CopyBufferToImage2D(Graph, StagingBuffer, 0, { ImageWidth, ImageHeight }, Image2D, 0);
 
     Rr_ReleaseBuffer(StagingBuffer);
 
@@ -82,9 +73,7 @@ struct STransferThread
             std::string Path;
             {
                 std::unique_lock PathsLock{ Thread->PathsMutex };
-                Thread->CondVar.wait(PathsLock, [&]() {
-                    return !Thread->PathsQueue.empty() || Thread->StopRequested;
-                });
+                Thread->CondVar.wait(PathsLock, [&]() { return !Thread->PathsQueue.empty() || Thread->StopRequested; });
                 if (Thread->StopRequested)
                 {
                     break;
@@ -98,8 +87,7 @@ struct STransferThread
 
             auto Scratch = Rr_GetScratch(nullptr);
 
-            Rr_Graph *Graph =
-                Rr_BeginGraph(RR_QUEUE_TYPE_DEDICATED_TRANSFER, Scratch.Arena);
+            Rr_Graph *Graph = Rr_BeginGraph(RR_QUEUE_TYPE_DEDICATED_TRANSFER, Scratch.Arena);
 
             Rr_Image2D *Image2D = CreateImage2D(Graph, Path.c_str());
 
@@ -185,15 +173,13 @@ struct STransferThreadApp
         ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTarget.Blend = Rr_AlphaBlend();
 
-        Rr_Asset VertexShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_TRANSFERTHREAD_VERT_SPV);
+        Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_TRANSFERTHREAD_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
             .SPVSize = VertexShader.Size,
             .SPVData = VertexShader.Data,
         };
 
-        Rr_Asset FragmentShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_TRANSFERTHREAD_FRAG_SPV);
+        Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_TRANSFERTHREAD_FRAG_SPV);
         Rr_ShaderInfo FragmentShaderInfo = {
             .SPVSize = FragmentShader.Size,
             .SPVData = FragmentShader.Data,
@@ -221,8 +207,8 @@ struct STransferThreadApp
     {
         UniformBuffer = Rr_CreateBuffer(
             16,
-            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_UNIFORM_BIT |
-                RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
+                RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
     void InitPlaceholder()
@@ -231,15 +217,13 @@ struct STransferThreadApp
         ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
         ColorTarget.Blend = Rr_AlphaBlend();
 
-        Rr_Asset VertexShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_PLACEHOLDER_VERT_SPV);
+        Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_PLACEHOLDER_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
             .SPVSize = VertexShader.Size,
             .SPVData = VertexShader.Data,
         };
 
-        Rr_Asset FragmentShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_PLACEHOLDER_FRAG_SPV);
+        Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_PLACEHOLDER_FRAG_SPV);
         Rr_ShaderInfo FragmentShaderInfo = {
             .SPVSize = FragmentShader.Size,
             .SPVData = FragmentShader.Data,
@@ -284,21 +268,14 @@ struct STransferThreadApp
 
     void Iterate()
     {
-        Rr_UIBeginWindowEx(
-            "TransferThread.cxx",
-            nullptr,
-            RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+        Rr_UIBeginWindowEx("TransferThread.cxx", nullptr, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
         Rr_UIText(
             "This example demonstrates loading images from another "
             "thread.\nDrop PNG images here and worker thread will parse and "
             "upload them to the GPU.");
         if (Images.size() > 1)
         {
-            Rr_UISliderInt(
-                "Selected Image",
-                &CurrentImageIndex,
-                0,
-                Images.size() - 1);
+            Rr_UISliderInt("Selected Image", &CurrentImageIndex, 0, Images.size() - 1);
         }
         if (Images.size() > 0 && Rr_UIButton("Reset"))
         {
@@ -332,8 +309,7 @@ struct STransferThreadApp
             .Clear = Rr_ColorClear{ 0.0f, 0.0f, 0.0f, 1.0f },
         };
 
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
 
         struct
         {
@@ -341,10 +317,7 @@ struct STransferThreadApp
             std::uint32_t ImageCount = 3;
         } UniformData;
 
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &UniformData,
-            sizeof(UniformData));
+        std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &UniformData, sizeof(UniformData));
 
         if (!Images.empty())
         {
@@ -360,13 +333,7 @@ struct STransferThreadApp
             Rr_Rect Viewport = Rr_FitRect(&ImageRect, &SwapchainRect);
             Rr_SetViewport(GraphicsNode, &Viewport);
             Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-            Rr_BindUniformBuffer(
-                GraphicsNode,
-                UniformBuffer,
-                0,
-                0,
-                0,
-                sizeof(UniformData));
+            Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(UniformData));
             Rr_BindCombinedImage2DSampler(GraphicsNode, Image2D, Sampler, 0, 1);
             Rr_Draw(GraphicsNode, 6, 1, 0, 0);
         }
@@ -377,13 +344,7 @@ struct STransferThreadApp
             Rr_Rect Viewport = Rr_FitRect(&ImageRect, &SwapchainRect);
             Rr_SetViewport(GraphicsNode, &Viewport);
             Rr_BindGraphicsPipeline(GraphicsNode, PlaceholderPipeline);
-            Rr_BindUniformBuffer(
-                GraphicsNode,
-                UniformBuffer,
-                0,
-                0,
-                0,
-                sizeof(UniformData));
+            Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(UniformData));
             Rr_Draw(GraphicsNode, 6, 1, 0, 0);
         }
     }

@@ -13,14 +13,11 @@ static constexpr std::int32_t MAX_IMAGE_SIZE = 4096;
 struct SCube
 {
     static float constexpr CubePositions[] = {
-        1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00,
-        1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00,
-        1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,
-        1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,
-        -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00,
-        -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00,
-        -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,
-        -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,
+        1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00,
+        1.00,  -1.00, -1.00, 1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  -1.00, 1.00,
+        1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00,
+        -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,
+        -1.00, 1.00,  1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,
     };
     static uint16_t constexpr CubeIndices[] = {
         1,  13, 19, 1,  19, 7,  9, 6, 18, 9, 18, 21, 23, 20, 14, 23, 14, 17,
@@ -34,26 +31,16 @@ struct SCube
     void Init()
     {
         size_t TotalSize = sizeof(CubePositions) + sizeof(CubeIndices);
-        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-            TotalSize,
-            RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
+        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
         Rr_ReleaseBuffer(StagingBuffer);
         char *BufferData = (char *)Rr_GetMappedBufferData(StagingBuffer);
         std::memcpy(BufferData, CubePositions, sizeof(CubePositions));
         BufferData += sizeof(CubePositions);
         std::memcpy(BufferData, CubeIndices, sizeof(CubeIndices));
 
-        Buffer = Rr_CreateBuffer(
-            TotalSize,
-            RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_INDEX_BIT);
+        Buffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_INDEX_BIT);
         auto TransferNode = Rr_AddTransferNode(Rr_GetGraph());
-        Rr_TransferBufferData(
-            TransferNode,
-            TotalSize,
-            StagingBuffer,
-            0,
-            Buffer,
-            0);
+        Rr_TransferBufferData(TransferNode, TotalSize, StagingBuffer, 0, Buffer, 0);
         IndexOffset = sizeof(CubePositions);
         IndexCount = sizeof(CubeIndices) / sizeof(*CubeIndices);
     }
@@ -76,8 +63,7 @@ struct SCamera
 
     void UpdatePerspective(float Aspect)
     {
-        ProjMatrix =
-            Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, 0.1f, 100.0f);
+        ProjMatrix = Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, 0.1f, 100.0f);
         ProjMatrix.Elements[1][1] *= -1.0f;
     }
 
@@ -107,8 +93,7 @@ struct SCamera
         Yaw = Rr_WrapMax(Yaw, 360.0f);
         Pitch = RR_CLAMP(-90.0f, Pitch, 90.0f);
 
-        Transform = Rr_Translate(Position) *
-                    Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
+        Transform = Rr_Translate(Position) * Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
                     Rr_Rotate_RH(RR_ANGLE_DEG(Pitch), Rr_V3(1.0f, 0.0f, 0.0f));
     }
 };
@@ -142,12 +127,7 @@ struct SPNGImage
     SPNGImage(const char *Path)
     {
         int32_t DesiredChannels = 4;
-        Data = stbi_load(
-            Path,
-            (int32_t *)&Width,
-            (int32_t *)&Height,
-            &Channels,
-            DesiredChannels);
+        Data = stbi_load(Path, (int32_t *)&Width, (int32_t *)&Height, &Channels, DesiredChannels);
     }
 
     ~SPNGImage()
@@ -181,19 +161,9 @@ struct SBoxBlur2D
 
         Rr_IntVec2 ImageSize = Rr_GetImage2DExtent(OriginalImage);
 
-        Rr_CopyImage2D(
-            Graph,
-            OriginalImage,
-            Rr_IntVec2{},
-            IntermediateImageA,
-            Rr_IntVec2{},
-            ImageSize,
-            0);
+        Rr_CopyImage2D(Graph, OriginalImage, Rr_IntVec2{}, IntermediateImageA, Rr_IntVec2{}, ImageSize, 0);
 
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &ImageSize,
-            sizeof(ImageSize));
+        std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &ImageSize, sizeof(ImageSize));
 
         Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
         Rr_BindComputePipeline(Node, Blur2DXPipeline);
@@ -212,21 +182,12 @@ struct SBoxBlur2D
             Rr_ComputeBarrier(Node);
         }
 
-        Rr_CopyImage2D(
-            Graph,
-            IntermediateImageA,
-            Rr_IntVec2{},
-            TargetImage,
-            Rr_IntVec2{},
-            ImageSize,
-            0);
+        Rr_CopyImage2D(Graph, IntermediateImageA, Rr_IntVec2{}, TargetImage, Rr_IntVec2{}, ImageSize, 0);
 
         Rr_EndGraphLabel(Graph, "BoxBlur2D");
     }
 
-    Rr_ComputePipeline *CreateBlurPipeline(
-        Rr_AssetRef ComputeSPV,
-        std::uint32_t KernelSize)
+    Rr_ComputePipeline *CreateBlurPipeline(Rr_AssetRef ComputeSPV, std::uint32_t KernelSize)
     {
         std::array Specializations = {
             Rr_PipelineSpecialization{
@@ -255,11 +216,9 @@ struct SBoxBlur2D
     void RecreatePipelines(std::uint32_t KernelSize)
     {
         Rr_ReleaseComputePipeline(Blur2DXPipeline);
-        Blur2DXPipeline =
-            CreateBlurPipeline(EXAMPLE_ASSET_BOX2DX_COMP_SPV, KernelSize);
+        Blur2DXPipeline = CreateBlurPipeline(EXAMPLE_ASSET_BOX2DX_COMP_SPV, KernelSize);
         Rr_ReleaseComputePipeline(Blur2DYPipeline);
-        Blur2DYPipeline =
-            CreateBlurPipeline(EXAMPLE_ASSET_BOX2DY_COMP_SPV, KernelSize);
+        Blur2DYPipeline = CreateBlurPipeline(EXAMPLE_ASSET_BOX2DY_COMP_SPV, KernelSize);
     }
 
     SBoxBlur2D(std::uint32_t KernelSize)
@@ -269,8 +228,8 @@ struct SBoxBlur2D
 
         UniformBuffer = Rr_CreateBuffer(
             RR_KIBIBYTES(1),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
-                RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+                RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
     ~SBoxBlur2D()
@@ -310,28 +269,14 @@ struct SKawaseBlur2D
 
         if (Passes == 0)
         {
-            Rr_CopyImage2D(
-                Graph,
-                OriginalImage,
-                Rr_IntVec2{},
-                TargetImage,
-                Rr_IntVec2{},
-                OriginalSize,
-                0);
+            Rr_CopyImage2D(Graph, OriginalImage, Rr_IntVec2{}, TargetImage, Rr_IntVec2{}, OriginalSize, 0);
 
             return;
         }
 
         Rr_BeginGraphLabel(Graph, "Kawase2D");
 
-        Rr_CopyImage2D(
-            Graph,
-            OriginalImage,
-            Rr_IntVec2{},
-            IntermediateImageA,
-            Rr_IntVec2{},
-            OriginalSize,
-            0);
+        Rr_CopyImage2D(Graph, OriginalImage, Rr_IntVec2{}, IntermediateImageA, Rr_IntVec2{}, OriginalSize, 0);
 
         char *UniformData = (char *)Rr_GetMappedBufferData(UniformBuffer);
         std::size_t UniformOffset = 0;
@@ -347,48 +292,21 @@ struct SKawaseBlur2D
             Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
             Rr_BindComputePipeline(Node, Pipeline);
 
-            GPUUniform.SamplerPosMultiplier =
-                float(Pass + 1) * SamplerPosMultiplier;
+            GPUUniform.SamplerPosMultiplier = float(Pass + 1) * SamplerPosMultiplier;
 
-            std::memcpy(
-                UniformData + UniformOffset,
-                &GPUUniform,
-                sizeof(GPUUniform));
+            std::memcpy(UniformData + UniformOffset, &GPUUniform, sizeof(GPUUniform));
 
-            Rr_BindCombinedImage2DSampler(
-                Node,
-                IntermediateImageA,
-                Sampler,
-                0,
-                0);
+            Rr_BindCombinedImage2DSampler(Node, IntermediateImageA, Sampler, 0, 0);
             Rr_BindStorageImage2DRW(Node, IntermediateImageB, 0, 1);
-            Rr_BindUniformBuffer(
-                Node,
-                UniformBuffer,
-                0,
-                2,
-                UniformOffset,
-                sizeof(GPUUniform));
-            Rr_Dispatch(
-                Node,
-                OriginalSize.Width / LocalSize + 1,
-                OriginalSize.Height / LocalSize + 1,
-                1);
+            Rr_BindUniformBuffer(Node, UniformBuffer, 0, 2, UniformOffset, sizeof(GPUUniform));
+            Rr_Dispatch(Node, OriginalSize.Width / LocalSize + 1, OriginalSize.Height / LocalSize + 1, 1);
 
-            UniformOffset +=
-                RR_ALIGN_POW2(sizeof(GPUUniform), UniformAlignment);
+            UniformOffset += RR_ALIGN_POW2(sizeof(GPUUniform), UniformAlignment);
 
             std::swap(IntermediateImageA, IntermediateImageB);
         }
 
-        Rr_CopyImage2D(
-            Graph,
-            IntermediateImageA,
-            Rr_IntVec2{},
-            TargetImage,
-            Rr_IntVec2{},
-            OriginalSize,
-            0);
+        Rr_CopyImage2D(Graph, IntermediateImageA, Rr_IntVec2{}, TargetImage, Rr_IntVec2{}, OriginalSize, 0);
 
         Rr_EndGraphLabel(Graph, "Kawase2D");
     }
@@ -423,8 +341,8 @@ struct SKawaseBlur2D
 
         UniformBuffer = Rr_CreateBuffer(
             RR_KIBIBYTES(1),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
-                RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+                RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
     ~SKawaseBlur2D()
@@ -465,28 +383,14 @@ struct SDualKawaseBlur2D
 
         if (Levels == 0)
         {
-            Rr_CopyImage2D(
-                Graph,
-                OriginalImage,
-                Rr_IntVec2{},
-                TargetImage,
-                Rr_IntVec2{},
-                OriginalSize,
-                0);
+            Rr_CopyImage2D(Graph, OriginalImage, Rr_IntVec2{}, TargetImage, Rr_IntVec2{}, OriginalSize, 0);
 
             return;
         }
 
         Rr_BeginGraphLabel(Graph, "DualKawase2D");
 
-        Rr_CopyImage2D(
-            Graph,
-            OriginalImage,
-            Rr_IntVec2{},
-            IntermediateImageA,
-            Rr_IntVec2{},
-            OriginalSize,
-            0);
+        Rr_CopyImage2D(Graph, OriginalImage, Rr_IntVec2{}, IntermediateImageA, Rr_IntVec2{}, OriginalSize, 0);
 
         char *UniformData = (char *)Rr_GetMappedBufferData(UniformBuffer);
         std::size_t UniformOffset = 0;
@@ -505,33 +409,18 @@ struct SDualKawaseBlur2D
             Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
             Rr_BindComputePipeline(Node, DownPipeline);
 
-            std::memcpy(
-                UniformData + UniformOffset,
-                &GPUUniform,
-                sizeof(GPUUniform));
+            std::memcpy(UniformData + UniformOffset, &GPUUniform, sizeof(GPUUniform));
 
-            Rr_BindCombinedImage2DSampler(
-                Node,
-                IntermediateImageA,
-                Sampler,
-                0,
-                0);
+            Rr_BindCombinedImage2DSampler(Node, IntermediateImageA, Sampler, 0, 0);
             Rr_BindStorageImage2DRW(Node, IntermediateImageB, 0, 1);
-            Rr_BindUniformBuffer(
-                Node,
-                UniformBuffer,
-                0,
-                2,
-                UniformOffset,
-                sizeof(GPUUniform));
+            Rr_BindUniformBuffer(Node, UniformBuffer, 0, 2, UniformOffset, sizeof(GPUUniform));
             Rr_Dispatch(
                 Node,
                 GPUUniform.SrcSize.Width / LocalSize / 2 + 1,
                 GPUUniform.SrcSize.Height / LocalSize / 2 + 1,
                 1);
 
-            UniformOffset +=
-                RR_ALIGN_POW2(sizeof(GPUUniform), UniformAlignment);
+            UniformOffset += RR_ALIGN_POW2(sizeof(GPUUniform), UniformAlignment);
 
             GPUUniform.SrcSize.Width >>= 1;
             GPUUniform.SrcSize.Height >>= 1;
@@ -548,52 +437,28 @@ struct SDualKawaseBlur2D
             Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
             Rr_BindComputePipeline(Node, UpPipeline);
 
-            std::memcpy(
-                UniformData + UniformOffset,
-                &GPUUniform,
-                sizeof(GPUUniform));
+            std::memcpy(UniformData + UniformOffset, &GPUUniform, sizeof(GPUUniform));
 
-            Rr_BindCombinedImage2DSampler(
-                Node,
-                IntermediateImageA,
-                Sampler,
-                0,
-                0);
+            Rr_BindCombinedImage2DSampler(Node, IntermediateImageA, Sampler, 0, 0);
             Rr_BindStorageImage2DRW(Node, IntermediateImageB, 0, 1);
-            Rr_BindUniformBuffer(
-                Node,
-                UniformBuffer,
-                0,
-                2,
-                UniformOffset,
-                sizeof(GPUUniform));
+            Rr_BindUniformBuffer(Node, UniformBuffer, 0, 2, UniformOffset, sizeof(GPUUniform));
             Rr_Dispatch(
                 Node,
                 GPUUniform.SrcSize.Width * 2 / LocalSize + 1,
                 GPUUniform.SrcSize.Height * 2 / LocalSize + 1,
                 1);
 
-            UniformOffset +=
-                RR_ALIGN_POW2(sizeof(GPUUniform), UniformAlignment);
+            UniformOffset += RR_ALIGN_POW2(sizeof(GPUUniform), UniformAlignment);
 
-            GPUUniform.SrcSize.Width =
-                RR_MIN(GPUUniform.SrcSize.Width << 1, OriginalSize.Width);
-            GPUUniform.SrcSize.Height =
-                RR_MIN(GPUUniform.SrcSize.Height << 1, OriginalSize.Width);
+            GPUUniform.SrcSize.Width = RR_MIN(GPUUniform.SrcSize.Width << 1, OriginalSize.Width);
+            GPUUniform.SrcSize.Height = RR_MIN(GPUUniform.SrcSize.Height << 1, OriginalSize.Width);
 
             std::swap(IntermediateImageA, IntermediateImageB);
         }
 
         Rr_EndGraphLabel(Graph, "DualKawase2DUp");
 
-        Rr_CopyImage2D(
-            Graph,
-            IntermediateImageA,
-            Rr_IntVec2{},
-            TargetImage,
-            Rr_IntVec2{},
-            OriginalSize,
-            0);
+        Rr_CopyImage2D(Graph, IntermediateImageA, Rr_IntVec2{}, TargetImage, Rr_IntVec2{}, OriginalSize, 0);
 
         Rr_EndGraphLabel(Graph, "DualKawase2D");
     }
@@ -622,8 +487,7 @@ struct SDualKawaseBlur2D
     SDualKawaseBlur2D()
         : LocalSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
     {
-        DownPipeline =
-            CreateBlurPipeline(EXAMPLE_ASSET_DUALKAWASE2DDOWN_COMP_SPV);
+        DownPipeline = CreateBlurPipeline(EXAMPLE_ASSET_DUALKAWASE2DDOWN_COMP_SPV);
         UpPipeline = CreateBlurPipeline(EXAMPLE_ASSET_DUALKAWASE2DUP_COMP_SPV);
 
         Rr_SamplerInfo SamplerInfo = {};
@@ -635,8 +499,8 @@ struct SDualKawaseBlur2D
 
         UniformBuffer = Rr_CreateBuffer(
             RR_MEBIBYTES(1),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
-                RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+                RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
     ~SDualKawaseBlur2D()
@@ -659,11 +523,7 @@ struct SBoxBlurCube
     std::uint32_t ImageSize;
     std::uint32_t LocalSize;
 
-    void Blur(
-        Rr_Graph *Graph,
-        Rr_ImageCube *OriginalImage,
-        Rr_ImageCube *BlurredImage,
-        std::int32_t Passes)
+    void Blur(Rr_Graph *Graph, Rr_ImageCube *OriginalImage, Rr_ImageCube *BlurredImage, std::int32_t Passes)
     {
         Rr_BeginGraphLabel(Graph, "BoxBlurCube");
 
@@ -689,9 +549,7 @@ struct SBoxBlurCube
         Rr_EndGraphLabel(Graph, "BoxBlurCube");
     }
 
-    Rr_ComputePipeline *CreateBlurPipeline(
-        Rr_AssetRef ComputeSPV,
-        std::uint32_t Radius)
+    Rr_ComputePipeline *CreateBlurPipeline(Rr_AssetRef ComputeSPV, std::uint32_t Radius)
     {
         std::array Specializations = {
             Rr_PipelineSpecialization{
@@ -725,17 +583,12 @@ struct SBoxBlurCube
     void RecreatePipelines(std::uint32_t Radius)
     {
         Rr_ReleaseComputePipeline(BlurCubeXPipeline);
-        BlurCubeXPipeline =
-            CreateBlurPipeline(EXAMPLE_ASSET_BOXCUBEX_COMP_SPV, Radius);
+        BlurCubeXPipeline = CreateBlurPipeline(EXAMPLE_ASSET_BOXCUBEX_COMP_SPV, Radius);
         Rr_ReleaseComputePipeline(BlurCubeYPipeline);
-        BlurCubeYPipeline =
-            CreateBlurPipeline(EXAMPLE_ASSET_BOXCUBEY_COMP_SPV, Radius);
+        BlurCubeYPipeline = CreateBlurPipeline(EXAMPLE_ASSET_BOXCUBEY_COMP_SPV, Radius);
     }
 
-    SBoxBlurCube(
-        Rr_ImageFormat Format,
-        std::int32_t ImageSize,
-        std::uint32_t Radius)
+    SBoxBlurCube(Rr_ImageFormat Format, std::int32_t ImageSize, std::uint32_t Radius)
         : Format(Format)
         , ImageSize(ImageSize)
         , LocalSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
@@ -809,8 +662,8 @@ struct SBlurApp
     {
         UniformBuffer = Rr_CreateBuffer(
             sizeof(SGPUUniform),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-                RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
+                RR_BUFFER_FLAGS_PER_FRAME_BIT);
     }
 
     void InitSampler()
@@ -860,20 +713,13 @@ struct SBlurApp
             RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
-        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-            Width * Height * 4,
-            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+        Rr_Buffer *StagingBuffer =
+            Rr_CreateBuffer(Width * Height * 4, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
         char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
         std::memcpy(StagingData, PNGImage.Data, ImageSize);
 
-        Rr_CopyBufferToImage2D(
-            Rr_GetGraph(),
-            StagingBuffer,
-            0,
-            { Width, Height },
-            OriginalImage2D,
-            0);
+        Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, { Width, Height }, OriginalImage2D, 0);
 
         Rr_ReleaseImage(BlurredImage2D);
         BlurredImage2D = Rr_CreateImage2D(
@@ -887,7 +733,7 @@ struct SBlurApp
     void InitCubePipeline()
     {
         std::array VertexAttributes = {
-            Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
+            Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_FLOAT3 },
         };
 
         std::array VertexInputBindings = {
@@ -940,14 +786,11 @@ struct SBlurApp
 
         int32_t LayerSize = Width * Height * 4;
 
-        OriginalImageCube = Rr_CreateImageCube(
-            { Width, Height },
-            RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
-            RR_IMAGE_FLAGS_TRANSFER_BIT);
+        OriginalImageCube =
+            Rr_CreateImageCube({ Width, Height }, RR_IMAGE_FORMAT_R8G8B8A8_SRGB, RR_IMAGE_FLAGS_TRANSFER_BIT);
 
-        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-            Width * Height * 4 * 6,
-            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+        Rr_Buffer *StagingBuffer =
+            Rr_CreateBuffer(Width * Height * 4 * 6, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
         char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
         std::memcpy(StagingData + (LayerSize * 0), Right.Data, LayerSize);
@@ -1009,13 +852,8 @@ struct SBlurApp
         {
             case EBlurType::BOX_2D:
             {
-                BoxBlur2D.Blur(
-                    Graph,
-                    OriginalImage2D,
-                    IntermediateImageA,
-                    IntermediateImageB,
-                    BlurredImage2D,
-                    Blur2DPasses);
+                BoxBlur2D
+                    .Blur(Graph, OriginalImage2D, IntermediateImageA, IntermediateImageB, BlurredImage2D, Blur2DPasses);
             }
             break;
             case EBlurType::KAWASE_2D:
@@ -1044,11 +882,7 @@ struct SBlurApp
             break;
             case EBlurType::BOX_CUBE:
             {
-                BoxBlurCube.Blur(
-                    Rr_GetGraph(),
-                    OriginalImageCube,
-                    BlurredImageCube,
-                    BlurCubePasses);
+                BoxBlurCube.Blur(Rr_GetGraph(), OriginalImageCube, BlurredImageCube, BlurCubePasses);
             }
             break;
         }
@@ -1063,15 +897,9 @@ struct SBlurApp
             .LoadOp = RR_LOAD_OP_DONT_CARE,
             .StoreOp = RR_STORE_OP_STORE,
         };
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
         Rr_BindGraphicsPipeline(GraphicsNode, QuadGraphicsPipeline);
-        Rr_BindCombinedImage2DSampler(
-            GraphicsNode,
-            BlurredImage2D,
-            Sampler,
-            0,
-            0);
+        Rr_BindCombinedImage2DSampler(GraphicsNode, BlurredImage2D, Sampler, 0, 0);
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
 
         Rr_EndGraphLabel(Graph, "DrawBlur2D");
@@ -1087,39 +915,19 @@ struct SBlurApp
             .View = Camera.GetViewMatrix(),
             .Projection = Camera.ProjMatrix,
         };
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &Uniform,
-            sizeof(SGPUUniform));
+        std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &Uniform, sizeof(SGPUUniform));
 
         Rr_ColorTarget ColorTarget = {
             .Image = Rr_GetSwapchainImage(),
             .LoadOp = RR_LOAD_OP_DONT_CARE,
             .StoreOp = RR_STORE_OP_STORE,
         };
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
         Rr_BindGraphicsPipeline(GraphicsNode, CubeGraphicsPipeline);
         Rr_BindVertexBuffer(GraphicsNode, Cube.Buffer, 0, 0);
-        Rr_BindIndexBuffer(
-            GraphicsNode,
-            Cube.Buffer,
-            0,
-            Cube.IndexOffset,
-            RR_INDEX_TYPE_UINT16);
-        Rr_BindUniformBuffer(
-            GraphicsNode,
-            UniformBuffer,
-            0,
-            0,
-            0,
-            sizeof(SGPUUniform));
-        Rr_BindCombinedImageCubeSampler(
-            GraphicsNode,
-            BlurredImageCube,
-            Sampler,
-            0,
-            1);
+        Rr_BindIndexBuffer(GraphicsNode, Cube.Buffer, 0, Cube.IndexOffset, RR_INDEX_TYPE_UINT16);
+        Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(SGPUUniform));
+        Rr_BindCombinedImageCubeSampler(GraphicsNode, BlurredImageCube, Sampler, 0, 1);
         Rr_DrawIndexed(GraphicsNode, Cube.IndexCount, 1, 0, 0, 0);
 
         Rr_EndGraphLabel(Graph, "DrawBlurCube");
@@ -1129,24 +937,14 @@ struct SBlurApp
     {
         Rr_Graph *Graph = Rr_GetGraph();
 
-        Rr_UIBeginWindowEx(
-            "Blur.cxx",
-            nullptr,
-            RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+        Rr_UIBeginWindowEx("Blur.cxx", nullptr, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
         Rr_UIText(
             "This example demonstrates various blur algorithms.\nYou can drop "
             "a PNG image into the window to blur it (works only with 2D "
             "algorithms).");
         Rr_UISeparator();
-        std::array BlurTypes = { "Box 2D",
-                                 "Kawase 2D",
-                                 "Dual Kawase 2D",
-                                 "Box Cube" };
-        Rr_UICombobox(
-            "Mode",
-            BlurTypes.size(),
-            BlurTypes.data(),
-            (std::uint32_t *)&Type);
+        std::array BlurTypes = { "Box 2D", "Kawase 2D", "Dual Kawase 2D", "Box Cube" };
+        Rr_UICombobox("Mode", BlurTypes.size(), BlurTypes.data(), (std::uint32_t *)&Type);
         Reblur(Graph);
         switch (Type)
         {
@@ -1164,27 +962,15 @@ struct SBlurApp
             case EBlurType::KAWASE_2D:
             {
                 Rr_UISliderInt("Passes", &KawaseBlur2DPasses, 0, 9);
-                Rr_UISliderFloat(
-                    "Sample Position Multiplier",
-                    &KawaseBlur2DMultiplier,
-                    0.1f,
-                    25.0f);
+                Rr_UISliderFloat("Sample Position Multiplier", &KawaseBlur2DMultiplier, 0.1f, 25.0f);
 
                 Draw2D(Graph);
             }
             break;
             case EBlurType::DUAL_KAWASE_2D:
             {
-                Rr_UISliderInt(
-                    "Downsample Levels",
-                    &DualKawaseBlur2DLevels,
-                    0,
-                    4);
-                Rr_UISliderFloat(
-                    "Sample Position Multiplier",
-                    &DualKawaseBlur2DMultiplier,
-                    0.1f,
-                    25.0f);
+                Rr_UISliderInt("Downsample Levels", &DualKawaseBlur2DLevels, 0, 4);
+                Rr_UISliderFloat("Sample Position Multiplier", &DualKawaseBlur2DMultiplier, 0.1f, 25.0f);
 
                 Draw2D(Graph);
             }
@@ -1210,13 +996,11 @@ struct SBlurApp
         IntermediateImageA = Rr_CreateImage2D(
             { MAX_IMAGE_SIZE, MAX_IMAGE_SIZE },
             RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT |
-                RR_IMAGE_FLAGS_SAMPLED_BIT);
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
         IntermediateImageB = Rr_CreateImage2D(
             { MAX_IMAGE_SIZE, MAX_IMAGE_SIZE },
             RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
-            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT |
-                RR_IMAGE_FLAGS_SAMPLED_BIT);
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
     }
 
     SBlurApp()

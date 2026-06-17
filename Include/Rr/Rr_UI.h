@@ -417,6 +417,10 @@ extern void RR_CC Rr_UISetDefaultTheme(void);
 
 extern void RR_CC Rr_UIDebugOverlay(void);
 
+extern void RR_CC Rr_UIBeginDebugOverlayTabs(void);
+
+extern void RR_CC Rr_UIEndDebugOverlayTabs(void);
+
 #ifdef __cplusplus
 }
 #endif

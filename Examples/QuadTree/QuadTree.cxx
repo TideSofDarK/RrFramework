@@ -44,14 +44,12 @@ struct SRect
 
     constexpr bool Contains(const SPoint &Point) const
     {
-        return Point.X >= Left && Point.X <= Right && Point.Y >= Top &&
-               Point.Y <= Bottom;
+        return Point.X >= Left && Point.X <= Right && Point.Y >= Top && Point.Y <= Bottom;
     }
 
     constexpr bool Contains(const SRect &Inner) const
     {
-        return Inner.Left >= Left && Inner.Right <= Right && Inner.Top >= Top &&
-               Inner.Bottom <= Bottom;
+        return Inner.Left >= Left && Inner.Right <= Right && Inner.Top >= Top && Inner.Bottom <= Bottom;
     }
 
     constexpr bool Intersects(const SRect &Another) const
@@ -66,8 +64,7 @@ struct SRect
         float ClosestY = RR_CLAMP(Top, Center.Y, Bottom);
         float DistanceX = Center.X - ClosestX;
         float DistanceY = Center.Y - ClosestY;
-        float DistanceSquared =
-            (DistanceX * DistanceX) + (DistanceY * DistanceY);
+        float DistanceSquared = (DistanceX * DistanceX) + (DistanceY * DistanceY);
         return DistanceSquared < (Radius * Radius);
     }
 
@@ -155,8 +152,8 @@ struct SRect
 
     friend std::ostream &operator<<(std::ostream &Stream, const SRect &Rect)
     {
-        Stream << "Left: " << Rect.Left << " Top: " << Rect.Top
-               << " Right: " << Rect.Right << " Bottom: " << Rect.Bottom;
+        Stream << "Left: " << Rect.Left << " Top: " << Rect.Top << " Right: " << Rect.Right
+               << " Bottom: " << Rect.Bottom;
         return Stream;
     }
 };
@@ -202,8 +199,7 @@ struct SGPUDraw
 template <
     typename TPayload,
     std::size_t MaxDepth = 12,
-    typename =
-        typename std::enable_if_t<std::is_copy_constructible_v<TPayload>>>
+    typename = typename std::enable_if_t<std::is_copy_constructible_v<TPayload>>>
 class CQuadTree
 {
 private:
@@ -236,11 +232,7 @@ private:
     std::vector<SElementNode> ElementNodes;
     UIndex NextElementNodeIndex = NULL_NODE;
 
-    void QueryRect(
-        const SRect &Rect,
-        uint32_t NodeIndex,
-        SRect &Bounds,
-        std::unordered_set<TPayload> &Result) const
+    void QueryRect(const SRect &Rect, uint32_t NodeIndex, SRect &Bounds, std::unordered_set<TPayload> &Result) const
     {
         if (Nodes.empty())
         {
@@ -254,8 +246,7 @@ private:
             UIndex ElementNodeIndex = Node.First;
             while (ElementNodeIndex != NULL_NODE)
             {
-                const auto ElementIndex =
-                    ElementNodes[ElementNodeIndex].ElementIndex;
+                const auto ElementIndex = ElementNodes[ElementNodeIndex].ElementIndex;
                 Result.emplace(Elements[ElementIndex].Payload);
                 ElementNodeIndex = ElementNodes[ElementNodeIndex].Next;
             }
@@ -309,11 +300,7 @@ private:
             SRect Quadrant = Quadrants[Index];
             if (Rect.Intersects(Quadrant))
             {
-                ForEachDebugDrawInRect(
-                    Rect,
-                    Node.First + Index,
-                    Quadrant,
-                    Callback);
+                ForEachDebugDrawInRect(Rect, Node.First + Index, Quadrant, Callback);
             }
         }
     }
@@ -364,12 +351,9 @@ private:
             for (UIndex QuadrantIndex = 0; QuadrantIndex < 4; ++QuadrantIndex)
             {
                 auto &ElementNode = ElementNodes[ElementNodeIndex];
-                if (Quadrants[QuadrantIndex].Intersects(
-                        Elements[ElementNode.ElementIndex].Bounds))
+                if (Quadrants[QuadrantIndex].Intersects(Elements[ElementNode.ElementIndex].Bounds))
                 {
-                    AddElementToNode(
-                        Nodes[Current + QuadrantIndex],
-                        ElementNode.ElementIndex);
+                    AddElementToNode(Nodes[Current + QuadrantIndex], ElementNode.ElementIndex);
                 }
             }
 
@@ -387,11 +371,7 @@ private:
         }
     }
 
-    void InsertRecursive(
-        UIndex ElementIndex,
-        UIndex NodeIndex,
-        const SRect &Bounds,
-        std::size_t Depth)
+    void InsertRecursive(UIndex ElementIndex, UIndex NodeIndex, const SRect &Bounds, std::size_t Depth)
     {
         const auto &ElementBounds = Elements[ElementIndex].Bounds;
         if (Nodes[NodeIndex].Count == 0 || Depth == 0) /* It's a leaf node. */
@@ -411,11 +391,7 @@ private:
         {
             if (Quadrants[Index].Intersects(ElementBounds))
             {
-                InsertRecursive(
-                    ElementIndex,
-                    Nodes[NodeIndex].First + Index,
-                    Quadrants[Index],
-                    Depth - 1);
+                InsertRecursive(ElementIndex, Nodes[NodeIndex].First + Index, Quadrants[Index], Depth - 1);
             }
         }
     }
@@ -466,18 +442,12 @@ public:
         }
     }
 
-    void ForEachDebugDraw(
-        const SRect &Rect,
-        const std::function<void(const SGPUDraw &)> &Callback)
+    void ForEachDebugDraw(const SRect &Rect, const std::function<void(const SGPUDraw &)> &Callback)
     {
         SRect Bounds = this->Bounds;
         if (Bounds.Intersects(Rect))
         {
-            ForEachDebugDrawInRect(
-                Bounds.Clamp(Rect),
-                RootIndex,
-                Bounds,
-                Callback);
+            ForEachDebugDrawInRect(Bounds.Clamp(Rect), RootIndex, Bounds, Callback);
         }
 
         SGPUDraw TreeBorder{};
@@ -556,13 +526,10 @@ struct SQuadTreeApp
 
     uint32_t GetRandomColor()
     {
-        static std::uniform_int_distribution<std::uint32_t> Distribution(
-            0,
-            std::numeric_limits<unsigned char>::max());
+        static std::uniform_int_distribution<std::uint32_t> Distribution(0, std::numeric_limits<unsigned char>::max());
 
-        std::uint32_t Color = (Distribution(RandomEngine) << 0) |
-                              (Distribution(RandomEngine) << 8) |
-                              (Distribution(RandomEngine) << 16);
+        std::uint32_t Color =
+            (Distribution(RandomEngine) << 0) | (Distribution(RandomEngine) << 8) | (Distribution(RandomEngine) << 16);
         return Color;
     }
 
@@ -583,8 +550,7 @@ struct SQuadTreeApp
                 const float AREA_HEIGHT = 50000.0f;
                 NewDraws.reserve(NUM_POINTS);
                 NewDraws.clear();
-                NewTree.Reset(
-                    { -AREA_WIDTH, -AREA_HEIGHT, AREA_WIDTH, AREA_HEIGHT });
+                NewTree.Reset({ -AREA_WIDTH, -AREA_HEIGHT, AREA_WIDTH, AREA_HEIGHT });
                 for (auto Index = 0; Index < NUM_POINTS; ++Index)
                 {
                     SGPUDraw Draw{};
@@ -620,17 +586,12 @@ struct SQuadTreeApp
 
     SRect GetScreenRect()
     {
-        Rr_Vec4 DeprojectedMin = Rr_InvGeneralM4(CameraProjection) *
-                                 Rr_Vec4{ -1.0f, -1.0f, 0.0f, 1.0f };
+        Rr_Vec4 DeprojectedMin = Rr_InvGeneralM4(CameraProjection) * Rr_Vec4{ -1.0f, -1.0f, 0.0f, 1.0f };
         DeprojectedMin = Rr_InvGeneralM4(CameraView) * DeprojectedMin;
 
-        Rr_Vec4 DeprojectedMax = Rr_InvGeneralM4(CameraProjection) *
-                                 Rr_Vec4{ 1.0f, 1.0f, 0.0f, 1.0f };
+        Rr_Vec4 DeprojectedMax = Rr_InvGeneralM4(CameraProjection) * Rr_Vec4{ 1.0f, 1.0f, 0.0f, 1.0f };
         DeprojectedMax = Rr_InvGeneralM4(CameraView) * DeprojectedMax;
-        return { DeprojectedMin.X,
-                 DeprojectedMin.Y,
-                 DeprojectedMax.X,
-                 DeprojectedMax.Y };
+        return { DeprojectedMin.X, DeprojectedMin.Y, DeprojectedMax.X, DeprojectedMax.Y };
     }
 
     SPoint ConvertMousePosition()
@@ -642,8 +603,7 @@ struct SQuadTreeApp
         MousePosition *= 2.0f;
         MousePosition -= Rr_Vec2{ 1.0f, 1.0f };
         Rr_Vec4 Deprojected =
-            Rr_InvGeneralM4(CameraProjection) *
-            Rr_Vec4{ MousePosition.X, MousePosition.Y, 0.0f, 1.0f };
+            Rr_InvGeneralM4(CameraProjection) * Rr_Vec4{ MousePosition.X, MousePosition.Y, 0.0f, 1.0f };
         Deprojected = Rr_InvGeneralM4(CameraView) * Deprojected;
         return { Deprojected.X, Deprojected.Y };
     }
@@ -674,16 +634,11 @@ struct SQuadTreeApp
 
         Pipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
-        UniformBuffer = Rr_CreateBuffer(
-            sizeof(SGPUUniformData),
-            RR_BUFFER_FLAGS_UNIFORM_BIT);
-        StorageBuffer = Rr_CreateBuffer(
-            sizeof(SGPUDraw) * MAX_DRAWS,
-            RR_BUFFER_FLAGS_STORAGE_BIT);
+        UniformBuffer = Rr_CreateBuffer(sizeof(SGPUUniformData), RR_BUFFER_FLAGS_UNIFORM_BIT);
+        StorageBuffer = Rr_CreateBuffer(sizeof(SGPUDraw) * MAX_DRAWS, RR_BUFFER_FLAGS_STORAGE_BIT);
         StagingBuffer = Rr_CreateBuffer(
             RR_MEBIBYTES(64),
-            RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-                RR_BUFFER_FLAGS_PER_FRAME_BIT);
+            RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
 
         RebuildTree();
     }
@@ -708,9 +663,8 @@ struct SQuadTreeApp
                 if (TrySelect)
                 {
                     SelectEnd = ConvertMousePosition();
-                    Selecting =
-                        std::fabs(SelectStart.X - SelectEnd.X) > 10.0f ||
-                        std::fabs(SelectStart.Y - SelectEnd.Y) > 10.0f;
+                    Selecting = std::fabs(SelectStart.X - SelectEnd.X) > 10.0f ||
+                                std::fabs(SelectStart.Y - SelectEnd.Y) > 10.0f;
                 }
             }
             break;
@@ -741,8 +695,7 @@ struct SQuadTreeApp
                 {
                     if (Selecting == false && Rr_UIWantMouseCapture() == false)
                     {
-                        if (auto Lock =
-                                std::unique_lock(Mutex, std::try_to_lock))
+                        if (auto Lock = std::unique_lock(Mutex, std::try_to_lock))
                         {
                             SPoint Point = ConvertMousePosition();
                             SGPUDraw Draw{};
@@ -775,9 +728,7 @@ struct SQuadTreeApp
     {
         if (Dragging)
         {
-            CameraPosition =
-                DragStartCamera -
-                (DragStartMouse - Rr_GetMousePosition()) * CameraZoom;
+            CameraPosition = DragStartCamera - (DragStartMouse - Rr_GetMousePosition()) * CameraZoom;
         }
 
         if (auto Lock = std::unique_lock(Mutex, std::try_to_lock))
@@ -892,9 +843,7 @@ struct SQuadTreeApp
                 });
             }
 
-            DrawsSize = RR_MIN(
-                StagingData - StagingDataStart - sizeof(SGPUUniformData),
-                MAX_DRAWS * sizeof(SGPUDraw));
+            DrawsSize = RR_MIN(StagingData - StagingDataStart - sizeof(SGPUUniformData), MAX_DRAWS * sizeof(SGPUDraw));
             DrawCount = RR_MIN(DrawCount, MAX_DRAWS);
         }
 
@@ -903,34 +852,15 @@ struct SQuadTreeApp
         if (DrawCount > 0)
         {
             Rr_TransferNode *TransferNode = Rr_AddTransferNode(Graph);
-            Rr_TransferBufferData(
-                TransferNode,
-                sizeof(UniformData),
-                StagingBuffer,
-                0,
-                UniformBuffer,
-                0);
-            Rr_TransferBufferData(
-                TransferNode,
-                DrawsSize,
-                StagingBuffer,
-                sizeof(UniformData),
-                StorageBuffer,
-                0);
+            Rr_TransferBufferData(TransferNode, sizeof(UniformData), StagingBuffer, 0, UniformBuffer, 0);
+            Rr_TransferBufferData(TransferNode, DrawsSize, StagingBuffer, sizeof(UniformData), StorageBuffer, 0);
         }
 
-        Rr_GraphNode *TreeNode =
-            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
+        Rr_GraphNode *TreeNode = Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
         if (DrawCount > 0)
         {
             Rr_BindGraphicsPipeline(TreeNode, Pipeline);
-            Rr_BindUniformBuffer(
-                TreeNode,
-                UniformBuffer,
-                0,
-                0,
-                0,
-                sizeof(UniformData));
+            Rr_BindUniformBuffer(TreeNode, UniformBuffer, 0, 0, 0, sizeof(UniformData));
             Rr_BindStorageBuffer(TreeNode, StorageBuffer, 0, 1, 0, DrawsSize);
             Rr_Draw(TreeNode, 6, DrawCount, 0, 0);
         }
@@ -938,10 +868,7 @@ struct SQuadTreeApp
 
     void Iterate()
     {
-        Rr_UIBeginWindowEx(
-            "QuadTree",
-            NULL,
-            RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+        Rr_UIBeginWindowEx("QuadTree", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
         {
             Rr_UITextF("Regenerating: %d", Rebuilding);
             if (Rr_UIButton("Regenerate Tree"))
@@ -956,19 +883,14 @@ struct SQuadTreeApp
             Rr_UITextF("Draw Count: %d", DrawCount);
             Rr_UITextF("Draws Size: %d", DrawsSize);
             Rr_UITextF("Box Select: %d", Selecting);
-            Rr_UITextF(
-                "Camera Position: %d %d",
-                (int)CameraPosition.X,
-                (int)CameraPosition.Y);
+            Rr_UITextF("Camera Position: %d %d", (int)CameraPosition.X, (int)CameraPosition.Y);
             Rr_UISeparator();
             Rr_UICheckbox("Debug Draw", &DrawDebug);
             Rr_UIBeginHorizontal();
             Rr_UICheckbox("Use Query", &UseQuery);
             if (Rr_UICheckbox("Use VSync", &VSyncEnabled))
             {
-                Rr_SetPresentMode(
-                    VSyncEnabled ? RR_PRESENT_MODE_FIFO
-                                 : RR_PRESENT_MODE_IMMEDIATE);
+                Rr_SetPresentMode(VSyncEnabled ? RR_PRESENT_MODE_FIFO : RR_PRESENT_MODE_IMMEDIATE);
             }
             Rr_UIEndHorizontal();
         }

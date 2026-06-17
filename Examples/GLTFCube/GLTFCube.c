@@ -38,8 +38,7 @@ static void InitGLTFPrimitive(void)
 
     cgltf_options Options = { 0 };
     cgltf_data *Data = NULL;
-    cgltf_result Result =
-        cgltf_parse(&Options, LoadedAsset.Data, LoadedAsset.Size, &Data);
+    cgltf_result Result = cgltf_parse(&Options, LoadedAsset.Data, LoadedAsset.Size, &Data);
     if (Result != cgltf_result_success)
     {
         fprintf(stderr, "Failed to load GLTF data!");
@@ -58,35 +57,25 @@ static void InitGLTFPrimitive(void)
     cgltf_mesh *Mesh = Data->meshes;
     cgltf_primitive *Primitive = Mesh->primitives;
 
-    if (Primitive->material &&
-        Primitive->material->has_pbr_metallic_roughness &&
+    if (Primitive->material && Primitive->material->has_pbr_metallic_roughness &&
         Primitive->material->pbr_metallic_roughness.base_color_texture.texture)
     {
-        cgltf_texture *Texture = Primitive->material->pbr_metallic_roughness
-                                     .base_color_texture.texture;
-        if (strcmp(Texture->image->mime_type, "image/png") == 0 ||
-            strcmp(Texture->image->mime_type, "image/jpeg") == 0)
+        cgltf_texture *Texture = Primitive->material->pbr_metallic_roughness.base_color_texture.texture;
+        if (strcmp(Texture->image->mime_type, "image/png") == 0 || strcmp(Texture->image->mime_type, "image/jpeg") == 0)
         {
             size_t ImageDataSize = (size_t)Texture->image->buffer_view->size;
             stbi_uc const *ImageData =
-                (stbi_uc const *)Texture->image->buffer_view->buffer->data +
-                Texture->image->buffer_view->offset;
+                (stbi_uc const *)Texture->image->buffer_view->buffer->data + Texture->image->buffer_view->offset;
 
             int32_t ImageWidth;
             int32_t ImageHeight;
             int32_t ImageChannels;
-            char *Data = (char *)stbi_load_from_memory(
-                ImageData,
-                ImageDataSize,
-                &ImageWidth,
-                &ImageHeight,
-                &ImageChannels,
-                4);
+            char *Data =
+                (char *)stbi_load_from_memory(ImageData, ImageDataSize, &ImageWidth, &ImageHeight, &ImageChannels, 4);
             size_t DataSize = sizeof(uint32_t) * ImageWidth * ImageHeight;
 
-            Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-                DataSize,
-                RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+            Rr_Buffer *StagingBuffer =
+                Rr_CreateBuffer(DataSize, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
             Rr_ReleaseBuffer(StagingBuffer);
             memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, DataSize);
 
@@ -106,12 +95,9 @@ static void InitGLTFPrimitive(void)
         }
     }
 
-    cgltf_accessor const *PositionAccessor =
-        cgltf_find_accessor(Primitive, cgltf_attribute_type_position, 0);
-    cgltf_accessor const *UVAccessor =
-        cgltf_find_accessor(Primitive, cgltf_attribute_type_texcoord, 0);
-    cgltf_accessor const *NormalAccessor =
-        cgltf_find_accessor(Primitive, cgltf_attribute_type_normal, 0);
+    cgltf_accessor const *PositionAccessor = cgltf_find_accessor(Primitive, cgltf_attribute_type_position, 0);
+    cgltf_accessor const *UVAccessor = cgltf_find_accessor(Primitive, cgltf_attribute_type_texcoord, 0);
+    cgltf_accessor const *NormalAccessor = cgltf_find_accessor(Primitive, cgltf_attribute_type_normal, 0);
     cgltf_accessor const *IndexAccessor = Primitive->indices;
     if (cgltf_component_size(IndexAccessor->component_type) != sizeof(uint16_t))
     {
@@ -121,58 +107,30 @@ static void InitGLTFPrimitive(void)
     }
 
     size_t VertexDataSize = PositionAccessor->count * sizeof(SVertex);
-    size_t IndexDataSize = IndexAccessor->count *
-                           cgltf_component_size(IndexAccessor->component_type);
+    size_t IndexDataSize = IndexAccessor->count * cgltf_component_size(IndexAccessor->component_type);
     size_t TotalSize = VertexDataSize + IndexDataSize;
 
-    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        TotalSize,
-        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
     Rr_ReleaseBuffer(StagingBuffer);
     char *StagingData = Rr_GetMappedBufferData(StagingBuffer);
     SVertex *StagingVertices = (SVertex *)StagingData;
     uint16_t *StagingIndices = (uint16_t *)(StagingData + VertexDataSize);
 
-    for (size_t VertexIndex = 0; VertexIndex < PositionAccessor->count;
-         ++VertexIndex)
+    for (size_t VertexIndex = 0; VertexIndex < PositionAccessor->count; ++VertexIndex)
     {
         SVertex Vertex = { 0 };
-        cgltf_accessor_read_float(
-            PositionAccessor,
-            VertexIndex,
-            Vertex.Position.Elements,
-            3);
-        cgltf_accessor_read_float(
-            UVAccessor,
-            VertexIndex,
-            Vertex.UV.Elements,
-            2);
-        cgltf_accessor_read_float(
-            NormalAccessor,
-            VertexIndex,
-            Vertex.Normal.Elements,
-            3);
+        cgltf_accessor_read_float(PositionAccessor, VertexIndex, Vertex.Position.Elements, 3);
+        cgltf_accessor_read_float(UVAccessor, VertexIndex, Vertex.UV.Elements, 2);
+        cgltf_accessor_read_float(NormalAccessor, VertexIndex, Vertex.Normal.Elements, 3);
         StagingVertices[VertexIndex] = Vertex;
     }
-    cgltf_accessor_unpack_indices(
-        IndexAccessor,
-        StagingIndices,
-        sizeof(uint16_t),
-        IndexAccessor->count);
+    cgltf_accessor_unpack_indices(IndexAccessor, StagingIndices, sizeof(uint16_t), IndexAccessor->count);
 
     PrimitiveIndexCount = IndexAccessor->count;
     PrimitiveIndexOffset = VertexDataSize;
-    PrimitiveBuffer = Rr_CreateBuffer(
-        TotalSize,
-        RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_VERTEX_BIT);
+    PrimitiveBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_VERTEX_BIT);
     Rr_TransferNode *Node = Rr_AddTransferNode(Rr_GetGraph());
-    Rr_TransferBufferData(
-        Node,
-        TotalSize,
-        StagingBuffer,
-        0,
-        PrimitiveBuffer,
-        0);
+    Rr_TransferBufferData(Node, TotalSize, StagingBuffer, 0, PrimitiveBuffer, 0);
 
     cgltf_free(Data);
 }
@@ -185,8 +143,7 @@ static void InitDepthImage(void)
     {
         Rr_IntVec2 DepthImageSize = Rr_GetImage2DExtent(DepthAttachment);
 
-        if (DepthImageSize.X >= SwapchainSize.X &&
-            DepthImageSize.Y >= SwapchainSize.Y)
+        if (DepthImageSize.X >= SwapchainSize.X && DepthImageSize.Y >= SwapchainSize.Y)
         {
             return;
         }
@@ -197,8 +154,7 @@ static void InitDepthImage(void)
     DepthAttachment = Rr_CreateImage2D(
         (Rr_IntVec2){ SwapchainSize.Width, SwapchainSize.Height },
         RR_IMAGE_FORMAT_D32_SFLOAT,
-        RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT |
-            RR_IMAGE_FLAGS_TRANSFER_BIT);
+        RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
 }
 
 static void Init(void)
@@ -209,9 +165,9 @@ static void Init(void)
     Sampler = Rr_CreateSampler(&SamplerInfo);
 
     Rr_VertexInputAttribute VertexAttributes[] = {
-        { .Location = 0, .Format = RR_FORMAT_VEC3 },
-        { .Location = 1, .Format = RR_FORMAT_VEC2 },
-        { .Location = 2, .Format = RR_FORMAT_VEC3 },
+        { .Location = 0, .Format = RR_FORMAT_FLOAT3 },
+        { .Location = 1, .Format = RR_FORMAT_FLOAT2 },
+        { .Location = 2, .Format = RR_FORMAT_FLOAT3 },
     };
 
     Rr_VertexInputBinding VertexInputBindings[] = {
@@ -258,14 +214,11 @@ static void Init(void)
 
     UniformBuffer = Rr_CreateBuffer(
         sizeof(UniformData),
-        RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
+        RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+            RR_BUFFER_FLAGS_PER_FRAME_BIT);
 
     UniformData.Model = Rr_M4D(1.0f);
-    UniformData.View = Rr_LookAt_RH(
-        Rr_V3(0.0f, 0.0f, -5.0f),
-        Rr_V3F(0.0f),
-        Rr_V3(0.0f, 1.0f, 0.0f));
+    UniformData.View = Rr_LookAt_RH(Rr_V3(0.0f, 0.0f, -5.0f), Rr_V3F(0.0f), Rr_V3(0.0f, 1.0f, 0.0f));
 
     InitGLTFPrimitive();
 
@@ -294,19 +247,11 @@ static void Iterate(void)
     Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
     Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
 
-    UniformData.Projection = Rr_Perspective_RH(
-        0.7643276f,
-        SwapchainSize.Width / (float)SwapchainSize.Height,
-        0.5f,
-        50.0f);
-    UniformData.Model = Rr_MulM4(
-        Rr_Rotate_RH(0.005f, (Rr_Vec3){ 0.0f, 1.0f, 0.0f }),
-        UniformData.Model);
+    UniformData.Projection =
+        Rr_Perspective_RH(0.7643276f, SwapchainSize.Width / (float)SwapchainSize.Height, 0.5f, 50.0f);
+    UniformData.Model = Rr_MulM4(Rr_Rotate_RH(0.005f, (Rr_Vec3){ 0.0f, 1.0f, 0.0f }), UniformData.Model);
     UniformData.Time = (float)Rr_GetTimeSeconds();
-    memcpy(
-        Rr_GetMappedBufferData(UniformBuffer),
-        &UniformData,
-        sizeof(UniformData));
+    memcpy(Rr_GetMappedBufferData(UniformBuffer), &UniformData, sizeof(UniformData));
 
     Rr_ColorTarget ColorTarget = {
         .Image = SwapchainImage,
@@ -322,23 +267,11 @@ static void Iterate(void)
         },
         .Image = DepthAttachment,
     };
-    Rr_GraphNode *GraphicsNode =
-        Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
+    Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
     Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
     Rr_BindVertexBuffer(GraphicsNode, PrimitiveBuffer, 0, 0);
-    Rr_BindIndexBuffer(
-        GraphicsNode,
-        PrimitiveBuffer,
-        0,
-        PrimitiveIndexOffset,
-        RR_INDEX_TYPE_UINT16);
-    Rr_BindUniformBuffer(
-        GraphicsNode,
-        UniformBuffer,
-        0,
-        0,
-        0,
-        sizeof(UniformData));
+    Rr_BindIndexBuffer(GraphicsNode, PrimitiveBuffer, 0, PrimitiveIndexOffset, RR_INDEX_TYPE_UINT16);
+    Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(UniformData));
     Rr_BindSampler(GraphicsNode, Sampler, 0, 1);
     Rr_BindSampledImage2D(GraphicsNode, PrimitiveTexture, 0, 2);
     Rr_DrawIndexed(GraphicsNode, PrimitiveIndexCount, 1, 0, 0, 0);

@@ -20,10 +20,7 @@ static void Iterate(void)
 
     Rr_Graph *Graph = Rr_GetGraph();
 
-    Rr_ClearColorImage2D(
-        Graph,
-        (Rr_ColorClear){ 0.01f, 0.01f, 0.02f, 1.0f },
-        Rr_GetSwapchainImage());
+    Rr_ClearColorImage2D(Graph, (Rr_ColorClear){ 0.01f, 0.01f, 0.02f, 1.0f }, Rr_GetSwapchainImage());
 
     Rr_UIBeginWindowEx("AllocatorTest.c", NULL, RR_UI_WINDOW_FLAGS_TABS_BIT);
     {
@@ -39,8 +36,7 @@ static void Iterate(void)
             Rr_UICheckbox("Per Frame", &PerFrame);
             static uint64_t Size = RR_KIBIBYTES(16);
             Rr_UIInputUnsignedInt64("Size", &Size);
-            if ((Host || Uniform) && BufferCount < MAX_BUFFERS &&
-                Rr_UIButton("Create Buffer"))
+            if ((Host || Uniform) && BufferCount < MAX_BUFFERS && Rr_UIButton("Create Buffer"))
             {
                 Rr_BufferFlags Flags = 0;
                 if (Host)
@@ -71,12 +67,7 @@ static void Iterate(void)
                         continue;
                     }
                     char BufferName[64];
-                    snprintf(
-                        BufferName,
-                        64,
-                        "Release Buffer (%zuKiB)###%d",
-                        Rr_GetBufferSize(Buffers[Index]),
-                        Index);
+                    snprintf(BufferName, 64, "Release Buffer (%zuKiB)###%d", Rr_GetBufferSize(Buffers[Index]), Index);
                     if (Rr_UIButton(BufferName))
                     {
                         Rr_ReleaseBuffer(Buffers[Index]);
@@ -98,10 +89,7 @@ static void Iterate(void)
             if (ImageCount < MAX_IMAGES && Rr_UIButton("Create Image"))
             {
                 Rr_ImageFlags Flags = RR_IMAGE_FLAGS_STORAGE_BIT;
-                Rr_Image2D *Image = Rr_CreateImage2D(
-                    Extent,
-                    RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
-                    Flags);
+                Rr_Image2D *Image = Rr_CreateImage2D(Extent, RR_IMAGE_FORMAT_R8G8B8A8_UNORM, Flags);
                 if (Image)
                 {
                     Images[ImageCount++] = Image;

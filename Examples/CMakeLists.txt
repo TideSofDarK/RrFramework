@@ -1,5 +1,6 @@
 add_subdirectory(Triangle)
 add_subdirectory(GLTFCube)
+add_subdirectory(GLTFAnimation)
 add_subdirectory(QuadTree)
 add_subdirectory(SmoothGrid)
 add_subdirectory(PrerenderedDepth)

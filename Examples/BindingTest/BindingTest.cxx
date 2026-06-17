@@ -59,8 +59,7 @@ struct SBindingTestApp
             },
         };
 
-        Rr_Asset ComputeShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_BINDINGTEST_COMP_SPV);
+        Rr_Asset ComputeShader = Rr_LoadAsset(EXAMPLE_ASSET_BINDINGTEST_COMP_SPV);
         Rr_ShaderInfo ShaderInfo = {
             .SPVSize = ComputeShader.Size,
             .SPVData = ComputeShader.Data,
@@ -78,11 +77,9 @@ struct SBindingTestApp
         {
             UniformBufferA = Rr_CreateBuffer(
                 RR_MEBIBYTES(1),
-                RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-                    RR_BUFFER_FLAGS_MAPPED_BIT);
+                RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
 
-            SS1B1Element *Data =
-                (SS1B1Element *)Rr_GetMappedBufferData(UniformBufferA);
+            SS1B1Element *Data = (SS1B1Element *)Rr_GetMappedBufferData(UniformBufferA);
 
             SS1B1Element Element;
             Element.TwoVector = { 2.0f, 2.0f, 2.0f, 2.0f };
@@ -96,21 +93,16 @@ struct SBindingTestApp
         {
             UniformBufferB = Rr_CreateBuffer(
                 RR_MEBIBYTES(1),
-                RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-                    RR_BUFFER_FLAGS_MAPPED_BIT);
+                RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
 
             char *Data = (char *)Rr_GetMappedBufferData(UniformBufferB);
 
             for (int Index = 0; Index < 4; ++Index)
             {
                 SS2B4Element Element;
-                Element.Vector =
-                    Rr_Vec4{ 1.0f, 1.0f, 1.0f, 1.0f } * float(Index);
+                Element.Vector = Rr_Vec4{ 1.0f, 1.0f, 1.0f, 1.0f } * float(Index);
                 Element.U32 = 1000 * Index;
-                std::memcpy(
-                    Data + Index * UniformAlignment,
-                    &Element,
-                    sizeof(Element));
+                std::memcpy(Data + Index * UniformAlignment, &Element, sizeof(Element));
             }
 
             SS2B4Element Element;
@@ -122,10 +114,8 @@ struct SBindingTestApp
         {
             StorageBuffer = Rr_CreateBuffer(
                 RR_MEBIBYTES(1),
-                RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-                    RR_BUFFER_FLAGS_MAPPED_BIT);
-            SS2Element *Data =
-                (SS2Element *)Rr_GetMappedBufferData(StorageBuffer);
+                RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
+            SS2Element *Data = (SS2Element *)Rr_GetMappedBufferData(StorageBuffer);
             SS2Element Element;
             Element.Vector = { 0.5f, 0.5f, 0.5f, 0.5f };
             Element.U32 = 128;
@@ -138,8 +128,7 @@ struct SBindingTestApp
         {
             ReadonlyStorageBuffer = Rr_CreateBuffer(
                 RR_MEBIBYTES(1),
-                RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-                    RR_BUFFER_FLAGS_MAPPED_BIT);
+                RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
             void *Data = Rr_GetMappedBufferData(ReadonlyStorageBuffer);
             SS0B0Element Element;
             Element.ZeroVector = {};
@@ -171,27 +160,9 @@ struct SBindingTestApp
     {
         Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph());
         Rr_BindComputePipeline(ComputeNode, ComputePipeline);
-        Rr_BindStorageBuffer(
-            ComputeNode,
-            ReadonlyStorageBuffer,
-            0,
-            0,
-            0,
-            sizeof(SS0B0Element));
-        Rr_BindUniformBuffer(
-            ComputeNode,
-            UniformBufferA,
-            1,
-            1,
-            0,
-            sizeof(SS1B1Element) * 8);
-        Rr_BindStorageBufferRW(
-            ComputeNode,
-            StorageBuffer,
-            2,
-            2,
-            0,
-            sizeof(SS2Element) * 8);
+        Rr_BindStorageBuffer(ComputeNode, ReadonlyStorageBuffer, 0, 0, 0, sizeof(SS0B0Element));
+        Rr_BindUniformBuffer(ComputeNode, UniformBufferA, 1, 1, 0, sizeof(SS1B1Element) * 8);
+        Rr_BindStorageBufferRW(ComputeNode, StorageBuffer, 2, 2, 0, sizeof(SS2Element) * 8);
         int UniformAlignment = Rr_GetUniformAlignment();
         for (int Index = 0; Index < 4; ++Index)
         {
@@ -206,14 +177,7 @@ struct SBindingTestApp
         }
         Rr_BindStorageImage2DRW(ComputeNode, StorageImageA, 3, 13);
         Rr_Dispatch(ComputeNode, 16, 16, 1);
-        Rr_BindUniformBufferAt(
-            ComputeNode,
-            UniformBufferB,
-            2,
-            4,
-            1,
-            4 * UniformAlignment,
-            sizeof(SS2B4Element));
+        Rr_BindUniformBufferAt(ComputeNode, UniformBufferB, 2, 4, 1, 4 * UniformAlignment, sizeof(SS2B4Element));
         Rr_BindStorageImage2DRW(ComputeNode, StorageImageB, 3, 13);
         Rr_Dispatch(ComputeNode, 16, 16, 1);
 

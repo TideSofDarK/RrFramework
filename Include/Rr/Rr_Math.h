@@ -2249,6 +2249,16 @@ static inline Rr_Mat4 Rr_Translate(Rr_Vec3 Translation)
     return Result;
 }
 
+static inline Rr_Mat4 Rr_TranslateV(float X, float Y, float Z)
+{
+    Rr_Mat4 Result = Rr_M4D(1.0f);
+    Result.Elements[3][0] = X;
+    Result.Elements[3][1] = Y;
+    Result.Elements[3][2] = Z;
+
+    return Result;
+}
+
 static inline Rr_Mat4 Rr_InvTranslate(Rr_Mat4 TranslationMatrix)
 {
     Rr_Mat4 Result = TranslationMatrix;
@@ -2301,6 +2311,16 @@ static inline Rr_Mat4 Rr_Scale(Rr_Vec3 Scale)
     Result.Elements[0][0] = Scale.X;
     Result.Elements[1][1] = Scale.Y;
     Result.Elements[2][2] = Scale.Z;
+
+    return Result;
+}
+
+static inline Rr_Mat4 Rr_ScaleV(float X, float Y, float Z)
+{
+    Rr_Mat4 Result = Rr_M4D(1.0f);
+    Result.Elements[0][0] = X;
+    Result.Elements[1][1] = Y;
+    Result.Elements[2][2] = Z;
 
     return Result;
 }

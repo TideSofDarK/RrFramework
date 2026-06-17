@@ -26,9 +26,7 @@ struct SReadbackApp
             RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
 
-        ReadbackBuffer = Rr_CreateBuffer(
-            256 * 256 * 4,
-            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_READBACK_BIT);
+        ReadbackBuffer = Rr_CreateBuffer(256 * 256 * 4, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_READBACK_BIT);
     }
 
     void ComputeAndCopyToHost()
@@ -72,8 +70,7 @@ struct SReadbackApp
             { 0, 0, SwapchainExtent.X, SwapchainExtent.Y },
             RR_IMAGE_ASPECT_COLOR_BIT);
 
-        uint8_t *BufferData =
-            reinterpret_cast<uint8_t *>(Rr_GetMappedBufferData(ReadbackBuffer));
+        uint8_t *BufferData = reinterpret_cast<uint8_t *>(Rr_GetMappedBufferData(ReadbackBuffer));
 
         Rr_UIBeginWindow("Readback.cxx");
         {
@@ -82,21 +79,16 @@ struct SReadbackApp
                 "CPU-visible buffer and reading pixel color under the cursor.");
 
             Rr_Vec2 MousePosition = Rr_GetMousePosition();
-            Rr_Vec2 SwapchainExtentF = {
-                static_cast<float>(SwapchainExtent.Width),
-                static_cast<float>(SwapchainExtent.Height)
-            };
+            Rr_Vec2 SwapchainExtentF = { static_cast<float>(SwapchainExtent.Width),
+                                         static_cast<float>(SwapchainExtent.Height) };
             Rr_Vec2 MouseNormalized = MousePosition / SwapchainExtentF;
-            MouseNormalized = Rr_MinV2(
-                Rr_MaxV2(MouseNormalized, Rr_V2F(0.0f)),
-                SwapchainExtentF);
+            MouseNormalized = Rr_MinV2(Rr_MaxV2(MouseNormalized, Rr_V2F(0.0f)), SwapchainExtentF);
             Rr_Vec2 PixelCoordF = MouseNormalized * 255.0f;
             Rr_IntVec2 PixelCoord = {
                 static_cast<int>(PixelCoordF.X),
                 static_cast<int>(PixelCoordF.Y),
             };
-            uint8_t *PixelChannels =
-                BufferData + PixelCoord.Y * 256 * 4 + PixelCoord.X * 4;
+            uint8_t *PixelChannels = BufferData + PixelCoord.Y * 256 * 4 + PixelCoord.X * 4;
             Rr_Vec3 PixelColor = {
                 static_cast<float>(PixelChannels[0]) / 255.0f,
                 static_cast<float>(PixelChannels[1]) / 255.0f,

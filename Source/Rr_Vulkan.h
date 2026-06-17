@@ -577,15 +577,32 @@ static inline VkFormat Rr_ToVulkanFormat(Rr_Format Format)
     {
         case RR_FORMAT_UNDEFINED:
             return VK_FORMAT_UNDEFINED;
-        case RR_FORMAT_FLOAT:
-            return VK_FORMAT_R32_SFLOAT;
+            /* INT */
+        case RR_FORMAT_INT:
+            return VK_FORMAT_R32_SINT;
+        case RR_FORMAT_INT2:
+            return VK_FORMAT_R32G32_SINT;
+        case RR_FORMAT_INT3:
+            return VK_FORMAT_R32G32B32_SINT;
+        case RR_FORMAT_INT4:
+            return VK_FORMAT_R32G32B32A32_SINT;
+            /* UINT */
         case RR_FORMAT_UINT:
             return VK_FORMAT_R32_UINT;
-        case RR_FORMAT_VEC2:
+        case RR_FORMAT_UINT2:
+            return VK_FORMAT_R32G32_UINT;
+        case RR_FORMAT_UINT3:
+            return VK_FORMAT_R32G32B32_UINT;
+        case RR_FORMAT_UINT4:
+            return VK_FORMAT_R32G32B32A32_UINT;
+            /* FLOAT */
+        case RR_FORMAT_FLOAT:
+            return VK_FORMAT_R32_SFLOAT;
+        case RR_FORMAT_FLOAT2:
             return VK_FORMAT_R32G32_SFLOAT;
-        case RR_FORMAT_VEC3:
+        case RR_FORMAT_FLOAT3:
             return VK_FORMAT_R32G32B32_SFLOAT;
-        case RR_FORMAT_VEC4:
+        case RR_FORMAT_FLOAT4:
             return VK_FORMAT_R32G32B32A32_SFLOAT;
         default:
             Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid format!");
@@ -597,15 +614,32 @@ static inline size_t Rr_GetFormatSize(Rr_Format Format)
 {
     switch (Format)
     {
-        case RR_FORMAT_FLOAT:
-            return sizeof(float);
+            /* INT */
+        case RR_FORMAT_INT:
+            return sizeof(int32_t);
+        case RR_FORMAT_INT2:
+            return sizeof(int32_t) * 2;
+        case RR_FORMAT_INT3:
+            return sizeof(int32_t) * 3;
+        case RR_FORMAT_INT4:
+            return sizeof(int32_t) * 4;
+            /* UINT */
         case RR_FORMAT_UINT:
             return sizeof(uint32_t);
-        case RR_FORMAT_VEC2:
+        case RR_FORMAT_UINT2:
+            return sizeof(uint32_t) * 2;
+        case RR_FORMAT_UINT3:
+            return sizeof(uint32_t) * 3;
+        case RR_FORMAT_UINT4:
+            return sizeof(uint32_t) * 4;
+            /* FLOAT */
+        case RR_FORMAT_FLOAT:
+            return sizeof(float);
+        case RR_FORMAT_FLOAT2:
             return sizeof(float) * 2;
-        case RR_FORMAT_VEC3:
+        case RR_FORMAT_FLOAT3:
             return sizeof(float) * 3;
-        case RR_FORMAT_VEC4:
+        case RR_FORMAT_FLOAT4:
             return sizeof(float) * 4;
         default:
             Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid format!");

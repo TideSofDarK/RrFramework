@@ -18,9 +18,8 @@ void CreateImagesFromPNGs(
     Rr_Image3D **OutImage3D)
 {
     std::uint32_t LayerSize = Width * Height * 4;
-    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        LayerSize * ImageCount,
-        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+    Rr_Buffer *StagingBuffer =
+        Rr_CreateBuffer(LayerSize * ImageCount, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
     char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
     std::uint32_t StagingOffset{};
 
@@ -74,13 +73,7 @@ void CreateImagesFromPNGs(
         RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
     *OutImage3D = Image3D;
-    Rr_CopyBufferToImage3D(
-        Rr_GetGraph(),
-        StagingBuffer,
-        0,
-        { Width, Height, (std::int32_t)ImageCount },
-        Image3D,
-        0);
+    Rr_CopyBufferToImage3D(Rr_GetGraph(), StagingBuffer, 0, { Width, Height, (std::int32_t)ImageCount }, Image3D, 0);
 
     Rr_ReleaseBuffer(StagingBuffer);
 }
@@ -111,8 +104,7 @@ struct SLayeredImageApp
             .SPVData = VertexShader.Data,
         };
 
-        Rr_Asset FragmentShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_IMAGE2DARRAY_FRAG_SPV);
+        Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_IMAGE2DARRAY_FRAG_SPV);
         Rr_ShaderInfo FragmentShaderInfo = {
             .SPVSize = FragmentShader.Size,
             .SPVData = FragmentShader.Data,
@@ -173,8 +165,8 @@ struct SLayeredImageApp
     {
         UniformBuffer = Rr_CreateBuffer(
             16,
-            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_UNIFORM_BIT |
-                RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
+                RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
     void Init()
@@ -187,10 +179,7 @@ struct SLayeredImageApp
 
     void Iterate()
     {
-        Rr_UIBeginWindowEx(
-            "LayeredImage.cxx",
-            NULL,
-            RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+        Rr_UIBeginWindowEx("LayeredImage.cxx", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
         Rr_UIText(
             "This example demonstrates sampling of Rr_Image2DArray and "
             "Rr_Image3D objects.");
@@ -213,25 +202,16 @@ struct SLayeredImageApp
             std::uint32_t ImageCount = 3;
         } UniformData;
 
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &UniformData,
-            sizeof(UniformData));
+        std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &UniformData, sizeof(UniformData));
 
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
 
         Rr_Rect ImageRect{ 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT };
-        Rr_Rect SwapchainRect{ 0,
-                               0,
-                               (float)SwapchainExtent.Width,
-                               (float)SwapchainExtent.Height };
+        Rr_Rect SwapchainRect{ 0, 0, (float)SwapchainExtent.Width, (float)SwapchainExtent.Height };
         Rr_Rect Viewport = Rr_FitRect(&ImageRect, &SwapchainRect);
         Rr_SetViewport(GraphicsNode, &Viewport);
 
-        Rr_BindGraphicsPipeline(
-            GraphicsNode,
-            UseImage3D ? Image3DPipeline : Image2DArrayPipeline);
+        Rr_BindGraphicsPipeline(GraphicsNode, UseImage3D ? Image3DPipeline : Image2DArrayPipeline);
         Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, 16);
         if (UseImage3D)
         {
@@ -239,12 +219,7 @@ struct SLayeredImageApp
         }
         else
         {
-            Rr_BindCombinedImage2DArraySampler(
-                GraphicsNode,
-                Image2DArray,
-                Sampler,
-                0,
-                1);
+            Rr_BindCombinedImage2DArraySampler(GraphicsNode, Image2DArray, Sampler, 0, 1);
         }
 
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);

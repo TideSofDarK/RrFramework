@@ -10,14 +10,11 @@
 struct SCube
 {
     static float constexpr CubePositions[] = {
-        1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00,
-        1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00,
-        1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,
-        1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,
-        -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00,
-        -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00,
-        -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,
-        -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,
+        1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00,
+        1.00,  -1.00, -1.00, 1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  -1.00, 1.00,
+        1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00,
+        -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,
+        -1.00, 1.00,  1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,
     };
     static uint16_t constexpr CubeIndices[] = {
         1,  13, 19, 1,  19, 7,  9, 6, 18, 9, 18, 21, 23, 20, 14, 23, 14, 17,
@@ -31,26 +28,16 @@ struct SCube
     void Init()
     {
         size_t TotalSize = sizeof(CubePositions) + sizeof(CubeIndices);
-        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-            TotalSize,
-            RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
+        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
         Rr_ReleaseBuffer(StagingBuffer);
         char *BufferData = (char *)Rr_GetMappedBufferData(StagingBuffer);
         std::memcpy(BufferData, CubePositions, sizeof(CubePositions));
         BufferData += sizeof(CubePositions);
         std::memcpy(BufferData, CubeIndices, sizeof(CubeIndices));
 
-        Buffer = Rr_CreateBuffer(
-            TotalSize,
-            RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_INDEX_BIT);
+        Buffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_INDEX_BIT);
         auto TransferNode = Rr_AddTransferNode(Rr_GetGraph());
-        Rr_TransferBufferData(
-            TransferNode,
-            TotalSize,
-            StagingBuffer,
-            0,
-            Buffer,
-            0);
+        Rr_TransferBufferData(TransferNode, TotalSize, StagingBuffer, 0, Buffer, 0);
         IndexOffset = sizeof(CubePositions);
         IndexCount = sizeof(CubeIndices) / sizeof(*CubeIndices);
     }
@@ -75,8 +62,7 @@ struct SCamera
 
     void UpdatePerspective(float Aspect)
     {
-        ProjMatrix =
-            Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, Near, Far);
+        ProjMatrix = Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, Near, Far);
     }
 
     [[nodiscard]] Rr_Vec3 GetForwardVector() const
@@ -143,10 +129,7 @@ struct SCamera
         ViewMatrix.Columns[0] = { XAxis.X, YAxis.X, ZAxis.X, 0.0f };
         ViewMatrix.Columns[1] = { XAxis.Y, YAxis.Y, ZAxis.Y, 0.0f };
         ViewMatrix.Columns[2] = { XAxis.Z, YAxis.Z, ZAxis.Z, 0.0f };
-        ViewMatrix.Columns[3] = { -Rr_Dot(XAxis, Position),
-                                  -Rr_Dot(YAxis, Position),
-                                  -Rr_Dot(ZAxis, Position),
-                                  1.0f };
+        ViewMatrix.Columns[3] = { -Rr_Dot(XAxis, Position), -Rr_Dot(YAxis, Position), -Rr_Dot(ZAxis, Position), 1.0f };
         ViewMatrix = Rr_VulkanMatrix() * ViewMatrix;
     }
 };
@@ -203,7 +186,7 @@ struct SSkyboxApp
     void InitPipeline()
     {
         std::array VertexAttributes = {
-            Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_VEC3 },
+            Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_FLOAT3 },
         };
 
         std::array VertexInputBindings = {
@@ -246,8 +229,8 @@ struct SSkyboxApp
     {
         UniformBuffer = Rr_CreateBuffer(
             sizeof(SGPUUniform),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-                RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
+                RR_BUFFER_FLAGS_PER_FRAME_BIT);
     }
 
     void InitSampler()
@@ -275,9 +258,8 @@ struct SSkyboxApp
             RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
-        StagingBuffer = Rr_CreateBuffer(
-            Width * Height * 4 * 6,
-            RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+        StagingBuffer =
+            Rr_CreateBuffer(Width * Height * 4 * 6, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
         char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
         std::memcpy(StagingData + (LayerSize * 0), Right.Data, LayerSize);
@@ -342,47 +324,24 @@ struct SSkyboxApp
             .View = Camera.ViewMatrix,
             .Projection = Camera.ProjMatrix,
         };
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &Uniform,
-            sizeof(SGPUUniform));
+        std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &Uniform, sizeof(SGPUUniform));
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
         Rr_ColorClear ColorClear = {};
-        ColorClear.Vec4 = { 13.0f / 255.0f,
-                            14.0f / 255.0f,
-                            28.0f / 255.0f,
-                            1.0f };
+        ColorClear.Vec4 = { 13.0f / 255.0f, 14.0f / 255.0f, 28.0f / 255.0f, 1.0f };
         Rr_ColorTarget ColorTarget = {
             .Image = SwapchainImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = ColorClear,
         };
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindVertexBuffer(GraphicsNode, Cube.Buffer, 0, 0);
-        Rr_BindIndexBuffer(
-            GraphicsNode,
-            Cube.Buffer,
-            0,
-            Cube.IndexOffset,
-            RR_INDEX_TYPE_UINT16);
-        Rr_BindUniformBuffer(
-            GraphicsNode,
-            UniformBuffer,
-            0,
-            0,
-            0,
-            sizeof(SGPUUniform));
-        Rr_BindCombinedImageCubeSampler(
-            GraphicsNode,
-            SkyboxImage,
-            Sampler,
-            0,
-            1);
+        Rr_BindIndexBuffer(GraphicsNode, Cube.Buffer, 0, Cube.IndexOffset, RR_INDEX_TYPE_UINT16);
+        Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(SGPUUniform));
+        Rr_BindCombinedImageCubeSampler(GraphicsNode, SkyboxImage, Sampler, 0, 1);
         Rr_DrawIndexed(GraphicsNode, Cube.IndexCount, 1, 0, 0, 0);
     }
 

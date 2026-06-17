@@ -65,29 +65,14 @@ struct SValidator
         Rr_ReleaseImage(ResultImage);
     }
 
-    Rr_Image2D *Validate(
-        uint32_t Count,
-        Rr_Buffer *SortedBuffer,
-        Rr_Buffer *UnsortedBuffer)
+    Rr_Image2D *Validate(uint32_t Count, Rr_Buffer *SortedBuffer, Rr_Buffer *UnsortedBuffer)
     {
         assert(RR_IS_POW2(Count));
 
         Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph());
         Rr_BindComputePipeline(ComputeNode, Pipeline);
-        Rr_BindStorageBuffer(
-            ComputeNode,
-            SortedBuffer,
-            0,
-            0,
-            0,
-            sizeof(uint32_t) * Count);
-        Rr_BindStorageBuffer(
-            ComputeNode,
-            UnsortedBuffer,
-            0,
-            1,
-            0,
-            sizeof(uint32_t) * Count);
+        Rr_BindStorageBuffer(ComputeNode, SortedBuffer, 0, 0, 0, sizeof(uint32_t) * Count);
+        Rr_BindStorageBuffer(ComputeNode, UnsortedBuffer, 0, 1, 0, sizeof(uint32_t) * Count);
         Rr_BindStorageImage2DRW(ComputeNode, ResultImage, 0, 2);
         Rr_Dispatch(ComputeNode, DispatchSize, DispatchSize, 1);
 
@@ -114,8 +99,7 @@ struct SBitonicSorter
     Rr_Buffer *UniformBuffer;
 
     explicit SBitonicSorter()
-        : ThreadsPerWorkgroup(
-              Rr_NextPowerOfTwo(Rr_GetMaxComputeWorkgroupInvocations()) / 2)
+        : ThreadsPerWorkgroup(Rr_NextPowerOfTwo(Rr_GetMaxComputeWorkgroupInvocations()) / 2)
     {
         std::array Specializations = {
             Rr_PipelineSpecialization{
@@ -125,8 +109,7 @@ struct SBitonicSorter
             },
         };
 
-        Rr_Asset ComputeShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_BITONICSORT_COMP_SPV);
+        Rr_Asset ComputeShader = Rr_LoadAsset(EXAMPLE_ASSET_BITONICSORT_COMP_SPV);
         Rr_ShaderInfo ShaderInfo = {
             .SPVSize = ComputeShader.Size,
             .SPVData = ComputeShader.Data,
@@ -138,8 +121,8 @@ struct SBitonicSorter
 
         UniformBuffer = Rr_CreateBuffer(
             sizeof(uint32_t) * 1024,
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-                RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+                RR_BUFFER_FLAGS_PER_FRAME_BIT);
     }
 
     ~SBitonicSorter()
@@ -154,13 +137,7 @@ struct SBitonicSorter
 
         Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph());
         Rr_BindComputePipeline(ComputeNode, Pipeline);
-        Rr_BindStorageBufferRW(
-            ComputeNode,
-            Buffer,
-            0,
-            0,
-            0,
-            sizeof(uint32_t) * Count);
+        Rr_BindStorageBufferRW(ComputeNode, Buffer, 0, 0, 0, sizeof(uint32_t) * Count);
 
         uint32_t DispatchSize = Count / 2 / ThreadsPerWorkgroup;
         size_t InfoBufferOffset = 0;
@@ -170,22 +147,14 @@ struct SBitonicSorter
             SortInfo.Height = Height;
             SortInfo.Algorithm = Algorithm;
 
-            char *Dst = (char *)Rr_GetMappedBufferData(UniformBuffer) +
-                        InfoBufferOffset;
+            char *Dst = (char *)Rr_GetMappedBufferData(UniformBuffer) + InfoBufferOffset;
             std::memcpy(Dst, &SortInfo, sizeof(SGPUSortInfo));
 
-            Rr_BindUniformBuffer(
-                ComputeNode,
-                UniformBuffer,
-                1,
-                0,
-                InfoBufferOffset,
-                sizeof(SGPUSortInfo));
+            Rr_BindUniformBuffer(ComputeNode, UniformBuffer, 1, 0, InfoBufferOffset, sizeof(SGPUSortInfo));
             Rr_Dispatch(ComputeNode, DispatchSize, 1, 1);
             Rr_ComputeBarrier(ComputeNode);
 
-            InfoBufferOffset +=
-                RR_ALIGN_POW2(sizeof(SGPUSortInfo), Rr_GetUniformAlignment());
+            InfoBufferOffset += RR_ALIGN_POW2(sizeof(SGPUSortInfo), Rr_GetUniformAlignment());
         };
 
         uint32_t Height = ThreadsPerWorkgroup * 2;
@@ -198,8 +167,7 @@ struct SBitonicSorter
         {
             Dispatch(Height, BIG_FLIP);
 
-            for (uint32_t DisperseHeight = Height / 2; DisperseHeight > 1;
-                 DisperseHeight /= 2)
+            for (uint32_t DisperseHeight = Height / 2; DisperseHeight > 1; DisperseHeight /= 2)
             {
                 if (DisperseHeight <= ThreadsPerWorkgroup * 2)
                 {
@@ -234,16 +202,13 @@ static void Init()
     RandomNumbers.resize(COUNT);
     SortedNumbers.resize(COUNT);
 
-    RandomNumbersBuffer =
-        Rr_CreateBuffer(sizeof(uint32_t) * COUNT, RR_BUFFER_FLAGS_STORAGE_BIT);
+    RandomNumbersBuffer = Rr_CreateBuffer(sizeof(uint32_t) * COUNT, RR_BUFFER_FLAGS_STORAGE_BIT);
 
-    SortedNumbersBuffer =
-        Rr_CreateBuffer(sizeof(uint32_t) * COUNT, RR_BUFFER_FLAGS_STORAGE_BIT);
+    SortedNumbersBuffer = Rr_CreateBuffer(sizeof(uint32_t) * COUNT, RR_BUFFER_FLAGS_STORAGE_BIT);
 
     StagingBuffer = Rr_CreateBuffer(
         sizeof(uint32_t) * COUNT * 2,
-        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-            RR_BUFFER_FLAGS_PER_FRAME_BIT);
+        RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
 
     Sorter = new SBitonicSorter();
     Validator = new SValidator();
@@ -255,42 +220,21 @@ static void Iterate()
 
     /* Upload both sorted and unsorted buffers and validate results. */
 
-    std::generate(RandomNumbers.begin(), RandomNumbers.end(), []() {
-        return std::rand() % COUNT;
-    });
+    std::generate(RandomNumbers.begin(), RandomNumbers.end(), []() { return std::rand() % COUNT; });
 
     std::memcpy(SortedNumbers.data(), RandomNumbers.data(), TOTAL_SIZE);
     std::sort(SortedNumbers.begin(), SortedNumbers.end());
 
-    std::memcpy(
-        Rr_GetMappedBufferData(StagingBuffer),
-        RandomNumbers.data(),
-        TOTAL_SIZE);
-    std::memcpy(
-        TOTAL_SIZE + (char *)Rr_GetMappedBufferData(StagingBuffer),
-        SortedNumbers.data(),
-        TOTAL_SIZE);
+    std::memcpy(Rr_GetMappedBufferData(StagingBuffer), RandomNumbers.data(), TOTAL_SIZE);
+    std::memcpy(TOTAL_SIZE + (char *)Rr_GetMappedBufferData(StagingBuffer), SortedNumbers.data(), TOTAL_SIZE);
 
     Rr_TransferNode *TransferNode = Rr_AddTransferNode(Rr_GetGraph());
-    Rr_TransferBufferData(
-        TransferNode,
-        TOTAL_SIZE,
-        StagingBuffer,
-        0,
-        RandomNumbersBuffer,
-        0);
-    Rr_TransferBufferData(
-        TransferNode,
-        TOTAL_SIZE,
-        StagingBuffer,
-        TOTAL_SIZE,
-        SortedNumbersBuffer,
-        0);
+    Rr_TransferBufferData(TransferNode, TOTAL_SIZE, StagingBuffer, 0, RandomNumbersBuffer, 0);
+    Rr_TransferBufferData(TransferNode, TOTAL_SIZE, StagingBuffer, TOTAL_SIZE, SortedNumbersBuffer, 0);
 
     Sorter->Sort(COUNT, RandomNumbersBuffer);
 
-    Rr_Image2D *ResultImage =
-        Validator->Validate(COUNT, SortedNumbersBuffer, RandomNumbersBuffer);
+    Rr_Image2D *ResultImage = Validator->Validate(COUNT, SortedNumbersBuffer, RandomNumbersBuffer);
 
     Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
     Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);

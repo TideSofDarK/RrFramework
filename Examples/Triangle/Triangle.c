@@ -9,8 +9,8 @@ static Rr_Buffer *IndexBuffer;
 static void Init(void)
 {
     Rr_VertexInputAttribute VertexAttributes[] = {
-        { .Format = RR_FORMAT_VEC3, .Location = 0 },
-        { .Format = RR_FORMAT_VEC3, .Location = 1 },
+        { .Format = RR_FORMAT_FLOAT3, .Location = 0 },
+        { .Format = RR_FORMAT_FLOAT3, .Location = 1 },
     };
 
     Rr_VertexInputBinding VertexInputBindings[] = {
@@ -50,23 +50,17 @@ static void Init(void)
     GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
     float VertexData[] = {
-        -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
-        0.0f,  1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f,  1.0f,
+        -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
     };
     VertexBuffer = Rr_CreateBuffer(
         sizeof(VertexData),
-        RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-            RR_BUFFER_FLAGS_MAPPED_BIT);
-    memcpy(
-        Rr_GetMappedBufferData(VertexBuffer),
-        VertexData,
-        sizeof(VertexData));
+        RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
+    memcpy(Rr_GetMappedBufferData(VertexBuffer), VertexData, sizeof(VertexData));
 
     uint32_t IndexData[] = { 2, 1, 0 };
     IndexBuffer = Rr_CreateBuffer(
         sizeof(IndexData),
-        RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-            RR_BUFFER_FLAGS_MAPPED_BIT);
+        RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
     memcpy(Rr_GetMappedBufferData(IndexBuffer), IndexData, sizeof(IndexData));
 }
 
@@ -78,8 +72,7 @@ static void Iterate(void)
         .StoreOp = RR_STORE_OP_STORE,
         .Clear = (Rr_ColorClear){ 0 },
     };
-    Rr_GraphNode *GraphicsNode =
-        Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
+    Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
     Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
     Rr_BindVertexBuffer(GraphicsNode, VertexBuffer, 0, 0);
     Rr_BindIndexBuffer(GraphicsNode, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT32);

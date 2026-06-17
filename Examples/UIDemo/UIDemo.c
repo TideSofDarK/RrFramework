@@ -22,11 +22,7 @@ static void TextInputWindow()
     {
         static char StringBuffer[2048] = "";
         char LabelBuffer[64];
-        snprintf(
-            LabelBuffer,
-            sizeof(LabelBuffer),
-            "Length: %zu",
-            strlen(StringBuffer));
+        snprintf(LabelBuffer, sizeof(LabelBuffer), "Length: %zu", strlen(StringBuffer));
         Rr_UILabelText("String Info", LabelBuffer);
         if (Rr_UIInputField(
                 "String (2048 bytes)",
@@ -45,10 +41,7 @@ static void FixedSizeWindow()
 {
     const Rr_Vec2 WINDOW_SIZE = Rr_V2(450.0f, 200.0f);
     Rr_UISetNextWindowExtent(WINDOW_SIZE);
-    Rr_UIBeginWindowEx(
-        "Fixed Size Window",
-        &FixedSizeWindowOpen,
-        RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
+    Rr_UIBeginWindowEx("Fixed Size Window", &FixedSizeWindowOpen, RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
     {
         Rr_UIText("Resizing is disabled for this window.");
         Rr_UITextF("Window Size: %.0fx%.0f", WINDOW_SIZE.X, WINDOW_SIZE.Y);
@@ -80,14 +73,7 @@ static inline void PrintStyleVec2(const char *Name, Rr_Vec2 *Style)
 
 static inline void PrintColor(const char *Name, Rr_Vec4 *Color)
 {
-    fprintf(
-        stdout,
-        "Colors->%s = Rr_V4(%ff,%ff,%ff,%ff);\n",
-        Name,
-        Color->R,
-        Color->G,
-        Color->B,
-        Color->A);
+    fprintf(stdout, "Colors->%s = Rr_V4(%ff,%ff,%ff,%ff);\n", Name, Color->R, Color->G, Color->B, Color->A);
 }
 
 static void PrintTheme(void)
@@ -131,12 +117,8 @@ static void PrintTheme(void)
     PrintColor("TitleBackground2", &Colors->TitleBackground2);
     PrintColor("TitleBackgroundInactive", &Colors->TitleBackgroundInactive);
     PrintColor("TitleBackgroundTabs", &Colors->TitleBackgroundTabs);
-    PrintColor(
-        "TitleCloseButtonBackground",
-        &Colors->TitleCloseButtonBackground);
-    PrintColor(
-        "TitleCollapseButtonBackground",
-        &Colors->TitleCollapseButtonBackground);
+    PrintColor("TitleCloseButtonBackground", &Colors->TitleCloseButtonBackground);
+    PrintColor("TitleCollapseButtonBackground", &Colors->TitleCollapseButtonBackground);
 
     PrintColor("ScrollbarBackground", &Colors->ScrollbarBackground);
     PrintColor("ScrollbarNormal", &Colors->ScrollbarNormal);
@@ -175,19 +157,13 @@ static void ThemeEditorWindow()
         Rr_UIColors *Colors = Rr_UIGetColors();
 
         Rr_UIPushFormatFloatDecimalPlaces(4);
-        Rr_UIInputFloatRange(
-            "Frame Thickness",
-            &Style->FrameThickness,
-            0.0f,
-            0.125f);
+        Rr_UIInputFloatRange("Frame Thickness", &Style->FrameThickness, 0.0f, 0.125f);
         Rr_UIInputFloat2ZO("Title Padding", Style->TitleBarPadding.Elements);
         Rr_UIInputFloat2ZO("Window Padding", Style->WindowPadding.Elements);
         Rr_UIInputFloat2ZO("Contents Margin", Style->ContentsMargin.Elements);
         Rr_UIInputFloatZO("Component Margin", &Style->ComponentMargin);
         Rr_UIInputFloatZO("Bevel Thickness", &Style->BevelThickness);
-        Rr_UIInputFloatZO(
-            "Double Bevel Thickness",
-            &Style->DoubleBevelThickness);
+        Rr_UIInputFloatZO("Double Bevel Thickness", &Style->DoubleBevelThickness);
         Rr_UIInputFloatZO("Bevel Intensity Light", &Style->BevelIntensityLight);
         Rr_UIInputFloatZO("Bevel Intensity Dark", &Style->BevelIntensityDark);
         Rr_UIInputFloatZO("Flexible Title Margin", &Style->FlexibleTitleMargin);
@@ -200,65 +176,37 @@ static void ThemeEditorWindow()
         Rr_UISeparator();
 
         Rr_UIInputColor4("Foreground", Colors->Foreground.Elements);
-        Rr_UIInputColor4(
-            "Foreground Dimmed",
-            Colors->ForegroundDimmed.Elements);
+        Rr_UIInputColor4("Foreground Dimmed", Colors->ForegroundDimmed.Elements);
         Rr_UIInputColor4("Background", Colors->Background.Elements);
         Rr_UIInputColor4("Child Background", Colors->ChildBackground.Elements);
-        Rr_UIInputColor4(
-            "Scrolloff Background",
-            Colors->ScrolloffBackground.Elements);
+        Rr_UIInputColor4("Scrolloff Background", Colors->ScrolloffBackground.Elements);
         Rr_UIInputColor4("Outline", Colors->Outline.Elements);
         Rr_UIInputColor4("Selected Outline", Colors->SelectedOutline.Elements);
-        Rr_UIInputColor4(
-            "List Entry Background A",
-            Colors->ListEntryBackgroundA.Elements);
-        Rr_UIInputColor4(
-            "List Entry Background B",
-            Colors->ListEntryBackgroundB.Elements);
-        Rr_UIInputColor4(
-            "List Entry Hovered",
-            Colors->ListEntryHovered.Elements);
+        Rr_UIInputColor4("List Entry Background A", Colors->ListEntryBackgroundA.Elements);
+        Rr_UIInputColor4("List Entry Background B", Colors->ListEntryBackgroundB.Elements);
+        Rr_UIInputColor4("List Entry Hovered", Colors->ListEntryHovered.Elements);
 
         Rr_UISeparator();
 
         Rr_UIInputColor4("Title Foreground", Colors->TitleForeground.Elements);
         Rr_UIInputColor4("Title Background", Colors->TitleBackground.Elements);
-        Rr_UIInputColor4(
-            "Title Background 2",
-            Colors->TitleBackground2.Elements);
-        Rr_UIInputColor4(
-            "Title Background Inactive",
-            Colors->TitleBackgroundInactive.Elements);
-        Rr_UIInputColor4(
-            "Title Background Tabs",
-            Colors->TitleBackgroundTabs.Elements);
-        Rr_UIInputColor4(
-            "Title Close Button",
-            Colors->TitleCloseButtonBackground.Elements);
-        Rr_UIInputColor4(
-            "Title Collapse Button",
-            Colors->TitleCollapseButtonBackground.Elements);
+        Rr_UIInputColor4("Title Background 2", Colors->TitleBackground2.Elements);
+        Rr_UIInputColor4("Title Background Inactive", Colors->TitleBackgroundInactive.Elements);
+        Rr_UIInputColor4("Title Background Tabs", Colors->TitleBackgroundTabs.Elements);
+        Rr_UIInputColor4("Title Close Button", Colors->TitleCloseButtonBackground.Elements);
+        Rr_UIInputColor4("Title Collapse Button", Colors->TitleCollapseButtonBackground.Elements);
 
         Rr_UISeparator();
 
-        Rr_UIInputFloatRange(
-            "Scrollbar Area Width",
-            &Style->ScrollbarAreaWidth,
-            0.001f,
-            2.0f);
-        Rr_UIInputColor4(
-            "Scrollbar Background",
-            Colors->ScrollbarBackground.Elements);
+        Rr_UIInputFloatRange("Scrollbar Area Width", &Style->ScrollbarAreaWidth, 0.001f, 2.0f);
+        Rr_UIInputColor4("Scrollbar Background", Colors->ScrollbarBackground.Elements);
         Rr_UIInputColor4("Scrollbar Normal", Colors->ScrollbarNormal.Elements);
         /* Rr_UIInputColor4( */
         /*     "Scrollbar Hovered", */
         /*     Colors->ScrollbarHovered.Elements); */
         Rr_UIInputColor4("Scrollbar Held", Colors->ScrollbarHeld.Elements);
         Rr_UIInputColor4("Resize Normal", Colors->ResizeHandleNormal.Elements);
-        Rr_UIInputColor4(
-            "Resize Hovered",
-            Colors->ResizeHandleHovered.Elements);
+        Rr_UIInputColor4("Resize Hovered", Colors->ResizeHandleHovered.Elements);
         Rr_UIInputColor4("Resize Held", Colors->ResizeHandleHeld.Elements);
 
         Rr_UISeparator();
@@ -274,13 +222,9 @@ static void ThemeEditorWindow()
         /* Rr_UIInputColor4("Button Disabled", Colors->ButtonDisabled.Elements);
          */
 
-        Rr_UIInputColor4(
-            "Combobox Normal",
-            Colors->ComboboxButtonNormal.Elements);
+        Rr_UIInputColor4("Combobox Normal", Colors->ComboboxButtonNormal.Elements);
         Rr_UIInputColor4("Combobox Held", Colors->ComboboxButtonHeld.Elements);
-        Rr_UIInputColor4(
-            "Combobox Active",
-            Colors->ComboboxButtonActive.Elements);
+        Rr_UIInputColor4("Combobox Active", Colors->ComboboxButtonActive.Elements);
 
         Rr_UIInputColor4("Radio Normal", Colors->RadioButtonNormal.Elements);
         Rr_UIInputColor4("Radio Outline", Colors->RadioButtonOutline.Elements);
@@ -289,23 +233,13 @@ static void ThemeEditorWindow()
         Rr_UISeparator();
 
         Rr_UIPushFormatFloatDecimalPlaces(4);
-        Rr_UIInputFloat2ZO(
-            "Input Field Padding",
-            Style->InputFieldPadding.Elements);
+        Rr_UIInputFloat2ZO("Input Field Padding", Style->InputFieldPadding.Elements);
         Rr_UIPopFormatFloatDecimalPlaces();
 
-        Rr_UIInputColor4(
-            "Input Field Normal",
-            Colors->InputFieldNormal.Elements);
-        Rr_UIInputColor4(
-            "Input Field Active",
-            Colors->InputFieldActive.Elements);
-        Rr_UIInputColor4(
-            "Selected Text BG",
-            Colors->SelectedTextBackground.Elements);
-        Rr_UIInputColor4(
-            "Selected Text FG",
-            Colors->SelectedTextForeground.Elements);
+        Rr_UIInputColor4("Input Field Normal", Colors->InputFieldNormal.Elements);
+        Rr_UIInputColor4("Input Field Active", Colors->InputFieldActive.Elements);
+        Rr_UIInputColor4("Selected Text BG", Colors->SelectedTextBackground.Elements);
+        Rr_UIInputColor4("Selected Text FG", Colors->SelectedTextForeground.Elements);
 
         Rr_UISeparator();
 
@@ -345,63 +279,41 @@ static void SetOliveTheme()
     Style->CrossWidth = 0.650000f;
     Style->CrossThickness = 0.035000f;
     Colors->Foreground = Rr_V4(0.000000f, 0.000000f, 0.000000f, 1.000000f);
-    Colors->ForegroundDimmed =
-        Rr_V4(0.199287f, 0.199287f, 0.199287f, 1.000000f);
+    Colors->ForegroundDimmed = Rr_V4(0.199287f, 0.199287f, 0.199287f, 1.000000f);
     Colors->Background = Rr_V4(0.666667f, 0.666667f, 0.666667f, 1.000000f);
     Colors->ChildBackground = Rr_V4(0.752941f, 0.752941f, 0.752941f, 1.000000f);
-    Colors->ScrolloffBackground =
-        Rr_V4(0.666667f, 0.666667f, 0.666667f, 1.000000f);
+    Colors->ScrolloffBackground = Rr_V4(0.666667f, 0.666667f, 0.666667f, 1.000000f);
     Colors->Outline = Rr_V4(0.627451f, 0.627451f, 0.627451f, 1.000000f);
     Colors->SelectedOutline = Rr_V4(0.564706f, 0.592157f, 0.521569f, 1.000000f);
-    Colors->ListEntryBackgroundA =
-        Rr_V4(0.752941f, 0.752941f, 0.752941f, 1.000000f);
-    Colors->ListEntryBackgroundB =
-        Rr_V4(0.727996f, 0.727996f, 0.727996f, 1.000000f);
-    Colors->ListEntryHovered =
-        Rr_V4(0.776471f, 0.854902f, 0.486275f, 1.000000f);
+    Colors->ListEntryBackgroundA = Rr_V4(0.752941f, 0.752941f, 0.752941f, 1.000000f);
+    Colors->ListEntryBackgroundB = Rr_V4(0.727996f, 0.727996f, 0.727996f, 1.000000f);
+    Colors->ListEntryHovered = Rr_V4(0.776471f, 0.854902f, 0.486275f, 1.000000f);
     Colors->TitleForeground = Rr_V4(0.898039f, 0.921569f, 0.929412f, 1.000000f);
     Colors->TitleBackground = Rr_V4(0.568627f, 0.619608f, 0.376471f, 1.000000f);
-    Colors->TitleBackground2 =
-        Rr_V4(0.388235f, 0.431373f, 0.231373f, 1.000000f);
-    Colors->TitleCloseButtonBackground =
-        Rr_V4(0.601035f, 0.141315f, 0.190579f, 1.000000f);
-    Colors->TitleCollapseButtonBackground =
-        Rr_V4(0.568627f, 0.619608f, 0.376471f, 1.000000f);
-    Colors->ScrollbarBackground =
-        Rr_V4(0.576471f, 0.576471f, 0.576471f, 1.000000f);
+    Colors->TitleBackground2 = Rr_V4(0.388235f, 0.431373f, 0.231373f, 1.000000f);
+    Colors->TitleCloseButtonBackground = Rr_V4(0.601035f, 0.141315f, 0.190579f, 1.000000f);
+    Colors->TitleCollapseButtonBackground = Rr_V4(0.568627f, 0.619608f, 0.376471f, 1.000000f);
+    Colors->ScrollbarBackground = Rr_V4(0.576471f, 0.576471f, 0.576471f, 1.000000f);
     Colors->ScrollbarNormal = Rr_V4(0.474510f, 0.505882f, 0.368627f, 1.000000f);
-    Colors->ScrollbarHovered =
-        Rr_V4(0.670588f, 0.698039f, 0.611765f, 1.000000f);
+    Colors->ScrollbarHovered = Rr_V4(0.670588f, 0.698039f, 0.611765f, 1.000000f);
     Colors->ScrollbarHeld = Rr_V4(0.568627f, 0.619608f, 0.376471f, 1.000000f);
-    Colors->ResizeHandleNormal =
-        Rr_V4(0.423529f, 0.423529f, 0.423529f, 1.000000f);
-    Colors->ResizeHandleHovered =
-        Rr_V4(0.474510f, 0.505882f, 0.368627f, 1.000000f);
-    Colors->ResizeHandleHeld =
-        Rr_V4(0.568627f, 0.619608f, 0.376471f, 1.000000f);
+    Colors->ResizeHandleNormal = Rr_V4(0.423529f, 0.423529f, 0.423529f, 1.000000f);
+    Colors->ResizeHandleHovered = Rr_V4(0.474510f, 0.505882f, 0.368627f, 1.000000f);
+    Colors->ResizeHandleHeld = Rr_V4(0.568627f, 0.619608f, 0.376471f, 1.000000f);
     Colors->ButtonNormal = Rr_V4(0.777635f, 0.777635f, 0.777635f, 1.000000f);
     Colors->ButtonHovered = Rr_V4(0.781696f, 0.781696f, 0.781696f, 1.000000f);
     Colors->ButtonHeld = Rr_V4(0.686275f, 0.686275f, 0.686275f, 1.000000f);
     Colors->ButtonDisabled = Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
-    Colors->ComboboxButtonNormal =
-        Rr_V4(0.666667f, 0.666667f, 0.666667f, 1.000000f);
-    Colors->ComboboxButtonHeld =
-        Rr_V4(0.576471f, 0.576471f, 0.576471f, 1.000000f);
-    Colors->ComboboxButtonActive =
-        Rr_V4(0.564706f, 0.592157f, 0.521569f, 1.000000f);
-    Colors->RadioButtonNormal =
-        Rr_V4(0.686275f, 0.686275f, 0.686275f, 1.000000f);
-    Colors->RadioButtonOutline =
-        Rr_V4(0.576471f, 0.576471f, 0.576471f, 1.000000f);
+    Colors->ComboboxButtonNormal = Rr_V4(0.666667f, 0.666667f, 0.666667f, 1.000000f);
+    Colors->ComboboxButtonHeld = Rr_V4(0.576471f, 0.576471f, 0.576471f, 1.000000f);
+    Colors->ComboboxButtonActive = Rr_V4(0.564706f, 0.592157f, 0.521569f, 1.000000f);
+    Colors->RadioButtonNormal = Rr_V4(0.686275f, 0.686275f, 0.686275f, 1.000000f);
+    Colors->RadioButtonOutline = Rr_V4(0.576471f, 0.576471f, 0.576471f, 1.000000f);
     Colors->RadioButtonHeld = Rr_V4(0.568627f, 0.619608f, 0.376471f, 1.000000f);
-    Colors->InputFieldNormal =
-        Rr_V4(0.568627f, 0.568627f, 0.568627f, 1.000000f);
-    Colors->InputFieldActive =
-        Rr_V4(0.564706f, 0.592157f, 0.521569f, 1.000000f);
-    Colors->SelectedTextBackground =
-        Rr_V4(0.776471f, 0.854902f, 0.486275f, 1.000000f);
-    Colors->SelectedTextForeground =
-        Rr_V4(0.030000f, 0.030000f, 0.030000f, 1.000000f);
+    Colors->InputFieldNormal = Rr_V4(0.568627f, 0.568627f, 0.568627f, 1.000000f);
+    Colors->InputFieldActive = Rr_V4(0.564706f, 0.592157f, 0.521569f, 1.000000f);
+    Colors->SelectedTextBackground = Rr_V4(0.776471f, 0.854902f, 0.486275f, 1.000000f);
+    Colors->SelectedTextForeground = Rr_V4(0.030000f, 0.030000f, 0.030000f, 1.000000f);
 }
 
 static void SetPinkTheme()
@@ -427,65 +339,42 @@ static void SetPinkTheme()
     Style->CrossWidth = 0.650000f;
     Style->CrossThickness = 0.135000f;
     Colors->Foreground = Rr_V4(0.940547f, 0.899630f, 0.970019f, 1.000000f);
-    Colors->ForegroundDimmed =
-        Rr_V4(0.634900f, 0.617390f, 0.660727f, 1.000000f);
+    Colors->ForegroundDimmed = Rr_V4(0.634900f, 0.617390f, 0.660727f, 1.000000f);
     Colors->Background = Rr_V4(0.153051f, 0.142532f, 0.186284f, 1.000000f);
     Colors->ChildBackground = Rr_V4(0.152941f, 0.141176f, 0.184314f, 1.000000f);
-    Colors->ScrolloffBackground =
-        Rr_V4(0.152941f, 0.141176f, 0.184314f, 1.000000f);
+    Colors->ScrolloffBackground = Rr_V4(0.152941f, 0.141176f, 0.184314f, 1.000000f);
     Colors->Outline = Rr_V4(0.152941f, 0.141176f, 0.184314f, 1.000000f);
     Colors->SelectedOutline = Rr_V4(0.314730f, 0.286137f, 0.390978f, 1.000000f);
-    Colors->ListEntryBackgroundA =
-        Rr_V4(0.334322f, 0.277384f, 0.413703f, 1.000000f);
-    Colors->ListEntryBackgroundB =
-        Rr_V4(0.284174f, 0.235776f, 0.351648f, 1.000000f);
-    Colors->ListEntryHovered =
-        Rr_V4(0.463433f, 0.343573f, 0.643222f, 1.000000f);
+    Colors->ListEntryBackgroundA = Rr_V4(0.334322f, 0.277384f, 0.413703f, 1.000000f);
+    Colors->ListEntryBackgroundB = Rr_V4(0.284174f, 0.235776f, 0.351648f, 1.000000f);
+    Colors->ListEntryHovered = Rr_V4(0.463433f, 0.343573f, 0.643222f, 1.000000f);
     Colors->TitleForeground = Rr_V4(0.937255f, 0.898039f, 0.968627f, 1.000000f);
     Colors->TitleBackground = Rr_V4(0.472738f, 0.325686f, 0.538689f, 1.000000f);
-    Colors->TitleBackground2 =
-        Rr_V4(0.203582f, 0.122154f, 0.240995f, 1.000000f);
-    Colors->TitleBackgroundInactive =
-        Rr_V4(0.334322f, 0.277384f, 0.413703f, 1.000000f);
-    Colors->TitleCloseButtonBackground =
-        Rr_V4(0.890921f, 0.129675f, 0.182090f, 1.000000f);
-    Colors->TitleCollapseButtonBackground =
-        Rr_V4(0.470588f, 0.325490f, 0.537255f, 1.000000f);
-    Colors->ScrollbarBackground =
-        Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
+    Colors->TitleBackground2 = Rr_V4(0.203582f, 0.122154f, 0.240995f, 1.000000f);
+    Colors->TitleBackgroundInactive = Rr_V4(0.334322f, 0.277384f, 0.413703f, 1.000000f);
+    Colors->TitleCloseButtonBackground = Rr_V4(0.890921f, 0.129675f, 0.182090f, 1.000000f);
+    Colors->TitleCollapseButtonBackground = Rr_V4(0.470588f, 0.325490f, 0.537255f, 1.000000f);
+    Colors->ScrollbarBackground = Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
     Colors->ScrollbarNormal = Rr_V4(0.322105f, 0.261189f, 0.365981f, 1.000000f);
-    Colors->ScrollbarHovered =
-        Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);
+    Colors->ScrollbarHovered = Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);
     Colors->ScrollbarHeld = Rr_V4(0.321569f, 0.258824f, 0.364706f, 1.000000f);
-    Colors->ResizeHandleNormal =
-        Rr_V4(0.937255f, 0.898039f, 0.968627f, 1.000000f);
-    Colors->ResizeHandleHovered =
-        Rr_V4(0.717092f, 0.636152f, 0.781843f, 1.000000f);
-    Colors->ResizeHandleHeld =
-        Rr_V4(0.713726f, 0.635294f, 0.780392f, 1.000000f);
+    Colors->ResizeHandleNormal = Rr_V4(0.937255f, 0.898039f, 0.968627f, 1.000000f);
+    Colors->ResizeHandleHovered = Rr_V4(0.717092f, 0.636152f, 0.781843f, 1.000000f);
+    Colors->ResizeHandleHeld = Rr_V4(0.713726f, 0.635294f, 0.780392f, 1.000000f);
     Colors->ButtonNormal = Rr_V4(0.334322f, 0.277384f, 0.413703f, 1.000000f);
     Colors->ButtonHovered = Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);
     Colors->ButtonHeld = Rr_V4(0.463433f, 0.343573f, 0.643222f, 1.000000f);
     Colors->ButtonDisabled = Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
-    Colors->ComboboxButtonNormal =
-        Rr_V4(0.196078f, 0.133333f, 0.231373f, 1.000000f);
-    Colors->ComboboxButtonHeld =
-        Rr_V4(0.462745f, 0.341176f, 0.643137f, 1.000000f);
-    Colors->ComboboxButtonActive =
-        Rr_V4(0.333333f, 0.192157f, 0.411765f, 1.000000f);
-    Colors->RadioButtonNormal =
-        Rr_V4(0.333333f, 0.274510f, 0.411765f, 1.000000f);
-    Colors->RadioButtonOutline =
-        Rr_V4(0.462745f, 0.341176f, 0.643137f, 1.000000f);
+    Colors->ComboboxButtonNormal = Rr_V4(0.196078f, 0.133333f, 0.231373f, 1.000000f);
+    Colors->ComboboxButtonHeld = Rr_V4(0.462745f, 0.341176f, 0.643137f, 1.000000f);
+    Colors->ComboboxButtonActive = Rr_V4(0.333333f, 0.192157f, 0.411765f, 1.000000f);
+    Colors->RadioButtonNormal = Rr_V4(0.333333f, 0.274510f, 0.411765f, 1.000000f);
+    Colors->RadioButtonOutline = Rr_V4(0.462745f, 0.341176f, 0.643137f, 1.000000f);
     Colors->RadioButtonHeld = Rr_V4(0.462745f, 0.341176f, 0.643137f, 1.000000f);
-    Colors->InputFieldNormal =
-        Rr_V4(0.199295f, 0.134664f, 0.234178f, 1.000000f);
-    Colors->InputFieldActive =
-        Rr_V4(0.334506f, 0.193713f, 0.413703f, 1.000000f);
-    Colors->SelectedTextBackground =
-        Rr_V4(0.793058f, 0.188728f, 1.000000f, 1.000000f);
-    Colors->SelectedTextForeground =
-        Rr_V4(1.000000f, 1.000000f, 1.000000f, 1.000000f);
+    Colors->InputFieldNormal = Rr_V4(0.199295f, 0.134664f, 0.234178f, 1.000000f);
+    Colors->InputFieldActive = Rr_V4(0.334506f, 0.193713f, 0.413703f, 1.000000f);
+    Colors->SelectedTextBackground = Rr_V4(0.793058f, 0.188728f, 1.000000f, 1.000000f);
+    Colors->SelectedTextForeground = Rr_V4(1.000000f, 1.000000f, 1.000000f, 1.000000f);
 }
 
 static Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
@@ -493,13 +382,8 @@ static Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
     int32_t DesiredChannels = 4;
     int32_t Width, Height, Channels;
-    char *Data = (char *)stbi_load_from_memory(
-        (stbi_uc *)Asset.Data,
-        (int32_t)Asset.Size,
-        &Width,
-        &Height,
-        &Channels,
-        DesiredChannels);
+    char *Data = (char *)
+        stbi_load_from_memory((stbi_uc *)Asset.Data, (int32_t)Asset.Size, &Width, &Height, &Channels, DesiredChannels);
 
     Rr_Image2D *ColorImage = Rr_CreateImage2D(
         (Rr_IntVec2){ Width, Height },
@@ -508,19 +392,11 @@ static Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 
     size_t Size = Width * Height * DesiredChannels;
 
-    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        Size,
-        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(Size, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
     memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
 
-    Rr_CopyBufferToImage2D(
-        Rr_GetGraph(),
-        StagingBuffer,
-        0,
-        (Rr_IntVec2){ Width, Height },
-        ColorImage,
-        0);
+    Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, (Rr_IntVec2){ Width, Height }, ColorImage, 0);
 
     Rr_ReleaseBuffer(StagingBuffer);
 
@@ -532,15 +408,10 @@ static void Init(void)
     VulkanImage = CreateColorImageFromPNG(EXAMPLE_ASSET_VULKAN_PNG);
 
     Rr_Asset StoneTombAsset = Rr_LoadAsset(EXAMPLE_ASSET_STONETOMB_TTF);
-    StoneTombFont =
-        Rr_UICreateFont(StoneTombAsset.Size, StoneTombAsset.Data, 18.0f);
+    StoneTombFont = Rr_UICreateFont(StoneTombAsset.Size, StoneTombAsset.Data, 18.0f);
 
-    Rr_Asset MozillaHeadlineCleanAsset =
-        Rr_LoadAsset(EXAMPLE_ASSET_MOZILLAHEADLINE_TTF);
-    MozillaHeadlineFont = Rr_UICreateFont(
-        MozillaHeadlineCleanAsset.Size,
-        MozillaHeadlineCleanAsset.Data,
-        14.0f);
+    Rr_Asset MozillaHeadlineCleanAsset = Rr_LoadAsset(EXAMPLE_ASSET_MOZILLAHEADLINE_TTF);
+    MozillaHeadlineFont = Rr_UICreateFont(MozillaHeadlineCleanAsset.Size, MozillaHeadlineCleanAsset.Data, 14.0f);
 }
 
 static void Iterate(void)
@@ -549,10 +420,7 @@ static void Iterate(void)
 
     Rr_Graph *Graph = Rr_GetGraph();
 
-    Rr_ClearColorImage2D(
-        Graph,
-        (Rr_ColorClear){ 0.01f, 0.01f, 0.02f, 1.0f },
-        Rr_GetSwapchainImage());
+    Rr_ClearColorImage2D(Graph, (Rr_ColorClear){ 0.01f, 0.01f, 0.02f, 1.0f }, Rr_GetSwapchainImage());
 
     static bool GeneralWindowOpen = true;
     static bool WidgetsWindowOpen = true;
@@ -636,9 +504,7 @@ static void Iterate(void)
                 "could be overriden with absolute values.",
                 350.0f);
 
-            Rr_UIAdvance(
-                (Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f },
-                Rr_V2F(0.0f));
+            Rr_UIAdvance((Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f }, Rr_V2F(0.0f));
 
             Rr_UIPushFont(MozillaHeadlineFont);
 
@@ -651,9 +517,7 @@ static void Iterate(void)
 
             Rr_UIPopFont();
 
-            Rr_UIAdvance(
-                (Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f },
-                Rr_V2F(0.0f));
+            Rr_UIAdvance((Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f }, Rr_V2F(0.0f));
 
             Rr_UIPushFont(StoneTombFont);
 
@@ -675,11 +539,7 @@ static void Iterate(void)
 
         Rr_UIBeginWindow("Images");
         {
-            Rr_UIImageEx(
-                VulkanImage,
-                Rr_V2(600.0f, 400.0f),
-                Rr_V2F(0.0f),
-                Rr_V2F(1.0f));
+            Rr_UIImageEx(VulkanImage, Rr_V2(600.0f, 400.0f), Rr_V2F(0.0f), Rr_V2F(1.0f));
         }
         Rr_UIEndWindow();
 
@@ -689,20 +549,13 @@ static void Iterate(void)
                 "This is an example of a child window.\nUse child windows to "
                 "group your widgets.");
 
-            Rr_UIBeginWindowEx(
-                "Undockable Child Window",
-                NULL,
-                RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+            Rr_UIBeginWindowEx("Undockable Child Window", NULL, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
             {
-                Rr_UIText(
-                    "Hold CTRL and click its title to undock this window.");
+                Rr_UIText("Hold CTRL and click its title to undock this window.");
             }
             Rr_UIEndWindow();
 
-            Rr_UIBeginWindowEx(
-                "Custom Child Window",
-                NULL,
-                RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT);
+            Rr_UIBeginWindowEx("Custom Child Window", NULL, RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT);
             {
                 Rr_UIText("This child window has no title bar.");
             }
@@ -712,10 +565,7 @@ static void Iterate(void)
 
         Rr_UIBeginWindow("Tabs");
         {
-            Rr_UIBeginWindowEx(
-                "Example Tabs",
-                NULL,
-                RR_UI_WINDOW_FLAGS_TABS_BIT);
+            Rr_UIBeginWindowEx("Example Tabs", NULL, RR_UI_WINDOW_FLAGS_TABS_BIT);
             {
                 Rr_UIBeginWindow("Text");
                 {
@@ -816,51 +666,30 @@ static void Iterate(void)
                 &Rr_UIGetColors()->Foreground);
 
             Rr_UIDrawEquilateralTriangleFilled(
-                Rr_AddV2(
-                    Cursor,
-                    Rr_V2(AREA.X * 0.75f, AREA.Y - AREA.X * 0.4f * 0.5f)),
+                Rr_AddV2(Cursor, Rr_V2(AREA.X * 0.75f, AREA.Y - AREA.X * 0.4f * 0.5f)),
                 AREA.X * 0.4f,
                 RR_ANGLE_DEG(-90.0f),
                 &Rr_UIGetColors()->Foreground);
 
             float PhaseA = 1.0f + cosf(Rr_GetTimeSeconds() * 5.0f) * 0.25f;
-            float PhaseB =
-                1.0f + cosf(RR_PI * 0.25f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
-            float PhaseC =
-                1.0f + cosf(RR_PI * 0.5f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
-            float PhaseD =
-                1.0f + cosf(RR_PI * 0.75f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
+            float PhaseB = 1.0f + cosf(RR_PI * 0.25f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
+            float PhaseC = 1.0f + cosf(RR_PI * 0.5f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
+            float PhaseD = 1.0f + cosf(RR_PI * 0.75f + Rr_GetTimeSeconds() * 5.0f) * 0.25f;
             Rr_UIVertex QuadVertices[4] = {
                 {
-                    .Position = Rr_AddV2(
-                        Cursor,
-                        Rr_V2(
-                            AREA.X * 0.25f * PhaseA,
-                            AREA.Y * 0.25f * PhaseB)),
+                    .Position = Rr_AddV2(Cursor, Rr_V2(AREA.X * 0.25f * PhaseA, AREA.Y * 0.25f * PhaseB)),
                     .Color = Rr_V4(1.0f, 0.0f, 0.0f, 1.0f),
                 },
                 {
-                    .Position = Rr_AddV2(
-                        Cursor,
-                        Rr_V2(
-                            AREA.X * 0.75f * PhaseB,
-                            AREA.Y * 0.25f * PhaseA)),
+                    .Position = Rr_AddV2(Cursor, Rr_V2(AREA.X * 0.75f * PhaseB, AREA.Y * 0.25f * PhaseA)),
                     .Color = Rr_V4(0.0f, 1.0f, 0.0f, 1.0f),
                 },
                 {
-                    .Position = Rr_AddV2(
-                        Cursor,
-                        Rr_V2(
-                            AREA.X * 0.75f * PhaseC,
-                            AREA.Y * 0.75f * PhaseD)),
+                    .Position = Rr_AddV2(Cursor, Rr_V2(AREA.X * 0.75f * PhaseC, AREA.Y * 0.75f * PhaseD)),
                     .Color = Rr_V4(0.0f, 1.0f, 1.0f, 1.0f),
                 },
                 {
-                    .Position = Rr_AddV2(
-                        Cursor,
-                        Rr_V2(
-                            AREA.X * 0.25f + PhaseD,
-                            AREA.Y * 0.75f * PhaseC)),
+                    .Position = Rr_AddV2(Cursor, Rr_V2(AREA.X * 0.25f + PhaseD, AREA.Y * 0.75f * PhaseC)),
                     .Color = Rr_V4(1.0f, 0.0f, 1.0f, 1.0f),
                 },
             };
@@ -932,20 +761,12 @@ static void Iterate(void)
         Rr_UIBeginWindow("Comboboxes");
         {
             const char *ComboboxOptions[5] = {
-                "Option A", "Option B",        "Option C",
-                "Option D", "Longer Option E",
+                "Option A", "Option B", "Option C", "Option D", "Longer Option E",
             };
             static uint32_t SelectedComboboxOption = 0;
-            if (Rr_UICombobox(
-                    "Options",
-                    RR_ARRAY_COUNT(ComboboxOptions),
-                    ComboboxOptions,
-                    &SelectedComboboxOption))
+            if (Rr_UICombobox("Options", RR_ARRAY_COUNT(ComboboxOptions), ComboboxOptions, &SelectedComboboxOption))
             {
-                fprintf(
-                    stderr,
-                    "New option selected: %s\n",
-                    ComboboxOptions[SelectedComboboxOption]);
+                fprintf(stderr, "New option selected: %s\n", ComboboxOptions[SelectedComboboxOption]);
             }
         }
         Rr_UIEndWindow();
@@ -984,16 +805,12 @@ static void Iterate(void)
         }
         Rr_UIEndWindow();
 
-        Rr_UIBeginWindowEx(
-            "Input Fields",
-            NULL,
-            RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
+        Rr_UIBeginWindowEx("Input Fields", NULL, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT);
         {
             static char StringBuffer[16] = "Hello, World!";
             Rr_UIInputText("String (16 bytes)", 16, StringBuffer);
 
-            static char MultilineBuffer[128] =
-                "Line A\nLine B <- Delete this!\nLine C!";
+            static char MultilineBuffer[128] = "Line A\nLine B <- Delete this!\nLine C!";
             Rr_UIInputText("String (128 bytes)", 128, MultilineBuffer);
 
             static int32_t TestInt = 1337;
@@ -1006,21 +823,13 @@ static void Iterate(void)
             Rr_UIInputUnsignedInt("Unsigned Input", &TestUnsignedInt);
 
             static uint32_t TestUnsignedIntRange = 6;
-            Rr_UIInputUnsignedIntRange(
-                "Unsigned Input (3-9)",
-                &TestUnsignedIntRange,
-                3,
-                9);
+            Rr_UIInputUnsignedIntRange("Unsigned Input (3-9)", &TestUnsignedIntRange, 3, 9);
 
             static float TestFloat = 123.456f;
             Rr_UIInputFloat("Float Input", &TestFloat);
 
             static float TestFloatRange = 0.25f;
-            Rr_UIInputFloatRange(
-                "Float Input (0-1)",
-                &TestFloatRange,
-                0.0f,
-                1.0f);
+            Rr_UIInputFloatRange("Float Input (0-1)", &TestFloatRange, 0.0f, 1.0f);
 
             Rr_UIBeginWindow("Vectors and Matrices");
             {
@@ -1036,26 +845,20 @@ static void Iterate(void)
                     -1.0f,
                     1.0f, //
                 };
-                Rr_UIInputFloat2x2(
-                    "Float2x2 Input",
-                    (float *)TestMat2.Elements);
+                Rr_UIInputFloat2x2("Float2x2 Input", (float *)TestMat2.Elements);
                 static Rr_Mat3 TestMat3 = {
                     1.0f,  -1.0f, 1.0f,  //
                     -1.0f, 1.0f,  -1.0f, //
                     1.0f,  -1.0f, 1.0f,  //
                 };
-                Rr_UIInputFloat3x3(
-                    "Float3x3 Input",
-                    (float *)TestMat3.Elements);
+                Rr_UIInputFloat3x3("Float3x3 Input", (float *)TestMat3.Elements);
                 static Rr_Mat4 TestMat4 = {
                     1.0f,  -1.0f, 1.0f,  -1.0f, //
                     -1.0f, 1.0f,  -1.0f, 1.0f,  //
                     1.0f,  -1.0f, 1.0f,  -1.0f, //
                     -1.0f, 1.0f,  -1.0f, 1.0f,  //
                 };
-                Rr_UIInputFloat4x4(
-                    "Float4x4 Input",
-                    (float *)TestMat4.Elements);
+                Rr_UIInputFloat4x4("Float4x4 Input", (float *)TestMat4.Elements);
             }
             Rr_UIEndWindow();
         }

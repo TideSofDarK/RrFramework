@@ -51,14 +51,13 @@ struct SSortList
 
         UniformBuffer = Rr_CreateBuffer(
             sizeof(SUniformData),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-                RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+                RR_BUFFER_FLAGS_PER_FRAME_BIT);
 
         IndirectBuffer = Rr_CreateBuffer(
             sizeof(Rr_DrawIndirectCommand),
-            RR_BUFFER_FLAGS_INDIRECT_BIT | RR_BUFFER_FLAGS_STORAGE_BIT |
-                RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-                RR_BUFFER_FLAGS_STAGING_BIT);
+            RR_BUFFER_FLAGS_INDIRECT_BIT | RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
+                RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
     ~SSortList()
@@ -86,44 +85,20 @@ struct SSortList
         Rr_DrawIndirectCommand Command = { 0 };
         Command.VertexCount = 6;
 
-        std::memcpy(
-            Rr_GetMappedBufferData(IndirectBuffer),
-            &Command,
-            sizeof(Rr_DrawIndirectCommand));
+        std::memcpy(Rr_GetMappedBufferData(IndirectBuffer), &Command, sizeof(Rr_DrawIndirectCommand));
 
         SUniformData UniformData;
         UniformData.ViewProjection = ViewProjection;
         UniformData.AliveCount = AliveCount;
 
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &UniformData,
-            sizeof(SUniformData));
+        std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &UniformData, sizeof(SUniformData));
 
         Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph());
         Rr_BindComputePipeline(ComputeNode, Pipeline);
-        Rr_BindUniformBuffer(
-            ComputeNode,
-            UniformBuffer,
-            0,
-            0,
-            0,
-            sizeof(SUniformData));
+        Rr_BindUniformBuffer(ComputeNode, UniformBuffer, 0, 0, 0, sizeof(SUniformData));
         Rr_BindStorageBuffer(ComputeNode, SplatsBuffer, 0, 1, 0, SplatsSize);
-        Rr_BindStorageBufferRW(
-            ComputeNode,
-            EntriesBuffer,
-            0,
-            2,
-            0,
-            EntriesSize);
-        Rr_BindStorageBufferRW(
-            ComputeNode,
-            IndirectBuffer,
-            0,
-            3,
-            0,
-            sizeof(Rr_DrawIndirectCommand));
+        Rr_BindStorageBufferRW(ComputeNode, EntriesBuffer, 0, 2, 0, EntriesSize);
+        Rr_BindStorageBufferRW(ComputeNode, IndirectBuffer, 0, 3, 0, sizeof(Rr_DrawIndirectCommand));
         Rr_Dispatch(ComputeNode, DispatchSize, 1, 1);
     }
 };
@@ -161,8 +136,7 @@ struct SBitonicSorter
 
         for (; Height <= AlignedCount; Height *= 2)
         {
-            for (uint32_t DisperseHeight = Height / 2; DisperseHeight > 1;
-                 DisperseHeight /= 2)
+            for (uint32_t DisperseHeight = Height / 2; DisperseHeight > 1; DisperseHeight /= 2)
             {
                 if (DisperseHeight <= ThreadsPerWorkgroup * 2)
                 {
@@ -199,8 +173,7 @@ struct SBitonicSorter
             },
         };
 
-        Rr_Asset ComputeShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_BITONICSORT_COMP_SPV);
+        Rr_Asset ComputeShader = Rr_LoadAsset(EXAMPLE_ASSET_BITONICSORT_COMP_SPV);
         Rr_ShaderInfo ShaderInfo = {
             .SPVSize = ComputeShader.Size,
             .SPVData = ComputeShader.Data,
@@ -211,10 +184,9 @@ struct SBitonicSorter
         Pipeline = Rr_CreateComputePipeline(&ShaderInfo);
 
         UniformBuffer = Rr_CreateBuffer(
-            RR_ALIGN_POW2(sizeof(SGPUSortInfo), Rr_GetUniformAlignment()) *
-                DispatchCount(),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-                RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT);
+            RR_ALIGN_POW2(sizeof(SGPUSortInfo), Rr_GetUniformAlignment()) * DispatchCount(),
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
+                RR_BUFFER_FLAGS_PER_FRAME_BIT);
     }
 
     ~SBitonicSorter()
@@ -230,25 +202,13 @@ struct SBitonicSorter
         size_t EntriesSize,
         Rr_Buffer *EntriesBuffer)
     {
-        SortList.Generate(
-            AliveCount,
-            AlignedCount,
-            ViewProjection,
-            SplatsSize,
-            SplatsBuffer,
-            EntriesSize,
-            EntriesBuffer);
+        SortList
+            .Generate(AliveCount, AlignedCount, ViewProjection, SplatsSize, SplatsBuffer, EntriesSize, EntriesBuffer);
 
         Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph());
         Rr_BindComputePipeline(ComputeNode, Pipeline);
         Rr_BindStorageBuffer(ComputeNode, SplatsBuffer, 0, 0, 0, SplatsSize);
-        Rr_BindStorageBufferRW(
-            ComputeNode,
-            EntriesBuffer,
-            0,
-            1,
-            0,
-            EntriesSize);
+        Rr_BindStorageBufferRW(ComputeNode, EntriesBuffer, 0, 1, 0, EntriesSize);
 
         uint32_t DispatchSize = AlignedCount / 2 / ThreadsPerWorkgroup;
 
@@ -259,22 +219,14 @@ struct SBitonicSorter
             SortInfo.Height = Height;
             SortInfo.Algorithm = Algorithm;
 
-            char *Dst = (char *)Rr_GetMappedBufferData(UniformBuffer) +
-                        UniformBufferOffset;
+            char *Dst = (char *)Rr_GetMappedBufferData(UniformBuffer) + UniformBufferOffset;
             std::memcpy(Dst, &SortInfo, sizeof(SGPUSortInfo));
 
-            Rr_BindUniformBuffer(
-                ComputeNode,
-                UniformBuffer,
-                1,
-                0,
-                UniformBufferOffset,
-                sizeof(SGPUSortInfo));
+            Rr_BindUniformBuffer(ComputeNode, UniformBuffer, 1, 0, UniformBufferOffset, sizeof(SGPUSortInfo));
             Rr_Dispatch(ComputeNode, DispatchSize, 1, 1);
             Rr_ComputeBarrier(ComputeNode);
 
-            UniformBufferOffset +=
-                RR_ALIGN_POW2(sizeof(SGPUSortInfo), Rr_GetUniformAlignment());
+            UniformBufferOffset += RR_ALIGN_POW2(sizeof(SGPUSortInfo), Rr_GetUniformAlignment());
         };
 
         uint32_t Height = ThreadsPerWorkgroup * 2;
@@ -287,8 +239,7 @@ struct SBitonicSorter
         {
             Dispatch(Height, BIG_FLIP);
 
-            for (uint32_t DisperseHeight = Height / 2; DisperseHeight > 1;
-                 DisperseHeight /= 2)
+            for (uint32_t DisperseHeight = Height / 2; DisperseHeight > 1; DisperseHeight /= 2)
             {
                 if (DisperseHeight <= ThreadsPerWorkgroup * 2)
                 {

@@ -12,13 +12,8 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
     Rr_Asset Asset = Rr_LoadAsset(AssetRef);
     int32_t DesiredChannels = 4;
     int32_t Width, Height, Channels;
-    char *Data = (char *)stbi_load_from_memory(
-        (stbi_uc *)Asset.Data,
-        (int32_t)Asset.Size,
-        &Width,
-        &Height,
-        &Channels,
-        DesiredChannels);
+    char *Data = (char *)
+        stbi_load_from_memory((stbi_uc *)Asset.Data, (int32_t)Asset.Size, &Width, &Height, &Channels, DesiredChannels);
 
     Rr_Image2D *ColorImage = Rr_CreateImage2D(
         { Width, Height },
@@ -27,19 +22,11 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 
     size_t Size = Width * Height * DesiredChannels;
 
-    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-        Size,
-        RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(Size, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
     Rr_ReleaseBuffer(StagingBuffer);
     std::memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
 
-    Rr_CopyBufferToImage2D(
-        Rr_GetGraph(),
-        StagingBuffer,
-        0,
-        { Width, Height },
-        ColorImage,
-        0);
+    Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, { Width, Height }, ColorImage, 0);
 
     return ColorImage;
 }
@@ -86,8 +73,7 @@ struct CFixedTimestep
     void SetUpdateRate(float UpdateRate)
     {
         this->UpdateRate = UpdateRate;
-        TargetDeltaTime =
-            (int64_t)((double)Rr_GetPerformanceFrequency() / UpdateRate);
+        TargetDeltaTime = (int64_t)((double)Rr_GetPerformanceFrequency() / UpdateRate);
     }
 
     void InitPipeline()
@@ -97,15 +83,13 @@ struct CFixedTimestep
             .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
         };
 
-        Rr_Asset VertexShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_FIXEDTIMESTEP_VERT_SPV);
+        Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_FIXEDTIMESTEP_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
             .SPVSize = VertexShader.Size,
             .SPVData = VertexShader.Data,
         };
 
-        Rr_Asset FragmentShader =
-            Rr_LoadAsset(EXAMPLE_ASSET_FIXEDTIMESTEP_FRAG_SPV);
+        Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_FIXEDTIMESTEP_FRAG_SPV);
         Rr_ShaderInfo FragmentShaderInfo = {
             .SPVSize = FragmentShader.Size,
             .SPVData = FragmentShader.Data,
@@ -138,8 +122,8 @@ struct CFixedTimestep
     {
         UniformBuffer = Rr_CreateBuffer(
             sizeof(GPUUniform),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-                RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
+                RR_BUFFER_FLAGS_MAPPED_BIT);
     }
 
     CFixedTimestep()
@@ -165,16 +149,11 @@ struct CFixedTimestep
             SwapchainExtentF.Y / 2.0f,
             -1.0f,
             1.0f);
-        GPUUniform.Model = Rr_Translate(Rr_V3V(State.ImagePosition, 0)) *
-                           Rr_Scale(Rr_CastV3(Rr_GetImageExtent(Image)));
-        float GameTimeSeconds =
-            (double)GameTime / (double)Rr_GetPerformanceFrequency();
+        GPUUniform.Model = Rr_Translate(Rr_V3V(State.ImagePosition, 0)) * Rr_Scale(Rr_CastV3(Rr_GetImageExtent(Image)));
+        float GameTimeSeconds = (double)GameTime / (double)Rr_GetPerformanceFrequency();
         GPUUniform.Time = GameTimeSeconds;
         GPUUniform.Aspect = Rr_GetImage2DAspect(SwapchainImage);
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &GPUUniform,
-            sizeof(GPUUniform));
+        std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &GPUUniform, sizeof(GPUUniform));
 
         Rr_ColorTarget ColorTarget = {
             .Image = SwapchainImage,
@@ -182,16 +161,9 @@ struct CFixedTimestep
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = Rr_ColorClear{ 0.0f, 0.0f, 0.0f, 1.0f },
         };
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindUniformBuffer(
-            GraphicsNode,
-            UniformBuffer,
-            0,
-            0,
-            0,
-            sizeof(GPUUniform));
+        Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(GPUUniform));
         Rr_BindCombinedImage2DSampler(GraphicsNode, Image, Sampler, 0, 1);
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
     }
@@ -200,10 +172,8 @@ struct CFixedTimestep
     {
         static double ImageTime = 0.0f;
         ImageTime += 0.05f;
-        CurrentState.ImagePosition.X =
-            std::cos(ImageTime) * Rr_GetImage2DExtent(Image).X;
-        CurrentState.ImagePosition.Y =
-            std::sin(ImageTime) * Rr_GetImage2DExtent(Image).Y;
+        CurrentState.ImagePosition.X = std::cos(ImageTime) * Rr_GetImage2DExtent(Image).X;
+        CurrentState.ImagePosition.Y = std::sin(ImageTime) * Rr_GetImage2DExtent(Image).Y;
     }
 
     void Iterate()
@@ -234,8 +204,7 @@ struct CFixedTimestep
             "This example demonstrates implementation of fixed "
             "timestep.\nOnly works if your render state can be interpolated.");
         Rr_UIInputFloat("Game Time", &GPUUniform.Time);
-        float SystemSeconds = (double)(SystemTime - SystemTimeStart) /
-                              (double)Rr_GetPerformanceFrequency();
+        float SystemSeconds = (double)(SystemTime - SystemTimeStart) / (double)Rr_GetPerformanceFrequency();
         Rr_UIInputFloat("System Time", &SystemSeconds);
         if (Rr_UIInputFloat("Update Rate", &UpdateRate))
         {

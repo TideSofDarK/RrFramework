@@ -8859,15 +8859,15 @@ void Rr_InitUI(void)
     Rr_VertexInputAttribute VertexInputAttributes[] = {
         {
             .Location = 0,
-            .Format = RR_FORMAT_VEC2,
+            .Format = RR_FORMAT_FLOAT2,
         },
         {
             .Location = 1,
-            .Format = RR_FORMAT_VEC2,
+            .Format = RR_FORMAT_FLOAT2,
         },
         {
             .Location = 2,
-            .Format = RR_FORMAT_VEC4,
+            .Format = RR_FORMAT_FLOAT4,
         },
     };
 
@@ -9436,272 +9436,278 @@ static inline void Rr_UIDebugOverlayAllocator(Rr_Allocator *Allocator)
     Rr_DestroyScratch(Scratch);
 }
 
-void Rr_UIDebugOverlay(void)
+static inline void Rr_UIDebugOverlayTabs(void)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_UIBeginWindowEx("DebugOverlayTabs", NULL, RR_UI_WINDOW_FLAGS_TABS_BIT);
+    if (Rr_UIBeginWindowEx("General", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
     {
-        if (Rr_UIBeginWindowEx("General", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
+        Rr_IntVec2 WindowSize = Rr_GetWindowSize();
+        Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
+        Rr_Vec2 MousePosition = Rr_GetMousePosition();
+        Rr_Vec2 MouseDelta = Rr_GetMousePositionDelta();
+        Rr_UITextF(
+            "Time: %.2f\n"
+            "Window Size: %dx%d\n"
+            "Mouse State: %d:%d:%d:%d:%d\n"
+            "Mouse Position: %.2f %.2f\n"
+            "Mouse Delta: %.2f %.2f\n"
+            "Pressed Keys: %d\n"
+            "Keymod: %d:%d:%d:%d",
+            Rr_GetTimeSeconds(),
+            WindowSize.X,
+            WindowSize.Y,
+            (bool)(MouseState & RR_MOUSE_BUTTON_LEFT_BIT),
+            (bool)(MouseState & RR_MOUSE_BUTTON_MIDDLE_BIT),
+            (bool)(MouseState & RR_MOUSE_BUTTON_RIGHT_BIT),
+            (bool)(MouseState & RR_MOUSE_BUTTON_X1_BIT),
+            (bool)(MouseState & RR_MOUSE_BUTTON_X2_BIT),
+            MousePosition.X,
+            MousePosition.Y,
+            MouseDelta.X,
+            MouseDelta.Y,
+            gPlatform.PressedKeyCount,
+            (bool)(gPlatform.Keymod & RR_KEYMOD_CTRL),
+            (bool)(gPlatform.Keymod & RR_KEYMOD_SHIFT),
+            (bool)(gPlatform.Keymod & RR_KEYMOD_ALT),
+            (bool)(gPlatform.Keymod & RR_KEYMOD_SUPER));
+        Rr_UISeparator();
+        uint32_t PresentModeCount;
+        Rr_PresentMode *PresentModes =
+            Rr_GetAvailablePresentModes(&PresentModeCount);
+        char const **PresentModeStrings =
+            Rr_Alloc(PresentModeCount * sizeof(char const *), Scratch.Arena);
+        uint32_t CurrentPresentModeIndex;
+        for (uint32_t Index = 0; Index < PresentModeCount; ++Index)
         {
-            Rr_IntVec2 WindowSize = Rr_GetWindowSize();
-            Rr_MouseButtonFlags MouseState = Rr_GetMouseState();
-            Rr_Vec2 MousePosition = Rr_GetMousePosition();
-            Rr_Vec2 MouseDelta = Rr_GetMousePositionDelta();
-            Rr_UITextF(
-                "Time: %.2f\n"
-                "Window Size: %dx%d\n"
-                "Mouse State: %d:%d:%d:%d:%d\n"
-                "Mouse Position: %.2f %.2f\n"
-                "Mouse Delta: %.2f %.2f\n"
-                "Pressed Keys: %d\n"
-                "Keymod: %d:%d:%d:%d",
-                Rr_GetTimeSeconds(),
-                WindowSize.X,
-                WindowSize.Y,
-                (bool)(MouseState & RR_MOUSE_BUTTON_LEFT_BIT),
-                (bool)(MouseState & RR_MOUSE_BUTTON_MIDDLE_BIT),
-                (bool)(MouseState & RR_MOUSE_BUTTON_RIGHT_BIT),
-                (bool)(MouseState & RR_MOUSE_BUTTON_X1_BIT),
-                (bool)(MouseState & RR_MOUSE_BUTTON_X2_BIT),
-                MousePosition.X,
-                MousePosition.Y,
-                MouseDelta.X,
-                MouseDelta.Y,
-                gPlatform.PressedKeyCount,
-                (bool)(gPlatform.Keymod & RR_KEYMOD_CTRL),
-                (bool)(gPlatform.Keymod & RR_KEYMOD_SHIFT),
-                (bool)(gPlatform.Keymod & RR_KEYMOD_ALT),
-                (bool)(gPlatform.Keymod & RR_KEYMOD_SUPER));
-            Rr_UISeparator();
-            uint32_t PresentModeCount;
-            Rr_PresentMode *PresentModes =
-                Rr_GetAvailablePresentModes(&PresentModeCount);
-            char const **PresentModeStrings = Rr_Alloc(
-                PresentModeCount * sizeof(char const *),
-                Scratch.Arena);
-            uint32_t CurrentPresentModeIndex;
-            for (uint32_t Index = 0; Index < PresentModeCount; ++Index)
+            if (gRHI->Swapchain.PresentMode == PresentModes[Index])
             {
-                if (gRHI->Swapchain.PresentMode == PresentModes[Index])
-                {
-                    CurrentPresentModeIndex = Index;
-                }
-                PresentModeStrings[Index] =
-                    Rr_GetPresentModeString(PresentModes[Index]);
+                CurrentPresentModeIndex = Index;
             }
-            if (Rr_UICombobox(
-                    "Present Mode",
-                    PresentModeCount,
-                    PresentModeStrings,
-                    &CurrentPresentModeIndex))
-            {
-                Rr_SetPresentMode(PresentModes[CurrentPresentModeIndex]);
-            }
-            Rr_UIInputUnsignedInt(
-                "Target Frame Rate",
-                &Rr_GetFrameTime()->TargetFrameRate);
-            Rr_UIInputUnsignedInt(
-                "Background Frame Rate",
-                &Rr_GetFrameTime()->BackgroundFrameRate);
-            {
-                static double SamplingFreq = 0.5;
-                static double LastSample = 0;
-                static double LastFPS = 0;
-                static uint64_t Frames = 0;
-                Frames++;
-                double Now = Rr_GetTimeSeconds();
-                if (Now - LastSample > SamplingFreq)
-                {
-                    LastFPS = (double)Frames / SamplingFreq;
-                    LastSample = Now;
-                    Frames = 0;
-                }
-                Rr_UITextF("FPS: %.2f", LastFPS);
-            }
-
-            double MainLoopMS =
-                (double)(Rr_GetFrameSectionTicks("Rr.MainLoop") * 1000) /
-                (double)Rr_GetPerformanceFrequency();
-            double IterateMS =
-                (double)(Rr_GetFrameSectionTicks("Rr.Iterate") * 1000) /
-                (double)Rr_GetPerformanceFrequency();
-            double FrameGraphMS =
-                (double)(Rr_GetFrameSectionTicks("Rr.FrameGraph") * 1000) /
-                (double)Rr_GetPerformanceFrequency();
-
-            Rr_UITextF(
-                "Main Loop: %.3fms\n"
-                "Iterate: %.3fms\n"
-                "Frame Graph: %.3fms",
-                MainLoopMS,
-                IterateMS,
-                FrameGraphMS);
-
-            if (gRHI->MainQueue.TimestampsEnabled)
-            {
-                Rr_UITextF("GPU: %.3fms", gRHI->LastFrameMS);
-            }
-            else
-            {
-                Rr_UITextF("GPU timestamps not supported!");
-            }
-
-            Rr_UIBeginHorizontal();
-
-            if (Rr_UIButton("Toggle Fullscreen"))
-            {
-                Rr_SetWindowFullscreen(!Rr_IsWindowFullscreen());
-            }
-
-            if (Rr_UIButton("Quit"))
-            {
-                Rr_Quit();
-            }
-
-            Rr_UIEndHorizontal();
+            PresentModeStrings[Index] =
+                Rr_GetPresentModeString(PresentModes[Index]);
         }
-        Rr_UIEndWindow();
-
-        if (Rr_UIBeginWindowEx("UI", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
+        if (Rr_UICombobox(
+                "Present Mode",
+                PresentModeCount,
+                PresentModeStrings,
+                &CurrentPresentModeIndex))
         {
-            Rr_UITextF(
-                "Vertices Capacity: %zu\n"
-                "Indices Capacity: %zu",
-                gUIContext->Vertices.Capacity,
-                gUIContext->Indices.Capacity);
-
-            double DrawWindowsMS =
-                (double)(Rr_GetFrameSectionTicks("Rr.UI.DrawWindows") * 1000) /
-                (double)Rr_GetPerformanceFrequency();
-            double DrawTextMS =
-                (double)(Rr_GetFrameSectionTicks("Rr.UI.DrawText") * 1000) /
-                (double)Rr_GetPerformanceFrequency();
-            double DrawInputTextMS =
-                (double)(Rr_GetFrameSectionTicks("Rr.UI.DrawInputText") *
-                         1000) /
-                (double)Rr_GetPerformanceFrequency();
-
-            Rr_UITextF(
-                "DrawWindows: %.3fms\n"
-                "DrawText: %.3fms\n"
-                "DrawInputText: %.3fms",
-                DrawWindowsMS,
-                DrawTextMS,
-                DrawInputTextMS);
-
-            Rr_UITextF(
-                "TextInputCursorBegin: %zu\n"
-                "TextInputCursorEnd: %zu\n"
-                "TextInputCodepointMaxCol: %zu",
-                gUIContext->TextInputCursorBegin,
-                gUIContext->TextInputCursorEnd,
-                gUIContext->TextInputCursorCodepointMaxCol);
-
-            Rr_UITextF(
-                "Hovered Window: %s\n"
-                "Click Parent: %s\n"
-                "Active Windows: %zu\n"
-                "Popup Window Open: %b",
-                gUIContext->HoveredWindow ? gUIContext->HoveredWindow->Title
-                                          : NULL,
-                gUIContext->ClickParent ? gUIContext->ClickParent->Title : NULL,
-                gUIContext->ActiveLayouts.Count,
-                gUIContext->PopupWindow.Open);
-
-            Rr_UITextF(
-                "Drag Parent: %s\n"
-                "Drag Hash: %zu\n"
-                "Drag Value Start: %.2f %.2f %.2f %.2f",
-                gUIContext->DragParent ? gUIContext->DragParent->Title : NULL,
-                gUIContext->DragParent ? gUIContext->DragHash : 0,
-                gUIContext->DragParent ? gUIContext->DragValueStart.Offset.X
-                                       : 0,
-                gUIContext->DragParent ? gUIContext->DragValueStart.Offset.Y
-                                       : 0,
-                gUIContext->DragParent ? gUIContext->DragValueStart.Extent.X
-                                       : 0,
-                gUIContext->DragParent ? gUIContext->DragValueStart.Extent.Y
-                                       : 0);
-
-            Rr_UICheckbox("Visualize Advances", &gUIContext->VisualizeAdvances);
+            Rr_SetPresentMode(PresentModes[CurrentPresentModeIndex]);
         }
-        Rr_UIEndWindow();
-
-        if (Rr_UIBeginWindowEx("RAM", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
+        Rr_UIInputUnsignedInt(
+            "Target Frame Rate",
+            &Rr_GetFrameTime()->TargetFrameRate);
+        Rr_UIInputUnsignedInt(
+            "Background Frame Rate",
+            &Rr_GetFrameTime()->BackgroundFrameRate);
         {
-            Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
-            Rr_UIDebugOverlayArena(
-                ThreadContext->PermanentArena,
-                "Main Thread Permanent");
-            Rr_UIDebugOverlayArena(
-                ThreadContext->ScratchArenas[0],
-                "Main Thread Scratch#0");
-            Rr_UIDebugOverlayArena(
-                ThreadContext->ScratchArenas[1],
-                "Main Thread Scratch#1");
-            for (uint32_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+            static double SamplingFreq = 0.5;
+            static double LastSample = 0;
+            static double LastFPS = 0;
+            static uint64_t Frames = 0;
+            Frames++;
+            double Now = Rr_GetTimeSeconds();
+            if (Now - LastSample > SamplingFreq)
             {
-                Rr_Frame *Frame = gRHI->Frames + Index;
-                char FrameString[64];
-                sprintf(FrameString, "Frame#%d", Index);
-                Rr_UIDebugOverlayArena(Frame->Arena, FrameString);
+                LastFPS = (double)Frames / SamplingFreq;
+                LastSample = Now;
+                Frames = 0;
             }
-            Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
+            Rr_UITextF("FPS: %.2f", LastFPS);
         }
-        Rr_UIEndWindow();
 
-        if (Rr_UIBeginWindowEx("VRAM", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
-        {
-            Rr_UIDebugOverlayAllocator(&gRHI->Allocator);
-        }
-        Rr_UIEndWindow();
+        double MainLoopMS =
+            (double)(Rr_GetFrameSectionTicks("Rr.MainLoop") * 1000) /
+            (double)Rr_GetPerformanceFrequency();
+        double IterateMS =
+            (double)(Rr_GetFrameSectionTicks("Rr.Iterate") * 1000) /
+            (double)Rr_GetPerformanceFrequency();
+        double FrameGraphMS =
+            (double)(Rr_GetFrameSectionTicks("Rr.FrameGraph") * 1000) /
+            (double)Rr_GetPerformanceFrequency();
 
-        if (Rr_UIBeginWindowEx("RHI", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
+        Rr_UITextF(
+            "Main Loop: %.3fms\n"
+            "Iterate: %.3fms\n"
+            "Frame Graph: %.3fms",
+            MainLoopMS,
+            IterateMS,
+            FrameGraphMS);
+
+        if (gRHI->MainQueue.TimestampsEnabled)
         {
-            Rr_UITextF("Frame: %zu", gRHI->FrameNumber);
-            Rr_UITextF(
-                "Images: %zu/%zu",
-                gRHI->Images.Count,
-                gRHI->Images.Capacity);
-            Rr_UITextF(
-                "Buffers: %zu/%zu",
-                gRHI->Buffers.Count,
-                gRHI->Buffers.Capacity);
-            Rr_UITextF(
-                "DescriptorSetLayouts: %zu/%zu",
-                gRHI->DescriptorSetLayoutStorage.Hive.Count,
-                gRHI->DescriptorSetLayoutStorage.Hive.Capacity);
-            Rr_UITextF("DescriptorPools: %d", gRHI->DescriptorPoolListCount);
-            Rr_UITextF(
-                "PipelineLayouts: %zu/%zu",
-                gRHI->PipelineLayoutStorage.Hive.Count,
-                gRHI->PipelineLayoutStorage.Hive.Capacity);
-            Rr_UITextF(
-                "ComputePipelines: %zu/%zu",
-                gRHI->ComputePipelines.Count,
-                gRHI->ComputePipelines.Capacity);
-            Rr_UITextF(
-                "GraphicsPipelines: %zu/%zu",
-                gRHI->GraphicsPipelines.Count,
-                gRHI->GraphicsPipelines.Capacity);
-            Rr_UITextF(
-                "Samplers: %zu/%zu",
-                gRHI->Samplers.Count,
-                gRHI->Samplers.Capacity);
-            Rr_UITextF(
-                "Render Passes: %zu/%zu",
-                gRHI->RenderPassMap.Count,
-                gRHI->RenderPassMap.Capacity);
-            Rr_UITextF(
-                "Framebuffers: %zu/%zu",
-                gRHI->FramebufferMap.Count,
-                gRHI->FramebufferMap.Capacity);
-            Rr_UITextF("SwapchainImages: %zu", gRHI->SwapchainImages.Count);
+            Rr_UITextF("GPU: %.3fms", gRHI->LastFrameMS);
         }
-        Rr_UIEndWindow();
+        else
+        {
+            Rr_UITextF("GPU timestamps not supported!");
+        }
+
+        Rr_UIBeginHorizontal();
+
+        if (Rr_UIButton("Toggle Fullscreen"))
+        {
+            Rr_SetWindowFullscreen(!Rr_IsWindowFullscreen());
+        }
+
+        if (Rr_UIButton("Quit"))
+        {
+            Rr_Quit();
+        }
+
+        Rr_UIEndHorizontal();
+    }
+    Rr_UIEndWindow();
+
+    if (Rr_UIBeginWindowEx("UI", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
+    {
+        Rr_UITextF(
+            "Vertices Capacity: %zu\n"
+            "Indices Capacity: %zu",
+            gUIContext->Vertices.Capacity,
+            gUIContext->Indices.Capacity);
+
+        double DrawWindowsMS =
+            (double)(Rr_GetFrameSectionTicks("Rr.UI.DrawWindows") * 1000) /
+            (double)Rr_GetPerformanceFrequency();
+        double DrawTextMS =
+            (double)(Rr_GetFrameSectionTicks("Rr.UI.DrawText") * 1000) /
+            (double)Rr_GetPerformanceFrequency();
+        double DrawInputTextMS =
+            (double)(Rr_GetFrameSectionTicks("Rr.UI.DrawInputText") * 1000) /
+            (double)Rr_GetPerformanceFrequency();
+
+        Rr_UITextF(
+            "DrawWindows: %.3fms\n"
+            "DrawText: %.3fms\n"
+            "DrawInputText: %.3fms",
+            DrawWindowsMS,
+            DrawTextMS,
+            DrawInputTextMS);
+
+        Rr_UITextF(
+            "TextInputCursorBegin: %zu\n"
+            "TextInputCursorEnd: %zu\n"
+            "TextInputCodepointMaxCol: %zu",
+            gUIContext->TextInputCursorBegin,
+            gUIContext->TextInputCursorEnd,
+            gUIContext->TextInputCursorCodepointMaxCol);
+
+        Rr_UITextF(
+            "Hovered Window: %s\n"
+            "Click Parent: %s\n"
+            "Active Windows: %zu\n"
+            "Popup Window Open: %b",
+            gUIContext->HoveredWindow ? gUIContext->HoveredWindow->Title : NULL,
+            gUIContext->ClickParent ? gUIContext->ClickParent->Title : NULL,
+            gUIContext->ActiveLayouts.Count,
+            gUIContext->PopupWindow.Open);
+
+        Rr_UITextF(
+            "Drag Parent: %s\n"
+            "Drag Hash: %zu\n"
+            "Drag Value Start: %.2f %.2f %.2f %.2f",
+            gUIContext->DragParent ? gUIContext->DragParent->Title : NULL,
+            gUIContext->DragParent ? gUIContext->DragHash : 0,
+            gUIContext->DragParent ? gUIContext->DragValueStart.Offset.X : 0,
+            gUIContext->DragParent ? gUIContext->DragValueStart.Offset.Y : 0,
+            gUIContext->DragParent ? gUIContext->DragValueStart.Extent.X : 0,
+            gUIContext->DragParent ? gUIContext->DragValueStart.Extent.Y : 0);
+
+        Rr_UICheckbox("Visualize Advances", &gUIContext->VisualizeAdvances);
+    }
+    Rr_UIEndWindow();
+
+    if (Rr_UIBeginWindowEx("RAM", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
+    {
+        Rr_ThreadContext *ThreadContext = Rr_GetThreadContext();
+        Rr_UIDebugOverlayArena(
+            ThreadContext->PermanentArena,
+            "Main Thread Permanent");
+        Rr_UIDebugOverlayArena(
+            ThreadContext->ScratchArenas[0],
+            "Main Thread Scratch#0");
+        Rr_UIDebugOverlayArena(
+            ThreadContext->ScratchArenas[1],
+            "Main Thread Scratch#1");
+        for (uint32_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
+        {
+            Rr_Frame *Frame = gRHI->Frames + Index;
+            char FrameString[64];
+            sprintf(FrameString, "Frame#%d", Index);
+            Rr_UIDebugOverlayArena(Frame->Arena, FrameString);
+        }
+        Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
+    }
+    Rr_UIEndWindow();
+
+    if (Rr_UIBeginWindowEx("VRAM", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
+    {
+        Rr_UIDebugOverlayAllocator(&gRHI->Allocator);
+    }
+    Rr_UIEndWindow();
+
+    if (Rr_UIBeginWindowEx("RHI", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
+    {
+        Rr_UITextF("Frame: %zu", gRHI->FrameNumber);
+        Rr_UITextF(
+            "Images: %zu/%zu",
+            gRHI->Images.Count,
+            gRHI->Images.Capacity);
+        Rr_UITextF(
+            "Buffers: %zu/%zu",
+            gRHI->Buffers.Count,
+            gRHI->Buffers.Capacity);
+        Rr_UITextF(
+            "DescriptorSetLayouts: %zu/%zu",
+            gRHI->DescriptorSetLayoutStorage.Hive.Count,
+            gRHI->DescriptorSetLayoutStorage.Hive.Capacity);
+        Rr_UITextF("DescriptorPools: %d", gRHI->DescriptorPoolListCount);
+        Rr_UITextF(
+            "PipelineLayouts: %zu/%zu",
+            gRHI->PipelineLayoutStorage.Hive.Count,
+            gRHI->PipelineLayoutStorage.Hive.Capacity);
+        Rr_UITextF(
+            "ComputePipelines: %zu/%zu",
+            gRHI->ComputePipelines.Count,
+            gRHI->ComputePipelines.Capacity);
+        Rr_UITextF(
+            "GraphicsPipelines: %zu/%zu",
+            gRHI->GraphicsPipelines.Count,
+            gRHI->GraphicsPipelines.Capacity);
+        Rr_UITextF(
+            "Samplers: %zu/%zu",
+            gRHI->Samplers.Count,
+            gRHI->Samplers.Capacity);
+        Rr_UITextF(
+            "Render Passes: %zu/%zu",
+            gRHI->RenderPassMap.Count,
+            gRHI->RenderPassMap.Capacity);
+        Rr_UITextF(
+            "Framebuffers: %zu/%zu",
+            gRHI->FramebufferMap.Count,
+            gRHI->FramebufferMap.Capacity);
+        Rr_UITextF("SwapchainImages: %zu", gRHI->SwapchainImages.Count);
     }
     Rr_UIEndWindow();
 
     Rr_DestroyScratch(Scratch);
+}
+
+void Rr_UIDebugOverlay(void)
+{
+    Rr_UIBeginDebugOverlayTabs();
+    Rr_UIEndDebugOverlayTabs();
+}
+
+void Rr_UIBeginDebugOverlayTabs(void)
+{
+    Rr_UIBeginWindowEx("Rr.UI.DebugOverlay", NULL, RR_UI_WINDOW_FLAGS_TABS_BIT);
+}
+
+void Rr_UIEndDebugOverlayTabs(void)
+{
+    Rr_UIDebugOverlayTabs();
+    Rr_UIEndWindow();
 }

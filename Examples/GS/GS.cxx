@@ -27,11 +27,7 @@ struct SCamera
 
     void UpdatePerspective(Rr_IntVec2 Size)
     {
-        ProjMatrix = Rr_Perspective_LH(
-            RR_ANGLE_DEG(FOVDegrees),
-            (float)Size.X / (float)Size.Y,
-            NEAR_PLANE,
-            FAR_PLANE);
+        ProjMatrix = Rr_Perspective_LH(RR_ANGLE_DEG(FOVDegrees), (float)Size.X / (float)Size.Y, NEAR_PLANE, FAR_PLANE);
 
         HTanY = tanf(RR_ANGLE_DEG(FOVDegrees) / 2.0f);
         HTanX = HTanY / (float)Size.Y * (float)Size.X;
@@ -95,8 +91,7 @@ struct SCamera
         Yaw = Rr_WrapMax(Yaw, 360.0f);
         Pitch = RR_CLAMP(-90.0f, Pitch, 90.0f);
 
-        Transform = Rr_Translate(Position) *
-                    Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
+        Transform = Rr_Translate(Position) * Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
                     Rr_Rotate_RH(RR_ANGLE_DEG(Pitch), Rr_V3(1.0f, 0.0f, 0.0f));
     }
 };
@@ -180,40 +175,18 @@ struct SGSApp
         UniformData.View = Camera.GetViewMatrix();
         UniformData.HFOVFocal = { Camera.HTanX, Camera.HTanY, Camera.FocalZ };
 
-        std::memcpy(
-            Rr_GetMappedBufferData(UniformBuffer),
-            &UniformData,
-            sizeof(SUniformData));
+        std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &UniformData, sizeof(SUniformData));
 
         Rr_ColorTarget ColorTarget = {
             .Image = ColorAttachment,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
         };
-        Rr_GraphNode *GraphicsNode =
-            Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, nullptr);
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, nullptr);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindUniformBuffer(
-            GraphicsNode,
-            UniformBuffer,
-            0,
-            0,
-            0,
-            sizeof(UniformData));
-        Rr_BindStorageBuffer(
-            GraphicsNode,
-            SplatsBuffer,
-            0,
-            1,
-            0,
-            sizeof(SGPUSplat) * AliveCount);
-        Rr_BindStorageBuffer(
-            GraphicsNode,
-            EntriesBuffer,
-            0,
-            2,
-            0,
-            sizeof(SGPUEntry) * AliveCount);
+        Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(UniformData));
+        Rr_BindStorageBuffer(GraphicsNode, SplatsBuffer, 0, 1, 0, sizeof(SGPUSplat) * AliveCount);
+        Rr_BindStorageBuffer(GraphicsNode, EntriesBuffer, 0, 2, 0, sizeof(SGPUEntry) * AliveCount);
         Rr_DrawIndirect(GraphicsNode, Sorter->SortList.IndirectBuffer, 0, 1, 0);
     }
 
@@ -280,37 +253,24 @@ struct SGSApp
         }
 
         std::uint64_t SplatsDataSize = sizeof(SGPUSplat) * AlignedCount;
-        SplatsBuffer =
-            Rr_CreateBuffer(SplatsDataSize, RR_BUFFER_FLAGS_STORAGE_BIT);
+        SplatsBuffer = Rr_CreateBuffer(SplatsDataSize, RR_BUFFER_FLAGS_STORAGE_BIT);
         {
-            Rr_Buffer *StagingBuffer = Rr_CreateBuffer(
-                SplatsDataSize,
-                RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
-            std::memcpy(
-                Rr_GetMappedBufferData(StagingBuffer),
-                GPUSplats.data(),
-                SplatsDataSize);
+            Rr_Buffer *StagingBuffer =
+                Rr_CreateBuffer(SplatsDataSize, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+            std::memcpy(Rr_GetMappedBufferData(StagingBuffer), GPUSplats.data(), SplatsDataSize);
 
             Rr_TransferNode *TransferNode = Rr_AddTransferNode(Rr_GetGraph());
-            Rr_TransferBufferData(
-                TransferNode,
-                SplatsDataSize,
-                StagingBuffer,
-                0,
-                SplatsBuffer,
-                0);
+            Rr_TransferBufferData(TransferNode, SplatsDataSize, StagingBuffer, 0, SplatsBuffer, 0);
 
             Rr_ReleaseBuffer(StagingBuffer);
         }
 
-        EntriesBuffer = Rr_CreateBuffer(
-            sizeof(SGPUEntry) * AlignedCount,
-            RR_BUFFER_FLAGS_STORAGE_BIT);
+        EntriesBuffer = Rr_CreateBuffer(sizeof(SGPUEntry) * AlignedCount, RR_BUFFER_FLAGS_STORAGE_BIT);
 
         UniformBuffer = Rr_CreateBuffer(
             sizeof(SUniformData),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-                RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
+                RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
     void Event(Rr_Event const *Event)
@@ -319,8 +279,7 @@ struct SGSApp
         {
             case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
             {
-                Camera.UpdatePerspective(
-                    Rr_GetImage2DExtent(Rr_GetSwapchainImage()));
+                Camera.UpdatePerspective(Rr_GetImage2DExtent(Rr_GetSwapchainImage()));
             }
             break;
             default:
