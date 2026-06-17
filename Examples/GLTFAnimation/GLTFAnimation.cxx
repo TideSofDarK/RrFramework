@@ -5,12 +5,8 @@
 #define CGLTF_IMPLEMENTATION
 #include "../../Vendor/cgltf/cgltf.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "../../Vendor/stb/stb_image.h"
-
 #include <algorithm>
-#include <cstdio>
-#include <cstring>
+#include <array>
 #include <vector>
 
 struct SOrbitCamera
@@ -20,7 +16,6 @@ struct SOrbitCamera
     float Yaw{};
     float Distance{ 10.0f };
     Rr_Vec3 Center{};
-
     Rr_Mat4 Transform{ Rr_M4D(1.0f) };
     Rr_Mat4 ProjMatrix{ Rr_M4D(1.0f) };
 
@@ -155,28 +150,30 @@ class CGLTFAnimation
     float AnimationEnd{};
     SGPUUniform GPUUniform;
     SOrbitCamera Camera;
+    std::vector<SNode> Nodes;
+    std::vector<Rr_Mat4> Bones;
+    std::vector<SGPUModel> Models;
 
     SMesh ParseGLTFMesh(cgltf_mesh *GLTFMesh, std::vector<SVertex> &OutVertices, std::vector<uint16_t> &OutIndices)
     {
-        SMesh Mesh = {};
+        auto Mesh = SMesh{};
         Mesh.Primitives.resize(GLTFMesh->primitives_count);
 
         for (size_t PrimitiveIndex = 0; PrimitiveIndex < GLTFMesh->primitives_count; ++PrimitiveIndex)
         {
-            cgltf_primitive *GLTFPrimitive = &GLTFMesh->primitives[PrimitiveIndex];
-            SPrimitive *Primitive = &Mesh.Primitives[PrimitiveIndex];
+            auto GLTFPrimitive = &GLTFMesh->primitives[PrimitiveIndex];
+            auto Primitive = &Mesh.Primitives[PrimitiveIndex];
 
-            cgltf_accessor const *PositionAccessor =
-                cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_position, 0);
+            auto PositionAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_position, 0);
             assert(PositionAccessor);
-            cgltf_accessor const *NormalAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_normal, 0);
+            auto NormalAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_normal, 0);
             assert(NormalAccessor);
-            cgltf_accessor const *JointsAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_joints, 0);
+            auto JointsAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_joints, 0);
             if (JointsAccessor)
             {
                 assert(JointsAccessor->type == cgltf_type_vec4);
             }
-            cgltf_accessor const *WeightsAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_weights, 0);
+            auto WeightsAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_weights, 0);
             if (WeightsAccessor)
             {
                 assert(WeightsAccessor->type == cgltf_type_vec4);
@@ -185,7 +182,7 @@ class CGLTFAnimation
             auto VertexCount = PositionAccessor->count;
             auto VertexOffset = OutVertices.size();
             OutVertices.resize(OutVertices.size() + VertexCount);
-            for (size_t Index = 0; Index < VertexCount; ++Index)
+            for (auto Index = 0; Index < VertexCount; ++Index)
             {
                 auto &Vertex = OutVertices.data()[VertexOffset + Index];
                 cgltf_accessor_read_float(PositionAccessor, Index, Vertex.Position.Elements, 3);
@@ -200,8 +197,8 @@ class CGLTFAnimation
                 }
             }
 
-            cgltf_accessor const *IndexAccessor = GLTFPrimitive->indices;
-            size_t FirstIndex = OutIndices.size();
+            auto IndexAccessor = GLTFPrimitive->indices;
+            auto FirstIndex = OutIndices.size();
             OutIndices.resize(OutIndices.size() + IndexAccessor->count);
             cgltf_accessor_unpack_indices(
                 IndexAccessor,
@@ -229,13 +226,14 @@ class CGLTFAnimation
         Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_ROBOT_GLB);
 
         cgltf_options Options = {};
-        cgltf_data *Data = NULL;
+        cgltf_data *Data = nullptr;
         cgltf_result Result = cgltf_parse(&Options, LoadedAsset.Data, LoadedAsset.Size, &Data);
         assert(Result == cgltf_result_success);
-        cgltf_load_buffers(&Options, Data, NULL);
+        cgltf_load_buffers(&Options, Data, nullptr);
 
         assert(Data->scene);
         assert(Data->meshes);
+        assert(Data->skins_count == 1);
 
         std::vector<SVertex> Vertices;
         std::vector<uint16_t> Indices;
@@ -267,13 +265,15 @@ class CGLTFAnimation
 
         CGLTFData = Data;
         CGLTFScene = Data->scene;
+
+        Nodes.resize(CGLTFData->nodes_count);
     }
 
     void InitDepthImage(void)
     {
         Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
 
-        if (DepthAttachment != NULL)
+        if (DepthAttachment != nullptr)
         {
             Rr_IntVec2 DepthImageSize = Rr_GetImage2DExtent(DepthAttachment);
 
@@ -350,13 +350,7 @@ class CGLTFAnimation
         return Transform;
     }
 
-    void DrawNode(
-        Rr_GraphNode *GraphicsNode,
-        cgltf_node *GLTFNode,
-        std::vector<SGPUModel> &Models,
-        std::vector<SNode> &Nodes,
-        std::vector<Rr_Mat4> &Bones,
-        Rr_Mat4 const &ParentTransform = Rr_M4D(1.0f))
+    void DrawNode(Rr_GraphNode *GraphicsNode, cgltf_node *GLTFNode, Rr_Mat4 const &ParentTransform = Rr_M4D(1.0f))
     {
         Rr_Mat4 Transform = Nodes[cgltf_node_index(CGLTFData, GLTFNode)].Transform;
 
@@ -398,11 +392,11 @@ class CGLTFAnimation
 
         for (auto Index = 0; Index < GLTFNode->children_count; ++Index)
         {
-            DrawNode(GraphicsNode, GLTFNode->children[Index], Models, Nodes, Bones, Transform);
+            DrawNode(GraphicsNode, GLTFNode->children[Index], Transform);
         }
     }
 
-    void UpdateAnimation(std::vector<SNode> &Nodes)
+    void UpdateAnimation()
     {
         if (AnimationTime > AnimationEnd)
         {
@@ -479,7 +473,7 @@ class CGLTFAnimation
         AnimationTime += Rr_GetDeltaSeconds();
     }
 
-    void ProcessNodes(cgltf_node *GLTFNode, std::vector<SNode> &Nodes, Rr_Mat4 const &ParentTransform = Rr_M4D(1.0f))
+    void ProcessNodes(cgltf_node *GLTFNode, Rr_Mat4 const &ParentTransform = Rr_M4D(1.0f))
     {
         auto &Node = Nodes[cgltf_node_index(CGLTFData, GLTFNode)];
 
@@ -501,33 +495,31 @@ class CGLTFAnimation
 
         for (auto Index = 0; Index < GLTFNode->children_count; ++Index)
         {
-            ProcessNodes(GLTFNode->children[Index], Nodes, Transform);
+            ProcessNodes(GLTFNode->children[Index], Transform);
         }
     }
 
 public:
     CGLTFAnimation()
     {
-        Rr_VertexInputAttribute VertexAttributes[] = {
-            { .Location = 0, .Format = RR_FORMAT_FLOAT3 },
-            { .Location = 1, .Format = RR_FORMAT_FLOAT3 },
-            { .Location = 2, .Format = RR_FORMAT_UINT4 },
-            { .Location = 3, .Format = RR_FORMAT_FLOAT4 },
+        std::array VertexAttributes = {
+            Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_FLOAT3 },
+            Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_FLOAT3 },
+            Rr_VertexInputAttribute{ .Location = 2, .Format = RR_FORMAT_UINT4 },
+            Rr_VertexInputAttribute{ .Location = 3, .Format = RR_FORMAT_FLOAT4 },
         };
 
-        Rr_VertexInputBinding VertexInputBindings[] = {
-            {
+        std::array VertexInputBindings = {
+            Rr_VertexInputBinding{
                 .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
-                .AttributeCount = std::size(VertexAttributes),
-                .Attributes = VertexAttributes,
+                .AttributeCount = VertexAttributes.size(),
+                .Attributes = VertexAttributes.data(),
             },
         };
 
-        Rr_ColorTargetInfo ColorTargets[1] = {
-            {
-                .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
-            },
-        };
+        std::array ColorTargets = { Rr_ColorTargetInfo{
+            .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
+        } };
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_GLTFANIMATION_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
@@ -544,10 +536,10 @@ public:
         Rr_GraphicsPipelineCreateInfo PipelineInfo = {
             .VertexShaderInfo = &VertexShaderInfo,
             .FragmentShaderInfo = &FragmentShaderInfo,
-            .VertexInputBindingCount = std::size(VertexInputBindings),
-            .VertexInputBindings = VertexInputBindings,
-            .ColorTargetCount = std::size(ColorTargets),
-            .ColorTargets = ColorTargets,
+            .VertexInputBindingCount = VertexInputBindings.size(),
+            .VertexInputBindings = VertexInputBindings.data(),
+            .ColorTargetCount = ColorTargets.size(),
+            .ColorTargets = ColorTargets.data(),
             .Rasterizer =
                 Rr_Rasterizer{
                     .CullMode = RR_CULL_MODE_BACK,
@@ -592,7 +584,7 @@ public:
     void Iterate()
     {
         Rr_UIBeginDebugOverlayTabs();
-        if (Rr_UIBeginWindowEx("GLTFAnimation.cxx", NULL, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
+        if (Rr_UIBeginWindowEx("GLTFAnimation.cxx", nullptr, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
         {
             Rr_UIText("This example demonstrates using cGLTF to load and\ndraw animated meshes.");
             Rr_UIInputFloat("Animation Time", &AnimationTime);
@@ -630,7 +622,7 @@ public:
             .Image = SwapchainImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
-            .Clear = (Rr_ColorClear){ { 0.03f, 0.03f, 0.04f, 1.0f } },
+            .Clear = Rr_ColorClear{ { 0.03f, 0.03f, 0.04f, 1.0f } },
         };
         Rr_DepthTarget DepthTarget = {
             .Image = DepthAttachment,
@@ -648,26 +640,19 @@ public:
         Rr_BindStorageBuffer(GraphicsNode, ModelBuffer, 1, 0, 0, Rr_GetBufferSize(ModelBuffer));
         Rr_BindStorageBuffer(GraphicsNode, SkinBuffer, 2, 0, 0, Rr_GetBufferSize(SkinBuffer));
 
-        static std::vector<SNode> Nodes;
-        Nodes.clear();
-        Nodes.resize(CGLTFData->nodes_count);
-        static std::vector<Rr_Mat4> Bones;
         Bones.clear();
-        static std::vector<SGPUModel> Models;
         Models.clear();
 
-        assert(CGLTFData->skins_count == 1);
-
-        UpdateAnimation(Nodes);
+        UpdateAnimation();
 
         for (auto Index = 0; Index < CGLTFScene->nodes_count; ++Index)
         {
-            ProcessNodes(CGLTFScene->nodes[Index], Nodes);
+            ProcessNodes(CGLTFScene->nodes[Index]);
         }
 
         for (auto Index = 0; Index < CGLTFScene->nodes_count; ++Index)
         {
-            DrawNode(GraphicsNode, CGLTFScene->nodes[Index], Models, Nodes, Bones);
+            DrawNode(GraphicsNode, CGLTFScene->nodes[Index]);
         }
 
         std::memcpy(Rr_GetMappedBufferData(ModelBuffer), Models.data(), sizeof(SGPUModel) * Models.size());
@@ -687,7 +672,7 @@ public:
 
 int main()
 {
-    static CGLTFAnimation *App;
+    static CGLTFAnimation *App{};
 
     Rr_Config Config = {
         .WindowTitle = "GLTFAnimation",
