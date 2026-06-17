@@ -24,9 +24,19 @@ layout(set = 1, binding = 0) readonly buffer UModels
     SGPUModel Models[];
 };
 
+layout(set = 3, binding = 0) uniform sampler2D ColorTexture;
+
 void main()
 {
-    float Dot = clamp(dot(InNormal, inverse(View)[2].xyz), 0.5, 1.0);
-    OutColor = Models[InInstanceIndex].Color;
+    vec4 Color = texture(ColorTexture, InUV);
+    if (Color.a < 0.5) discard;
+    vec3 ViewNormal = inverse(View)[2].xyz;
+    if (!gl_FrontFacing)
+    {
+        ViewNormal *= -1.0;
+    }
+    float Dot = clamp(dot(InNormal, ViewNormal), 0.5, 1.0);
+    OutColor.rgb = Models[InInstanceIndex].Color.rgb * Color.rgb;
     OutColor.rgb = OutColor.rgb * Dot;
+    OutColor.a = 1.0f;
 }

@@ -5,6 +5,9 @@
 #define CGLTF_IMPLEMENTATION
 #include "../../Vendor/cgltf/cgltf.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "../../Vendor/stb/stb_image.h"
+
 #include <algorithm>
 #include <array>
 #include <vector>
@@ -113,7 +116,9 @@ struct SGPUBone
 struct SVertex
 {
     Rr_Vec3 Position;
+    float TexCoordX;
     Rr_Vec3 Normal;
+    float TexCoordY;
     uint32_t BoneIndices[4];
     Rr_Vec4 BoneWeights;
 };
@@ -142,9 +147,15 @@ struct SNode
     bool Animated;
 };
 
+struct SMaterial
+{
+    Rr_Image2D *ColorTexture;
+};
+
 class CGLTFAnimation
 {
     Rr_GraphicsPipeline *GraphicsPipeline{};
+    Rr_Sampler *Sampler{};
     Rr_Image2D *DepthImage{};
     Rr_Buffer *UniformBuffer{};
     Rr_Buffer *ModelBuffer{};
@@ -155,6 +166,7 @@ class CGLTFAnimation
     cgltf_data *CGLTFData{};
     cgltf_scene *CGLTFScene{};
     std::vector<SMesh> Meshes;
+    std::vector<SMaterial> Materials;
     uint32_t AnimationIndex{};
     float AnimationTime{};
     float AnimationStart{};
@@ -179,6 +191,8 @@ class CGLTFAnimation
             assert(PositionAccessor);
             auto NormalAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_normal, 0);
             assert(NormalAccessor);
+            auto TexCoordAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_texcoord, 0);
+            assert(NormalAccessor);
             auto JointsAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_joints, 0);
             if (JointsAccessor)
             {
@@ -198,6 +212,13 @@ class CGLTFAnimation
                 auto &Vertex = OutVertices.data()[VertexOffset + Index];
                 cgltf_accessor_read_float(PositionAccessor, Index, Vertex.Position.Elements, 3);
                 cgltf_accessor_read_float(NormalAccessor, Index, Vertex.Normal.Elements, 3);
+                if (TexCoordAccessor)
+                {
+                    Rr_Vec2 TexCoord;
+                    cgltf_accessor_read_float(TexCoordAccessor, Index, TexCoord.Elements, 2);
+                    Vertex.TexCoordX = TexCoord.X;
+                    Vertex.TexCoordY = TexCoord.Y;
+                }
                 if (JointsAccessor)
                 {
                     cgltf_accessor_read_uint(JointsAccessor, Index, Vertex.BoneIndices, 4);
@@ -234,7 +255,7 @@ class CGLTFAnimation
 
     void InitGLTFScene(void)
     {
-        Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_ROBOT_GLB);
+        Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_WASP_GLB);
 
         cgltf_options Options = {};
         cgltf_data *Data = nullptr;
@@ -245,6 +266,50 @@ class CGLTFAnimation
         assert(Data->scene);
         assert(Data->meshes);
         assert(Data->skins_count == 1);
+
+        Materials.resize(Data->materials_count);
+        for (auto Index = 0; Index < Data->materials_count; ++Index)
+        {
+            auto &Material = Data->materials[Index];
+            if (Material.has_pbr_metallic_roughness && Material.pbr_metallic_roughness.base_color_texture.texture)
+            {
+                auto Texture = Material.pbr_metallic_roughness.base_color_texture.texture;
+
+                if (std::strcmp(Texture->image->mime_type, "image/png") != 0 &&
+                    std::strcmp(Texture->image->mime_type, "image/jpeg") != 0)
+                {
+                    assert(false);
+                }
+
+                int ImageWidth, ImageHeight, ImageChannels;
+                auto ImageData = (std::byte *)stbi_load_from_memory(
+                    (stbi_uc const *)Texture->image->buffer_view->buffer->data + Texture->image->buffer_view->offset,
+                    (int)Texture->image->buffer_view->size,
+                    &ImageWidth,
+                    &ImageHeight,
+                    &ImageChannels,
+                    4);
+                assert(ImageData);
+
+                auto ImageDataSize = ImageWidth * ImageHeight * ImageChannels;
+                auto StagingBuffer = Rr_CreateBuffer(ImageDataSize, RR_BUFFER_FLAGS_STAGING);
+                Rr_ReleaseBuffer(StagingBuffer);
+                std::memcpy(Rr_GetMappedBufferData(StagingBuffer), ImageData, ImageDataSize);
+
+                auto ColorTexture = Rr_CreateImage2D(
+                    Rr_IntV2(ImageWidth, ImageHeight),
+                    RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
+                    RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
+                Rr_CopyBufferToImage2D(
+                    Rr_GetGraph(),
+                    StagingBuffer,
+                    0,
+                    Rr_IntV2(ImageWidth, ImageHeight),
+                    ColorTexture,
+                    0);
+                Materials[Index].ColorTexture = ColorTexture;
+            }
+        }
 
         std::vector<SVertex> Vertices;
         std::vector<uint16_t> Indices;
@@ -371,6 +436,9 @@ class CGLTFAnimation
             auto &Mesh = Meshes[MeshIndex];
             for (auto Index = 0; Index < Mesh.Primitives.size(); ++Index)
             {
+                auto &GLTFPrimitive = GLTFNode->mesh->primitives[Index];
+                auto MaterialIndex = cgltf_material_index(CGLTFData, GLTFPrimitive.material);
+                Rr_BindCombinedImage2DSampler(GraphicsNode, Materials[MaterialIndex].ColorTexture, Sampler, 3, 0);
                 auto &Primitive = Mesh.Primitives[Index];
                 Rr_DrawIndexed(
                     GraphicsNode,
@@ -495,11 +563,16 @@ class CGLTFAnimation
 public:
     CGLTFAnimation()
     {
+        auto SamplerInfo = Rr_SamplerInfo{};
+        Sampler = Rr_CreateSampler(&SamplerInfo);
+
         std::array VertexAttributes = {
             Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_FLOAT3 },
-            Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_FLOAT3 },
-            Rr_VertexInputAttribute{ .Location = 2, .Format = RR_FORMAT_UINT4 },
-            Rr_VertexInputAttribute{ .Location = 3, .Format = RR_FORMAT_FLOAT4 },
+            Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_FLOAT },
+            Rr_VertexInputAttribute{ .Location = 2, .Format = RR_FORMAT_FLOAT3 },
+            Rr_VertexInputAttribute{ .Location = 3, .Format = RR_FORMAT_FLOAT },
+            Rr_VertexInputAttribute{ .Location = 4, .Format = RR_FORMAT_UINT4 },
+            Rr_VertexInputAttribute{ .Location = 5, .Format = RR_FORMAT_FLOAT4 },
         };
 
         std::array VertexInputBindings = {
@@ -537,7 +610,7 @@ public:
             .ColorTargets = ColorTargets.data(),
             .Rasterizer =
                 Rr_Rasterizer{
-                    .CullMode = RR_CULL_MODE_BACK,
+                    .CullMode = RR_CULL_MODE_NONE,
                     .FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE,
                 },
             .DepthStencil =
@@ -667,6 +740,16 @@ public:
 
     ~CGLTFAnimation()
     {
+        for (auto &Material : Materials)
+        {
+            if (!Material.ColorTexture)
+            {
+                continue;
+            }
+
+            Rr_ReleaseImage(Material.ColorTexture);
+        }
+        Rr_ReleaseSampler(Sampler);
         Rr_ReleaseBuffer(SkinBuffer);
         Rr_ReleaseBuffer(ModelBuffer);
         Rr_ReleaseBuffer(GeometryBuffer);

@@ -1,9 +1,11 @@
 #version 460
 
 layout(location = 0) in vec3 InPosition;
-layout(location = 1) in vec3 InNormal;
-layout(location = 2) in uvec4 InBoneIndices;
-layout(location = 3) in vec4 InBoneWeights;
+layout(location = 1) in float InTexCoordX;
+layout(location = 2) in vec3 InNormal;
+layout(location = 3) in float InTexCoordY;
+layout(location = 4) in uvec4 InBoneIndices;
+layout(location = 5) in vec4 InBoneWeights;
 
 layout(location = 0) out vec2 OutUV;
 layout(location = 1) out vec3 OutNormal;
@@ -54,4 +56,6 @@ void main()
     gl_Position = Projection * View * Model * Skin * Position;
     OutNormal = mat3(transpose(inverse(Model * Skin))) * InNormal;
     OutInstanceIndex = gl_InstanceIndex;
+    OutUV.x = InTexCoordX;
+    OutUV.y = InTexCoordY;
 }
