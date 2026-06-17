@@ -592,7 +592,7 @@ public:
         Rr_UIBeginDebugOverlayTabs();
         if (Rr_UIBeginWindowEx("GLTFAnimation.cxx", nullptr, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
         {
-            Rr_UIText("This example shows using cGLTF to load and\ndraw animated meshes.");
+            Rr_UIText("This example shows using cGLTF to load and draw animated meshes.");
             Rr_UIInputFloat("Animation Time", &AnimationTime);
             auto AnimationNames = std::vector<char const *>{};
             AnimationNames.reserve(CGLTFData->animations_count);
