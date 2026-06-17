@@ -43,32 +43,38 @@ struct SOrbitCamera
     void Update()
     {
         auto MouseDelta = Rr_GetMousePositionDelta();
+        auto MouseState = Rr_GetMouseState();
+        auto LeftButton = MouseState & RR_MOUSE_BUTTON_LEFT_BIT;
+        auto RightButton = MouseState & RR_MOUSE_BUTTON_RIGHT_BIT;
 
-        if (Rr_GetMouseState() & RR_MOUSE_BUTTON_RIGHT_BIT)
+        if (LeftButton || RightButton)
         {
-            Rr_SetRelativeMouseMode(true);
-
-            auto constexpr SENSITIVITY = 0.05f;
-            Distance += MouseDelta.Y * SENSITIVITY;
-        }
-        else if (Rr_GetMouseState() & RR_MOUSE_BUTTON_LEFT_BIT)
-        {
-            Rr_SetRelativeMouseMode(true);
-
-            if (Rr_IsScancodePressed(RR_SCANCODE_LSHIFT))
+            if (RightButton)
             {
-                auto constexpr SENSITIVITY = 0.0125f;
-                auto ForwardVector = GetForwardVector();
-                auto RightVector = GetRightVector();
-                auto UpVector = Rr_Cross(ForwardVector, RightVector);
-                Center += UpVector * MouseDelta.Y * SENSITIVITY;
-                Center -= RightVector * MouseDelta.X * SENSITIVITY;
+                Rr_SetRelativeMouseMode(true);
+
+                auto constexpr SENSITIVITY = 0.05f;
+                Distance += MouseDelta.Y * SENSITIVITY;
             }
-            else
+            if (LeftButton)
             {
-                auto constexpr SENSITIVITY = 0.005f;
-                Yaw -= MouseDelta.X * SENSITIVITY;
-                Pitch -= MouseDelta.Y * SENSITIVITY;
+                Rr_SetRelativeMouseMode(true);
+
+                if (Rr_IsScancodePressed(RR_SCANCODE_LSHIFT))
+                {
+                    auto constexpr SENSITIVITY = 0.0125f;
+                    auto ForwardVector = GetForwardVector();
+                    auto RightVector = GetRightVector();
+                    auto UpVector = Rr_Cross(ForwardVector, RightVector);
+                    Center += UpVector * MouseDelta.Y * SENSITIVITY;
+                    Center -= RightVector * MouseDelta.X * SENSITIVITY;
+                }
+                else
+                {
+                    auto constexpr SENSITIVITY = 0.005f;
+                    Yaw -= MouseDelta.X * SENSITIVITY;
+                    Pitch -= MouseDelta.Y * SENSITIVITY;
+                }
             }
         }
         else
@@ -134,7 +140,7 @@ struct SNode
 class CGLTFAnimation
 {
     Rr_GraphicsPipeline *GraphicsPipeline{};
-    Rr_Image2D *DepthAttachment{};
+    Rr_Image2D *DepthImage{};
     Rr_Buffer *UniformBuffer{};
     Rr_Buffer *ModelBuffer{};
     Rr_Buffer *SkinBuffer{};
@@ -273,19 +279,19 @@ class CGLTFAnimation
     {
         Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
 
-        if (DepthAttachment != nullptr)
+        if (DepthImage != nullptr)
         {
-            Rr_IntVec2 DepthImageSize = Rr_GetImage2DExtent(DepthAttachment);
+            Rr_IntVec2 DepthImageSize = Rr_GetImage2DExtent(DepthImage);
 
             if (DepthImageSize.X >= SwapchainSize.X && DepthImageSize.Y >= SwapchainSize.Y)
             {
                 return;
             }
 
-            Rr_ReleaseImage(DepthAttachment);
+            Rr_ReleaseImage(DepthImage);
         }
 
-        DepthAttachment = Rr_CreateImage2D(
+        DepthImage = Rr_CreateImage2D(
             Rr_IntV2(SwapchainSize.Width, SwapchainSize.Height),
             RR_IMAGE_FORMAT_D32_SFLOAT,
             RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
@@ -586,7 +592,7 @@ public:
         Rr_UIBeginDebugOverlayTabs();
         if (Rr_UIBeginWindowEx("GLTFAnimation.cxx", nullptr, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
         {
-            Rr_UIText("This example demonstrates using cGLTF to load and\ndraw animated meshes.");
+            Rr_UIText("This example shows using cGLTF to load and\ndraw animated meshes.");
             Rr_UIInputFloat("Animation Time", &AnimationTime);
             auto AnimationNames = std::vector<char const *>{};
             AnimationNames.reserve(CGLTFData->animations_count);
@@ -625,7 +631,7 @@ public:
             .Clear = Rr_ColorClear{ { 0.03f, 0.03f, 0.04f, 1.0f } },
         };
         Rr_DepthTarget DepthTarget = {
-            .Image = DepthAttachment,
+            .Image = DepthImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = {
@@ -664,7 +670,7 @@ public:
         Rr_ReleaseBuffer(SkinBuffer);
         Rr_ReleaseBuffer(ModelBuffer);
         Rr_ReleaseBuffer(GeometryBuffer);
-        Rr_ReleaseImage(DepthAttachment);
+        Rr_ReleaseImage(DepthImage);
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
     }

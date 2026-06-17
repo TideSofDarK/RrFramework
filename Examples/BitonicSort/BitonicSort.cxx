@@ -216,6 +216,12 @@ static void Init()
 
 static void Iterate()
 {
+    Rr_UIBeginDebugOverlayTabs();
+    Rr_UIBeginWindow("BitonicSort.cxx");
+    Rr_UIText("This example shows how to implement bitonic sorting on the GPU.");
+    Rr_UIEndWindow();
+    Rr_UIEndDebugOverlayTabs();
+
     Rr_Graph *Graph = Rr_GetGraph();
 
     /* Upload both sorted and unsorted buffers and validate results. */

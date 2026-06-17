@@ -200,9 +200,10 @@ struct CFixedTimestep
         auto Alpha = (float)Accumulator / (float)TargetDeltaTime;
         Draw(PreviousState.Lerp(Alpha, CurrentState), Rr_GetGraph());
 
+        Rr_UIBeginDebugOverlayTabs();
         Rr_UIBeginWindowEx("FixedTimestep.cxx", NULL, 0);
         Rr_UIText(
-            "This example demonstrates implementation of fixed "
+            "This example shows implementation of fixed "
             "timestep.\nOnly works if your render state can be interpolated.");
         Rr_UIInputFloat("Game Time", &GPUUniform.Time);
         float SystemSeconds = (double)(SystemTime - SystemTimeStart) / (double)Rr_GetPerformanceFrequency();
@@ -213,6 +214,7 @@ struct CFixedTimestep
             SetUpdateRate(UpdateRate);
         }
         Rr_UIEndWindow();
+        Rr_UIEndDebugOverlayTabs();
     }
 
     ~CFixedTimestep()

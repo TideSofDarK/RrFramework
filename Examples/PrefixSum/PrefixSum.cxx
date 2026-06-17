@@ -76,6 +76,12 @@ static void Init()
 
 static void Iterate()
 {
+    Rr_UIBeginDebugOverlayTabs();
+    Rr_UIBeginWindow("PrefixSum.cxx");
+    Rr_UIText("This example shows how to implement prefix sum algorithm on the GPU.");
+    Rr_UIEndWindow();
+    Rr_UIEndDebugOverlayTabs();
+
     Rr_Graph *Graph = Rr_GetGraph();
 
     size_t NumbersSize = COUNT * sizeof(uint32_t);

@@ -1620,8 +1620,8 @@ class CPBRRenderingApp
 
     void UI()
     {
-        Rr_UIDebugOverlay();
-        Rr_UIBeginWindowEx("PBRRendering.cxx", nullptr, 0);
+        Rr_UIBeginDebugOverlayTabs();
+        if (Rr_UIBeginWindowEx("PBRRendering.cxx", nullptr, 0))
         {
             if (Rr_UIBeginTree("General"))
             {
@@ -1644,6 +1644,7 @@ class CPBRRenderingApp
             Lighting.UI();
         }
         Rr_UIEndWindow();
+        Rr_UIEndDebugOverlayTabs();
     }
 
 public:

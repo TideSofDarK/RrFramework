@@ -179,12 +179,14 @@ struct SLayeredImageApp
 
     void Iterate()
     {
+        Rr_UIBeginDebugOverlayTabs();
         Rr_UIBeginWindowEx("LayeredImage.cxx", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
         Rr_UIText(
-            "This example demonstrates sampling of Rr_Image2DArray and "
+            "This example shows sampling of Rr_Image2DArray and "
             "Rr_Image3D objects.");
         Rr_UICheckbox("Use Image3D", &UseImage3D);
         Rr_UIEndWindow();
+        Rr_UIEndDebugOverlayTabs();
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
         Rr_IntVec2 SwapchainExtent = Rr_GetImage2DExtent(SwapchainImage);

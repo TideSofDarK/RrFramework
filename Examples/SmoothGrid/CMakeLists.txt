@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.28)
 project(SmoothGrid LANGUAGES CXX)
 
 add_executable(${PROJECT_NAME} SmoothGrid.cxx)
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_link_libraries(${PROJECT_NAME} PRIVATE RrFramework)
 
 file(GLOB_RECURSE RR_EXAMPLE_ASSETS CONFIGURE_DEPENDS

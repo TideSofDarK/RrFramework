@@ -95,7 +95,7 @@ struct SGPUUniform
     float GridBig;
 };
 
-struct SSmoothGridApp
+class CSmoothGrid
 {
     static constexpr Rr_ImageFormat DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
 
@@ -147,20 +147,32 @@ struct SSmoothGridApp
 
     void InitDepthImage()
     {
-        Rr_ReleaseImage(DepthImage);
         Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
+
+        if (DepthImage != nullptr)
+        {
+            Rr_IntVec2 DepthImageSize = Rr_GetImage2DExtent(DepthImage);
+
+            if (DepthImageSize.X >= SwapchainSize.X && DepthImageSize.Y >= SwapchainSize.Y)
+            {
+                return;
+            }
+
+            Rr_ReleaseImage(DepthImage);
+        }
+
         DepthImage = Rr_CreateImage2D(
-            { SwapchainSize.X, SwapchainSize.Y },
-            DEPTH_FORMAT,
-            RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT);
+            Rr_IntV2(SwapchainSize.Width, SwapchainSize.Height),
+            RR_IMAGE_FORMAT_D32_SFLOAT,
+            RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
     }
 
     void InitCamera()
     {
-        Camera.UpdatePerspective(Rr_GetImage2DExtent(Rr_GetSwapchainImage()));
     }
 
-    SSmoothGridApp()
+public:
+    CSmoothGrid()
     {
         InitCamera();
         InitPipeline();
@@ -187,13 +199,23 @@ struct SSmoothGridApp
 
     void Iterate()
     {
-        Rr_Graph *Graph = Rr_GetGraph();
+        Rr_UIBeginDebugOverlayTabs();
+        if (Rr_UIBeginWindow("SmoothGrid.cxx"))
+        {
+            Rr_UIText("This example shows drawing smooth grid using partial derivatives.");
+        }
+        Rr_UIEndWindow();
+        Rr_UIEndDebugOverlayTabs();
 
-        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
+        auto Graph = Rr_GetGraph();
 
+        auto SwapchainImage = Rr_GetSwapchainImage();
+        auto SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
+
+        Camera.UpdatePerspective(Rr_GetImage2DExtent(SwapchainImage));
         Camera.Update();
 
-        SGPUUniform Uniform = {
+        auto Uniform = SGPUUniform{
             .View = Camera.GetViewMatrix(),
             .InvView = Camera.Transform,
             .Projection = Camera.ProjMatrix,
@@ -205,26 +227,20 @@ struct SSmoothGridApp
         };
         std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &Uniform, sizeof(SGPUUniform));
 
-        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-
-        Rr_ColorClear ColorClear = {};
-        ColorClear.Vec4 = {
-            0.007f,
-            0.007f,
-            0.017f,
-            1.0f,
+        auto ColorClear = Rr_ColorClear{
+            .Vec4 = { 0.007f, 0.007f, 0.017f, 1.0f },
         };
-        Rr_ColorTarget ColorTarget = {
+        auto ColorTarget = Rr_ColorTarget{
             .Image = SwapchainImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
             .Clear = ColorClear,
         };
-        Rr_DepthTarget DepthTarget = {
+        auto DepthTarget = Rr_DepthTarget{
             .Image = DepthImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
-            .Clear = Rr_DepthClear(1.0f, 0),
+            .Clear = Rr_DepthClear{ 1.0f, 0 },
         };
         Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Graph, 1, &ColorTarget, &DepthTarget);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
@@ -232,7 +248,7 @@ struct SSmoothGridApp
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
     }
 
-    ~SSmoothGridApp()
+    ~CSmoothGrid()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleaseBuffer(UniformBuffer);
@@ -242,12 +258,12 @@ struct SSmoothGridApp
 
 int main()
 {
-    static SSmoothGridApp *App;
+    static CSmoothGrid *App{};
 
     Rr_Config Config = {
         .WindowTitle = "SmoothGrid",
         .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
-        .InitFunc = []() { App = new SSmoothGridApp(); },
+        .InitFunc = []() { App = new CSmoothGrid(); },
         .EventFunc = [](Rr_Event const *Event) { App->Event(Event); },
         .IterateFunc = []() { App->Iterate(); },
         .CleanupFunc = []() { delete App; },

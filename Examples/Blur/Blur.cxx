@@ -935,16 +935,16 @@ struct SBlurApp
 
     void Iterate()
     {
-        Rr_Graph *Graph = Rr_GetGraph();
-
+        Rr_UIBeginDebugOverlayTabs();
         Rr_UIBeginWindowEx("Blur.cxx", nullptr, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
         Rr_UIText(
-            "This example demonstrates various blur algorithms.\nYou can drop "
+            "This example shows various blur algorithms.\nYou can drop "
             "a PNG image into the window to blur it (works only with 2D "
             "algorithms).");
         Rr_UISeparator();
         std::array BlurTypes = { "Box 2D", "Kawase 2D", "Dual Kawase 2D", "Box Cube" };
         Rr_UICombobox("Mode", BlurTypes.size(), BlurTypes.data(), (std::uint32_t *)&Type);
+        Rr_Graph *Graph = Rr_GetGraph();
         Reblur(Graph);
         switch (Type)
         {
@@ -987,8 +987,8 @@ struct SBlurApp
             }
             break;
         }
-
         Rr_UIEndWindow();
+        Rr_UIEndDebugOverlayTabs();
     }
 
     void InitIntermediateImages()

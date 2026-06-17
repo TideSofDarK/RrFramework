@@ -868,10 +868,22 @@ struct SQuadTreeApp
 
     void Iterate()
     {
-        Rr_UIBeginWindowEx("QuadTree", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+        Rr_UIBeginDebugOverlayTabs();
+        Rr_UIBeginWindowEx("QuadTree.cxx", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
         {
-            Rr_UITextF("Regenerating: %d", Rebuilding);
-            if (Rr_UIButton("Regenerate Tree"))
+            Rr_UIText("This example shows using quad trees to\noptimize collision detection.");
+            if (Rebuilding)
+            {
+                auto DotCount = ((int)(Rr_GetTimeSeconds() * 5.0) % 4);
+                Rr_UITextF(
+                    "Regenerating tree%s",
+                    DotCount == 0   ? ""
+                    : DotCount == 1 ? "."
+                    : DotCount == 2 ? ".."
+                    : DotCount == 3 ? "..."
+                                    : "");
+            }
+            else if (Rr_UIButton("Regenerate Tree"))
             {
                 if (auto Lock = std::unique_lock(Mutex, std::try_to_lock))
                 {
@@ -895,6 +907,7 @@ struct SQuadTreeApp
             Rr_UIEndHorizontal();
         }
         Rr_UIEndWindow();
+        Rr_UIEndDebugOverlayTabs();
 
         Update();
         Render();

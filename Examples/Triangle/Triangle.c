@@ -66,6 +66,14 @@ static void Init(void)
 
 static void Iterate(void)
 {
+    Rr_UIBeginDebugOverlayTabs();
+    if(Rr_UIBeginWindow("Triangle.c"))
+    {
+        Rr_UIText("This example shows drawing a simple triangle.");
+    }
+    Rr_UIEndWindow();
+    Rr_UIEndDebugOverlayTabs();
+
     Rr_ColorTarget ColorTarget = {
         .Image = Rr_GetSwapchainImage(),
         .LoadOp = RR_LOAD_OP_CLEAR,

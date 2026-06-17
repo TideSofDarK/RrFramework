@@ -262,6 +262,20 @@ struct SPrerenderedDepthApp
 
     void Iterate()
     {
+        static Rr_Vec3 Position = Rr_V3(7.35889f, 4.0f, 6.92579f);
+        static Rr_Vec3 Rotation = Rr_V3(63.5593f - 90.0f, 46.6919f + 90.0f, 0.0f);
+
+        Rr_UIBeginDebugOverlayTabs();
+        Rr_UIBeginWindow("PrerenderedDepth.cxx");
+        Rr_UIText(
+            "This example shows how to implement "
+            "prerendered backgrounds.\nCamera is set to exactly match Blender "
+            "camera; otherwise, it won't render correctly.");
+        Rr_UIInputFloat3("Camera Position", Position.Elements);
+        Rr_UIInputFloat3("Camera Rotation", Rotation.Elements);
+        Rr_UIEndWindow();
+        Rr_UIEndDebugOverlayTabs();
+
         Rr_CopyImage2D(Rr_GetGraph(), BackgroundColorImage, { 0 }, ColorImage, { 0 }, BackgroundExtent, 0);
 
         Rr_CopyImage2D(Rr_GetGraph(), BackgroundDepthImage, { 0 }, DepthImage, { 0 }, BackgroundExtent, 0);
@@ -271,16 +285,6 @@ struct SPrerenderedDepthApp
 
                             Rr_Rotate_RH(Time * 3.0f, Rr_V3(0.0f, 1.0f, 0.0f)) * Rr_ScaleV(Rr_V3F(0.5f));
 
-        static Rr_Vec3 Position = Rr_V3(7.35889f, 4.0f, 6.92579f);
-        static Rr_Vec3 Rotation = Rr_V3(63.5593f - 90.0f, 46.6919f + 90.0f, 0.0f);
-        Rr_UIBeginWindow("PrerenderedDepth.cxx");
-        Rr_UIText(
-            "This example demonstrates how to implement "
-            "prerendered backgrounds.\nCamera is set to exactly match Blender "
-            "camera; otherwise, it won't render correctly.");
-        Rr_UIInputFloat3("Camera Position", Position.Elements);
-        Rr_UIInputFloat3("Camera Rotation", Rotation.Elements);
-        Rr_UIEndWindow();
         UniformData.View =
             Rr_EulerXYZ(Rr_V3(RR_ANGLE_DEG(Rotation.X), RR_ANGLE_DEG(Rotation.Y), RR_ANGLE_DEG(Rotation.Z))) *
             Rr_TranslateV(Position);

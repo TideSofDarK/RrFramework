@@ -161,35 +161,6 @@ struct SGSApp
 
     Rr_GraphicsPipeline *GraphicsPipeline{};
 
-    void Render(const SCamera &Camera, Rr_Image2D *ColorAttachment)
-    {
-        Sorter->Sort(
-            Camera.ProjMatrix * Camera.GetViewMatrix(),
-            sizeof(SGPUSplat) * AlignedCount,
-            SplatsBuffer,
-            sizeof(SGPUEntry) * AlignedCount,
-            EntriesBuffer);
-
-        SUniformData UniformData = {};
-        UniformData.Projection = Camera.ProjMatrix;
-        UniformData.View = Camera.GetViewMatrix();
-        UniformData.HFOVFocal = { Camera.HTanX, Camera.HTanY, Camera.FocalZ };
-
-        std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &UniformData, sizeof(SUniformData));
-
-        Rr_ColorTarget ColorTarget = {
-            .Image = ColorAttachment,
-            .LoadOp = RR_LOAD_OP_CLEAR,
-            .StoreOp = RR_STORE_OP_STORE,
-        };
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, nullptr);
-        Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(UniformData));
-        Rr_BindStorageBuffer(GraphicsNode, SplatsBuffer, 0, 1, 0, sizeof(SGPUSplat) * AliveCount);
-        Rr_BindStorageBuffer(GraphicsNode, EntriesBuffer, 0, 2, 0, sizeof(SGPUEntry) * AliveCount);
-        Rr_DrawIndirect(GraphicsNode, Sorter->SortList.IndirectBuffer, 0, 1, 0);
-    }
-
     SGSApp()
     {
         Camera.UpdatePerspective(Rr_GetImage2DExtent(Rr_GetSwapchainImage()));
@@ -289,11 +260,41 @@ struct SGSApp
 
     void Iterate()
     {
+        Rr_UIBeginDebugOverlayTabs();
+        Rr_UIBeginWindow("GS.cxx");
+        Rr_UIText("This example shows how to implement 3D Gaussian splatting.");
+        Rr_UIEndWindow();
+        Rr_UIEndDebugOverlayTabs();
+
         Camera.Update();
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
-        Render(Camera, SwapchainImage);
+        Sorter->Sort(
+            Camera.ProjMatrix * Camera.GetViewMatrix(),
+            sizeof(SGPUSplat) * AlignedCount,
+            SplatsBuffer,
+            sizeof(SGPUEntry) * AlignedCount,
+            EntriesBuffer);
+
+        SUniformData UniformData = {};
+        UniformData.Projection = Camera.ProjMatrix;
+        UniformData.View = Camera.GetViewMatrix();
+        UniformData.HFOVFocal = { Camera.HTanX, Camera.HTanY, Camera.FocalZ };
+
+        std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &UniformData, sizeof(SUniformData));
+
+        Rr_ColorTarget ColorTarget = {
+            .Image = SwapchainImage,
+            .LoadOp = RR_LOAD_OP_CLEAR,
+            .StoreOp = RR_STORE_OP_STORE,
+        };
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, nullptr);
+        Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
+        Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(UniformData));
+        Rr_BindStorageBuffer(GraphicsNode, SplatsBuffer, 0, 1, 0, sizeof(SGPUSplat) * AliveCount);
+        Rr_BindStorageBuffer(GraphicsNode, EntriesBuffer, 0, 2, 0, sizeof(SGPUEntry) * AliveCount);
+        Rr_DrawIndirect(GraphicsNode, Sorter->SortList.IndirectBuffer, 0, 1, 0);
     }
 
     ~SGSApp()

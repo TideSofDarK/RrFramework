@@ -72,10 +72,11 @@ struct SReadbackApp
 
         uint8_t *BufferData = reinterpret_cast<uint8_t *>(Rr_GetMappedBufferData(ReadbackBuffer));
 
-        Rr_UIBeginWindow("Readback.cxx");
+        Rr_UIBeginDebugOverlayTabs();
+        if (Rr_UIBeginWindow("Readback.cxx"))
         {
             Rr_UIText(
-                "This examples demonstrates copying an image into a\n"
+                "This examples shows copying an image into a\n"
                 "CPU-visible buffer and reading pixel color under the cursor.");
 
             Rr_Vec2 MousePosition = Rr_GetMousePosition();
@@ -98,6 +99,7 @@ struct SReadbackApp
             Rr_UIInputColor3("Pixel Color", PixelColor.Elements);
         }
         Rr_UIEndWindow();
+        Rr_UIEndDebugOverlayTabs();
     }
 
     void Cleanup()

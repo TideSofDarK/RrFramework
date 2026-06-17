@@ -20,7 +20,7 @@ struct SUniformData
     float Time;
 };
 
-static Rr_Image2D *DepthAttachment;
+static Rr_Image2D *DepthImage;
 static Rr_Buffer *UniformBuffer;
 static Rr_GraphicsPipeline *GraphicsPipeline;
 static Rr_Sampler *Sampler;
@@ -139,19 +139,19 @@ static void InitDepthImage(void)
 {
     Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
 
-    if (DepthAttachment != NULL)
+    if (DepthImage != NULL)
     {
-        Rr_IntVec2 DepthImageSize = Rr_GetImage2DExtent(DepthAttachment);
+        Rr_IntVec2 DepthImageSize = Rr_GetImage2DExtent(DepthImage);
 
         if (DepthImageSize.X >= SwapchainSize.X && DepthImageSize.Y >= SwapchainSize.Y)
         {
             return;
         }
 
-        Rr_ReleaseImage(DepthAttachment);
+        Rr_ReleaseImage(DepthImage);
     }
 
-    DepthAttachment = Rr_CreateImage2D(
+    DepthImage = Rr_CreateImage2D(
         (Rr_IntVec2){ SwapchainSize.Width, SwapchainSize.Height },
         RR_IMAGE_FORMAT_D32_SFLOAT,
         RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
@@ -240,9 +240,13 @@ static void Event(Rr_Event const *Event)
 
 static void Iterate(void)
 {
-    Rr_UIBeginWindowEx("GLTFCube.c", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
-    Rr_UIText("This example demonstrates using cGLTF to load and draw meshes.");
+    Rr_UIBeginDebugOverlayTabs();
+    if (Rr_UIBeginWindow("GLTFCube.c"))
+    {
+        Rr_UIText("This example shows using cGLTF to load and draw meshes.");
+    }
     Rr_UIEndWindow();
+    Rr_UIEndDebugOverlayTabs();
 
     Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
     Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
@@ -265,7 +269,7 @@ static void Iterate(void)
         .Clear = {
             .Depth = 1.0f,
         },
-        .Image = DepthAttachment,
+        .Image = DepthImage,
     };
     Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
     Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
@@ -281,7 +285,7 @@ static void Cleanup(void)
 {
     Rr_ReleaseBuffer(PrimitiveBuffer);
     Rr_ReleaseImage(PrimitiveTexture);
-    Rr_ReleaseImage(DepthAttachment);
+    Rr_ReleaseImage(DepthImage);
     Rr_ReleaseBuffer(UniformBuffer);
     Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
     Rr_ReleaseSampler(Sampler);

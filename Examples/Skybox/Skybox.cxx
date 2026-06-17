@@ -314,6 +314,12 @@ struct SSkyboxApp
 
     void Iterate()
     {
+        Rr_UIBeginDebugOverlayTabs();
+        Rr_UIBeginWindow("PrerenderedDepth.cxx");
+        Rr_UIText("This example shows how to load and sample a cube image.");
+        Rr_UIEndWindow();
+        Rr_UIEndDebugOverlayTabs();
+
         Rr_Graph *Graph = Rr_GetGraph();
 
         Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());

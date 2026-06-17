@@ -268,9 +268,10 @@ struct STransferThreadApp
 
     void Iterate()
     {
+        Rr_UIBeginDebugOverlayTabs();
         Rr_UIBeginWindowEx("TransferThread.cxx", nullptr, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
         Rr_UIText(
-            "This example demonstrates loading images from another "
+            "This example shows loading images from another "
             "thread.\nDrop PNG images here and worker thread will parse and "
             "upload them to the GPU.");
         if (Images.size() > 1)
@@ -287,6 +288,7 @@ struct STransferThreadApp
             Images.clear();
         }
         Rr_UIEndWindow();
+        Rr_UIEndDebugOverlayTabs();
 
         if (Thread.AcquireLoadedImages(Images))
         {
