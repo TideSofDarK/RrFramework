@@ -17,7 +17,6 @@ struct SGPUModel
 {
     mat4 Model;
     vec4 Color;
-    ivec4 Data;
 };
 
 layout(set = 1, binding = 0) readonly buffer UModels

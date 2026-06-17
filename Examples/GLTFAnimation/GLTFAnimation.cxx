@@ -101,7 +101,12 @@ struct SGPUModel
 {
     Rr_Mat4 Model;
     Rr_Vec4 Color;
-    Rr_IntVec4 Data;
+};
+
+struct SGPUBone
+{
+    Rr_Mat4 Transform;
+    Rr_Mat4 InverseBind;
 };
 
 #pragma pack(push, 1)
@@ -157,7 +162,7 @@ class CGLTFAnimation
     SGPUUniform GPUUniform;
     SOrbitCamera Camera;
     std::vector<SNode> Nodes;
-    std::vector<Rr_Mat4> Bones;
+    std::vector<SGPUBone> Bones;
     std::vector<SGPUModel> Models;
 
     SMesh ParseGLTFMesh(cgltf_mesh *GLTFMesh, std::vector<SVertex> &OutVertices, std::vector<uint16_t> &OutIndices)
@@ -374,24 +379,7 @@ class CGLTFAnimation
                     Primitive.FirstIndex,
                     Primitive.VertexOffset,
                     Models.size());
-                Models.emplace_back(Transform, Primitive.Color, Rr_IntV4(Bones.size() / 64, 1, 1, 1));
-            }
-        }
-
-        auto Skin = GLTFNode->skin;
-        if (Skin)
-        {
-            auto FirstJoint = Bones.size();
-            Bones.resize(Bones.size() + 64);
-            for (auto Index = 0; Index < Skin->joints_count; ++Index)
-            {
-                auto JointNode = Skin->joints[Index];
-                auto JointNodeIndex = cgltf_node_index(CGLTFData, JointNode);
-
-                Rr_Mat4 InverseBind;
-                cgltf_accessor_read_float(Skin->inverse_bind_matrices, Index, &InverseBind.Elements[0][0], 16);
-                auto BoneMatrix = Rr_InvGeneralM4(Transform) * Nodes[JointNodeIndex].Transform * InverseBind;
-                Bones[FirstJoint + Index] = BoneMatrix;
+                Models.emplace_back(Transform, Primitive.Color);
             }
         }
 
@@ -522,9 +510,11 @@ public:
             },
         };
 
-        std::array ColorTargets = { Rr_ColorTargetInfo{
-            .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
-        } };
+        std::array ColorTargets = {
+            Rr_ColorTargetInfo{
+                .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
+            },
+        };
 
         Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_GLTFANIMATION_VERT_SPV);
         Rr_ShaderInfo VertexShaderInfo = {
@@ -655,13 +645,24 @@ public:
             ProcessNodes(CGLTFScene->nodes[Index]);
         }
 
+        auto Skin = CGLTFData->skins;
+        Bones.resize(Skin->joints_count);
+        for (auto Index = 0; Index < Skin->joints_count; ++Index)
+        {
+            auto JointNode = Skin->joints[Index];
+            auto JointNodeIndex = cgltf_node_index(CGLTFData, JointNode);
+
+            cgltf_accessor_read_float(Skin->inverse_bind_matrices, Index, &Bones[Index].InverseBind[0][0], 16);
+            Bones[Index].Transform = Nodes[JointNodeIndex].Transform;
+        }
+
         for (auto Index = 0; Index < CGLTFScene->nodes_count; ++Index)
         {
             DrawNode(GraphicsNode, CGLTFScene->nodes[Index]);
         }
 
         std::memcpy(Rr_GetMappedBufferData(ModelBuffer), Models.data(), sizeof(SGPUModel) * Models.size());
-        std::memcpy(Rr_GetMappedBufferData(SkinBuffer), Bones.data(), sizeof(Rr_Mat4) * Bones.size());
+        std::memcpy(Rr_GetMappedBufferData(SkinBuffer), Bones.data(), sizeof(SGPUBone) * Bones.size());
     }
 
     ~CGLTFAnimation()

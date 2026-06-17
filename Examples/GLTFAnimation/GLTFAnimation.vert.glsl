@@ -20,7 +20,6 @@ struct SGPUModel
 {
     mat4 Model;
     vec4 Color;
-    ivec4 Data;
 };
 
 layout(set = 1, binding = 0) readonly buffer UModels
@@ -28,20 +27,30 @@ layout(set = 1, binding = 0) readonly buffer UModels
     SGPUModel Models[];
 };
 
+struct SGPUBone
+{
+    mat4 Transform;
+    mat4 InverseBind;
+};
+
 layout(set = 2, binding = 0) readonly buffer UBones
 {
-    mat4 Bones[];
+    SGPUBone Bones[];
 };
 
 void main()
 {
     vec4 Position = vec4(InPosition, 1.0);
     mat4 Model = Models[gl_InstanceIndex].Model;
-    int Offset = Models[gl_InstanceIndex].Data.x * 64;
-    mat4 Skin = InBoneWeights.x * Bones[InBoneIndices.x + Offset] +
-            InBoneWeights.y * Bones[InBoneIndices.y + Offset] +
-            InBoneWeights.z * Bones[InBoneIndices.z + Offset] +
-            InBoneWeights.w * Bones[InBoneIndices.w + Offset];
+    mat4 InvModel = inverse(Model);
+    SGPUBone Bone0 = Bones[InBoneIndices.x];
+    SGPUBone Bone1 = Bones[InBoneIndices.y];
+    SGPUBone Bone2 = Bones[InBoneIndices.z];
+    SGPUBone Bone3 = Bones[InBoneIndices.w];
+    mat4 Skin = InBoneWeights.x * (InvModel * Bone0.Transform * Bone0.InverseBind) +
+            InBoneWeights.y * (InvModel * Bone1.Transform * Bone1.InverseBind) +
+            InBoneWeights.z * (InvModel * Bone2.Transform * Bone2.InverseBind) +
+            InBoneWeights.w * (InvModel * Bone3.Transform * Bone3.InverseBind);
     gl_Position = Projection * View * Model * Skin * Position;
     OutNormal = mat3(transpose(inverse(Model * Skin))) * InNormal;
     OutInstanceIndex = gl_InstanceIndex;
