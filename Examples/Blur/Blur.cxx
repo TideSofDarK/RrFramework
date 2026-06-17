@@ -93,7 +93,7 @@ struct SCamera
         Yaw = Rr_WrapMax(Yaw, 360.0f);
         Pitch = RR_CLAMP(-90.0f, Pitch, 90.0f);
 
-        Transform = Rr_Translate(Position) * Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
+        Transform = Rr_TranslateV(Position) * Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
                     Rr_Rotate_RH(RR_ANGLE_DEG(Pitch), Rr_V3(1.0f, 0.0f, 0.0f));
     }
 };

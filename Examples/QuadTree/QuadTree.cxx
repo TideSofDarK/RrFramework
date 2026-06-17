@@ -792,7 +792,7 @@ struct SQuadTreeApp
         float Bottom = -SwapchainSize.Y / 2.0f * CameraZoom;
         float Top = SwapchainSize.Y / 2.0f * CameraZoom;
         CameraProjection = Rr_Orthographic_RH(Left, Right, Bottom, Top, -1, 1);
-        CameraView = Rr_Translate({ CameraPosition.X, CameraPosition.Y, 0.0f });
+        CameraView = Rr_TranslateV({ CameraPosition.X, CameraPosition.Y, 0.0f });
         UniformData.ViewProjection = CameraProjection * CameraView;
         UniformData.Time = Rr_GetTimeSeconds();
 

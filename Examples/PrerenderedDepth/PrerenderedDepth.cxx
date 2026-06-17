@@ -267,9 +267,9 @@ struct SPrerenderedDepthApp
         Rr_CopyImage2D(Rr_GetGraph(), BackgroundDepthImage, { 0 }, DepthImage, { 0 }, BackgroundExtent, 0);
 
         float Time = Rr_GetTimeSeconds() * 1.5f;
-        UniformData.Model = Rr_Translate(Rr_V3(cosf(Time) * 3.5f - 1.0f, 0.0f, sinf(Time) * 3.0f)) *
+        UniformData.Model = Rr_TranslateV(Rr_V3(cosf(Time) * 3.5f - 1.0f, 0.0f, sinf(Time) * 3.0f)) *
 
-                            Rr_Rotate_RH(Time * 3.0f, Rr_V3(0.0f, 1.0f, 0.0f)) * Rr_Scale(Rr_V3F(0.5f));
+                            Rr_Rotate_RH(Time * 3.0f, Rr_V3(0.0f, 1.0f, 0.0f)) * Rr_ScaleV(Rr_V3F(0.5f));
 
         static Rr_Vec3 Position = Rr_V3(7.35889f, 4.0f, 6.92579f);
         static Rr_Vec3 Rotation = Rr_V3(63.5593f - 90.0f, 46.6919f + 90.0f, 0.0f);
@@ -283,7 +283,7 @@ struct SPrerenderedDepthApp
         Rr_UIEndWindow();
         UniformData.View =
             Rr_EulerXYZ(Rr_V3(RR_ANGLE_DEG(Rotation.X), RR_ANGLE_DEG(Rotation.Y), RR_ANGLE_DEG(Rotation.Z))) *
-            Rr_Translate(Position);
+            Rr_TranslateV(Position);
         UniformData.Projection =
             Rr_Perspective_RH(RR_ANGLE_DEG(25.48), (float)BackgroundExtent.X / (float)BackgroundExtent.Y, 0.5f, 50.0f);
         UniformData.Near = 0.5f;

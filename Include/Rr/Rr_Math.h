@@ -2239,17 +2239,7 @@ static inline Rr_Mat4 Rr_InvPerspective_LH(Rr_Mat4 PerspectiveMatrix)
     return Result;
 }
 
-static inline Rr_Mat4 Rr_Translate(Rr_Vec3 Translation)
-{
-    Rr_Mat4 Result = Rr_M4D(1.0f);
-    Result.Elements[3][0] = Translation.X;
-    Result.Elements[3][1] = Translation.Y;
-    Result.Elements[3][2] = Translation.Z;
-
-    return Result;
-}
-
-static inline Rr_Mat4 Rr_TranslateV(float X, float Y, float Z)
+static inline Rr_Mat4 Rr_Translate(float X, float Y, float Z)
 {
     Rr_Mat4 Result = Rr_M4D(1.0f);
     Result.Elements[3][0] = X;
@@ -2257,6 +2247,11 @@ static inline Rr_Mat4 Rr_TranslateV(float X, float Y, float Z)
     Result.Elements[3][2] = Z;
 
     return Result;
+}
+
+static inline Rr_Mat4 Rr_TranslateV(Rr_Vec3 Translation)
+{
+    return Rr_Translate(Translation.X, Translation.Y, Translation.Z);
 }
 
 static inline Rr_Mat4 Rr_InvTranslate(Rr_Mat4 TranslationMatrix)
@@ -2305,17 +2300,7 @@ static inline Rr_Mat4 Rr_InvRotate(Rr_Mat4 RotationMatrix)
     return Rr_TransposeM4(RotationMatrix);
 }
 
-static inline Rr_Mat4 Rr_Scale(Rr_Vec3 Scale)
-{
-    Rr_Mat4 Result = Rr_M4D(1.0f);
-    Result.Elements[0][0] = Scale.X;
-    Result.Elements[1][1] = Scale.Y;
-    Result.Elements[2][2] = Scale.Z;
-
-    return Result;
-}
-
-static inline Rr_Mat4 Rr_ScaleV(float X, float Y, float Z)
+static inline Rr_Mat4 Rr_Scale(float X, float Y, float Z)
 {
     Rr_Mat4 Result = Rr_M4D(1.0f);
     Result.Elements[0][0] = X;
@@ -2323,6 +2308,11 @@ static inline Rr_Mat4 Rr_ScaleV(float X, float Y, float Z)
     Result.Elements[2][2] = Z;
 
     return Result;
+}
+
+static inline Rr_Mat4 Rr_ScaleV(Rr_Vec3 Scale)
+{
+    return Rr_Scale(Scale.X, Scale.Y, Scale.Z);
 }
 
 static inline Rr_Mat4 Rr_InvScale(Rr_Mat4 ScaleMatrix)

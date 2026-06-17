@@ -149,7 +149,8 @@ struct CFixedTimestep
             SwapchainExtentF.Y / 2.0f,
             -1.0f,
             1.0f);
-        GPUUniform.Model = Rr_Translate(Rr_V3V(State.ImagePosition, 0)) * Rr_Scale(Rr_CastV3(Rr_GetImageExtent(Image)));
+        GPUUniform.Model =
+            Rr_TranslateV(Rr_V3V(State.ImagePosition, 0)) * Rr_ScaleV(Rr_CastV3(Rr_GetImageExtent(Image)));
         float GameTimeSeconds = (double)GameTime / (double)Rr_GetPerformanceFrequency();
         GPUUniform.Time = GameTimeSeconds;
         GPUUniform.Aspect = Rr_GetImage2DAspect(SwapchainImage);

@@ -138,7 +138,7 @@ struct SCamera
         Yaw = Rr_WrapMax(Yaw, 360.0f);
         Pitch = RR_CLAMP(-90.0f, Pitch, 90.0f);
 
-        Transform = Rr_Translate(Position) * Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
+        Transform = Rr_TranslateV(Position) * Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
                     Rr_Rotate_RH(RR_ANGLE_DEG(Pitch), Rr_V3(1.0f, 0.0f, 0.0f));
     }
 };
@@ -442,7 +442,7 @@ public:
                         Node->translation[1],
                         Node->translation[2],
                     };
-                    Transform = Transform * Rr_Translate(Translation);
+                    Transform = Transform * Rr_TranslateV(Translation);
                 }
                 if (Node->has_rotation)
                 {
@@ -461,7 +461,7 @@ public:
                         Node->scale[1],
                         Node->scale[2],
                     };
-                    Transform = Transform * Rr_Scale(Scale);
+                    Transform = Transform * Rr_ScaleV(Scale);
                 }
             }
             Models.emplace_back(Transform);

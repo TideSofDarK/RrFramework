@@ -27,7 +27,7 @@ layout(set = 1, binding = 0) readonly buffer UModels
 
 void main()
 {
-    float Dot = clamp(dot(InNormal, View[2].xyz), 0.5, 1.0);
+    float Dot = clamp(dot(InNormal, inverse(View)[2].xyz), 0.5, 1.0);
     OutColor = Models[InInstanceIndex].Color;
     OutColor.rgb = OutColor.rgb * Dot;
 }
