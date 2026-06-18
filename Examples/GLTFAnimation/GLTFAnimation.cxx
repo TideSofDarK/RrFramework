@@ -12,7 +12,7 @@
 #include <array>
 #include <vector>
 
-struct SOrbitCamera
+class COrbitCamera
 {
     float FieldOfView{ RR_ANGLE_DEG(70) };
     float Pitch{};
@@ -21,6 +21,12 @@ struct SOrbitCamera
     Rr_Vec3 Center{};
     Rr_Mat4 Transform{ Rr_M4D(1.0f) };
     Rr_Mat4 ProjMatrix{ Rr_M4D(1.0f) };
+
+public:
+    Rr_Mat4 GetProjectionMatrix() const
+    {
+        return ProjMatrix;
+    }
 
     Rr_Mat4 GetViewMatrix() const
     {
@@ -172,7 +178,7 @@ class CGLTFAnimation
     float AnimationStart{};
     float AnimationEnd{};
     SGPUUniform GPUUniform;
-    SOrbitCamera Camera;
+    COrbitCamera Camera;
     std::vector<SNode> Nodes;
     std::vector<SGPUBone> Bones;
     std::vector<SGPUModel> Models;
@@ -257,9 +263,9 @@ class CGLTFAnimation
     {
         Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_WASP_GLB);
 
-        cgltf_options Options = {};
+        auto Options = cgltf_options{};
         cgltf_data *Data = nullptr;
-        cgltf_result Result = cgltf_parse(&Options, LoadedAsset.Data, LoadedAsset.Size, &Data);
+        auto Result = cgltf_parse(&Options, LoadedAsset.Data, LoadedAsset.Size, &Data);
         assert(Result == cgltf_result_success);
         cgltf_load_buffers(&Options, Data, nullptr);
 
@@ -295,6 +301,7 @@ class CGLTFAnimation
                 auto StagingBuffer = Rr_CreateBuffer(ImageDataSize, RR_BUFFER_FLAGS_STAGING);
                 Rr_ReleaseBuffer(StagingBuffer);
                 std::memcpy(Rr_GetMappedBufferData(StagingBuffer), ImageData, ImageDataSize);
+                stbi_image_free(ImageData);
 
                 auto ColorTexture = Rr_CreateImage2D(
                     Rr_IntV2(ImageWidth, ImageHeight),
@@ -323,21 +330,21 @@ class CGLTFAnimation
             Meshes.push_back(ParseGLTFMesh(Mesh, Vertices, Indices));
         }
 
-        size_t VertexDataSize = Vertices.size() * sizeof(SVertex);
-        size_t IndexDataSize = Indices.size() * sizeof(uint16_t);
-        size_t TotalSize = VertexDataSize + IndexDataSize;
-        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_STAGING);
+        auto VertexDataSize = Vertices.size() * sizeof(SVertex);
+        auto IndexDataSize = Indices.size() * sizeof(uint16_t);
+        auto TotalSize = VertexDataSize + IndexDataSize;
+        auto StagingBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_STAGING);
         Rr_ReleaseBuffer(StagingBuffer);
-        std::byte *StagingData = (std::byte *)Rr_GetMappedBufferData(StagingBuffer);
-        SVertex *StagingVertices = (SVertex *)StagingData;
-        uint16_t *StagingIndices = (uint16_t *)(StagingData + VertexDataSize);
+        auto StagingData = (std::byte *)Rr_GetMappedBufferData(StagingBuffer);
+        auto StagingVertices = (SVertex *)StagingData;
+        auto StagingIndices = (uint16_t *)(StagingData + VertexDataSize);
         std::memcpy(StagingVertices, Vertices.data(), VertexDataSize);
         std::memcpy(StagingIndices, Indices.data(), IndexDataSize);
 
         GeometryBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_VERTEX_BIT);
         GeometryBufferIndexOffset = VertexDataSize;
-        Rr_TransferNode *Node = Rr_AddTransferNode(Rr_GetGraph());
-        Rr_TransferBufferData(Node, TotalSize, StagingBuffer, 0, GeometryBuffer, 0);
+        auto TransferNode = Rr_AddTransferNode(Rr_GetGraph());
+        Rr_TransferBufferData(TransferNode, TotalSize, StagingBuffer, 0, GeometryBuffer, 0);
 
         CGLTFData = Data;
         CGLTFScene = Data->scene;
@@ -563,7 +570,10 @@ class CGLTFAnimation
 public:
     CGLTFAnimation()
     {
-        auto SamplerInfo = Rr_SamplerInfo{};
+        auto SamplerInfo = Rr_SamplerInfo{
+            .MagFilter = RR_FILTER_LINEAR,
+            .MinFilter = RR_FILTER_LINEAR,
+        };
         Sampler = Rr_CreateSampler(&SamplerInfo);
 
         std::array VertexAttributes = {
@@ -642,6 +652,7 @@ public:
             case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
             {
                 InitDepthImage();
+
                 return;
             }
             default:
@@ -675,32 +686,29 @@ public:
         Rr_UIEndDebugOverlayTabs();
 
         auto SwapchainImage = Rr_GetSwapchainImage();
-        auto SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
         auto SwapchainAspect = Rr_GetImage2DAspect(SwapchainImage);
 
         Camera.UpdatePerspective(SwapchainAspect);
         Camera.Update();
 
         GPUUniform.View = Camera.GetViewMatrix();
-        GPUUniform.Projection = Camera.ProjMatrix;
+        GPUUniform.Projection = Camera.GetProjectionMatrix();
         GPUUniform.Time = (float)Rr_GetTimeSeconds();
         memcpy(Rr_GetMappedBufferData(UniformBuffer), &GPUUniform, sizeof(GPUUniform));
 
-        Rr_ColorTarget ColorTarget = {
+        auto ColorTarget = Rr_ColorTarget{
             .Image = SwapchainImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
-            .Clear = Rr_ColorClear{ { 0.03f, 0.03f, 0.04f, 1.0f } },
+            .Clear = { Rr_V4(0.03f, 0.03f, 0.04f, 1.0f) },
         };
-        Rr_DepthTarget DepthTarget = {
+        auto DepthTarget = Rr_DepthTarget{
             .Image = DepthImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
-            .Clear = {
-                .Depth = 1.0f,
-            },
+            .Clear = Rr_DepthClear{ 1.0f, 0 },
         };
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
+        auto GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindVertexBuffer(GraphicsNode, GeometryBuffer, 0, 0);
         Rr_BindIndexBuffer(GraphicsNode, GeometryBuffer, 0, GeometryBufferIndexOffset, RR_INDEX_TYPE_UINT16);

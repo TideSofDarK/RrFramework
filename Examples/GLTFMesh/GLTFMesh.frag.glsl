@@ -5,7 +5,7 @@ layout(location = 1) in vec3 InNormal;
 
 layout(location = 0) out vec4 OutColor;
 
-layout(set = 0, binding = 0) uniform Globals
+layout(set = 0, binding = 0) uniform UGlobals
 {
     mat4 Model;
     mat4 View;

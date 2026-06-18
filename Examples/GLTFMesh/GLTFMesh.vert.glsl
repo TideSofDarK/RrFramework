@@ -7,7 +7,7 @@ layout(location = 2) in vec3 InNormal;
 layout(location = 0) out vec2 OutUV;
 layout(location = 1) out vec3 OutNormal;
 
-layout(set = 0, binding = 0) uniform Globals
+layout(set = 0, binding = 0) uniform UGlobals
 {
     mat4 Model;
     mat4 View;
