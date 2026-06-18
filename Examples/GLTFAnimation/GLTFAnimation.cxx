@@ -259,7 +259,7 @@ class CGLTFAnimationApp
 
     void InitGLTFScene(void)
     {
-        Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_WASP_GLB);
+        auto LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_WASP_GLB);
 
         auto Options = cgltf_options{};
         cgltf_data *Data = nullptr;
@@ -758,7 +758,7 @@ int main()
 {
     static CGLTFAnimationApp *App{};
 
-    Rr_Config Config = {
+    auto Config = Rr_Config{
         .WindowTitle = "GLTFAnimation",
         .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
         .InitFunc = []() { App = new CGLTFAnimationApp(); },

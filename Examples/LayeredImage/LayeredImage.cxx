@@ -243,7 +243,7 @@ int main()
 {
     static CLayeredImageApp *App{};
 
-    Rr_Config Config = {
+    auto Config = Rr_Config{
         .WindowTitle = "LayeredImage",
         .InitFunc = []() { App = new CLayeredImageApp(); },
         .IterateFunc = []() { App->Iterate(); },

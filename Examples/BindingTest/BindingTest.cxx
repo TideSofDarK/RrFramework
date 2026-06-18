@@ -217,7 +217,7 @@ int main()
 {
     static CBindingTestApp *App{};
 
-    Rr_Config Config = {
+    auto Config = Rr_Config{
         .WindowTitle = "BindingTest",
         .InitFunc = []() { App = new CBindingTestApp(); },
         .IterateFunc = []() { App->Iterate(); },

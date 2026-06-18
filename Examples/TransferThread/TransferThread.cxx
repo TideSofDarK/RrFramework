@@ -368,7 +368,7 @@ int main()
 {
     static STransferThreadApp App;
 
-    Rr_Config Config = {
+    auto Config = Rr_Config{
         .WindowTitle = "TransferThread",
         .InitFunc = []() { App.Init(); },
         .EventFunc = [](Rr_Event const *Event) { App.Event(Event); },

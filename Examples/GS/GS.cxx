@@ -311,7 +311,7 @@ int main()
 {
     static SGSApp *App{};
 
-    Rr_Config Config = {
+    auto Config = Rr_Config{
         .WindowTitle = "GS",
         .InitFunc = []() { App = new SGSApp(); },
         .EventFunc = [](Rr_Event const *Event) { App->Event(Event); },

@@ -114,7 +114,7 @@ int main()
 {
     static SReadbackApp App;
 
-    Rr_Config Config = {
+    auto Config = Rr_Config{
         .WindowTitle = "Readback",
         .InitFunc = []() { App.Init(); },
         .IterateFunc = []() { App.Iterate(); },

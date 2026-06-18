@@ -260,7 +260,7 @@ int main()
 {
     static CSmoothGridApp *App{};
 
-    Rr_Config Config = {
+    auto Config = Rr_Config{
         .WindowTitle = "SmoothGrid",
         .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
         .InitFunc = []() { App = new CSmoothGridApp(); },

@@ -231,7 +231,7 @@ class CGLTFMeshApp
 
     void InitGLTFScene(void)
     {
-        Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_TOWER_GLB);
+        auto LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_TOWER_GLB);
 
         auto Options = cgltf_options{};
         cgltf_data *Data = nullptr;
@@ -548,7 +548,7 @@ int main()
 {
     static CGLTFMeshApp *App{};
 
-    Rr_Config Config = {
+    auto Config = Rr_Config{
         .WindowTitle = "GLTFMesh",
         .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
         .InitFunc = []() { App = new CGLTFMeshApp(); },

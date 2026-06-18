@@ -265,7 +265,7 @@ static void Cleanup()
 
 int main()
 {
-    Rr_Config Config = {
+    auto Config = Rr_Config{
         .WindowTitle = "BitonicSort",
         .InitFunc = Init,
         .IterateFunc = Iterate,

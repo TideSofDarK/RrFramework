@@ -1849,7 +1849,7 @@ int main()
 {
     static CPBRRenderingApp *App{};
 
-    Rr_Config Config = {
+    auto Config = Rr_Config{
         .WindowTitle = "PBRRendering",
         .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
         .InitFunc = []() { App = new CPBRRenderingApp(); },

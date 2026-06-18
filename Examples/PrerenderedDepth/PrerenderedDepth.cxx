@@ -339,7 +339,7 @@ int main()
 {
     static SPrerenderedDepthApp App;
 
-    Rr_Config Config = {
+    auto Config = Rr_Config{
         .WindowTitle = "PrerenderedDepth",
         .InitFunc = []() { App.Init(); },
         .IterateFunc = []() { App.Iterate(); },

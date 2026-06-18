@@ -121,7 +121,7 @@ static void Cleanup()
 
 int main()
 {
-    Rr_Config Config = {
+    auto Config = Rr_Config{
         .WindowTitle = "PrefixSum",
         .InitFunc = Init,
         .IterateFunc = Iterate,

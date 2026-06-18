@@ -927,7 +927,7 @@ int main()
 {
     static SQuadTreeApp App;
 
-    Rr_Config Config = {
+    auto Config = Rr_Config{
         .WindowTitle = "QuadTree",
         .InitFunc = []() { App.Init(); },
         .EventFunc = [](Rr_Event const *Event) { App.Event(Event); },
