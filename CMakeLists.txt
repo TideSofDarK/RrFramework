@@ -129,26 +129,20 @@ target_compile_definitions(
 target_sources(
     ${PROJECT_NAME}
     PRIVATE
-    Source/Rr_Allocator.c
     Source/Rr_App.c
     Source/Rr_Arena.c
     Source/Rr_Asset.c
-    Source/Rr_Buffer.c
-    Source/Rr_Descriptor.c
-    Source/Rr_Graph.c
-    Source/Rr_Image.c
+    Source/Rr_Graph_Vulkan.c
     Source/Rr_Log.c
     Source/Rr_Memory.c
-    Source/Rr_Pipeline.c
     Source/Rr_Platform.c
     Source/Rr_Profiler.c
-    Source/Rr_RHI.c
+    Source/Rr_RHI_Vulkan.c
     Source/Rr_SPIRV.c
     Source/Rr_Serialization.c
     Source/Rr_System.c
     Source/Rr_Thread.c
     Source/Rr_UI.c
-    Source/Rr_Vulkan.c
     Vendor/xxHash/xxhash.c
     PUBLIC
     FILE_SET HEADERS
@@ -158,13 +152,10 @@ target_sources(
     Include/Rr/Rr_App.h
     Include/Rr/Rr_Arena.h
     Include/Rr/Rr_Asset.h
-    Include/Rr/Rr_Buffer.h
     Include/Rr/Rr_Defines.h
     Include/Rr/Rr_Graph.h
-    Include/Rr/Rr_Image.h
     Include/Rr/Rr_Log.h
     Include/Rr/Rr_Math.h
-    Include/Rr/Rr_Pipeline.h
     Include/Rr/Rr_Platform.h
     Include/Rr/Rr_RHI.h
     Include/Rr/Rr_Serialization.h

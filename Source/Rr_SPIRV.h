@@ -20,7 +20,12 @@
 
 #pragma once
 
-#include "Rr_Pipeline.h"
+#include "Rr_Memory.h"
+
+#include <Rr/Rr_Arena.h>
+#include <Rr/Rr_RHI.h>
+
+typedef RR_ARRAY(Rr_Binding) Rr_BindingArray;
 
 extern size_t Rr_GetBindingsFromSPIRV(
     Rr_ShaderInfo const *ShaderInfo,

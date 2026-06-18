@@ -39,7 +39,6 @@ typedef enum
     RR_LOG_CATEGORY_SYSTEM,
     RR_LOG_CATEGORY_THREAD,
     RR_LOG_CATEGORY_UI,
-    RR_LOG_CATEGORY_VULKAN,
     RR_LOG_CATEGORY_CUSTOM, /* Extend categories starting with this one. */
 } Rr_LogCategories;
 typedef uint32_t Rr_LogCategory;

@@ -21,21 +21,23 @@
 #include "Rr_Profiler.h"
 
 #include "Rr_Hash.h"
-#include "Rr_RHI.h"
 
 #include <Rr/Rr_System.h>
+
+#include <string.h>
 
 Rr_Profiler *Rr_CreateProfiler(Rr_Arena *Arena)
 {
     Rr_Profiler *Profiler = Rr_Alloc(sizeof(Rr_Profiler), Arena);
     Profiler->Arena = Arena;
+
     return Profiler;
 }
 
 static inline Rr_ProfilerSection **Rr_FindSection(
     Rr_ProfilerSection **SectionRef,
     size_t SectionNameLength,
-    const char *SectionName)
+    char const *SectionName)
 {
     for (uint64_t Hash = Rr_Hash64(SectionNameLength, SectionName); *SectionRef;
          Hash <<= 2)
@@ -46,10 +48,11 @@ static inline Rr_ProfilerSection **Rr_FindSection(
         }
         SectionRef = &(*SectionRef)->Children[Hash >> 62];
     }
+
     return SectionRef;
 }
 
-void Rr_BeginSection(Rr_Profiler *Profiler, const char *SectionName)
+void Rr_BeginSection(Rr_Profiler *Profiler, char const *SectionName)
 {
     size_t NameLength = strlen(SectionName);
     Rr_ProfilerSection **SectionRef =
@@ -57,6 +60,7 @@ void Rr_BeginSection(Rr_Profiler *Profiler, const char *SectionName)
     if (*SectionRef)
     {
         (*SectionRef)->LastTicks = Rr_GetPerformanceCounter();
+
         return;
     }
     *SectionRef = Rr_Alloc(sizeof(Rr_ProfilerSection), Profiler->Arena);
@@ -65,7 +69,7 @@ void Rr_BeginSection(Rr_Profiler *Profiler, const char *SectionName)
     (*SectionRef)->LastTicks = Rr_GetPerformanceCounter();
 }
 
-void Rr_EndSection(Rr_Profiler *Profiler, const char *SectionName)
+void Rr_EndSection(Rr_Profiler *Profiler, char const *SectionName)
 {
     size_t NameLength = strlen(SectionName);
     Rr_ProfilerSection **SectionRef =
@@ -77,33 +81,15 @@ void Rr_EndSection(Rr_Profiler *Profiler, const char *SectionName)
     }
 }
 
-uint64_t Rr_GetSectionTicks(Rr_Profiler *Profiler, const char *SectionName)
+uint64_t Rr_GetSectionTicks(Rr_Profiler *Profiler, char const *SectionName)
 {
-    if (Profiler)
+    size_t NameLength = strlen(SectionName);
+    Rr_ProfilerSection **SectionRef =
+        Rr_FindSection(&Profiler->Section, NameLength, SectionName);
+    if (*SectionRef)
     {
-        size_t NameLength = strlen(SectionName);
-        Rr_ProfilerSection **SectionRef =
-            Rr_FindSection(&Profiler->Section, NameLength, SectionName);
-        if (*SectionRef)
-        {
-            return (*SectionRef)->TotalTicks;
-        }
+        return (*SectionRef)->TotalTicks;
     }
 
     return 0;
-}
-
-void Rr_BeginFrameSection(char const *Name)
-{
-    Rr_BeginSection(Rr_GetCurrentFrame()->Profiler, Name);
-}
-
-void Rr_EndFrameSection(char const *Name)
-{
-    Rr_EndSection(Rr_GetCurrentFrame()->Profiler, Name);
-}
-
-uint64_t Rr_GetFrameSectionTicks(char const *Name)
-{
-    return Rr_GetSectionTicks(Rr_GetPreviousFrame()->Profiler, Name);
 }

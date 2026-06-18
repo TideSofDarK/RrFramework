@@ -44,8 +44,6 @@ char const *Rr_LogCategoryString(Rr_LogCategory Category)
             return "Thread";
         case RR_LOG_CATEGORY_UI:
             return "UI";
-        case RR_LOG_CATEGORY_VULKAN:
-            return "Vulkan";
         default:
             return "Custom";
     }

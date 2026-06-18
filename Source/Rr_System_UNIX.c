@@ -45,7 +45,10 @@ void Rr_InitSystem(void)
     System->AllocationGranularity = (size_t)System->PageSize;
 
     struct timespec Timespec;
-    assert(clock_gettime(CLOCK_MONOTONIC_RAW, &Timespec) == 0);
+    if (clock_gettime(CLOCK_MONOTONIC_RAW, &Timespec) != 0)
+    {
+        RR_LOG_ABORT("System doesn't support CLOCK_MONOTONIC_RAW!");
+    }
 
     System->Initialized = true;
 }

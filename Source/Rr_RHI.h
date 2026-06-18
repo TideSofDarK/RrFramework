@@ -22,203 +22,21 @@
 
 #include <Rr/Rr_RHI.h>
 
-#include "Rr_Allocator.h"
-#include "Rr_Buffer.h"
-#include "Rr_Graph.h"
-#include "Rr_Image.h"
-#include "Rr_Pipeline.h"
-#include "Rr_Profiler.h"
-#include "Rr_Vulkan.h"
-
-#include <Rr/Rr_Arena.h>
-
-typedef struct Rr_SwapchainImage Rr_SwapchainImage;
-struct Rr_SwapchainImage
-{
-    Rr_Image2D Container;
-    VkSemaphore EarlySemaphore;
-    VkSemaphore LateSemaphore;
-};
-
-typedef struct Rr_Swapchain Rr_Swapchain;
-struct Rr_Swapchain
-{
-    uint32_t PresentModeCount;
-    Rr_PresentMode PresentModes[8];
-    Rr_PresentMode PresentMode;
-    VkSwapchainKHR Handle;
-    VkFormat Format;
-    VkColorSpaceKHR ColorSpace;
-    VkExtent3D Extent;
-    bool RecreatePending;
-    bool RecreateEventPending;
-    bool Unavailable;
-};
-
-typedef struct Rr_CommandPools Rr_CommandPools;
-struct Rr_CommandPools
-{
-    VkCommandPool Graphics;
-    VkCommandPool Transfer;
-    VkCommandPool Compute;
-    Rr_CommandPools *Next;
-};
-
-typedef struct Rr_Frame Rr_Frame;
-struct Rr_Frame
-{
-    VkCommandBuffer EarlyCommandBuffer;
-    VkCommandBuffer LateCommandBuffer;
-    VkSemaphore AcquireSemaphore;
-    VkFence SubmitFence;
-    VkQueryPool QueryPool;
-
-    Rr_SwapchainImage *SwapchainImage;
-
-    Rr_Graph *Graph;
-
-    Rr_Profiler *Profiler;
-
-    Rr_Arena *Arena;
-};
-
-/* NOTE: To pass various attachment configurations around we use the following
- * order of image views (a.k.a. attachments):
- * 1) N color attachments
- * 2) M resolve attachments
- * 3) Depth/stencil attachment
- * M must be less or equal to N. Depth/stencil attachment may not be present. */
-
-typedef struct Rr_FramebufferKey Rr_FramebufferKey;
-struct Rr_FramebufferKey
-{
-    VkExtent3D Extent;
-    uint8_t ColorAttachmentCount;
-    uint8_t ResolveAttachmentCount;
-    uint8_t DepthStencil;
-    uint8_t Padding;
-    VkRenderPass RenderPass;
-    VkImageView ImageViews[RR_MAX_COLOR_ATTACHMENTS * 2 + 1];
-};
-
-#define RR_HASH_MAP_PREFIX     Rr_
-#define RR_HASH_MAP_NAME       FramebufferMap
-#define RR_HASH_MAP_KEY_TYPE   Rr_FramebufferKey
-#define RR_HASH_MAP_VALUE_TYPE VkFramebuffer
-#include "Rr_HashMap.h"
-
-extern VkFramebuffer Rr_GetFramebuffer(Rr_FramebufferKey *Key);
-
-extern void Rr_DestroyFramebuffers(VkImageView ImageView);
-
-typedef struct Rr_RenderPassAttachment Rr_RenderPassAttachment;
-struct Rr_RenderPassAttachment
-{
-    VkSampleCountFlags Samples;
-    VkFormat Format;
-    VkAttachmentLoadOp LoadOp;
-    VkAttachmentStoreOp StoreOp;
-};
-
-typedef struct Rr_RenderPassKey Rr_RenderPassKey;
-struct Rr_RenderPassKey
-{
-    uint8_t ColorAttachmentCount;
-    uint8_t ResolveAttachmentCount;
-    uint8_t ResolveMask;
-    uint8_t DepthStencil;
-    Rr_RenderPassAttachment Attachments[RR_MAX_COLOR_ATTACHMENTS * 2 + 1];
-};
-
-#define RR_HASH_MAP_PREFIX     Rr_
-#define RR_HASH_MAP_NAME       RenderPassMap
-#define RR_HASH_MAP_KEY_TYPE   Rr_RenderPassKey
-#define RR_HASH_MAP_VALUE_TYPE VkRenderPass
-#include "Rr_HashMap.h"
-
-extern VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey const *Key);
+#include <Rr/Rr_Log.h>
 
 typedef struct Rr_RHI Rr_RHI;
-struct Rr_RHI
-{
-    Rr_VulkanLoader Loader;
-    Rr_Instance Instance;
-    Rr_PhysicalDevice PhysicalDevice;
-    Rr_Device Device;
-    VkSurfaceKHR Surface;
-
-    Rr_Swapchain Swapchain;
-    RR_ARRAY(Rr_SwapchainImage) SwapchainImages;
-
-    Rr_Queue MainQueue;
-    Rr_Queue DedicatedTransferQueue;
-    Rr_Queue AsyncComputeQueue;
-
-    Rr_Allocator Allocator;
-
-    RR_ARRAY(VkSemaphore) Semaphores;
-    Rr_Spinlock SemaphoresLock;
-
-    RR_ARRAY(VkFence) Fences;
-    Rr_Spinlock FencesLock;
-
-    Rr_CommandPools *FreeCommandPools;
-    Rr_Spinlock CommandPoolsLock;
-
-    Rr_Frame Frames[RR_FRAME_OVERLAP];
-    size_t FrameIndex;  /* Current frame-in-flight index. */
-    size_t FrameNumber; /* Total frames rendered. */
-    double LastFrameMS;
-
-    VkDescriptorPool EmptyDescriptorPool;
-    VkDescriptorSet EmptyDescriptorSet;
-
-    Rr_BufferHive Buffers;
-    Rr_Spinlock BuffersLock;
-    Rr_HandleSet ReleasedBuffers;
-    Rr_Spinlock ReleasedBuffersLock;
-
-    Rr_ImageHive Images;
-    Rr_Spinlock ImagesLock;
-    Rr_HandleSet ReleasedImages;
-    Rr_Spinlock ReleasedImagesLock;
-    RR_FREE_LIST(Rr_ImageViewMap) ImageViewMaps;
-    Rr_Spinlock ImageViewMapsLock;
-    Rr_FramebufferMap FramebufferMap;
-    Rr_Spinlock FramebufferMapLock;
-
-    Rr_SamplerHive Samplers;
-    Rr_Spinlock SamplersLock;
-    Rr_HandleSet ReleasedSamplers;
-    Rr_Spinlock ReleasedSamplersLock;
-
-    Rr_DescriptorSetLayoutStorage DescriptorSetLayoutStorage;
-    Rr_Spinlock DescriptorSetLayoutStorageLock;
-
-    Rr_PipelineLayoutStorage PipelineLayoutStorage;
-    Rr_Spinlock PipelineLayoutStorageLock;
-
-    Rr_ComputePipelineHive ComputePipelines;
-    Rr_Spinlock ComputePipelinesLock;
-    Rr_HandleSet ReleasedComputePipelines;
-    Rr_Spinlock ReleasedComputePipelinesLock;
-
-    Rr_GraphicsPipelineHive GraphicsPipelines;
-    Rr_Spinlock GraphicsPipelinesLock;
-    Rr_HandleSet ReleasedGraphicsPipelines;
-    Rr_Spinlock ReleasedGraphicsPipelinesLock;
-
-    Rr_RenderPassMap RenderPassMap;
-    Rr_Spinlock RenderPassMapLock;
-
-    Rr_DescriptorPoolList *DescriptorPoolList;
-    Rr_Spinlock DescriptorPoolListLock;
-    uint32_t DescriptorPoolListCount;
-};
+typedef struct Rr_Frame Rr_Frame;
+typedef struct Rr_CommandPools Rr_CommandPools;
+typedef struct Rr_Queue Rr_Queue;
+typedef struct Rr_Device Rr_Device;
 
 extern void Rr_InitRHI(const char *Title);
 
 extern void Rr_CleanupRHI(void);
+
+extern Rr_CommandPools *Rr_AcquireCommandPools(void);
+
+extern void Rr_ReleaseCommandPools(void);
 
 extern Rr_Device *Rr_GetDevice(void);
 
@@ -226,39 +44,62 @@ extern void Rr_WaitIdle(void);
 
 extern void Rr_SetSwapchainDirty(bool Dirty);
 
+extern bool Rr_HandleSwapchainRecreated(void);
+
 extern void Rr_NewFrame(void);
 
 extern void Rr_DrawFrame(void);
 
 extern Rr_Queue *Rr_GetQueue(Rr_QueueType QueueType);
 
-extern Rr_Frame *Rr_GetPreviousFrame(void);
-
 extern Rr_Frame *Rr_GetCurrentFrame(void);
 
-extern VkSemaphore Rr_AcquireVulkanSemaphore(void);
+extern Rr_Arena *Rr_GetCurrentFrameArena(void);
 
-extern void Rr_ReleaseVulkanSemaphore(VkSemaphore Semaphore);
+extern void Rr_BeginFrameSection(char const *Name);
 
-extern VkFence Rr_AcquireVulkanFence(void);
+extern void Rr_EndFrameSection(char const *Name);
 
-extern void Rr_ReleaseVulkanFence(VkFence Fence);
-
-extern Rr_CommandPools *Rr_AcquireCommandPools(void);
-
-extern void Rr_ReleaseCommandPools(void);
+extern uint64_t Rr_GetFrameSectionTicks(char const *Name);
 
 extern void Rr_ConsumeNextObjectName(char Dst[RR_MAX_OBJECT_NAME_LENGTH]);
 
-extern void Rr_SetVulkanObjectName(
-    VkObjectType ObjectType,
-    uint64_t Handle,
-    const char *Name);
+static inline size_t Rr_GetFormatSize(Rr_Format Format)
+{
+    switch (Format)
+    {
+            /* INT */
+        case RR_FORMAT_INT:
+            return sizeof(int32_t);
+        case RR_FORMAT_INT2:
+            return sizeof(int32_t) * 2;
+        case RR_FORMAT_INT3:
+            return sizeof(int32_t) * 3;
+        case RR_FORMAT_INT4:
+            return sizeof(int32_t) * 4;
+            /* UINT */
+        case RR_FORMAT_UINT:
+            return sizeof(uint32_t);
+        case RR_FORMAT_UINT2:
+            return sizeof(uint32_t) * 2;
+        case RR_FORMAT_UINT3:
+            return sizeof(uint32_t) * 3;
+        case RR_FORMAT_UINT4:
+            return sizeof(uint32_t) * 4;
+            /* FLOAT */
+        case RR_FORMAT_FLOAT:
+            return sizeof(float);
+        case RR_FORMAT_FLOAT2:
+            return sizeof(float) * 2;
+        case RR_FORMAT_FLOAT3:
+            return sizeof(float) * 3;
+        case RR_FORMAT_FLOAT4:
+            return sizeof(float) * 4;
+        default:
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid format!");
+    }
 
-extern void Rr_BeginVulkanCommandBufferLabel(
-    VkCommandBuffer CommandBuffer,
-    const char *Name);
-
-extern void Rr_EndVulkanCommandBufferLabel(VkCommandBuffer CommandBuffer);
+    return 0;
+}
 
 extern Rr_RHI *gRHI;

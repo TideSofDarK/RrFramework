@@ -7,6 +7,8 @@
 
 #include <Rr/Rr_Thread.h>
 
+#include <assert.h>
+
 typedef struct Rr_SPIRVHeader Rr_SPIRVHeader;
 struct Rr_SPIRVHeader
 {
@@ -272,7 +274,12 @@ size_t Rr_GetBindingsFromSPIRV(
     RR_RESERVE_ARRAY(&BindingIndices, RR_MAX_BINDINGS, Scratch.Arena);
 
     Rr_SPIRVHeader const *Header = (Rr_SPIRVHeader const *)Data;
-    assert(Header->Magic == 0x07230203);
+    if (Header->Magic != 0x07230203)
+    {
+        RR_LOG_ERROR("Magic mismatch!");
+
+        return 0;
+    }
 
     size_t Offset = sizeof(Rr_SPIRVHeader) / sizeof(uint32_t);
     size_t End = ShaderInfo->SPVSize / sizeof(uint32_t);

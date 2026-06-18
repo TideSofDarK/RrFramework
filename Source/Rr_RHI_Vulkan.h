@@ -20,14 +20,15 @@
 
 #pragma once
 
+#include "Rr_RHI.h"
+
 #include "Rr_Atomic.h"
 #include "Rr_Memory.h"
+#include "Rr_Profiler.h"
 
-#include <Rr/Rr_Image.h>
+#include <Rr/Rr_Arena.h>
+#include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Log.h>
-#include <Rr/Rr_Math.h>
-#include <Rr/Rr_Pipeline.h>
-#include <Rr/Rr_RHI.h>
 
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
@@ -104,7 +105,6 @@ struct Rr_VulkanBinding
     VkFormat ImageFormat;
 };
 
-typedef struct Rr_Queue Rr_Queue;
 struct Rr_Queue
 {
     VkQueue Handle;
@@ -341,6 +341,615 @@ extern void Rr_InitDeviceAndQueues(
     Rr_Queue *GraphicsQueue,
     Rr_Queue *TransferQueue);
 
+/* NOTE: To pass various attachment configurations around we use the following
+ * order of image views (a.k.a. attachments):
+ * 1) N color attachments
+ * 2) M resolve attachments
+ * 3) Depth/stencil attachment
+ * M must be less or equal to N. Depth/stencil attachment may not be present. */
+
+typedef struct Rr_FramebufferKey Rr_FramebufferKey;
+struct Rr_FramebufferKey
+{
+    VkExtent3D Extent;
+    uint8_t ColorAttachmentCount;
+    uint8_t ResolveAttachmentCount;
+    uint8_t DepthStencil;
+    uint8_t Padding;
+    VkRenderPass RenderPass;
+    VkImageView ImageViews[RR_MAX_COLOR_ATTACHMENTS * 2 + 1];
+};
+
+#define RR_HASH_MAP_PREFIX     Rr_
+#define RR_HASH_MAP_NAME       FramebufferMap
+#define RR_HASH_MAP_KEY_TYPE   Rr_FramebufferKey
+#define RR_HASH_MAP_VALUE_TYPE VkFramebuffer
+#include "Rr_HashMap.h"
+
+extern VkFramebuffer Rr_GetFramebuffer(Rr_FramebufferKey *Key);
+
+extern void Rr_DestroyFramebuffers(VkImageView ImageView);
+
+typedef struct Rr_RenderPassAttachment Rr_RenderPassAttachment;
+struct Rr_RenderPassAttachment
+{
+    VkSampleCountFlags Samples;
+    VkFormat Format;
+    VkAttachmentLoadOp LoadOp;
+    VkAttachmentStoreOp StoreOp;
+};
+
+typedef struct Rr_RenderPassKey Rr_RenderPassKey;
+struct Rr_RenderPassKey
+{
+    uint8_t ColorAttachmentCount;
+    uint8_t ResolveAttachmentCount;
+    uint8_t ResolveMask;
+    uint8_t DepthStencil;
+    Rr_RenderPassAttachment Attachments[RR_MAX_COLOR_ATTACHMENTS * 2 + 1];
+};
+
+#define RR_HASH_MAP_PREFIX     Rr_
+#define RR_HASH_MAP_NAME       RenderPassMap
+#define RR_HASH_MAP_KEY_TYPE   Rr_RenderPassKey
+#define RR_HASH_MAP_VALUE_TYPE VkRenderPass
+#include "Rr_HashMap.h"
+
+extern VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey const *Key);
+
+/*
+ * Descriptors
+ */
+
+#define RR_DESCRIPTOR_POOL_SIZE 128
+
+typedef struct Rr_DescriptorPoolList Rr_DescriptorPoolList;
+struct Rr_DescriptorPoolList
+{
+    VkDescriptorPool Handle;
+    Rr_DescriptorPoolList *Next;
+};
+
+extern Rr_DescriptorPoolList *Rr_AcquireDescriptorPoolList(void);
+
+extern void Rr_ReleaseDescriptorPoolList(Rr_DescriptorPoolList *List);
+
+extern void Rr_AllocateDescriptorSets(
+    Rr_DescriptorPoolList *List,
+    uint32_t Count,
+    VkDescriptorSetLayout *Layouts,
+    VkDescriptorSet *OutSets);
+
+typedef struct Rr_DescriptorsState Rr_DescriptorsState;
+struct Rr_DescriptorsState
+{
+    Rr_Device *Device;
+    VkCommandBuffer CommandBuffer;
+    VkDescriptorSet EmptyDescriptorSet;
+    Rr_DescriptorPoolList *DescriptorPoolList;
+    Rr_PipelineLayout *Layout;
+    VkDescriptorSet Sets[RR_MAX_SETS];
+    bool Dirty[RR_MAX_SETS];
+};
+
+extern void Rr_InvalidateDescriptorsState(
+    Rr_DescriptorsState *State,
+    Rr_PipelineLayout *Layout);
+
+extern void Rr_WriteImageDescriptor(
+    Rr_DescriptorsState *State,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    VkDescriptorType Type,
+    VkImageView View,
+    VkImageLayout Layout,
+    VkSampler Sampler);
+
+extern void Rr_WriteBufferDescriptor(
+    Rr_DescriptorsState *State,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    VkDescriptorType Type,
+    VkBuffer Handle,
+    uint64_t Size,
+    uint64_t Offset);
+
+extern void Rr_WriteSamplerDescriptor(
+    Rr_DescriptorsState *State,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    VkSampler Sampler);
+
+extern void Rr_ApplyDescriptorsState(
+    Rr_DescriptorsState *State,
+    VkPipelineBindPoint BindPoint);
+
+/*
+ * Buffer
+ */
+
+struct Rr_Chunk;
+struct Rr_Range;
+
+typedef struct Rr_AllocatedBuffer Rr_AllocatedBuffer;
+struct Rr_AllocatedBuffer
+{
+    VkBuffer Handle;
+    struct Rr_Chunk *Chunk;
+    struct Rr_Range *Range;
+    void *MappedData;
+    Rr_SyncState SyncState;
+};
+
+struct Rr_Buffer
+{
+    Rr_BufferFlags Flags;
+    VkDeviceSize Size;
+    VkBufferUsageFlags Usage;
+    uint32_t AllocatedBufferCount;
+    Rr_AllocatedBuffer AllocatedBuffers[RR_FRAME_OVERLAP];
+
+    char Name[RR_MAX_OBJECT_NAME_LENGTH];
+
+    Rr_AtomicInt RefCount;
+};
+
+#define RR_HIVE_TYPE      Rr_Buffer
+#define RR_HIVE_TYPE_NAME Buffer
+#define RR_HIVE_PREFIX    Rr_
+#include "Rr_Hive.h"
+
+extern void Rr_DestroyBuffer(Rr_Buffer *Buffer);
+
+extern Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_Buffer *Buffer);
+
+/*
+ * Image
+ */
+
+typedef struct Rr_ImageViewKey Rr_ImageViewKey;
+struct Rr_ImageViewKey
+{
+    VkImageSubresourceRange SubresourceRange;
+    VkImageViewType Type;
+    VkFormat Format;
+};
+
+#define RR_HASH_MAP_PREFIX     Rr_
+#define RR_HASH_MAP_NAME       ImageViewMap
+#define RR_HASH_MAP_KEY_TYPE   Rr_ImageViewKey
+#define RR_HASH_MAP_VALUE_TYPE VkImageView
+#include "Rr_HashMap.h"
+
+extern Rr_ImageViewMap *Rr_CreateImageViewMap(void);
+
+extern void Rr_DestroyImageViewMap(
+    Rr_ImageViewMap *ImageViewMap,
+    bool DestroyFramebuffers);
+
+typedef struct Rr_AllocatedImage Rr_AllocatedImage;
+struct Rr_AllocatedImage
+{
+    VkImage Handle;
+    Rr_ImageViewMap *ImageViewMap;
+    Rr_Spinlock ImageViewMapLock;
+    struct Rr_Chunk *Chunk;
+    struct Rr_Range *Range;
+    struct Rr_Image *Container;
+    Rr_SyncState SyncState;
+};
+
+extern VkImageView Rr_GetVulkanImageView(
+    Rr_AllocatedImage *AllocatedImage,
+    Rr_ImageViewKey const *Key);
+
+struct Rr_Image
+{
+    VkExtent3D Extent;
+    VkImageAspectFlags AspectFlags;
+    VkFormat Format;
+    VkSampleCountFlags SampleCount;
+    Rr_ImageFlags Flags;
+    uint32_t LayerCount;
+    uint32_t LevelCount;
+    uint32_t AllocatedImageCount; /* Always 1 for now. */
+    Rr_AllocatedImage AllocatedImages[RR_FRAME_OVERLAP];
+
+    char Name[RR_MAX_OBJECT_NAME_LENGTH];
+
+    Rr_AtomicInt RefCount;
+};
+
+typedef struct Rr_Image Rr_Image;
+
+#define RR_HIVE_TYPE      Rr_Image
+#define RR_HIVE_TYPE_NAME Image
+#define RR_HIVE_PREFIX    Rr_
+#include "Rr_Hive.h"
+
+extern void Rr_DestroyImage(Rr_Image *Image);
+
+extern Rr_AllocatedImage *Rr_GetCurrentAllocatedImage(Rr_Image *Image);
+
+/*
+ * Sampler
+ */
+
+struct Rr_Sampler
+{
+    VkSampler Handle;
+
+    char Name[RR_MAX_OBJECT_NAME_LENGTH];
+
+    Rr_AtomicInt RefCount;
+};
+
+#define RR_HIVE_TYPE      Rr_Sampler
+#define RR_HIVE_TYPE_NAME Sampler
+#define RR_HIVE_PREFIX    Rr_
+#include "Rr_Hive.h"
+
+extern void Rr_DestroySampler(Rr_Sampler *Sampler);
+
+/*
+ * Pipelines
+ */
+
+typedef struct Rr_DescriptorSetLayoutKey Rr_DescriptorSetLayoutKey;
+struct Rr_DescriptorSetLayoutKey
+{
+    uint32_t BindingCount;
+    Rr_VulkanBinding Bindings[RR_MAX_BINDINGS];
+};
+
+typedef struct Rr_DescriptorSetLayout Rr_DescriptorSetLayout;
+struct Rr_DescriptorSetLayout
+{
+    Rr_DescriptorSetLayoutKey Key;
+    Rr_DescriptorSetLayout *Children[4];
+
+    VkDescriptorSetLayout Handle;
+};
+
+#define RR_HIVE_TYPE      Rr_DescriptorSetLayout
+#define RR_HIVE_TYPE_NAME DescriptorSetLayout
+#define RR_HIVE_PREFIX    Rr_
+#include "Rr_Hive.h"
+
+typedef struct Rr_DescriptorSetLayoutStorage Rr_DescriptorSetLayoutStorage;
+struct Rr_DescriptorSetLayoutStorage
+{
+    Rr_DescriptorSetLayout *Map;
+    Rr_DescriptorSetLayoutHive Hive;
+};
+
+extern Rr_DescriptorSetLayout *Rr_GetDescriptorSetLayout(
+    Rr_DescriptorSetLayoutKey const *Key);
+
+typedef struct Rr_PipelineLayoutKey Rr_PipelineLayoutKey;
+struct Rr_PipelineLayoutKey
+{
+    uint32_t DescriptorSetLayoutCount;
+    Rr_DescriptorSetLayout *DescriptorSetLayouts[RR_MAX_SETS];
+};
+
+struct Rr_PipelineLayout
+{
+    Rr_PipelineLayoutKey Key;
+    Rr_PipelineLayout *Children[4];
+
+    VkPipelineLayout Handle;
+};
+
+#define RR_HIVE_TYPE      Rr_PipelineLayout
+#define RR_HIVE_TYPE_NAME PipelineLayout
+#define RR_HIVE_PREFIX    Rr_
+#include "Rr_Hive.h"
+
+typedef struct Rr_PipelineLayoutStorage Rr_PipelineLayoutStorage;
+struct Rr_PipelineLayoutStorage
+{
+    Rr_PipelineLayout *Map;
+    Rr_PipelineLayoutHive Hive;
+};
+
+extern Rr_PipelineLayout *Rr_GetPipelineLayout(
+    size_t BindingSetCount,
+    Rr_BindingSet const *BindingSets);
+
+struct Rr_ComputePipeline
+{
+    VkPipeline Handle;
+    Rr_PipelineLayout *Layout;
+
+    char Name[RR_MAX_OBJECT_NAME_LENGTH];
+
+    Rr_AtomicInt RefCount;
+};
+
+#define RR_HIVE_TYPE      Rr_ComputePipeline
+#define RR_HIVE_TYPE_NAME ComputePipeline
+#define RR_HIVE_PREFIX    Rr_
+#include "Rr_Hive.h"
+
+extern void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline);
+
+struct Rr_GraphicsPipeline
+{
+    VkPipeline Handle;
+    Rr_PipelineLayout *Layout;
+    uint32_t ColorAttachmentCount;
+    bool HasDepthStencil;
+
+    char Name[RR_MAX_OBJECT_NAME_LENGTH];
+
+    Rr_AtomicInt RefCount;
+};
+
+#define RR_HIVE_TYPE      Rr_GraphicsPipeline
+#define RR_HIVE_TYPE_NAME GraphicsPipeline
+#define RR_HIVE_PREFIX    Rr_
+#include "Rr_Hive.h"
+
+extern void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipelin);
+
+/*
+ * Allocator
+ */
+
+#define RR_BIG_CHUNK_SIZE   RR_MEBIBYTES(256)
+#define RR_SMALL_CHUNK_SIZE RR_MEBIBYTES(64)
+
+typedef struct Rr_Range Rr_Range;
+struct Rr_Range
+{
+    VkDeviceSize Offset;
+    VkDeviceSize Size;
+    VkDeviceSize AlignedOffset;
+    bool Free;
+
+    Rr_Range *Previous;
+    Rr_Range *Next;
+    Rr_Range *PreviousFree;
+    Rr_Range *NextFree;
+};
+
+#define RR_HIVE_TYPE               Rr_Range
+#define RR_HIVE_TYPE_NAME          Range
+#define RR_HIVE_PREFIX             Rr_
+#define RR_HIVE_MIN_BLOCK_CAPACITY 64
+#include "Rr_Hive.h"
+
+typedef struct Rr_Chunk Rr_Chunk;
+struct Rr_Chunk
+{
+    VkDeviceSize Size;
+    VkDeviceMemory Memory;
+    uint32_t SoftAllocationCount;
+    uint32_t MappingCount;
+    uint32_t MemoryTypeIndex;
+    bool Dedicated;
+    void *MappedData;
+
+    Rr_Range *FirstRange;
+    Rr_Range *FirstFreeRange;
+};
+
+#define RR_HIVE_TYPE      Rr_Chunk
+#define RR_HIVE_TYPE_NAME Chunk
+#define RR_HIVE_PREFIX    Rr_
+#include "Rr_Hive.h"
+
+typedef struct Rr_MemoryType Rr_MemoryType;
+struct Rr_MemoryType
+{
+    VkDeviceSize HeapSize;
+    bool DeviceLocalHeap;
+    VkDeviceSize ChunkSize;
+    VkMemoryPropertyFlags PropertyFlags;
+    Rr_ChunkHive ChunkHive;
+};
+
+typedef struct Rr_Allocator Rr_Allocator;
+struct Rr_Allocator
+{
+    VkDeviceSize BufferImageGranularity;
+    VkDeviceSize NonCoherentAtomSize;
+    VkDeviceSize BigChunkSize;
+    VkDeviceSize SmallChunkSize;
+    uint32_t MemoryTypeCount;
+    Rr_MemoryType *MemoryTypes;
+    Rr_RangeHive RangeHive;
+    uint32_t HardAllocationCount;
+    uint32_t SoftAllocationCount;
+    Rr_Spinlock Lock;
+};
+
+extern void Rr_InitAllocator(
+    Rr_Allocator *Allocator,
+    Rr_PhysicalDevice *PhysicalDevice);
+
+extern void Rr_CleanupAllocator(Rr_Allocator *Allocator);
+
+extern bool Rr_AllocBufferMemory(
+    Rr_Allocator *Allocator,
+    struct Rr_Buffer *Buffer);
+
+extern void Rr_FreeBufferMemory(
+    Rr_Allocator *Allocator,
+    struct Rr_Buffer *Buffer);
+
+extern void *Rr_MapAllocatedBufferMemory(
+    Rr_Allocator *Allocator,
+    struct Rr_AllocatedBuffer *AllocatedBuffer);
+
+extern void Rr_UnmapAllocatedBufferMemory(
+    Rr_Allocator *Allocator,
+    struct Rr_AllocatedBuffer *AllocatedBuffer);
+
+extern void Rr_FlushAllocatedBufferMemory(
+    Rr_Allocator *Allocator,
+    struct Rr_AllocatedBuffer *AllocatedBuffer,
+    size_t Offset,
+    size_t Size);
+
+extern bool Rr_AllocImageMemory(
+    Rr_Allocator *Allocator,
+    struct Rr_Image *Image);
+
+extern void Rr_FreeImageMemory(Rr_Allocator *Allocator, struct Rr_Image *Image);
+
+/*
+ * Swapchain and Presentation
+ */
+
+typedef struct Rr_SwapchainImage Rr_SwapchainImage;
+struct Rr_SwapchainImage
+{
+    Rr_Image2D Container;
+    VkSemaphore EarlySemaphore;
+    VkSemaphore LateSemaphore;
+};
+
+typedef struct Rr_Swapchain Rr_Swapchain;
+struct Rr_Swapchain
+{
+    uint32_t PresentModeCount;
+    Rr_PresentMode PresentModes[8];
+    Rr_PresentMode PresentMode;
+    VkSwapchainKHR Handle;
+    VkFormat Format;
+    VkColorSpaceKHR ColorSpace;
+    VkExtent3D Extent;
+    bool RecreatePending;
+    bool Recreated;
+    bool Unavailable;
+};
+
+struct Rr_CommandPools
+{
+    VkCommandPool Graphics;
+    VkCommandPool Transfer;
+    VkCommandPool Compute;
+    Rr_CommandPools *Next;
+};
+
+struct Rr_Frame
+{
+    VkCommandBuffer EarlyCommandBuffer;
+    VkCommandBuffer LateCommandBuffer;
+    VkSemaphore AcquireSemaphore;
+    VkFence SubmitFence;
+    VkQueryPool QueryPool;
+    Rr_Profiler *Profiler;
+    Rr_SwapchainImage *SwapchainImage;
+    Rr_Graph *Graph;
+    Rr_Arena *Arena;
+};
+
+struct Rr_RHI
+{
+    Rr_VulkanLoader Loader;
+    Rr_Instance Instance;
+    Rr_PhysicalDevice PhysicalDevice;
+    Rr_Device Device;
+    VkSurfaceKHR Surface;
+
+    Rr_Swapchain Swapchain;
+    RR_ARRAY(Rr_SwapchainImage) SwapchainImages;
+
+    Rr_Queue MainQueue;
+    Rr_Queue DedicatedTransferQueue;
+    Rr_Queue AsyncComputeQueue;
+
+    Rr_Allocator Allocator;
+
+    RR_ARRAY(VkSemaphore) Semaphores;
+    Rr_Spinlock SemaphoresLock;
+
+    RR_ARRAY(VkFence) Fences;
+    Rr_Spinlock FencesLock;
+
+    Rr_CommandPools *FreeCommandPools;
+    Rr_Spinlock CommandPoolsLock;
+
+    Rr_Frame Frames[RR_FRAME_OVERLAP];
+    size_t FrameIndex;  /* Current frame-in-flight index. */
+    size_t FrameNumber; /* Total frames rendered. */
+    double LastFrameMS;
+
+    VkDescriptorPool EmptyDescriptorPool;
+    VkDescriptorSet EmptyDescriptorSet;
+
+    Rr_BufferHive Buffers;
+    Rr_Spinlock BuffersLock;
+    Rr_HandleSet ReleasedBuffers;
+    Rr_Spinlock ReleasedBuffersLock;
+
+    Rr_ImageHive Images;
+    Rr_Spinlock ImagesLock;
+    Rr_HandleSet ReleasedImages;
+    Rr_Spinlock ReleasedImagesLock;
+    RR_FREE_LIST(Rr_ImageViewMap) ImageViewMaps;
+    Rr_Spinlock ImageViewMapsLock;
+    Rr_FramebufferMap FramebufferMap;
+    Rr_Spinlock FramebufferMapLock;
+
+    Rr_SamplerHive Samplers;
+    Rr_Spinlock SamplersLock;
+    Rr_HandleSet ReleasedSamplers;
+    Rr_Spinlock ReleasedSamplersLock;
+
+    Rr_DescriptorSetLayoutStorage DescriptorSetLayoutStorage;
+    Rr_Spinlock DescriptorSetLayoutStorageLock;
+
+    Rr_PipelineLayoutStorage PipelineLayoutStorage;
+    Rr_Spinlock PipelineLayoutStorageLock;
+
+    Rr_ComputePipelineHive ComputePipelines;
+    Rr_Spinlock ComputePipelinesLock;
+    Rr_HandleSet ReleasedComputePipelines;
+    Rr_Spinlock ReleasedComputePipelinesLock;
+
+    Rr_GraphicsPipelineHive GraphicsPipelines;
+    Rr_Spinlock GraphicsPipelinesLock;
+    Rr_HandleSet ReleasedGraphicsPipelines;
+    Rr_Spinlock ReleasedGraphicsPipelinesLock;
+
+    Rr_RenderPassMap RenderPassMap;
+    Rr_Spinlock RenderPassMapLock;
+
+    Rr_DescriptorPoolList *DescriptorPoolList;
+    Rr_Spinlock DescriptorPoolListLock;
+    uint32_t DescriptorPoolListCount;
+};
+
+extern VkSemaphore Rr_AcquireVulkanSemaphore(void);
+
+extern void Rr_ReleaseVulkanSemaphore(VkSemaphore Semaphore);
+
+extern VkFence Rr_AcquireVulkanFence(void);
+
+extern void Rr_ReleaseVulkanFence(VkFence Fence);
+
+extern void Rr_SetVulkanObjectName(
+    VkObjectType ObjectType,
+    uint64_t Handle,
+    const char *Name);
+
+extern void Rr_BeginVulkanCommandBufferLabel(
+    VkCommandBuffer CommandBuffer,
+    const char *Name);
+
+extern void Rr_EndVulkanCommandBufferLabel(VkCommandBuffer CommandBuffer);
+
+/*
+ * Conversions
+ */
+
 static VkDescriptorType Rr_ToVulkanDescriptorType(Rr_BindingType Type)
 {
     switch (Type)
@@ -358,11 +967,10 @@ static VkDescriptorType Rr_ToVulkanDescriptorType(Rr_BindingType Type)
         case RR_BINDING_TYPE_STORAGE_IMAGE:
             return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         default:
-            Rr_LogError(
-                RR_LOG_CATEGORY_VULKAN,
-                "Invalid pipeline binding type!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid pipeline binding type!");
     }
-    return 0;
+
+    return VK_DESCRIPTOR_TYPE_MAX_ENUM;
 }
 
 static inline VkStencilOp Rr_ToVulkanStencilOp(Rr_StencilOp StencilOp)
@@ -386,9 +994,10 @@ static inline VkStencilOp Rr_ToVulkanStencilOp(Rr_StencilOp StencilOp)
         case RR_STENCIL_OP_DECREMENT_AND_WRAP:
             return VK_STENCIL_OP_DECREMENT_AND_WRAP;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid stencil op!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid stencil op!");
     }
-    return 0;
+
+    return VK_STENCIL_OP_MAX_ENUM;
 }
 
 static inline VkShaderStageFlags Rr_ToVulkanShaderStageFlags(
@@ -431,9 +1040,10 @@ static inline VkCompareOp Rr_ToVulkanCompareOp(Rr_CompareOp CompareOp)
         case RR_COMPARE_OP_ALWAYS:
             return VK_COMPARE_OP_ALWAYS;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid compare op!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid compare op!");
     }
-    return 0;
+
+    return VK_COMPARE_OP_MAX_ENUM;
 }
 
 static inline VkStencilOpState Rr_ToVulkanStencilOpState(
@@ -459,9 +1069,10 @@ static inline VkPolygonMode Rr_ToVulkanPolygonMode(Rr_PolygonMode PolygonMode)
         case RR_POLYGON_MODE_LINE:
             return VK_POLYGON_MODE_LINE;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid polygon mode!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid polygon mode!");
     }
-    return 0;
+
+    return VK_POLYGON_MODE_MAX_ENUM;
 }
 
 static inline VkCullModeFlagBits Rr_ToVulkanCullMode(Rr_CullMode CullMode)
@@ -475,9 +1086,10 @@ static inline VkCullModeFlagBits Rr_ToVulkanCullMode(Rr_CullMode CullMode)
         case RR_CULL_MODE_BACK:
             return VK_CULL_MODE_BACK_BIT;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid cull mode!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid cull mode!");
     }
-    return 0;
+
+    return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
 }
 
 static inline VkFrontFace Rr_ToVulkanFrontFace(Rr_FrontFace FrontFace)
@@ -489,9 +1101,10 @@ static inline VkFrontFace Rr_ToVulkanFrontFace(Rr_FrontFace FrontFace)
         case RR_FRONT_FACE_CLOCKWISE:
             return VK_FRONT_FACE_CLOCKWISE;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid front face!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid front face!");
     }
-    return 0;
+
+    return VK_FRONT_FACE_MAX_ENUM;
 }
 
 static inline VkBlendFactor Rr_ToVulkanBlendFactor(Rr_BlendFactor BlendFactor)
@@ -525,9 +1138,10 @@ static inline VkBlendFactor Rr_ToVulkanBlendFactor(Rr_BlendFactor BlendFactor)
         case RR_BLEND_FACTOR_SRC_ALPHA_SATURATE:
             return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid blend factor!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid blend factor!");
     }
-    return 0;
+
+    return VK_BLEND_FACTOR_MAX_ENUM;
 }
 
 static inline VkBlendOp Rr_ToVulkanBlendOp(Rr_BlendOp BlendOp)
@@ -545,9 +1159,10 @@ static inline VkBlendOp Rr_ToVulkanBlendOp(Rr_BlendOp BlendOp)
         case RR_BLEND_OP_MAX:
             return VK_BLEND_OP_MAX;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid blend op!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid blend op!");
     }
-    return 0;
+
+    return VK_BLEND_OP_MAX_ENUM;
 }
 
 static inline VkPrimitiveTopology Rr_ToVulkanPrimitiveTopology(
@@ -566,9 +1181,10 @@ static inline VkPrimitiveTopology Rr_ToVulkanPrimitiveTopology(
         case RR_TOPOLOGY_TRIANGLE_STRIP:
             return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid topology!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid topology!");
     }
-    return 0;
+
+    return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 }
 
 static inline VkFormat Rr_ToVulkanFormat(Rr_Format Format)
@@ -605,46 +1221,10 @@ static inline VkFormat Rr_ToVulkanFormat(Rr_Format Format)
         case RR_FORMAT_FLOAT4:
             return VK_FORMAT_R32G32B32A32_SFLOAT;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid format!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid format!");
     }
-    return 0;
-}
 
-static inline size_t Rr_GetFormatSize(Rr_Format Format)
-{
-    switch (Format)
-    {
-            /* INT */
-        case RR_FORMAT_INT:
-            return sizeof(int32_t);
-        case RR_FORMAT_INT2:
-            return sizeof(int32_t) * 2;
-        case RR_FORMAT_INT3:
-            return sizeof(int32_t) * 3;
-        case RR_FORMAT_INT4:
-            return sizeof(int32_t) * 4;
-            /* UINT */
-        case RR_FORMAT_UINT:
-            return sizeof(uint32_t);
-        case RR_FORMAT_UINT2:
-            return sizeof(uint32_t) * 2;
-        case RR_FORMAT_UINT3:
-            return sizeof(uint32_t) * 3;
-        case RR_FORMAT_UINT4:
-            return sizeof(uint32_t) * 4;
-            /* FLOAT */
-        case RR_FORMAT_FLOAT:
-            return sizeof(float);
-        case RR_FORMAT_FLOAT2:
-            return sizeof(float) * 2;
-        case RR_FORMAT_FLOAT3:
-            return sizeof(float) * 3;
-        case RR_FORMAT_FLOAT4:
-            return sizeof(float) * 4;
-        default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid format!");
-    }
-    return 0;
+    return VK_FORMAT_MAX_ENUM;
 }
 
 static inline VkBorderColor Rr_ToVulkanBorderColor(Rr_BorderColor BorderColor)
@@ -664,9 +1244,10 @@ static inline VkBorderColor Rr_ToVulkanBorderColor(Rr_BorderColor BorderColor)
         case RR_BORDER_COLOR_INT_OPAQUE_WHITE:
             return VK_BORDER_COLOR_INT_OPAQUE_WHITE;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid border color!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid border color!");
     }
-    return 0;
+
+    return VK_BORDER_COLOR_MAX_ENUM;
 }
 
 static inline VkSamplerAddressMode Rr_ToVulkanSamplerAddressMode(
@@ -685,11 +1266,10 @@ static inline VkSamplerAddressMode Rr_ToVulkanSamplerAddressMode(
         case RR_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:
             return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
         default:
-            Rr_LogError(
-                RR_LOG_CATEGORY_VULKAN,
-                "Invalid sampler address mode!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid sampler address mode!");
     }
-    return 0;
+
+    return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
 }
 
 static inline VkSamplerMipmapMode Rr_ToVulkanSamplerMipmapMode(
@@ -702,9 +1282,10 @@ static inline VkSamplerMipmapMode Rr_ToVulkanSamplerMipmapMode(
         case RR_SAMPLER_MIPMAP_MODE_LINEAR:
             return VK_SAMPLER_MIPMAP_MODE_LINEAR;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid sampler mipmap mode!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid sampler mipmap mode!");
     }
-    return 0;
+
+    return VK_SAMPLER_MIPMAP_MODE_MAX_ENUM;
 }
 
 static inline VkFilter Rr_ToVulkanFilter(Rr_Filter Filter)
@@ -716,9 +1297,10 @@ static inline VkFilter Rr_ToVulkanFilter(Rr_Filter Filter)
         case RR_FILTER_LINEAR:
             return VK_FILTER_LINEAR;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid filter!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid filter!");
     }
-    return 0;
+
+    return VK_FILTER_MAX_ENUM;
 }
 
 static inline Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
@@ -799,8 +1381,9 @@ static inline Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
         case VK_FORMAT_R32G32B32A32_SFLOAT:
             return RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid image format!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid image format!");
     }
+
     return 0;
 }
 
@@ -882,9 +1465,10 @@ static VkFormat Rr_ToVulkanImageFormat(Rr_ImageFormat ImageFormat)
         case RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT:
             return VK_FORMAT_R32G32B32A32_SFLOAT;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid image format!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid image format!");
     }
-    return 0;
+
+    return VK_FORMAT_MAX_ENUM;
 }
 
 static inline VkIndexType Rr_ToVulkanIndexType(Rr_IndexType IndexType)
@@ -898,11 +1482,10 @@ static inline VkIndexType Rr_ToVulkanIndexType(Rr_IndexType IndexType)
         case RR_INDEX_TYPE_UINT32:
             return VK_INDEX_TYPE_UINT32;
         default:
-        {
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid index type!");
-            return 0;
-        }
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid index type!");
     }
+
+    return 0;
 }
 
 static inline bool Rr_IsVulkanDepthFormat(VkFormat Format)
@@ -945,6 +1528,7 @@ static inline VkImageAspectFlags Rr_ToVulkanImageAspect(Rr_ImageAspect Aspect)
     {
         Result |= VK_IMAGE_ASPECT_STENCIL_BIT;
     }
+
     return Result;
 }
 
@@ -959,9 +1543,10 @@ static inline VkAttachmentLoadOp Rr_ToVulkanLoadOp(Rr_LoadOp LoadOp)
         case RR_LOAD_OP_DONT_CARE:
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid load op!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid load op!");
     }
-    return 0;
+
+    return VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
 }
 
 static inline VkAttachmentStoreOp Rr_ToVulkanStoreOp(Rr_StoreOp StoreOp)
@@ -973,9 +1558,10 @@ static inline VkAttachmentStoreOp Rr_ToVulkanStoreOp(Rr_StoreOp StoreOp)
         case RR_STORE_OP_DONT_CARE:
             return VK_ATTACHMENT_STORE_OP_DONT_CARE;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid store op!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid store op!");
     }
-    return 0;
+
+    return VK_ATTACHMENT_STORE_OP_MAX_ENUM;
 }
 
 static inline VkPresentModeKHR Rr_ToVulkanPresentMode(
@@ -992,9 +1578,10 @@ static inline VkPresentModeKHR Rr_ToVulkanPresentMode(
         case RR_PRESENT_MODE_FIFO:
             return VK_PRESENT_MODE_FIFO_KHR;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid present mode!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid present mode!");
     }
-    return 0;
+
+    return VK_PRESENT_MODE_MAX_ENUM_KHR;
 }
 
 static inline Rr_PresentMode Rr_ToPresentMode(
@@ -1011,8 +1598,9 @@ static inline Rr_PresentMode Rr_ToPresentMode(
         case VK_PRESENT_MODE_FIFO_KHR:
             return RR_PRESENT_MODE_FIFO;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_VULKAN, "Invalid present mode!");
+            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid present mode!");
     }
+
     return 0;
 }
 

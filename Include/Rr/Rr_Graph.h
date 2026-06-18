@@ -21,9 +21,6 @@
 #ifndef RR_GRAPH_H
 #define RR_GRAPH_H
 
-#include <Rr/Rr_Buffer.h>
-#include <Rr/Rr_Image.h>
-#include <Rr/Rr_Pipeline.h>
 #include <Rr/Rr_RHI.h>
 
 typedef struct Rr_Graph Rr_Graph;

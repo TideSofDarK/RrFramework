@@ -18,14 +18,12 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#include "Rr_Graph.h"
+#include "Rr_Graph_Vulkan.h"
 
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RHI
 #include "Rr_LogMacro.h"
 
-#include "Rr_Buffer.h"
-#include "Rr_Descriptor.h"
-#include "Rr_Image.h"
+#include "Rr_App.h"
 #include "Rr_RHI.h"
 #include "Rr_Thread.h"
 
@@ -1874,8 +1872,6 @@ void Rr_ExecuteGraph(
     VkCommandBuffer EarlyCommandBuffer,
     VkCommandBuffer LateCommandBuffer)
 {
-    Rr_BeginFrameSection("Rr.ExecuteGraph");
-
     if (Graph->Nodes.Count == 0)
     {
         return;
@@ -2313,8 +2309,6 @@ void Rr_ExecuteGraph(
 #endif
 
     Rr_DestroyScratch(Scratch);
-
-    Rr_EndFrameSection("Rr.ExecuteGraph");
 }
 
 void Rr_ReleaseGraphResources(Rr_Graph *Graph)

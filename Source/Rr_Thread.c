@@ -26,6 +26,9 @@
 #include "Rr_Arena.h"
 #include "Rr_RHI.h"
 
+#include <assert.h>
+#include <string.h>
+
 static RR_THREAD_LOCAL Rr_ThreadContext gThreadContext = { 0 };
 
 static Rr_Arena *gPermanentFreeList = NULL;

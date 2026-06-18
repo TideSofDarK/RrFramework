@@ -23,8 +23,11 @@
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_PLATFORM
 #include "Rr_LogMacro.h"
 
-#include "Rr_Vulkan.h"
+#define VK_NO_PROTOTYPES
+#include <vulkan/vulkan.h>
 
+#include <Rr/Rr_App.h>
+#include <Rr/Rr_System.h>
 #include <Rr/Rr_Thread.h>
 #include <Rr/Rr_Utility.h>
 

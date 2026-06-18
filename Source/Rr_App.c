@@ -102,11 +102,9 @@ static inline void Rr_DispatchEvents(void)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    if (gRHI->Swapchain.RecreateEventPending)
+    if (Rr_HandleSwapchainRecreated())
     {
         Rr_AddSwapchainCreatedEvent();
-
-        gRHI->Swapchain.RecreateEventPending = false;
     }
 
     Rr_BeginPlatformEvents();

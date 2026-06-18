@@ -29,18 +29,16 @@
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_UI
 #include "Rr_LogMacro.h"
 
-#include "Rr_Allocator.h"
 #include "Rr_App.h"
 #include "Rr_Arena.h"
 #include "Rr_Hash.h"
-#include "Rr_Image.h"
 #include "Rr_Platform.h"
-#include "Rr_RHI.h"
-#include "Rr_System.h"
+#include "Rr_RHI_Vulkan.h"
 #include "Rr_Thread.h"
 
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Platform.h>
+#include <Rr/Rr_System.h>
 #include <Rr/Rr_Utility.h>
 
 #define STB_TRUETYPE_IMPLEMENTATION
