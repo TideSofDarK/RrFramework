@@ -2,23 +2,41 @@
 
 layout(location = 0) in vec2 InUV;
 layout(location = 1) in vec3 InNormal;
+layout(location = 2) in flat uint InInstanceIndex;
 
 layout(location = 0) out vec4 OutColor;
 
 layout(set = 0, binding = 0) uniform UGlobals
 {
-    mat4 Model;
     mat4 View;
     mat4 Projection;
     float Time;
 };
-layout(set = 0, binding = 1) uniform sampler Sampler;
-layout(set = 0, binding = 2) uniform texture2D ColorTexture;
+
+struct SGPUModel
+{
+    mat4 Model;
+    vec4 Color;
+};
+
+layout(set = 1, binding = 0) readonly buffer UModels
+{
+    SGPUModel Models[];
+};
+
+layout(set = 3, binding = 0) uniform sampler2D ColorTexture;
 
 void main()
 {
-    vec2 A = InUV * 2.0 - 1.0;
-    A /= pow(length(A), cos(Time));
-    A = (A + 1.0) / 2.0;
-    OutColor = vec4(texture(sampler2D(ColorTexture, Sampler), A).rgb, 1.0f);
+    vec4 Color = texture(ColorTexture, InUV);
+    if (Color.a < 0.5) discard;
+    vec3 ViewNormal = inverse(View)[2].xyz;
+    if (!gl_FrontFacing)
+    {
+        ViewNormal *= -1.0;
+    }
+    float Dot = clamp(dot(InNormal, ViewNormal), 0.5, 1.0);
+    OutColor.rgb = Models[InInstanceIndex].Color.rgb * Color.rgb;
+    OutColor.rgb = OutColor.rgb * Dot;
+    OutColor.a = 1.0f;
 }

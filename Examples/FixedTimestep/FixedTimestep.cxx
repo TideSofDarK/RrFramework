@@ -31,7 +31,7 @@ Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
     return ColorImage;
 }
 
-struct CFixedTimestep
+struct CFixedTimestepApp
 {
     struct
     {
@@ -126,7 +126,7 @@ struct CFixedTimestep
                 RR_BUFFER_FLAGS_MAPPED_BIT);
     }
 
-    CFixedTimestep()
+    CFixedTimestepApp()
     {
         InitSampler();
         InitPipeline();
@@ -217,7 +217,7 @@ struct CFixedTimestep
         Rr_UIEndDebugOverlayTabs();
     }
 
-    ~CFixedTimestep()
+    ~CFixedTimestepApp()
     {
         Rr_ReleaseImage(Image);
         Rr_ReleaseSampler(Sampler);
@@ -228,12 +228,12 @@ struct CFixedTimestep
 
 int main()
 {
-    static CFixedTimestep *App{};
+    static CFixedTimestepApp *App{};
 
     Rr_Config Config = {
         .WindowTitle = "FixedTimestep",
         .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
-        .InitFunc = []() { App = new CFixedTimestep(); },
+        .InitFunc = []() { App = new CFixedTimestepApp(); },
         .IterateFunc = []() { App->Iterate(); },
         .CleanupFunc = []() { delete App; },
     };

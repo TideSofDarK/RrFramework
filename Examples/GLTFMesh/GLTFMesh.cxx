@@ -10,12 +10,13 @@
 
 #include <array>
 #include <cstring>
+#include <vector>
 
 class COrbitCamera
 {
-    float FieldOfView{ RR_ANGLE_DEG(70) };
-    float Pitch{};
-    float Yaw{};
+    float FieldOfView{ RR_ANGLE_DEG(65) };
+    float Pitch{ -RR_ANGLE_DEG(30) };
+    float Yaw{ RR_ANGLE_DEG(30) };
     float Distance{ 10.0f };
     Rr_Vec3 Center{};
     Rr_Mat4 Transform{ Rr_M4D(1.0f) };
@@ -98,37 +99,139 @@ public:
     }
 };
 
-typedef struct
-{
-    Rr_Vec3 Position;
-    Rr_Vec2 UV;
-    Rr_Vec3 Normal;
-} SVertex;
-
 struct SGPUUniform
 {
-    Rr_Mat4 Model;
     Rr_Mat4 View;
     Rr_Mat4 Projection;
     float Time;
 };
 
+struct SGPUModel
+{
+    Rr_Mat4 Model;
+    Rr_Vec4 Color;
+};
+
+struct SVertex
+{
+    Rr_Vec3 Position;
+    Rr_Vec2 UV;
+    Rr_Vec3 Normal;
+};
+
+struct SPrimitive
+{
+    uint32_t IndexCount;
+    uint32_t FirstIndex;
+    int32_t VertexOffset;
+    Rr_Vec4 Color;
+};
+
+struct SMesh
+{
+    std::vector<SPrimitive> Primitives;
+};
+
+struct SNode
+{
+    cgltf_node *GLTFNode;
+    Rr_Mat4 Transform;
+    Rr_Vec3 AnimatedTranslation;
+    Rr_Quat AnimatedRotation;
+    Rr_Vec3 AnimatedScale;
+    bool Animated;
+};
+
+struct SMaterial
+{
+    Rr_Image2D *ColorTexture{};
+};
+
 class CGLTFMeshApp
 {
-    Rr_Image2D *DepthImage{};
-    Rr_Buffer *UniformBuffer{};
     Rr_GraphicsPipeline *GraphicsPipeline{};
     Rr_Sampler *Sampler{};
-    Rr_Image2D *PrimitiveTexture{};
-    Rr_Buffer *PrimitiveBuffer{};
-    size_t PrimitiveIndexOffset{};
-    size_t PrimitiveIndexCount{};
+    Rr_Image2D *DepthImage{};
+    Rr_Buffer *UniformBuffer{};
+    Rr_Buffer *ModelBuffer{};
+    Rr_Buffer *GeometryBuffer{};
+    size_t GeometryBufferIndexOffset;
+    cgltf_data *GLTFData{};
+    cgltf_scene *GLTFScene{};
+    std::vector<SMesh> Meshes;
+    std::vector<SMaterial> Materials;
     SGPUUniform GPUUniform{};
     COrbitCamera Camera;
+    std::vector<SGPUModel> Models;
 
-    void InitGLTFPrimitive(void)
+    SMesh ParseGLTFMesh(cgltf_mesh *GLTFMesh, std::vector<SVertex> &OutVertices, std::vector<uint16_t> &OutIndices)
     {
-        Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_CUBE_GLB);
+        auto Mesh = SMesh{};
+        Mesh.Primitives.resize(GLTFMesh->primitives_count);
+
+        for (size_t PrimitiveIndex = 0; PrimitiveIndex < GLTFMesh->primitives_count; ++PrimitiveIndex)
+        {
+            auto GLTFPrimitive = &GLTFMesh->primitives[PrimitiveIndex];
+            auto Primitive = &Mesh.Primitives[PrimitiveIndex];
+
+            auto PositionAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_position, 0);
+            assert(PositionAccessor);
+            auto NormalAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_normal, 0);
+            assert(NormalAccessor);
+            auto TexCoordAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_texcoord, 0);
+            auto JointsAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_joints, 0);
+            if (JointsAccessor)
+            {
+                assert(JointsAccessor->type == cgltf_type_vec4);
+            }
+            auto WeightsAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_weights, 0);
+            if (WeightsAccessor)
+            {
+                assert(WeightsAccessor->type == cgltf_type_vec4);
+            }
+
+            auto VertexCount = PositionAccessor->count;
+            auto VertexOffset = OutVertices.size();
+            OutVertices.resize(OutVertices.size() + VertexCount);
+            for (auto Index = 0; Index < VertexCount; ++Index)
+            {
+                auto &Vertex = OutVertices.data()[VertexOffset + Index];
+                cgltf_accessor_read_float(PositionAccessor, Index, Vertex.Position.Elements, 3);
+                cgltf_accessor_read_float(NormalAccessor, Index, Vertex.Normal.Elements, 3);
+                if (TexCoordAccessor)
+                {
+                    Rr_Vec2 TexCoord;
+                    cgltf_accessor_read_float(TexCoordAccessor, Index, Vertex.UV.Elements, 2);
+                }
+            }
+
+            auto IndexAccessor = GLTFPrimitive->indices;
+            auto FirstIndex = OutIndices.size();
+            OutIndices.resize(OutIndices.size() + IndexAccessor->count);
+            cgltf_accessor_unpack_indices(
+                IndexAccessor,
+                &OutIndices[FirstIndex],
+                sizeof(uint16_t),
+                IndexAccessor->count);
+
+            Primitive->IndexCount = IndexAccessor->count;
+            Primitive->FirstIndex = FirstIndex;
+            Primitive->VertexOffset = (int32_t)VertexOffset;
+            if (GLTFPrimitive->material && GLTFPrimitive->material->has_pbr_metallic_roughness)
+            {
+                std::memcpy(
+                    Primitive->Color.Elements,
+                    GLTFPrimitive->material->pbr_metallic_roughness.base_color_factor,
+                    sizeof(Rr_Vec4));
+            }
+        }
+
+        return Mesh;
+    }
+
+    void InitGLTFScene(void)
+    {
+        Rr_Asset LoadedAsset = Rr_LoadAsset(EXAMPLE_ASSET_TOWER_GLB);
 
         auto Options = cgltf_options{};
         cgltf_data *Data = nullptr;
@@ -139,82 +242,82 @@ class CGLTFMeshApp
         assert(Data->scene);
         assert(Data->meshes);
 
-        auto Mesh = Data->meshes;
-        auto Primitive = Mesh->primitives;
-
-        if (Primitive->material && Primitive->material->has_pbr_metallic_roughness &&
-            Primitive->material->pbr_metallic_roughness.base_color_texture.texture)
+        Materials.resize(Data->materials_count);
+        for (auto Index = 0; Index < Data->materials_count; ++Index)
         {
-            auto Texture = Primitive->material->pbr_metallic_roughness.base_color_texture.texture;
-
-            if (std::strcmp(Texture->image->mime_type, "image/png") != 0 &&
-                std::strcmp(Texture->image->mime_type, "image/jpeg") != 0)
+            auto &Material = Data->materials[Index];
+            if (Material.has_pbr_metallic_roughness && Material.pbr_metallic_roughness.base_color_texture.texture)
             {
-                assert(false);
+                auto Texture = Material.pbr_metallic_roughness.base_color_texture.texture;
+
+                if (std::strcmp(Texture->image->mime_type, "image/png") != 0 &&
+                    std::strcmp(Texture->image->mime_type, "image/jpeg") != 0)
+                {
+                    assert(false);
+                }
+
+                int ImageWidth, ImageHeight, ImageChannels;
+                auto ImageData = (std::byte *)stbi_load_from_memory(
+                    (stbi_uc const *)Texture->image->buffer_view->buffer->data + Texture->image->buffer_view->offset,
+                    (int)Texture->image->buffer_view->size,
+                    &ImageWidth,
+                    &ImageHeight,
+                    &ImageChannels,
+                    4);
+                assert(ImageData);
+                assert(ImageChannels == 4);
+
+                auto ImageDataSize = ImageWidth * ImageHeight * ImageChannels;
+                auto StagingBuffer = Rr_CreateBuffer(ImageDataSize, RR_BUFFER_FLAGS_STAGING);
+                Rr_ReleaseBuffer(StagingBuffer);
+                std::memcpy(Rr_GetMappedBufferData(StagingBuffer), ImageData, ImageDataSize);
+                stbi_image_free(ImageData);
+
+                auto ColorTexture = Rr_CreateImage2D(
+                    Rr_IntV2(ImageWidth, ImageHeight),
+                    RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
+                    RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
+                Rr_CopyBufferToImage2D(
+                    Rr_GetGraph(),
+                    StagingBuffer,
+                    0,
+                    Rr_IntV2(ImageWidth, ImageHeight),
+                    ColorTexture,
+                    0);
+                Materials[Index].ColorTexture = ColorTexture;
             }
-
-            int ImageWidth, ImageHeight, ImageChannels;
-            auto ImageData = (std::byte *)stbi_load_from_memory(
-                (stbi_uc const *)Texture->image->buffer_view->buffer->data + Texture->image->buffer_view->offset,
-                (int)Texture->image->buffer_view->size,
-                &ImageWidth,
-                &ImageHeight,
-                &ImageChannels,
-                4);
-            assert(ImageData);
-
-            auto ImageDataSize = ImageWidth * ImageHeight * ImageChannels;
-            auto StagingBuffer = Rr_CreateBuffer(ImageDataSize, RR_BUFFER_FLAGS_STAGING);
-            Rr_ReleaseBuffer(StagingBuffer);
-            std::memcpy(Rr_GetMappedBufferData(StagingBuffer), ImageData, ImageDataSize);
-            stbi_image_free(ImageData);
-
-            PrimitiveTexture = Rr_CreateImage2D(
-                Rr_IntV2(ImageWidth, ImageHeight),
-                RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
-                RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
-            Rr_CopyBufferToImage2D(
-                Rr_GetGraph(),
-                StagingBuffer,
-                0,
-                Rr_IntV2(ImageWidth, ImageHeight),
-                PrimitiveTexture,
-                0);
         }
 
-        auto PositionAccessor = cgltf_find_accessor(Primitive, cgltf_attribute_type_position, 0);
-        auto UVAccessor = cgltf_find_accessor(Primitive, cgltf_attribute_type_texcoord, 0);
-        auto NormalAccessor = cgltf_find_accessor(Primitive, cgltf_attribute_type_normal, 0);
-        auto IndexAccessor = Primitive->indices;
-        assert(cgltf_component_size(IndexAccessor->component_type) == sizeof(uint16_t));
+        auto Vertices = std::vector<SVertex>{};
+        auto Indices = std::vector<uint16_t>{};
 
-        auto VertexDataSize = PositionAccessor->count * sizeof(SVertex);
-        auto IndexDataSize = IndexAccessor->count * cgltf_component_size(IndexAccessor->component_type);
+        Meshes.reserve(Data->meshes_count);
+
+        for (size_t MeshIndex = 0; MeshIndex < Data->meshes_count; ++MeshIndex)
+        {
+            cgltf_mesh *Mesh = &Data->meshes[MeshIndex];
+
+            Meshes.push_back(ParseGLTFMesh(Mesh, Vertices, Indices));
+        }
+
+        auto VertexDataSize = Vertices.size() * sizeof(SVertex);
+        auto IndexDataSize = Indices.size() * sizeof(uint16_t);
         auto TotalSize = VertexDataSize + IndexDataSize;
-
-        auto StagingBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
+        auto StagingBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_STAGING);
         Rr_ReleaseBuffer(StagingBuffer);
         auto StagingData = (std::byte *)Rr_GetMappedBufferData(StagingBuffer);
         auto StagingVertices = (SVertex *)StagingData;
         auto StagingIndices = (uint16_t *)(StagingData + VertexDataSize);
+        std::memcpy(StagingVertices, Vertices.data(), VertexDataSize);
+        std::memcpy(StagingIndices, Indices.data(), IndexDataSize);
 
-        for (auto VertexIndex = 0; VertexIndex < PositionAccessor->count; ++VertexIndex)
-        {
-            auto Vertex = SVertex{};
-            cgltf_accessor_read_float(PositionAccessor, VertexIndex, Vertex.Position.Elements, 3);
-            cgltf_accessor_read_float(UVAccessor, VertexIndex, Vertex.UV.Elements, 2);
-            cgltf_accessor_read_float(NormalAccessor, VertexIndex, Vertex.Normal.Elements, 3);
-            StagingVertices[VertexIndex] = Vertex;
-        }
-        cgltf_accessor_unpack_indices(IndexAccessor, StagingIndices, sizeof(uint16_t), IndexAccessor->count);
-
-        PrimitiveIndexCount = IndexAccessor->count;
-        PrimitiveIndexOffset = VertexDataSize;
-        PrimitiveBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_VERTEX_BIT);
+        GeometryBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_VERTEX_BIT);
+        GeometryBufferIndexOffset = VertexDataSize;
         auto TransferNode = Rr_AddTransferNode(Rr_GetGraph());
-        Rr_TransferBufferData(TransferNode, TotalSize, StagingBuffer, 0, PrimitiveBuffer, 0);
+        Rr_TransferBufferData(TransferNode, TotalSize, StagingBuffer, 0, GeometryBuffer, 0);
 
-        cgltf_free(Data);
+        GLTFData = Data;
+        GLTFScene = Data->scene;
     }
 
     void InitDepthImage(void)
@@ -237,6 +340,57 @@ class CGLTFMeshApp
             (Rr_IntVec2){ SwapchainSize.Width, SwapchainSize.Height },
             RR_IMAGE_FORMAT_D32_SFLOAT,
             RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
+    }
+
+    void DrawNode(Rr_GraphNode *GraphicsNode, cgltf_node *GLTFNode, Rr_Mat4 const &ParentTransform = Rr_M4D(1.0f))
+    {
+        auto Transform = ParentTransform;
+        if (GLTFNode->has_translation)
+        {
+            auto Translation = Rr_V3(GLTFNode->translation[0], GLTFNode->translation[1], GLTFNode->translation[2]);
+            Transform = Transform * Rr_TranslateV(Translation);
+        }
+        if (GLTFNode->has_rotation)
+        {
+            auto Quat = Rr_Quat{
+                GLTFNode->rotation[0],
+                GLTFNode->rotation[1],
+                GLTFNode->rotation[2],
+                GLTFNode->rotation[3],
+            };
+            Transform = Transform * Rr_QToM4(Quat);
+        }
+        if (GLTFNode->has_scale)
+        {
+            auto Scale = Rr_V3(GLTFNode->scale[0], GLTFNode->scale[1], GLTFNode->scale[2]);
+            Transform = Transform * Rr_ScaleV(Scale);
+        }
+
+        if (GLTFNode->mesh)
+        {
+            auto MeshIndex = cgltf_mesh_index(GLTFData, GLTFNode->mesh);
+            auto &Mesh = Meshes[MeshIndex];
+            for (auto Index = 0; Index < Mesh.Primitives.size(); ++Index)
+            {
+                auto &GLTFPrimitive = GLTFNode->mesh->primitives[Index];
+                auto MaterialIndex = cgltf_material_index(GLTFData, GLTFPrimitive.material);
+                Rr_BindCombinedImage2DSampler(GraphicsNode, Materials[MaterialIndex].ColorTexture, Sampler, 3, 0);
+                auto &Primitive = Mesh.Primitives[Index];
+                Rr_DrawIndexed(
+                    GraphicsNode,
+                    Primitive.IndexCount,
+                    1,
+                    Primitive.FirstIndex,
+                    Primitive.VertexOffset,
+                    Models.size());
+                Models.emplace_back(Transform, Primitive.Color);
+            }
+        }
+
+        for (auto Index = 0; Index < GLTFNode->children_count; ++Index)
+        {
+            DrawNode(GraphicsNode, GLTFNode->children[Index], Transform);
+        }
     }
 
 public:
@@ -304,12 +458,11 @@ public:
 
         UniformBuffer = Rr_CreateBuffer(sizeof(GPUUniform), RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_DYNAMIC);
 
-        GPUUniform.Model = Rr_M4D(1.0f);
-        GPUUniform.View = Rr_LookAt_RH(Rr_V3(0.0f, 0.0f, -5.0f), Rr_V3F(0.0f), Rr_V3(0.0f, 1.0f, 0.0f));
-
-        InitGLTFPrimitive();
+        InitGLTFScene();
 
         InitDepthImage();
+
+        ModelBuffer = Rr_CreateBuffer(RR_MEBIBYTES(4), RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_DYNAMIC);
     }
 
     void Event(Rr_Event const *Event)
@@ -343,7 +496,6 @@ public:
         Camera.UpdatePerspective(SwapchainAspect);
         Camera.Update();
 
-        GPUUniform.Model = Rr_MulM4(Rr_Rotate_RH(0.005f, Rr_V3(0.0f, 1.0f, 0.0f)), GPUUniform.Model);
         GPUUniform.View = Camera.GetViewMatrix();
         GPUUniform.Projection = Camera.GetProjectionMatrix();
         GPUUniform.Time = (float)Rr_GetTimeSeconds();
@@ -358,27 +510,37 @@ public:
         auto DepthTarget = Rr_DepthTarget{
             .Image = DepthImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
-            .StoreOp = RR_STORE_OP_STORE,
+            .StoreOp = RR_STORE_OP_DONT_CARE,
             .Clear = Rr_DepthClear{ 1.0f, 0 },
         };
         auto GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindVertexBuffer(GraphicsNode, PrimitiveBuffer, 0, 0);
-        Rr_BindIndexBuffer(GraphicsNode, PrimitiveBuffer, 0, PrimitiveIndexOffset, RR_INDEX_TYPE_UINT16);
+        Rr_BindVertexBuffer(GraphicsNode, GeometryBuffer, 0, 0);
+        Rr_BindIndexBuffer(GraphicsNode, GeometryBuffer, 0, GeometryBufferIndexOffset, RR_INDEX_TYPE_UINT16);
         Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(GPUUniform));
-        Rr_BindSampler(GraphicsNode, Sampler, 0, 1);
-        Rr_BindSampledImage2D(GraphicsNode, PrimitiveTexture, 0, 2);
-        Rr_DrawIndexed(GraphicsNode, PrimitiveIndexCount, 1, 0, 0, 0);
+        Rr_BindStorageBuffer(GraphicsNode, ModelBuffer, 1, 0, 0, Rr_GetBufferSize(ModelBuffer));
+
+        for (auto Index = 0; Index < GLTFScene->nodes_count; ++Index)
+        {
+            DrawNode(GraphicsNode, GLTFScene->nodes[Index]);
+        }
+
+        std::memcpy(Rr_GetMappedBufferData(ModelBuffer), Models.data(), sizeof(SGPUModel) * Models.size());
     }
 
     ~CGLTFMeshApp()
     {
-        Rr_ReleaseBuffer(PrimitiveBuffer);
-        Rr_ReleaseImage(PrimitiveTexture);
-        Rr_ReleaseImage(DepthImage);
+        for (auto &Material : Materials)
+        {
+            Rr_ReleaseImage(Material.ColorTexture);
+        }
         Rr_ReleaseBuffer(UniformBuffer);
+        Rr_ReleaseBuffer(ModelBuffer);
+        Rr_ReleaseBuffer(GeometryBuffer);
+        Rr_ReleaseImage(DepthImage);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleaseSampler(Sampler);
+        cgltf_free(GLTFData);
     }
 };
 

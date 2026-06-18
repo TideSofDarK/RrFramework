@@ -14,9 +14,9 @@
 
 class COrbitCamera
 {
-    float FieldOfView{ RR_ANGLE_DEG(70) };
-    float Pitch{};
-    float Yaw{};
+    float FieldOfView{ RR_ANGLE_DEG(65) };
+    float Pitch{ -RR_ANGLE_DEG(30) };
+    float Yaw{ RR_ANGLE_DEG(30) };
     float Distance{ 10.0f };
     Rr_Vec3 Center{};
     Rr_Mat4 Transform{ Rr_M4D(1.0f) };
@@ -155,10 +155,10 @@ struct SNode
 
 struct SMaterial
 {
-    Rr_Image2D *ColorTexture;
+    Rr_Image2D *ColorTexture{};
 };
 
-class CGLTFAnimation
+class CGLTFAnimationApp
 {
     Rr_GraphicsPipeline *GraphicsPipeline{};
     Rr_Sampler *Sampler{};
@@ -168,9 +168,8 @@ class CGLTFAnimation
     Rr_Buffer *SkinBuffer{};
     Rr_Buffer *GeometryBuffer{};
     size_t GeometryBufferIndexOffset;
-    Rr_Buffer *AnimationBuffer{};
-    cgltf_data *CGLTFData{};
-    cgltf_scene *CGLTFScene{};
+    cgltf_data *GLTFData{};
+    cgltf_scene *GLTFScene{};
     std::vector<SMesh> Meshes;
     std::vector<SMaterial> Materials;
     uint32_t AnimationIndex{};
@@ -198,7 +197,6 @@ class CGLTFAnimation
             auto NormalAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_normal, 0);
             assert(NormalAccessor);
             auto TexCoordAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_texcoord, 0);
-            assert(NormalAccessor);
             auto JointsAccessor = cgltf_find_accessor(GLTFPrimitive, cgltf_attribute_type_joints, 0);
             if (JointsAccessor)
             {
@@ -296,6 +294,7 @@ class CGLTFAnimation
                     &ImageChannels,
                     4);
                 assert(ImageData);
+                assert(ImageChannels == 4);
 
                 auto ImageDataSize = ImageWidth * ImageHeight * ImageChannels;
                 auto StagingBuffer = Rr_CreateBuffer(ImageDataSize, RR_BUFFER_FLAGS_STAGING);
@@ -318,8 +317,8 @@ class CGLTFAnimation
             }
         }
 
-        std::vector<SVertex> Vertices;
-        std::vector<uint16_t> Indices;
+        auto Vertices = std::vector<SVertex>{};
+        auto Indices = std::vector<uint16_t>{};
 
         Meshes.reserve(Data->meshes_count);
 
@@ -346,10 +345,10 @@ class CGLTFAnimation
         auto TransferNode = Rr_AddTransferNode(Rr_GetGraph());
         Rr_TransferBufferData(TransferNode, TotalSize, StagingBuffer, 0, GeometryBuffer, 0);
 
-        CGLTFData = Data;
-        CGLTFScene = Data->scene;
+        GLTFData = Data;
+        GLTFScene = Data->scene;
 
-        Nodes.resize(CGLTFData->nodes_count);
+        Nodes.resize(GLTFData->nodes_count);
     }
 
     void InitDepthImage(void)
@@ -379,7 +378,7 @@ class CGLTFAnimation
         AnimationTime = 0.0f;
         AnimationStart = std::numeric_limits<float>::max();
         AnimationEnd = std::numeric_limits<float>::min();
-        auto Animation = &CGLTFData->animations[AnimationIndex];
+        auto Animation = &GLTFData->animations[AnimationIndex];
         for (auto Index = 0; Index < Animation->channels_count; ++Index)
         {
             auto &Channel = Animation->channels[Index];
@@ -402,16 +401,12 @@ class CGLTFAnimation
         {
             if (GLTFNode->has_translation)
             {
-                Rr_Vec3 Translation = {
-                    GLTFNode->translation[0],
-                    GLTFNode->translation[1],
-                    GLTFNode->translation[2],
-                };
+                auto Translation = Rr_V3(GLTFNode->translation[0], GLTFNode->translation[1], GLTFNode->translation[2]);
                 Transform = Transform * Rr_TranslateV(Translation);
             }
             if (GLTFNode->has_rotation)
             {
-                Rr_Quat Quat = {
+                auto Quat = Rr_Quat{
                     GLTFNode->rotation[0],
                     GLTFNode->rotation[1],
                     GLTFNode->rotation[2],
@@ -421,11 +416,7 @@ class CGLTFAnimation
             }
             if (GLTFNode->has_scale)
             {
-                Rr_Vec3 Scale = {
-                    GLTFNode->scale[0],
-                    GLTFNode->scale[1],
-                    GLTFNode->scale[2],
-                };
+                auto Scale = Rr_V3(GLTFNode->scale[0], GLTFNode->scale[1], GLTFNode->scale[2]);
                 Transform = Transform * Rr_ScaleV(Scale);
             }
         }
@@ -435,16 +426,16 @@ class CGLTFAnimation
 
     void DrawNode(Rr_GraphNode *GraphicsNode, cgltf_node *GLTFNode, Rr_Mat4 const &ParentTransform = Rr_M4D(1.0f))
     {
-        Rr_Mat4 Transform = Nodes[cgltf_node_index(CGLTFData, GLTFNode)].Transform;
+        auto Transform = Nodes[cgltf_node_index(GLTFData, GLTFNode)].Transform;
 
         if (GLTFNode->mesh)
         {
-            auto MeshIndex = cgltf_mesh_index(CGLTFData, GLTFNode->mesh);
+            auto MeshIndex = cgltf_mesh_index(GLTFData, GLTFNode->mesh);
             auto &Mesh = Meshes[MeshIndex];
             for (auto Index = 0; Index < Mesh.Primitives.size(); ++Index)
             {
                 auto &GLTFPrimitive = GLTFNode->mesh->primitives[Index];
-                auto MaterialIndex = cgltf_material_index(CGLTFData, GLTFPrimitive.material);
+                auto MaterialIndex = cgltf_material_index(GLTFData, GLTFPrimitive.material);
                 Rr_BindCombinedImage2DSampler(GraphicsNode, Materials[MaterialIndex].ColorTexture, Sampler, 3, 0);
                 auto &Primitive = Mesh.Primitives[Index];
                 Rr_DrawIndexed(
@@ -471,13 +462,13 @@ class CGLTFAnimation
             AnimationTime -= AnimationTime;
         }
 
-        auto Animation = &CGLTFData->animations[AnimationIndex];
+        auto Animation = &GLTFData->animations[AnimationIndex];
         for (auto Index = 0; Index < Animation->channels_count; ++Index)
         {
             auto &Channel = Animation->channels[Index];
             auto Sampler = Channel.sampler;
 
-            auto &Node = Nodes[cgltf_node_index(CGLTFData, Channel.target_node)];
+            auto &Node = Nodes[cgltf_node_index(GLTFData, Channel.target_node)];
             Node.Animated = true;
 
             auto KeyframeCount = Sampler->input->count;
@@ -543,7 +534,7 @@ class CGLTFAnimation
 
     void ProcessNodes(cgltf_node *GLTFNode, Rr_Mat4 const &ParentTransform = Rr_M4D(1.0f))
     {
-        auto &Node = Nodes[cgltf_node_index(CGLTFData, GLTFNode)];
+        auto &Node = Nodes[cgltf_node_index(GLTFData, GLTFNode)];
 
         Rr_Mat4 Transform;
         if (Node.Animated)
@@ -568,7 +559,7 @@ class CGLTFAnimation
     }
 
 public:
-    CGLTFAnimation()
+    CGLTFAnimationApp()
     {
         auto SamplerInfo = Rr_SamplerInfo{
             .MagFilter = RR_FILTER_LINEAR,
@@ -668,14 +659,14 @@ public:
             Rr_UIText("This example shows using cGLTF to load and draw animated meshes.");
             Rr_UIInputFloat("Animation Time", &AnimationTime);
             auto AnimationNames = std::vector<char const *>{};
-            AnimationNames.reserve(CGLTFData->animations_count);
-            for (auto Index = 0; Index < CGLTFData->animations_count; ++Index)
+            AnimationNames.reserve(GLTFData->animations_count);
+            for (auto Index = 0; Index < GLTFData->animations_count; ++Index)
             {
-                AnimationNames.push_back(CGLTFData->animations[Index].name);
+                AnimationNames.push_back(GLTFData->animations[Index].name);
             }
             if (Rr_UICombobox(
                     "Animation",
-                    (uint32_t)CGLTFData->animations_count,
+                    (uint32_t)GLTFData->animations_count,
                     AnimationNames.data(),
                     &AnimationIndex))
             {
@@ -705,7 +696,7 @@ public:
         auto DepthTarget = Rr_DepthTarget{
             .Image = DepthImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
-            .StoreOp = RR_STORE_OP_STORE,
+            .StoreOp = RR_STORE_OP_DONT_CARE,
             .Clear = Rr_DepthClear{ 1.0f, 0 },
         };
         auto GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
@@ -721,60 +712,56 @@ public:
 
         UpdateAnimation();
 
-        for (auto Index = 0; Index < CGLTFScene->nodes_count; ++Index)
+        for (auto Index = 0; Index < GLTFScene->nodes_count; ++Index)
         {
-            ProcessNodes(CGLTFScene->nodes[Index]);
+            ProcessNodes(GLTFScene->nodes[Index]);
         }
 
-        auto Skin = CGLTFData->skins;
+        auto Skin = GLTFData->skins;
         Bones.resize(Skin->joints_count);
         for (auto Index = 0; Index < Skin->joints_count; ++Index)
         {
             auto JointNode = Skin->joints[Index];
-            auto JointNodeIndex = cgltf_node_index(CGLTFData, JointNode);
+            auto JointNodeIndex = cgltf_node_index(GLTFData, JointNode);
 
             cgltf_accessor_read_float(Skin->inverse_bind_matrices, Index, &Bones[Index].InverseBind[0][0], 16);
             Bones[Index].Transform = Nodes[JointNodeIndex].Transform;
         }
 
-        for (auto Index = 0; Index < CGLTFScene->nodes_count; ++Index)
+        for (auto Index = 0; Index < GLTFScene->nodes_count; ++Index)
         {
-            DrawNode(GraphicsNode, CGLTFScene->nodes[Index]);
+            DrawNode(GraphicsNode, GLTFScene->nodes[Index]);
         }
 
         std::memcpy(Rr_GetMappedBufferData(ModelBuffer), Models.data(), sizeof(SGPUModel) * Models.size());
         std::memcpy(Rr_GetMappedBufferData(SkinBuffer), Bones.data(), sizeof(SGPUBone) * Bones.size());
     }
 
-    ~CGLTFAnimation()
+    ~CGLTFAnimationApp()
     {
         for (auto &Material : Materials)
         {
-            if (!Material.ColorTexture)
-            {
-                continue;
-            }
-
             Rr_ReleaseImage(Material.ColorTexture);
         }
         Rr_ReleaseSampler(Sampler);
-        Rr_ReleaseBuffer(SkinBuffer);
+        Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseBuffer(ModelBuffer);
+        Rr_ReleaseBuffer(SkinBuffer);
         Rr_ReleaseBuffer(GeometryBuffer);
         Rr_ReleaseImage(DepthImage);
-        Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
+        cgltf_free(GLTFData);
     }
 };
 
 int main()
 {
-    static CGLTFAnimation *App{};
+    static CGLTFAnimationApp *App{};
 
     Rr_Config Config = {
         .WindowTitle = "GLTFAnimation",
         .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
-        .InitFunc = []() { App = new CGLTFAnimation(); },
+        .InitFunc = []() { App = new CGLTFAnimationApp(); },
         .EventFunc = [](Rr_Event const *Event) { App->Event(Event); },
         .IterateFunc = []() { App->Iterate(); },
         .CleanupFunc = []() { delete App; },

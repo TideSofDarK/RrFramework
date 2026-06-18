@@ -33,7 +33,7 @@
 #include "Rr_Arena.h"
 #include "Rr_Hash.h"
 #include "Rr_Platform.h"
-#include "Rr_RHI_Vulkan.h"
+#include "Rr_RHI_Vulkan.h" /* TODO: Shouldn't be included. */
 #include "Rr_Thread.h"
 
 #include <Rr/Rr_Graph.h>

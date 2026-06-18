@@ -57,6 +57,7 @@
 - [ ] Replace hash trie usage with Rr_HashTable.h where applicable.
 - [ ] Array implementation is a bit ugly...
 - [ ] Rr_ReleaseXXX functions can validate input pointer via getting hive iterator.
+- [ ] Support linear tiling (?) formats such as R8G8B8.
 
 * Features
 

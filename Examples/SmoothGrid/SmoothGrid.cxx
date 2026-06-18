@@ -95,7 +95,7 @@ struct SGPUUniform
     float GridBig;
 };
 
-class CSmoothGrid
+class CSmoothGridApp
 {
     static constexpr Rr_ImageFormat DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
 
@@ -172,7 +172,7 @@ class CSmoothGrid
     }
 
 public:
-    CSmoothGrid()
+    CSmoothGridApp()
     {
         InitCamera();
         InitPipeline();
@@ -248,7 +248,7 @@ public:
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
     }
 
-    ~CSmoothGrid()
+    ~CSmoothGridApp()
     {
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
         Rr_ReleaseBuffer(UniformBuffer);
@@ -258,12 +258,12 @@ public:
 
 int main()
 {
-    static CSmoothGrid *App{};
+    static CSmoothGridApp *App{};
 
     Rr_Config Config = {
         .WindowTitle = "SmoothGrid",
         .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
-        .InitFunc = []() { App = new CSmoothGrid(); },
+        .InitFunc = []() { App = new CSmoothGridApp(); },
         .EventFunc = [](Rr_Event const *Event) { App->Event(Event); },
         .IterateFunc = []() { App->Iterate(); },
         .CleanupFunc = []() { delete App; },

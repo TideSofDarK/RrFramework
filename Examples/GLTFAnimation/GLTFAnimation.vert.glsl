@@ -45,14 +45,22 @@ void main()
     vec4 Position = vec4(InPosition, 1.0);
     mat4 Model = Models[gl_InstanceIndex].Model;
     mat4 InvModel = inverse(Model);
-    SGPUBone Bone0 = Bones[InBoneIndices.x];
-    SGPUBone Bone1 = Bones[InBoneIndices.y];
-    SGPUBone Bone2 = Bones[InBoneIndices.z];
-    SGPUBone Bone3 = Bones[InBoneIndices.w];
-    mat4 Skin = InBoneWeights.x * (InvModel * Bone0.Transform * Bone0.InverseBind) +
-            InBoneWeights.y * (InvModel * Bone1.Transform * Bone1.InverseBind) +
-            InBoneWeights.z * (InvModel * Bone2.Transform * Bone2.InverseBind) +
-            InBoneWeights.w * (InvModel * Bone3.Transform * Bone3.InverseBind);
+    mat4 Skin;
+    if (InBoneWeights.x + InBoneWeights.y + InBoneWeights.z + InBoneWeights.w == 0.0)
+    {
+        Skin = mat4(1.0);
+    }
+    else
+    {
+        SGPUBone Bone0 = Bones[InBoneIndices.x];
+        SGPUBone Bone1 = Bones[InBoneIndices.y];
+        SGPUBone Bone2 = Bones[InBoneIndices.z];
+        SGPUBone Bone3 = Bones[InBoneIndices.w];
+        Skin = InBoneWeights.x * (InvModel * Bone0.Transform * Bone0.InverseBind) +
+                InBoneWeights.y * (InvModel * Bone1.Transform * Bone1.InverseBind) +
+                InBoneWeights.z * (InvModel * Bone2.Transform * Bone2.InverseBind) +
+                InBoneWeights.w * (InvModel * Bone3.Transform * Bone3.InverseBind);
+    }
     gl_Position = Projection * View * Model * Skin * Position;
     OutNormal = mat3(transpose(inverse(Model * Skin))) * InNormal;
     OutInstanceIndex = gl_InstanceIndex;

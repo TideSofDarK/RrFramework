@@ -78,7 +78,7 @@ void CreateImagesFromPNGs(
     Rr_ReleaseBuffer(StagingBuffer);
 }
 
-struct SLayeredImageApp
+class CLayeredImageApp
 {
     static constexpr std::int32_t IMAGE_WIDTH = 800;
     static constexpr std::int32_t IMAGE_HEIGHT = 600;
@@ -169,7 +169,8 @@ struct SLayeredImageApp
                 RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
-    void Init()
+public:
+    CLayeredImageApp()
     {
         InitSampler();
         InitPipelines();
@@ -227,7 +228,7 @@ struct SLayeredImageApp
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
     }
 
-    void Cleanup()
+    ~CLayeredImageApp()
     {
         Rr_ReleaseGraphicsPipeline(Image2DArrayPipeline);
         Rr_ReleaseGraphicsPipeline(Image3DPipeline);
@@ -240,13 +241,13 @@ struct SLayeredImageApp
 
 int main()
 {
-    static SLayeredImageApp App;
+    static CLayeredImageApp *App{};
 
     Rr_Config Config = {
         .WindowTitle = "LayeredImage",
-        .InitFunc = []() { App.Init(); },
-        .IterateFunc = []() { App.Iterate(); },
-        .CleanupFunc = []() { App.Cleanup(); },
+        .InitFunc = []() { App = new CLayeredImageApp(); },
+        .IterateFunc = []() { App->Iterate(); },
+        .CleanupFunc = []() { delete App; },
     };
     Rr_Run(&Config);
 }

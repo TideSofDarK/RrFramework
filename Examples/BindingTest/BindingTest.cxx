@@ -28,7 +28,7 @@ struct SS2B4Element
     std::uint32_t U32;
 };
 
-struct SBindingTestApp
+class CBindingTestApp
 {
     Rr_ComputePipeline *ComputePipeline;
 
@@ -149,7 +149,8 @@ struct SBindingTestApp
             RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
     }
 
-    void Init()
+public:
+    CBindingTestApp()
     {
         InitPipeline();
         InitBuffers();
@@ -200,7 +201,7 @@ struct SBindingTestApp
             RR_IMAGE_ASPECT_COLOR_BIT);
     }
 
-    void Cleanup()
+    ~CBindingTestApp()
     {
         Rr_ReleaseComputePipeline(ComputePipeline);
         Rr_ReleaseBuffer(UniformBufferA);
@@ -214,13 +215,13 @@ struct SBindingTestApp
 
 int main()
 {
-    static SBindingTestApp App;
+    static CBindingTestApp *App{};
 
     Rr_Config Config = {
         .WindowTitle = "BindingTest",
-        .InitFunc = []() { App.Init(); },
-        .IterateFunc = []() { App.Iterate(); },
-        .CleanupFunc = []() { App.Cleanup(); },
+        .InitFunc = []() { App = new CBindingTestApp(); },
+        .IterateFunc = []() { App->Iterate(); },
+        .CleanupFunc = []() { delete App; },
     };
     Rr_Run(&Config);
 }
