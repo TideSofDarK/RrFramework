@@ -66,34 +66,45 @@ static Rr_Image2D *LoadImage2D(
     return Image2D;
 }
 
-struct SCamera
+class CCamera
 {
-    float FOVDegrees = 90.0f;
+    float FOVDegrees{ 90.0f };
     float Pitch{};
     float Yaw{};
-    Rr_Vec3 Position{};
+    Rr_Vec3 Position{ 0.0f, 1.0f, 0.0f };
+
     Rr_Mat4 Transform = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
 
-    void UpdatePerspective(Rr_IntVec2 Size)
+public:
+    Rr_Mat4 GetProjectionMatrix() const
     {
-        ProjMatrix = Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), (float)Size.X / (float)Size.Y, NEAR_PLANE, FAR_PLANE) *
-                     FLIP_Y_MATRIX;
+        return ProjMatrix;
     }
 
-    [[nodiscard]] Rr_Mat4 GetViewMatrix() const
+    Rr_Mat4 GetViewMatrix() const
     {
         return Rr_InvGeneral(Transform);
     }
 
-    [[nodiscard]] Rr_Vec3 GetForwardVector() const
+    Rr_Vec3 GetForwardVector() const
     {
         return Rr_Norm(Transform.Columns[2].XYZ);
     }
 
-    [[nodiscard]] Rr_Vec3 GetRightVector() const
+    Rr_Vec3 GetRightVector() const
     {
         return Rr_Norm(Transform.Columns[0].XYZ);
+    }
+
+    Rr_Vec3 GetPosition() const
+    {
+        return Position;
+    }
+
+    void UpdatePerspective(float Aspect)
+    {
+        ProjMatrix = Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, NEAR_PLANE, FAR_PLANE) * FLIP_Y_MATRIX;
     }
 
     void Update()
@@ -711,11 +722,11 @@ public:
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
-    void Draw(Rr_Graph *Graph, Rr_Image2D *ColorImage, const SCamera &Camera, Rr_ImageCube *ImageCube)
+    void Draw(Rr_Graph *Graph, Rr_Image2D *ColorImage, const CCamera &Camera, Rr_ImageCube *ImageCube)
     {
         SGPUUniform Uniform = {
             .View = Camera.GetViewMatrix(),
-            .Projection = Camera.ProjMatrix,
+            .Projection = Camera.GetProjectionMatrix(),
         };
         std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &Uniform, sizeof(SGPUUniform));
 
@@ -810,15 +821,15 @@ public:
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
-    void Draw(Rr_GraphNode *GraphicsNode, const SCamera &Camera, Rr_Image2D *ColorImage, Rr_Image2D *DepthImage)
+    void Draw(Rr_GraphNode *GraphicsNode, const CCamera &Camera, Rr_Image2D *ColorImage, Rr_Image2D *DepthImage)
     {
         Rr_BeginNodeLabel(GraphicsNode, "Grid");
 
         SGPUUniform Uniform = {
             .View = Camera.GetViewMatrix(),
-            .InvView = Camera.Transform,
-            .Projection = Camera.ProjMatrix,
-            .InvProjection = Rr_InvPerspective_RH(Camera.ProjMatrix),
+            .InvView = Rr_InvGeneralM4(Camera.GetViewMatrix()),
+            .Projection = Camera.GetProjectionMatrix(),
+            .InvProjection = Rr_InvPerspective_RH(Camera.GetProjectionMatrix()),
             .Near = NEAR_PLANE,
             .Far = FAR_PLANE,
             .GridSmall = 1.0f,
@@ -998,7 +1009,7 @@ public:
 
     void Iterate(
         Rr_Graph *Graph,
-        const SCamera &Camera,
+        const CCamera &Camera,
         const std::function<void(Rr_GraphNode *Node)> &DrawSceneCallback)
     {
         Rr_BeginGraphLabel(Graph, "ShadowMaps");
@@ -1295,7 +1306,7 @@ public:
         Rr_Image2D *TargetImage,
         Rr_Image2D *IntermediateImage,
         Rr_Image2D *NormalDepthImage,
-        const SCamera &Camera)
+        const CCamera &Camera)
     {
         Rr_BeginGraphLabel(Graph, "AmbientOcclusion");
 
@@ -1308,8 +1319,8 @@ public:
         GPUUniform.DepthParams = Rr_V2((NEAR_PLANE - FAR_PLANE) / (NEAR_PLANE * FAR_PLANE), 1.0 / NEAR_PLANE);
         Rr_IntVec2 Extent = Rr_GetImage2DExtent(TargetImage);
         GPUUniform.ScreenRes = Rr_V2(Extent.Width, Extent.Height);
-        GPUUniform.Projection = Camera.ProjMatrix;
-        GPUUniform.InvProjection = Rr_InvGeneral(Camera.ProjMatrix);
+        GPUUniform.Projection = Camera.GetProjectionMatrix();
+        GPUUniform.InvProjection = Rr_InvGeneral(Camera.GetProjectionMatrix());
         std::memcpy(UniformData + UniformOffset, &GPUUniform, sizeof(GPUUniform));
 
         /* Calculate AO and pack it 2x16 along with linear depth. */
@@ -1464,7 +1475,7 @@ class CPBRRenderingApp
     };
     std::uint32_t MSAAOptionIndex = 0;
 
-    SCamera Camera;
+    CCamera Camera;
     CGLTFScene GLTFScene;
     CFullscreenBlit FullscreenBlit;
     CLighting Lighting;
@@ -1605,11 +1616,6 @@ class CPBRRenderingApp
             RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT);
     }
 
-    void InitCamera()
-    {
-        Camera.UpdatePerspective(Rr_GetImage2DExtent(Rr_GetSwapchainImage()));
-    }
-
     void InitUniform()
     {
         UniformBuffer = Rr_CreateBuffer(
@@ -1626,7 +1632,6 @@ class CPBRRenderingApp
             if (Rr_UIBeginTree("General"))
             {
                 Rr_UIInputColor3("Ambient Color", GPUUniform.AmbientColor.Elements);
-                Rr_UIInputFloat3("Camera Position", Camera.Position.Elements);
                 Rr_Vec3 CameraForward = Camera.GetForwardVector();
                 Rr_UIInputFloat3("Camera Forward", CameraForward.Elements);
                 Rr_UISeparator();
@@ -1655,7 +1660,6 @@ public:
             case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
             {
                 InitAttachments();
-                InitCamera();
             }
             break;
             case RR_EVENT_TYPE_KEY_DOWN:
@@ -1681,6 +1685,11 @@ public:
 
         Rr_BeginGraphLabel(Graph, "ModernRendering");
 
+        auto SwapchainImage = Rr_GetSwapchainImage();
+        auto SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
+        auto SwapchainAspect = Rr_GetImage2DAspect(SwapchainImage);
+
+        Camera.UpdatePerspective(SwapchainAspect);
         Camera.Update();
 
         if (Lighting.PointLights.size() > 1)
@@ -1688,9 +1697,6 @@ public:
             Lighting.PointLights[1].Position = Rr_V3(std::cos(0.5f + Rr_GetTimeSeconds()) * 6.0f, 5.0f, 0.0f);
         }
         Lighting.Iterate(Graph, Camera, [&](Rr_GraphNode *Node) { GLTFScene.Draw<2>(Node, 1, 0); });
-
-        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
 
         Rr_ClearColorImage2D(Graph, { Rr_V4(0.005f, 0.007f, 0.015f, 1.0f) }, ColorImage);
 
@@ -1702,8 +1708,8 @@ public:
         bool UseMSAA = GetMSAASampleCount() > 1;
 
         GPUUniform.View = Camera.GetViewMatrix();
-        GPUUniform.Projection = Camera.ProjMatrix;
-        GPUUniform.CameraPosition = Camera.Position;
+        GPUUniform.Projection = Camera.GetProjectionMatrix();
+        GPUUniform.CameraPosition = Camera.GetPosition();
         GPUUniform.Time = (float)Rr_GetTimeSeconds();
         GPUUniform.Resolution = { (float)SwapchainSize.Width, (float)SwapchainSize.Height };
         std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &GPUUniform, sizeof(GPUUniform));
@@ -1816,8 +1822,6 @@ public:
         InitAttachments();
         RecreatePipelines();
         InitUniform();
-        InitCamera();
-        Camera.Position = Rr_V3(0.0f, 1.0f, 0.0f);
         BRDFImage = LoadImage2D(
             Rr_LoadAsset(EXAMPLE_ASSET_BRDF_RAW).Data,
             Rr_LoadAsset(EXAMPLE_ASSET_BRDF_RAW).Size,

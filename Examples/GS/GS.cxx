@@ -11,19 +11,40 @@
 constexpr float NEAR_PLANE = 0.1f;
 constexpr float FAR_PLANE = 100.0f;
 
-struct SCamera
+class CCamera
 {
-    float FOVDegrees = 90.0f;
+    float FOVDegrees{ 90.0f };
     float Pitch{};
     float Yaw{};
-    Rr_Vec3 Position{};
+    Rr_Vec3 Position{ 0.0f, -0.5f, -2.5f };
 
     Rr_Mat4 Transform = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
 
+public:
     float HTanY;
     float HTanX;
     float FocalZ;
+
+    Rr_Mat4 GetProjectionMatrix() const
+    {
+        return ProjMatrix;
+    }
+
+    Rr_Mat4 GetViewMatrix() const
+    {
+        return Rr_InvGeneral(Transform);
+    }
+
+    Rr_Vec3 GetForwardVector() const
+    {
+        return Rr_Norm(Transform.Columns[2].XYZ);
+    }
+
+    Rr_Vec3 GetRightVector() const
+    {
+        return Rr_Norm(Transform.Columns[0].XYZ);
+    }
 
     void UpdatePerspective(Rr_IntVec2 Size)
     {
@@ -32,21 +53,6 @@ struct SCamera
         HTanY = tanf(RR_ANGLE_DEG(FOVDegrees) / 2.0f);
         HTanX = HTanY / (float)Size.Y * (float)Size.X;
         FocalZ = (float)Size.Y / (2.0f * HTanY);
-    }
-
-    [[nodiscard]] Rr_Mat4 GetViewMatrix() const
-    {
-        return Rr_InvGeneral(Transform);
-    }
-
-    [[nodiscard]] Rr_Vec3 GetForwardVector() const
-    {
-        return Rr_Norm(Transform.Columns[2].XYZ);
-    }
-
-    [[nodiscard]] Rr_Vec3 GetRightVector() const
-    {
-        return Rr_Norm(Transform.Columns[0].XYZ);
     }
 
     void Update()
@@ -147,7 +153,7 @@ struct SGSApp
         }
     };
 
-    SCamera Camera;
+    CCamera Camera;
 
     size_t AliveCount{};
     size_t AlignedCount{};
@@ -163,9 +169,6 @@ struct SGSApp
 
     SGSApp()
     {
-        Camera.UpdatePerspective(Rr_GetImage2DExtent(Rr_GetSwapchainImage()));
-        Camera.Position = { 0.0f, -0.5f, -2.5f };
-
         Rr_Asset Asset = Rr_LoadAsset(EXAMPLE_ASSET_PLUSH_SPLAT);
 
         AliveCount = Asset.Size / 32;
@@ -244,20 +247,6 @@ struct SGSApp
                 RR_BUFFER_FLAGS_STAGING_BIT);
     }
 
-    void Event(Rr_Event const *Event)
-    {
-        switch (Event->Type)
-        {
-            case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
-            {
-                Camera.UpdatePerspective(Rr_GetImage2DExtent(Rr_GetSwapchainImage()));
-            }
-            break;
-            default:
-                return;
-        }
-    }
-
     void Iterate()
     {
         Rr_UIBeginDebugOverlayTabs();
@@ -266,19 +255,21 @@ struct SGSApp
         Rr_UIEndWindow();
         Rr_UIEndDebugOverlayTabs();
 
+        auto SwapchainImage = Rr_GetSwapchainImage();
+        auto SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
+
+        Camera.UpdatePerspective(SwapchainSize);
         Camera.Update();
 
-        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-
         Sorter->Sort(
-            Camera.ProjMatrix * Camera.GetViewMatrix(),
+            Camera.GetProjectionMatrix() * Camera.GetViewMatrix(),
             sizeof(SGPUSplat) * AlignedCount,
             SplatsBuffer,
             sizeof(SGPUEntry) * AlignedCount,
             EntriesBuffer);
 
         SUniformData UniformData = {};
-        UniformData.Projection = Camera.ProjMatrix;
+        UniformData.Projection = Camera.GetProjectionMatrix();
         UniformData.View = Camera.GetViewMatrix();
         UniformData.HFOVFocal = { Camera.HTanX, Camera.HTanY, Camera.FocalZ };
 
@@ -314,7 +305,6 @@ int main()
     auto Config = Rr_Config{
         .WindowTitle = "GS",
         .InitFunc = []() { App = new SGSApp(); },
-        .EventFunc = [](Rr_Event const *Event) { App->Event(Event); },
         .IterateFunc = []() { App->Iterate(); },
         .CleanupFunc = []() { delete App; },
     };

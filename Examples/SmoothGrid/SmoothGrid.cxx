@@ -5,35 +5,41 @@
 constexpr float NEAR_PLANE = 0.1f;
 constexpr float FAR_PLANE = 100.0f;
 
-struct SCamera
+class CCamera
 {
-    float FOVDegrees = 90.0f;
+    float FOVDegrees{ 90.0f };
     float Pitch{};
     float Yaw{};
-    Rr_Vec3 Position{};
+    Rr_Vec3 Position{ 0.0f, 1.0f, 0.0f };
 
     Rr_Mat4 Transform = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
 
-    void UpdatePerspective(Rr_IntVec2 Size)
+public:
+    Rr_Mat4 GetProjectionMatrix() const
     {
-        ProjMatrix = Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), (float)Size.X / (float)Size.Y, NEAR_PLANE, FAR_PLANE);
-        ProjMatrix.Elements[1][1] *= -1.0f;
+        return ProjMatrix;
     }
 
-    [[nodiscard]] Rr_Mat4 GetViewMatrix() const
+    Rr_Mat4 GetViewMatrix() const
     {
-        return Rr_InvGeneral(Transform);
+        return Rr_InvGeneralM4(Transform);
     }
 
-    [[nodiscard]] Rr_Vec3 GetForwardVector() const
+    Rr_Vec3 GetForwardVector() const
     {
         return Rr_Norm(Transform.Columns[2].XYZ);
     }
 
-    [[nodiscard]] Rr_Vec3 GetRightVector() const
+    Rr_Vec3 GetRightVector() const
     {
         return Rr_Norm(Transform.Columns[0].XYZ);
+    }
+
+    void UpdatePerspective(float Aspect)
+    {
+        ProjMatrix = Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, NEAR_PLANE, FAR_PLANE);
+        ProjMatrix.Elements[1][1] *= -1.0f;
     }
 
     void Update()
@@ -104,7 +110,7 @@ class CSmoothGridApp
     Rr_Image2D *DepthImage{};
     Rr_Buffer *UniformBuffer{};
 
-    SCamera Camera;
+    CCamera Camera;
 
     void InitPipeline()
     {
@@ -167,19 +173,12 @@ class CSmoothGridApp
             RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
     }
 
-    void InitCamera()
-    {
-    }
-
 public:
     CSmoothGridApp()
     {
-        InitCamera();
         InitPipeline();
         InitUniformBuffer();
         InitDepthImage();
-
-        Camera.Position = Rr_V3(0.0f, 1.0f, 0.0f);
     }
 
     void Event(Rr_Event const *Event)
@@ -189,7 +188,7 @@ public:
             case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
             {
                 InitDepthImage();
-                InitCamera();
+
                 return;
             }
             default:
@@ -210,16 +209,16 @@ public:
         auto Graph = Rr_GetGraph();
 
         auto SwapchainImage = Rr_GetSwapchainImage();
-        auto SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
+        auto SwapchainAspect = Rr_GetImage2DAspect(SwapchainImage);
 
-        Camera.UpdatePerspective(Rr_GetImage2DExtent(SwapchainImage));
+        Camera.UpdatePerspective(SwapchainAspect);
         Camera.Update();
 
         auto Uniform = SGPUUniform{
             .View = Camera.GetViewMatrix(),
-            .InvView = Camera.Transform,
-            .Projection = Camera.ProjMatrix,
-            .InvProjection = Rr_InvPerspective_RH(Camera.ProjMatrix),
+            .InvView = Rr_InvGeneralM4(Camera.GetViewMatrix()),
+            .Projection = Camera.GetProjectionMatrix(),
+            .InvProjection = Rr_InvPerspective_RH(Camera.GetProjectionMatrix()),
             .Near = NEAR_PLANE,
             .Far = FAR_PLANE,
             .GridSmall = 1.0f,

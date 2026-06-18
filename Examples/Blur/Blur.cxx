@@ -51,9 +51,9 @@ struct SCube
     }
 };
 
-struct SCamera
+class CCamera
 {
-    float FOVDegrees = 90.0f;
+    float FOVDegrees{ 90.0f };
     float Pitch{};
     float Yaw{};
     Rr_Vec3 Position{};
@@ -61,15 +61,21 @@ struct SCamera
     Rr_Mat4 Transform = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
 
+public:
+    Rr_Mat4 GetProjectionMatrix() const
+    {
+        return ProjMatrix;
+    }
+
+    Rr_Mat4 GetViewMatrix() const
+    {
+        return Rr_InvGeneral(Transform);
+    }
+
     void UpdatePerspective(float Aspect)
     {
         ProjMatrix = Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, 0.1f, 100.0f);
         ProjMatrix.Elements[1][1] *= -1.0f;
-    }
-
-    [[nodiscard]] Rr_Mat4 GetViewMatrix() const
-    {
-        return Rr_InvGeneral(Transform);
     }
 
     void Update()
@@ -627,7 +633,7 @@ struct SBlurApp
     Rr_Buffer *UniformBuffer;
     Rr_Sampler *Sampler;
 
-    SCamera Camera;
+    CCamera Camera;
     SCube Cube;
 
     Rr_Image2D *IntermediateImageA;
@@ -818,13 +824,6 @@ struct SBlurApp
         Rr_ReleaseBuffer(StagingBuffer);
     }
 
-    void InitCamera()
-    {
-        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
-        float Aspect = (float)SwapchainSize.Width / SwapchainSize.Height;
-        Camera.UpdatePerspective(Aspect);
-    }
-
     void Event(Rr_Event const *Event)
     {
         switch (Event->Type)
@@ -833,12 +832,6 @@ struct SBlurApp
             {
                 SPNGImage PNGImage{ Event->DropFile.Path };
                 InitImage2D(PNGImage);
-            }
-            break;
-            case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
-            {
-                InitCamera();
-                return;
             }
             break;
             default:
@@ -909,11 +902,15 @@ struct SBlurApp
     {
         Rr_BeginGraphLabel(Graph, "DrawBlurCube");
 
+        auto SwapchainImage = Rr_GetSwapchainImage();
+        auto SwapchainAspect = Rr_GetImage2DAspect(SwapchainImage);
+
+        Camera.UpdatePerspective(SwapchainAspect);
         Camera.Update();
 
         SGPUUniform Uniform = {
             .View = Camera.GetViewMatrix(),
-            .Projection = Camera.ProjMatrix,
+            .Projection = Camera.GetProjectionMatrix(),
         };
         std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &Uniform, sizeof(SGPUUniform));
 
@@ -1008,7 +1005,6 @@ struct SBlurApp
         , DualKawaseBlur2D()
         , BoxBlurCube(RR_IMAGE_FORMAT_R8G8B8A8_UNORM, 512, BlurCubeRadius)
     {
-        InitCamera();
         InitIntermediateImages();
         InitQuadPipeline();
         InitCubePipeline();
