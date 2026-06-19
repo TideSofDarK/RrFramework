@@ -148,11 +148,11 @@ class CSmoothGridApp
 
     void InitDepthImage()
     {
-        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
+        auto SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
 
         if (DepthImage != nullptr)
         {
-            Rr_IntVec2 DepthImageSize = Rr_GetImage2DExtent(DepthImage);
+            auto DepthImageSize = Rr_GetImage2DExtent(DepthImage);
 
             if (DepthImageSize.X >= SwapchainSize.X && DepthImageSize.Y >= SwapchainSize.Y)
             {
