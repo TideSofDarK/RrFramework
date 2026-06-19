@@ -53,7 +53,7 @@
 #else
 #error Unknown compiler!
 #endif
-#define RR_COMPILER_GNU_OR_CLANG
+#define RR_GNU_OR_CLANG
 #if defined(__x86_64__)
 #define RR_X86
 #elif defined(__arm__) || defined(__aarch64__)

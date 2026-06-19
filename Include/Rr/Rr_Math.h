@@ -24,41 +24,39 @@
 #include <Rr/Rr_Defines.h>
 
 #ifndef RR_MATH_NO_SIMD
-#if defined(_MSC_VER) && defined(_M_X64)
-#define RR_MATH__USE_SSE 1
-#elif defined(__SSE2__)
-#define RR_MATH__USE_SSE 1
+#if defined(RR_X86)
+#define RR_MATH_SSE 1
 #ifdef __SSE4_1__
-#define RR_MATH__USE_SSE4_1 1
+#define RR_MATH_SSE4_1 1
 #endif
-#elif defined(__ARM_NEON)
-#define RR_MATH__USE_NEON 1
+#elif defined(RR_ARM)
+#define RR_MATH_NEON 1
 #endif
 #endif
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
 #include <emmintrin.h>
 #include <xmmintrin.h>
 #endif
 
-#ifdef RR_MATH__USE_SSE4_1
+#ifdef RR_MATH_SSE4_1
 #include <smmintrin.h>
 #endif
 
-#ifdef RR_MATH__USE_NEON
+#ifdef RR_MATH_NEON
 #include <arm_neon.h>
 #endif
 
-#ifdef _MSC_VER
+#ifdef RR_MSVC
 #pragma warning(disable : 4201)
 #endif
 
-#if defined(__GNUC__) || defined(__clang__)
+#ifdef RR_GNU_OR_CLANG
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Wfloat-equal"
 #pragma GCC diagnostic ignored "-Wmissing-braces"
-#ifdef __clang__
+#ifdef RR_CLANG
 #pragma GCC diagnostic ignored "-Wnested-anon-types"
 #pragma GCC diagnostic ignored "-Wgnu-anonymous-struct"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
@@ -287,11 +285,11 @@ typedef union Rr_Vec4
         int32_t _Ignored9;
     };
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128 SSE;
 #endif
 
-#ifdef RR_MATH__USE_NEON
+#ifdef RR_MATH_NEON
     float32x4_t NEON;
 #endif
 
@@ -447,11 +445,11 @@ typedef union Rr_IntVec4
         int32_t _Ignored9;
     };
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128i SSE;
 #endif
 
-#ifdef RR_MATH__USE_NEON
+#ifdef RR_MATH_NEON
     int32x4_t NEON;
 #endif
 
@@ -557,10 +555,10 @@ typedef union Rr_Quat
         Rr_Vec2 ZW;
     };
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128 SSE;
 #endif
-#ifdef RR_MATH__USE_NEON
+#ifdef RR_MATH_NEON
     float32x4_t NEON;
 #endif
 } Rr_Quat;
@@ -649,11 +647,11 @@ static inline float Rr_SqrtF(float Float)
 {
     float Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128 In = _mm_set_ss(Float);
     __m128 Out = _mm_sqrt_ss(In);
     Result = _mm_cvtss_f32(Out);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     float32x4_t In = vdupq_n_f32(Float);
     float32x4_t Out = vsqrtq_f32(In);
     Result = vgetq_lane_f32(Out, 0);
@@ -807,9 +805,9 @@ static inline Rr_Vec4 Rr_V4(float X, float Y, float Z, float W)
 {
     Rr_Vec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_setr_ps(X, Y, Z, W);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     float32x4_t V = { X, Y, Z, W };
     Result.NEON = V;
 #else
@@ -826,9 +824,9 @@ static inline Rr_Vec4 Rr_V4F(float X)
 {
     Rr_Vec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_set1_ps(X);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = vdupq_n_f32(X);
 #else
     Result.X = X;
@@ -844,9 +842,9 @@ static inline Rr_Vec4 Rr_V4V(Rr_Vec3 Vector, float W)
 {
     Rr_Vec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_setr_ps(Vector.X, Vector.Y, Vector.Z, W);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     float32x4_t V = { Vector.X, Vector.Y, Vector.Z, W };
     Result.NEON = V;
 #else
@@ -905,9 +903,9 @@ static inline Rr_IntVec4 Rr_IntV4(int32_t X, int32_t Y, int32_t Z, int32_t W)
 {
     Rr_IntVec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_setr_epi32(X, Y, Z, W);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     int32x4_t V = { X, Y, Z, W };
     Result.NEON = V;
 #else
@@ -924,9 +922,9 @@ static inline Rr_IntVec4 Rr_IntV4I(int32_t X)
 {
     Rr_IntVec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_set1_epi32(X);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = vdupq_n_s32(X);
 #else
     Result.X = X;
@@ -942,9 +940,9 @@ static inline Rr_IntVec4 Rr_IntV4V(Rr_IntVec3 IntVector, int32_t W)
 {
     Rr_IntVec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_setr_epi32(IntVector.X, IntVector.Y, IntVector.Z, W);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     int32x4_t V = { IntVector.X, IntVector.Y, IntVector.Z, W };
     Result.NEON = V;
 #else
@@ -1006,9 +1004,9 @@ static inline Rr_Vec4 Rr_AddV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
     Rr_Vec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_add_ps(Left.SSE, Right.SSE);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = vaddq_f32(Left.NEON, Right.NEON);
 #else
     Result.X = Left.X + Right.X;
@@ -1074,9 +1072,9 @@ static inline Rr_Vec4 Rr_SubV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
     Rr_Vec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_sub_ps(Left.SSE, Right.SSE);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = vsubq_f32(Left.NEON, Right.NEON);
 #else
     Result.X = Left.X - Right.X;
@@ -1142,9 +1140,9 @@ static inline Rr_Vec4 Rr_MulV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
     Rr_Vec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_mul_ps(Left.SSE, Right.SSE);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = vmulq_f32(Left.NEON, Right.NEON);
 #else
     Result.X = Left.X * Right.X;
@@ -1160,10 +1158,10 @@ static inline Rr_Vec4 Rr_MulV4F(Rr_Vec4 Left, float Right)
 {
     Rr_Vec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128 Scalar = _mm_set1_ps(Right);
     Result.SSE = _mm_mul_ps(Left.SSE, Scalar);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = vmulq_n_f32(Left.NEON, Right);
 #else
     Result.X = Left.X * Right;
@@ -1217,9 +1215,9 @@ static inline Rr_Vec4 Rr_DivV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
     Rr_Vec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_div_ps(Left.SSE, Right.SSE);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = vdivq_f32(Left.NEON, Right.NEON);
 #else
     Result.X = Left.X / Right.X;
@@ -1235,10 +1233,10 @@ static inline Rr_Vec4 Rr_DivV4F(Rr_Vec4 Left, float Right)
 {
     Rr_Vec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128 Scalar = _mm_set1_ps(Right);
     Result.SSE = _mm_div_ps(Left.SSE, Scalar);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     float32x4_t Scalar = vdupq_n_f32(Right);
     Result.NEON = vdivq_f32(Left.NEON, Scalar);
 #else
@@ -1290,7 +1288,7 @@ static inline float Rr_DotV4(Rr_Vec4 Left, Rr_Vec4 Right)
     // we can use _mm_dp_ps (4.3) but for now we will use the old way.
     // Or a r = _mm_mul_ps(v1, v2), r = _mm_hadd_ps(r, r), r = _mm_hadd_ps(r, r)
     // for SSE3
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128 SSEResultOne = _mm_mul_ps(Left.SSE, Right.SSE);
     __m128 SSEResultTwo =
         _mm_shuffle_ps(SSEResultOne, SSEResultOne, _MM_SHUFFLE(2, 3, 0, 1));
@@ -1299,7 +1297,7 @@ static inline float Rr_DotV4(Rr_Vec4 Left, Rr_Vec4 Right)
         _mm_shuffle_ps(SSEResultOne, SSEResultOne, _MM_SHUFFLE(0, 1, 2, 3));
     SSEResultOne = _mm_add_ps(SSEResultOne, SSEResultTwo);
     _mm_store_ss(&Result, SSEResultOne);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     float32x4_t NEONMultiplyResult = vmulq_f32(Left.NEON, Right.NEON);
     float32x4_t NEONHalfAdd =
         vpaddq_f32(NEONMultiplyResult, NEONMultiplyResult);
@@ -1348,7 +1346,7 @@ static inline Rr_Vec4 Rr_FloorV4(Rr_Vec4 A)
 {
     Rr_Vec4 Result;
 
-#ifdef RR_MATH__USE_SSE4_1
+#ifdef RR_MATH_SSE4_1
     Result.SSE = _mm_floor_ps(A.SSE);
 #elif defined(__ARM_FEATURE_DIRECTED_ROUNDING)
     Result.NEON = vrndmq_f32(A.NEON);
@@ -1387,9 +1385,9 @@ static inline Rr_Vec4 Rr_MinV4(Rr_Vec4 A, Rr_Vec4 B)
 {
     Rr_Vec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_min_ps(A.SSE, B.SSE);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = vminq_f32(A.NEON, B.NEON);
 #else
     Result.X = RR_MIN(A.X, B.X);
@@ -1426,9 +1424,9 @@ static inline Rr_Vec4 Rr_MaxV4(Rr_Vec4 A, Rr_Vec4 B)
 {
     Rr_Vec4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_max_ps(A.SSE, B.SSE);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = vmaxq_f32(A.NEON, B.NEON);
 #else
     Result.X = RR_MAX(A.X, B.X);
@@ -1465,7 +1463,7 @@ static inline Rr_Vec4 Rr_FracV4(Rr_Vec4 A)
 {
     Rr_Vec4 Result;
 
-#ifdef RR_MATH__USE_SSE4_1
+#ifdef RR_MATH_SSE4_1
     Result.SSE = _mm_sub_ps(A.SSE, _mm_floor_ps(A.SSE));
 #elif defined(__ARM_FEATURE_DIRECTED_ROUNDING)
     Result.NEON = vsubq_f32(A.NEON, vrndmq_f32(A.NEON));
@@ -1554,7 +1552,7 @@ static inline Rr_Vec4 Rr_LerpV4(Rr_Vec4 A, float Time, Rr_Vec4 B)
 static inline Rr_Vec4 Rr_LinearCombineV4M4(Rr_Vec4 Left, Rr_Mat4 Right)
 {
     Rr_Vec4 Result;
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_mul_ps(
         _mm_shuffle_ps(Left.SSE, Left.SSE, 0x00),
         Right.Columns[0].SSE);
@@ -1573,7 +1571,7 @@ static inline Rr_Vec4 Rr_LinearCombineV4M4(Rr_Vec4 Left, Rr_Mat4 Right)
         _mm_mul_ps(
             _mm_shuffle_ps(Left.SSE, Left.SSE, 0xff),
             Right.Columns[3].SSE));
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = vmulq_laneq_f32(Right.Columns[0].NEON, Left.NEON, 0);
     Result.NEON =
         vfmaq_laneq_f32(Result.NEON, Right.Columns[1].NEON, Left.NEON, 1);
@@ -1905,14 +1903,14 @@ static inline Rr_Mat4 Rr_M4D(float Diagonal)
 static inline Rr_Mat4 Rr_TransposeM4(Rr_Mat4 Matrix)
 {
     Rr_Mat4 Result;
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result = Matrix;
     _MM_TRANSPOSE4_PS(
         Result.Columns[0].SSE,
         Result.Columns[1].SSE,
         Result.Columns[2].SSE,
         Result.Columns[3].SSE);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     float32x4x4_t Transposed = vld4q_f32((float *)Matrix.Columns);
     Result.Columns[0].NEON = Transposed.val[0];
     Result.Columns[1].NEON = Transposed.val[1];
@@ -1979,13 +1977,13 @@ static inline Rr_Mat4 Rr_MulM4F(Rr_Mat4 Matrix, float Scalar)
 {
     Rr_Mat4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128 SSEScalar = _mm_set1_ps(Scalar);
     Result.Columns[0].SSE = _mm_mul_ps(Matrix.Columns[0].SSE, SSEScalar);
     Result.Columns[1].SSE = _mm_mul_ps(Matrix.Columns[1].SSE, SSEScalar);
     Result.Columns[2].SSE = _mm_mul_ps(Matrix.Columns[2].SSE, SSEScalar);
     Result.Columns[3].SSE = _mm_mul_ps(Matrix.Columns[3].SSE, SSEScalar);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.Columns[0].NEON = vmulq_n_f32(Matrix.Columns[0].NEON, Scalar);
     Result.Columns[1].NEON = vmulq_n_f32(Matrix.Columns[1].NEON, Scalar);
     Result.Columns[2].NEON = vmulq_n_f32(Matrix.Columns[2].NEON, Scalar);
@@ -2021,13 +2019,13 @@ static inline Rr_Mat4 Rr_DivM4F(Rr_Mat4 Matrix, float Scalar)
 {
     Rr_Mat4 Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128 SSEScalar = _mm_set1_ps(Scalar);
     Result.Columns[0].SSE = _mm_div_ps(Matrix.Columns[0].SSE, SSEScalar);
     Result.Columns[1].SSE = _mm_div_ps(Matrix.Columns[1].SSE, SSEScalar);
     Result.Columns[2].SSE = _mm_div_ps(Matrix.Columns[2].SSE, SSEScalar);
     Result.Columns[3].SSE = _mm_div_ps(Matrix.Columns[3].SSE, SSEScalar);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     float32x4_t NEONScalar = vdupq_n_f32(Scalar);
     Result.Columns[0].NEON = vdivq_f32(Matrix.Columns[0].NEON, NEONScalar);
     Result.Columns[1].NEON = vdivq_f32(Matrix.Columns[1].NEON, NEONScalar);
@@ -2411,9 +2409,9 @@ static inline Rr_Quat Rr_Q(float X, float Y, float Z, float W)
 {
     Rr_Quat Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_setr_ps(X, Y, Z, W);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     float32x4_t v = { X, Y, Z, W };
     Result.NEON = v;
 #else
@@ -2430,9 +2428,9 @@ static inline Rr_Quat Rr_QV4(Rr_Vec4 Vector)
 {
     Rr_Quat Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = Vector.SSE;
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = Vector.NEON;
 #else
     Result.X = Vector.X;
@@ -2448,9 +2446,9 @@ static inline Rr_Quat Rr_AddQ(Rr_Quat Left, Rr_Quat Right)
 {
     Rr_Quat Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_add_ps(Left.SSE, Right.SSE);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = vaddq_f32(Left.NEON, Right.NEON);
 #else
 
@@ -2467,9 +2465,9 @@ static inline Rr_Quat Rr_SubQ(Rr_Quat Left, Rr_Quat Right)
 {
     Rr_Quat Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     Result.SSE = _mm_sub_ps(Left.SSE, Right.SSE);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = vsubq_f32(Left.NEON, Right.NEON);
 #else
     Result.X = Left.X - Right.X;
@@ -2485,7 +2483,7 @@ static inline Rr_Quat Rr_MulQ(Rr_Quat Left, Rr_Quat Right)
 {
     Rr_Quat Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128 SSEResultOne = _mm_xor_ps(
         _mm_shuffle_ps(Left.SSE, Left.SSE, _MM_SHUFFLE(0, 0, 0, 0)),
         _mm_setr_ps(0.f, -0.f, 0.f, -0.f));
@@ -2514,7 +2512,7 @@ static inline Rr_Quat Rr_MulQ(Rr_Quat Left, Rr_Quat Right)
         _mm_shuffle_ps(Right.SSE, Right.SSE, _MM_SHUFFLE(3, 2, 1, 0));
     Result.SSE =
         _mm_add_ps(SSEResultThree, _mm_mul_ps(SSEResultTwo, SSEResultOne));
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     float32x4_t Right1032 = vrev64q_f32(Right.NEON);
     float32x4_t Right3210 =
         vcombine_f32(vget_high_f32(Right1032), vget_low_f32(Right1032));
@@ -2565,10 +2563,10 @@ static inline Rr_Quat Rr_MulQF(Rr_Quat Left, float Multiplicative)
 {
     Rr_Quat Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128 Scalar = _mm_set1_ps(Multiplicative);
     Result.SSE = _mm_mul_ps(Left.SSE, Scalar);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     Result.NEON = vmulq_n_f32(Left.NEON, Multiplicative);
 #else
     Result.X = Left.X * Multiplicative;
@@ -2584,10 +2582,10 @@ static inline Rr_Quat Rr_DivQF(Rr_Quat Left, float Divnd)
 {
     Rr_Quat Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128 Scalar = _mm_set1_ps(Divnd);
     Result.SSE = _mm_div_ps(Left.SSE, Scalar);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     float32x4_t Scalar = vdupq_n_f32(Divnd);
     Result.NEON = vdivq_f32(Left.NEON, Scalar);
 #else
@@ -2604,7 +2602,7 @@ static inline float Rr_DotQ(Rr_Quat Left, Rr_Quat Right)
 {
     float Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128 SSEResultOne = _mm_mul_ps(Left.SSE, Right.SSE);
     __m128 SSEResultTwo =
         _mm_shuffle_ps(SSEResultOne, SSEResultOne, _MM_SHUFFLE(2, 3, 0, 1));
@@ -2613,7 +2611,7 @@ static inline float Rr_DotQ(Rr_Quat Left, Rr_Quat Right)
         _mm_shuffle_ps(SSEResultOne, SSEResultOne, _MM_SHUFFLE(0, 1, 2, 3));
     SSEResultOne = _mm_add_ps(SSEResultOne, SSEResultTwo);
     _mm_store_ss(&Result, SSEResultOne);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     float32x4_t NEONMultiplyResult = vmulq_f32(Left.NEON, Right.NEON);
     float32x4_t NEONHalfAdd =
         vpaddq_f32(NEONMultiplyResult, NEONMultiplyResult);
@@ -2656,13 +2654,13 @@ static inline Rr_Quat _Rr_MixQ(
 {
     Rr_Quat Result;
 
-#ifdef RR_MATH__USE_SSE
+#ifdef RR_MATH_SSE
     __m128 ScalarLeft = _mm_set1_ps(MixLeft);
     __m128 ScalarRight = _mm_set1_ps(MixRight);
     __m128 SSEResultOne = _mm_mul_ps(Left.SSE, ScalarLeft);
     __m128 SSEResultTwo = _mm_mul_ps(Right.SSE, ScalarRight);
     Result.SSE = _mm_add_ps(SSEResultOne, SSEResultTwo);
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     float32x4_t ScaledLeft = vmulq_n_f32(Left.NEON, MixLeft);
     float32x4_t ScaledRight = vmulq_n_f32(Right.NEON, MixRight);
     Result.NEON = vaddq_f32(ScaledLeft, ScaledRight);
@@ -3846,9 +3844,9 @@ static inline Rr_Vec3 operator-(Rr_Vec3 In)
 static inline Rr_Vec4 operator-(Rr_Vec4 In)
 {
     Rr_Vec4 Result;
-#if RR_MATH__USE_SSE
+#if RR_MATH_SSE
     Result.SSE = _mm_xor_ps(In.SSE, _mm_set1_ps(-0.0f));
-#elif defined(RR_MATH__USE_NEON)
+#elif defined(RR_MATH_NEON)
     float32x4_t Zero = vdupq_n_f32(0.0f);
     Result.NEON = vsubq_f32(Zero, In.NEON);
 #else
