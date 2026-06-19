@@ -46,13 +46,13 @@
 	1) Image/buffer creation.
 	2) Graph node creation.
 	3) Binding resources.
-- [ ] Extend Rr_AppConfig.
+- [ ] Extend Rr_Config.
       More window options.
       Arena sizes.
+      GPU memory strategies.
       More?
 - [ ] Documentation.
 - [ ] Custom assertions.
-- [ ] Support for immutable buffers/images that don't require synchronization.
 - [ ] Public API should use const where applicable.
 - [ ] Replace hash trie usage with Rr_HashTable.h where applicable.
 - [ ] Array implementation is a bit ugly...
@@ -139,3 +139,4 @@
       The goal is API that's 100% accessible from other languages.
       Nothing can be done about Rr_Math.h though?
 - [ ] Further RHI decoupling.
+- [ ] Support for immutable buffers/images that don't require synchronization.

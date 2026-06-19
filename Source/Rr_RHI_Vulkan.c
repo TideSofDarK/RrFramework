@@ -3891,6 +3891,8 @@ static inline bool Rr_FindChunkAndRange(
 
     Rr_UnlockSpinlock(&Allocator->Lock);
 
+    RR_LOG_ERROR("Failed to find appropriate sub allocation!");
+
     return false;
 }
 
@@ -4012,8 +4014,6 @@ static inline bool Rr_BindAllocatedBuffer(
             &AllocatedBuffer->Chunk,
             &AllocatedBuffer->Range))
     {
-        RR_LOG_ERROR("Failed to find appropriate sub allocation!");
-
         return false;
     }
 
@@ -4277,8 +4277,6 @@ static inline bool Rr_BindAllocatedImage(
             &AllocatedImage->Chunk,
             &AllocatedImage->Range))
     {
-        RR_LOG_ERROR("Failed to find appropriate sub allocation!");
-
         return false;
     }
 
