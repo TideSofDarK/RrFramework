@@ -7,15 +7,12 @@
 
 class CCamera
 {
-    float Near{ 0.01f };
-    float Far{ 100.0f };
-    float FOVDegrees{ 90.0f };
+    float FieldOfView{ RR_ANGLE_DEG(90.0f) };
     float Pitch{};
     float Yaw{};
-    Rr_Vec3 Position;
 
-    Rr_Mat4 ViewMatrix{ Rr_M4D(1.0f) };
-    Rr_Mat4 ProjMatrix{ Rr_M4D(1.0f) };
+    Rr_Mat4 Transform = Rr_M4D(1.0f);
+    Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
 
 public:
     Rr_Mat4 GetProjectionMatrix() const
@@ -25,80 +22,33 @@ public:
 
     Rr_Mat4 GetViewMatrix() const
     {
-        return ViewMatrix;
+        return Rr_InvGeneral(Transform);
     }
 
-    Rr_Vec3 GetForwardVector() const
-    {
-        return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[2].XYZ);
-    }
-
-    Rr_Vec3 GetRightVector() const
-    {
-        return Rr_Norm(Rr_InvGeneral(ViewMatrix).Columns[0].XYZ);
-    }
-
-    void UpdatePerspective(float Aspect)
-    {
-        ProjMatrix = Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, Near, Far);
-    }
-
-    void Update()
+    void Update(float Aspect)
     {
         auto DeltaTime = Rr_GetDeltaSeconds();
-
         auto MouseDelta = Rr_GetMousePositionDelta();
 
         if (Rr_GetMouseState() & RR_MOUSE_BUTTON_RIGHT_BIT)
         {
             Rr_SetRelativeMouseMode(true);
 
-            auto constexpr SPEED = 5.0f;
-            auto CameraForward = GetForwardVector();
-            auto CameraLeft = GetRightVector();
-            if (Rr_IsScancodePressed(RR_SCANCODE_W))
-            {
-                Position -= CameraForward * SPEED * DeltaTime;
-            }
-            if (Rr_IsScancodePressed(RR_SCANCODE_A))
-            {
-                Position -= CameraLeft * SPEED * DeltaTime;
-            }
-            if (Rr_IsScancodePressed(RR_SCANCODE_S))
-            {
-                Position += CameraForward * SPEED * DeltaTime;
-            }
-            if (Rr_IsScancodePressed(RR_SCANCODE_D))
-            {
-                Position += CameraLeft * SPEED * DeltaTime;
-            }
-
-            auto constexpr SENSITIVITY = 0.2f;
-            Yaw += MouseDelta.X * SENSITIVITY;
-            Pitch += MouseDelta.Y * SENSITIVITY;
+            auto constexpr SENSITIVITY = 0.005f;
+            Yaw -= MouseDelta.X * SENSITIVITY;
+            Pitch -= MouseDelta.Y * SENSITIVITY;
         }
         else
         {
             Rr_SetRelativeMouseMode(false);
         }
 
-        Yaw = Rr_WrapMax(Yaw, 360.0f);
-        Pitch = RR_CLAMP(-90.0f, Pitch, 90.0f);
+        Yaw = Rr_WrapMax(Yaw, RR_PI32 * 2.0f);
+        Pitch = RR_CLAMP(RR_PI32 * -0.5f, Pitch, RR_PI32 * 0.5f);
 
-        auto CosPitch = cosf(Pitch * RR_DEG_TO_RAD);
-        auto SinPitch = sinf(Pitch * RR_DEG_TO_RAD);
-        auto CosYaw = cosf(Yaw * RR_DEG_TO_RAD);
-        auto SinYaw = sinf(Yaw * RR_DEG_TO_RAD);
-
-        auto XAxis = Rr_Vec3{ CosYaw, 0.0f, -SinYaw };
-        auto YAxis = Rr_Vec3{ SinYaw * SinPitch, CosPitch, CosYaw * SinPitch };
-        auto ZAxis = Rr_Vec3{ SinYaw * CosPitch, -SinPitch, CosPitch * CosYaw };
-
-        ViewMatrix.Columns[0] = { XAxis.X, YAxis.X, ZAxis.X, 0.0f };
-        ViewMatrix.Columns[1] = { XAxis.Y, YAxis.Y, ZAxis.Y, 0.0f };
-        ViewMatrix.Columns[2] = { XAxis.Z, YAxis.Z, ZAxis.Z, 0.0f };
-        ViewMatrix.Columns[3] = { -Rr_Dot(XAxis, Position), -Rr_Dot(YAxis, Position), -Rr_Dot(ZAxis, Position), 1.0f };
-        ViewMatrix = Rr_VulkanMatrix() * ViewMatrix;
+        Transform = Rr_Rotate_RH(Yaw, Rr_V3(0.0f, 1.0f, 0.0f)) * Rr_Rotate_RH(Pitch, Rr_V3(1.0f, 0.0f, 0.0f));
+        ProjMatrix = Rr_Perspective_RH(FieldOfView, Aspect, 0.1f, 100.0f);
+        ProjMatrix.Elements[1][1] *= -1.0f;
     }
 };
 
@@ -239,8 +189,7 @@ public:
 
         auto SwapchainImage = Rr_GetSwapchainImage();
 
-        Camera.UpdatePerspective(Rr_GetImage2DAspect(SwapchainImage));
-        Camera.Update();
+        Camera.Update(Rr_GetImage2DAspect(SwapchainImage));
 
         auto Uniform = SGPUUniform{
             .View = Camera.GetViewMatrix(),

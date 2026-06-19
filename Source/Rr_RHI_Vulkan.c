@@ -3159,8 +3159,12 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
     }
 
     RR_ARRAY(VkVertexInputBindingDescription) BindingDescriptions = { 0 };
+    RR_RESERVE_ARRAY(
+        &BindingDescriptions,
+        CreateInfo->VertexInputBindingCount,
+        Scratch.Arena);
     RR_ARRAY(VkVertexInputAttributeDescription) AttributeDescriptions = { 0 };
-    for (size_t BindingIndex = 0;
+    for (uint32_t BindingIndex = 0;
          BindingIndex < CreateInfo->VertexInputBindingCount;
          ++BindingIndex)
     {
@@ -3184,15 +3188,16 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
             *AttributeDescription = (VkVertexInputAttributeDescription){
                 .location = Attribute->Location,
                 .format = Rr_ToVulkanFormat(Attribute->Format),
-                .binding = (uint32_t)BindingIndex,
+                .binding = BindingIndex,
             };
 
             VkVertexInputBindingDescription *BindingDescription = NULL;
             for (size_t Index = 0; Index < BindingDescriptions.Count; ++Index)
             {
-                if (BindingDescriptions.Data[Index].binding == Index)
+                if (BindingDescriptions.Data[Index].binding == BindingIndex)
                 {
                     BindingDescription = BindingDescriptions.Data + Index;
+
                     break;
                 }
             }
@@ -3202,7 +3207,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
                     RR_PUSH_INTO_ARRAY(&BindingDescriptions, Scratch.Arena);
                 *BindingDescription = (VkVertexInputBindingDescription){
                     .stride = 0,
-                    .binding = (uint32_t)BindingIndex,
+                    .binding = BindingIndex,
                     .inputRate = VertexInputBinding->Rate ==
                                          RR_VERTEX_INPUT_RATE_INSTANCE
                                      ? VK_VERTEX_INPUT_RATE_INSTANCE
@@ -3227,7 +3232,6 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
     VkPipelineInputAssemblyStateCreateInfo InputAssembly = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .topology = Rr_ToVulkanPrimitiveTopology(CreateInfo->Topology),
-        .primitiveRestartEnable = VK_FALSE,
     };
 
     VkPipelineViewportStateCreateInfo ViewportInfo = {
@@ -3238,9 +3242,6 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
 
     VkPipelineRasterizationStateCreateInfo Rasterizer = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-        .flags = 0,
-        .depthClampEnable = false,
-        .rasterizerDiscardEnable = false,
         .polygonMode =
             Rr_ToVulkanPolygonMode(CreateInfo->Rasterizer.PolygonMode),
         .cullMode = Rr_ToVulkanCullMode(CreateInfo->Rasterizer.CullMode),
@@ -3265,7 +3266,6 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .sampleShadingEnable = VK_FALSE,
         .minSampleShading = 1.0f,
-        .pSampleMask = NULL,
         .alphaToCoverageEnable = VK_FALSE,
         .alphaToOneEnable = VK_FALSE,
     };

@@ -43,13 +43,7 @@ public:
         return Rr_Norm(Transform.Columns[0].XYZ);
     }
 
-    void UpdatePerspective(float Aspect)
-    {
-        ProjMatrix = Rr_Perspective_RH(FieldOfView, Aspect, 0.1f, 100.0f);
-        ProjMatrix.Elements[1][1] *= -1.0f;
-    }
-
-    void Update()
+    void Update(float Aspect)
     {
         auto MouseDelta = Rr_GetMousePositionDelta();
         auto MouseState = Rr_GetMouseState();
@@ -96,6 +90,8 @@ public:
 
         Transform = Rr_TranslateV(Center) * Rr_Rotate_RH(Yaw, Rr_V3(0.0f, 1.0f, 0.0f)) *
                     Rr_Rotate_RH(Pitch, Rr_V3(1.0f, 0.0f, 0.0f)) * Rr_Translate(0.0f, 0.0f, Distance);
+        ProjMatrix = Rr_Perspective_RH(FieldOfView, Aspect, 0.1f, 100.0f);
+        ProjMatrix.Elements[1][1] *= -1.0f;
     }
 };
 
@@ -493,8 +489,7 @@ public:
         auto SwapchainImage = Rr_GetSwapchainImage();
         auto SwapchainAspect = Rr_GetImage2DAspect(SwapchainImage);
 
-        Camera.UpdatePerspective(SwapchainAspect);
-        Camera.Update();
+        Camera.Update(SwapchainAspect);
 
         GPUUniform.View = Camera.GetViewMatrix();
         GPUUniform.Projection = Camera.GetProjectionMatrix();

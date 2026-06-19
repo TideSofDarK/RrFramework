@@ -1,4 +1,5 @@
 add_subdirectory(Triangle)
+add_subdirectory(Cube)
 add_subdirectory(GLTFMesh)
 add_subdirectory(GLTFAnimation)
 add_subdirectory(QuadTree)

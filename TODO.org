@@ -121,6 +121,7 @@
 - [ ] Light Space Perspective Shadow Maps
 - [ ] Mip Generation
 - [ ] Slang Integration
+- [ ] Alpha-to-Coverage
 
 ** Low-priority
 

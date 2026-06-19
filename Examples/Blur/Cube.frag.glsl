@@ -1,6 +1,6 @@
 #version 460
 
-layout(location = 0) in vec3 InPosition;
+layout(location = 0) in vec3 InTexCoord;
 
 layout(location = 0) out vec4 OutColor;
 
@@ -14,5 +14,5 @@ layout(set = 0, binding = 1) uniform samplerCube UniformCube;
 
 void main()
 {
-    OutColor = texture(UniformCube, InPosition);
+    OutColor = texture(UniformCube, InTexCoord);
 }

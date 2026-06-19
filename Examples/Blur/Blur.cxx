@@ -10,53 +10,11 @@
 
 static constexpr std::int32_t MAX_IMAGE_SIZE = 4096;
 
-struct SCube
-{
-    static float constexpr CubePositions[] = {
-        1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00,
-        1.00,  -1.00, -1.00, 1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  1.00,  -1.00, 1.00,
-        1.00,  -1.00, 1.00,  1.00,  -1.00, 1.00,  -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00,
-        -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, -1.00, 1.00,  1.00,  -1.00, 1.00,  1.00,
-        -1.00, 1.00,  1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,  -1.00, -1.00, 1.00,
-    };
-    static uint16_t constexpr CubeIndices[] = {
-        1,  13, 19, 1,  19, 7,  9, 6, 18, 9, 18, 21, 23, 20, 14, 23, 14, 17,
-        16, 4,  10, 16, 10, 22, 5, 2, 8,  5, 8,  11, 15, 12, 0,  15, 0,  3,
-    };
-
-    Rr_Buffer *Buffer{};
-    size_t IndexOffset{};
-    size_t IndexCount{};
-
-    void Init()
-    {
-        size_t TotalSize = sizeof(CubePositions) + sizeof(CubeIndices);
-        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
-        Rr_ReleaseBuffer(StagingBuffer);
-        char *BufferData = (char *)Rr_GetMappedBufferData(StagingBuffer);
-        std::memcpy(BufferData, CubePositions, sizeof(CubePositions));
-        BufferData += sizeof(CubePositions);
-        std::memcpy(BufferData, CubeIndices, sizeof(CubeIndices));
-
-        Buffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_INDEX_BIT);
-        auto TransferNode = Rr_AddTransferNode(Rr_GetGraph());
-        Rr_TransferBufferData(TransferNode, TotalSize, StagingBuffer, 0, Buffer, 0);
-        IndexOffset = sizeof(CubePositions);
-        IndexCount = sizeof(CubeIndices) / sizeof(*CubeIndices);
-    }
-
-    void Cleanup()
-    {
-        Rr_ReleaseBuffer(Buffer);
-    }
-};
-
 class CCamera
 {
-    float FOVDegrees{ 90.0f };
+    float FieldOfView{ RR_ANGLE_DEG(90.0f) };
     float Pitch{};
     float Yaw{};
-    Rr_Vec3 Position{};
 
     Rr_Mat4 Transform = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
@@ -72,35 +30,30 @@ public:
         return Rr_InvGeneral(Transform);
     }
 
-    void UpdatePerspective(float Aspect)
+    void Update(float Aspect)
     {
-        ProjMatrix = Rr_Perspective_RH(RR_ANGLE_DEG(FOVDegrees), Aspect, 0.1f, 100.0f);
-        ProjMatrix.Elements[1][1] *= -1.0f;
-    }
-
-    void Update()
-    {
-        float DeltaTime = Rr_GetDeltaSeconds();
-
-        Rr_Vec2 MouseDelta = Rr_GetMousePositionDelta();
+        auto DeltaTime = Rr_GetDeltaSeconds();
+        auto MouseDelta = Rr_GetMousePositionDelta();
 
         if (Rr_GetMouseState() & RR_MOUSE_BUTTON_RIGHT_BIT)
         {
             Rr_SetRelativeMouseMode(true);
-            constexpr float Sensitivity = 0.2f;
-            Yaw -= MouseDelta.X * Sensitivity;
-            Pitch -= MouseDelta.Y * Sensitivity;
+
+            auto constexpr SENSITIVITY = 0.005f;
+            Yaw -= MouseDelta.X * SENSITIVITY;
+            Pitch -= MouseDelta.Y * SENSITIVITY;
         }
         else
         {
             Rr_SetRelativeMouseMode(false);
         }
 
-        Yaw = Rr_WrapMax(Yaw, 360.0f);
-        Pitch = RR_CLAMP(-90.0f, Pitch, 90.0f);
+        Yaw = Rr_WrapMax(Yaw, RR_PI32 * 2.0f);
+        Pitch = RR_CLAMP(RR_PI32 * -0.5f, Pitch, RR_PI32 * 0.5f);
 
-        Transform = Rr_TranslateV(Position) * Rr_Rotate_RH(RR_ANGLE_DEG(Yaw), Rr_V3(0.0f, 1.0f, 0.0f)) *
-                    Rr_Rotate_RH(RR_ANGLE_DEG(Pitch), Rr_V3(1.0f, 0.0f, 0.0f));
+        Transform = Rr_Rotate_RH(Yaw, Rr_V3(0.0f, 1.0f, 0.0f)) * Rr_Rotate_RH(Pitch, Rr_V3(1.0f, 0.0f, 0.0f));
+        ProjMatrix = Rr_Perspective_RH(FieldOfView, Aspect, 0.1f, 100.0f);
+        ProjMatrix.Elements[1][1] *= -1.0f;
     }
 };
 
@@ -119,8 +72,8 @@ struct SPNGImage
 
     SPNGImage(Rr_AssetRef AssetRef)
     {
-        Rr_Asset Asset = Rr_LoadAsset(AssetRef);
-        int32_t DesiredChannels = 4;
+        auto Asset = Rr_LoadAsset(AssetRef);
+        auto DesiredChannels = 4;
         Data = stbi_load_from_memory(
             (stbi_uc *)Asset.Data,
             (int32_t)Asset.Size,
@@ -132,7 +85,7 @@ struct SPNGImage
 
     SPNGImage(const char *Path)
     {
-        int32_t DesiredChannels = 4;
+        auto DesiredChannels = 4;
         Data = stbi_load(Path, (int32_t *)&Width, (int32_t *)&Height, &Channels, DesiredChannels);
     }
 
@@ -151,9 +104,9 @@ struct SBoxBlur2D
 {
     Rr_ComputePipeline *Blur2DXPipeline{};
     Rr_ComputePipeline *Blur2DYPipeline{};
-    Rr_Buffer *UniformBuffer;
+    Rr_Buffer *UniformBuffer{};
 
-    std::uint32_t LocalSizeX;
+    std::uint32_t LocalSizeX{};
 
     void Blur(
         Rr_Graph *Graph,
@@ -165,13 +118,13 @@ struct SBoxBlur2D
     {
         Rr_BeginGraphLabel(Graph, "BoxBlur2D");
 
-        Rr_IntVec2 ImageSize = Rr_GetImage2DExtent(OriginalImage);
+        auto ImageSize = Rr_GetImage2DExtent(OriginalImage);
 
         Rr_CopyImage2D(Graph, OriginalImage, Rr_IntVec2{}, IntermediateImageA, Rr_IntVec2{}, ImageSize, 0);
 
         std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &ImageSize, sizeof(ImageSize));
 
-        Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
+        auto Node = Rr_AddComputeNode(Graph);
         Rr_BindComputePipeline(Node, Blur2DXPipeline);
         Rr_BindUniformBuffer(Node, UniformBuffer, 0, 2, 0, sizeof(Rr_IntVec2));
         for (std::int32_t Index = 0; Index < Passes; ++Index)
@@ -195,7 +148,7 @@ struct SBoxBlur2D
 
     Rr_ComputePipeline *CreateBlurPipeline(Rr_AssetRef ComputeSPV, std::uint32_t KernelSize)
     {
-        std::array Specializations = {
+        auto Specializations = std::array{
             Rr_PipelineSpecialization{
                 .ConstantID = 0,
                 .Size = sizeof(LocalSizeX),
@@ -208,8 +161,8 @@ struct SBoxBlur2D
             },
         };
 
-        Rr_Asset ComputeShader = Rr_LoadAsset(ComputeSPV);
-        Rr_ShaderInfo ShaderInfo = {
+        auto ComputeShader = Rr_LoadAsset(ComputeSPV);
+        auto ShaderInfo = Rr_ShaderInfo{
             .SPVSize = ComputeShader.Size,
             .SPVData = ComputeShader.Data,
             .SpecializationCount = Specializations.size(),
@@ -232,10 +185,7 @@ struct SBoxBlur2D
     {
         RecreatePipelines(KernelSize);
 
-        UniformBuffer = Rr_CreateBuffer(
-            RR_KIBIBYTES(1),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-                RR_BUFFER_FLAGS_STAGING_BIT);
+        UniformBuffer = Rr_CreateBuffer(RR_KIBIBYTES(1), RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_DYNAMIC);
     }
 
     ~SBoxBlur2D()
@@ -271,7 +221,7 @@ struct SKawaseBlur2D
         std::int32_t Passes,
         float SamplerPosMultiplier)
     {
-        Rr_IntVec2 OriginalSize = Rr_GetImage2DExtent(OriginalImage);
+        auto OriginalSize = Rr_GetImage2DExtent(OriginalImage);
 
         if (Passes == 0)
         {
@@ -284,9 +234,9 @@ struct SKawaseBlur2D
 
         Rr_CopyImage2D(Graph, OriginalImage, Rr_IntVec2{}, IntermediateImageA, Rr_IntVec2{}, OriginalSize, 0);
 
-        char *UniformData = (char *)Rr_GetMappedBufferData(UniformBuffer);
-        std::size_t UniformOffset = 0;
-        std::size_t UniformAlignment = Rr_GetUniformAlignment();
+        auto UniformData = (std::byte *)Rr_GetMappedBufferData(UniformBuffer);
+        auto UniformOffset = 0zu;
+        auto UniformAlignment = Rr_GetUniformAlignment();
 
         SGPUUniform GPUUniform = {
             .SrcSize = OriginalSize,
@@ -295,7 +245,7 @@ struct SKawaseBlur2D
 
         for (auto Pass = 0; Pass < Passes; ++Pass)
         {
-            Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
+            auto Node = Rr_AddComputeNode(Graph);
             Rr_BindComputePipeline(Node, Pipeline);
 
             GPUUniform.SamplerPosMultiplier = float(Pass + 1) * SamplerPosMultiplier;
@@ -320,7 +270,7 @@ struct SKawaseBlur2D
     SKawaseBlur2D()
         : LocalSize(std::sqrt(Rr_GetMaxComputeWorkgroupInvocations()))
     {
-        std::array Specializations = {
+        auto Specializations = std::array{
             Rr_PipelineSpecialization{
                 .ConstantID = 0,
                 .Size = sizeof(LocalSize),
@@ -328,8 +278,8 @@ struct SKawaseBlur2D
             },
         };
 
-        Rr_Asset ComputeShader = Rr_LoadAsset(EXAMPLE_ASSET_KAWASE2D_COMP_SPV);
-        Rr_ShaderInfo ShaderInfo = {
+        auto ComputeShader = Rr_LoadAsset(EXAMPLE_ASSET_KAWASE2D_COMP_SPV);
+        auto ShaderInfo = Rr_ShaderInfo{
             .SPVSize = ComputeShader.Size,
             .SPVData = ComputeShader.Data,
             .SpecializationCount = Specializations.size(),
@@ -338,17 +288,15 @@ struct SKawaseBlur2D
 
         Pipeline = Rr_CreateComputePipeline(&ShaderInfo);
 
-        Rr_SamplerInfo SamplerInfo = {};
-        SamplerInfo.MinFilter = RR_FILTER_LINEAR;
-        SamplerInfo.MagFilter = RR_FILTER_LINEAR;
-        SamplerInfo.AddressModeU = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        SamplerInfo.AddressModeV = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        auto SamplerInfo = Rr_SamplerInfo{
+            .MagFilter = RR_FILTER_LINEAR,
+            .MinFilter = RR_FILTER_LINEAR,
+            .AddressModeU = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+            .AddressModeV = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        };
         Sampler = Rr_CreateSampler(&SamplerInfo);
 
-        UniformBuffer = Rr_CreateBuffer(
-            RR_KIBIBYTES(1),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-                RR_BUFFER_FLAGS_STAGING_BIT);
+        UniformBuffer = Rr_CreateBuffer(RR_KIBIBYTES(1), RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_DYNAMIC);
     }
 
     ~SKawaseBlur2D()
@@ -373,8 +321,8 @@ struct SDualKawaseBlur2D
 
     std::uint32_t LocalSize;
 
-    Rr_Sampler *Sampler;
-    Rr_Buffer *UniformBuffer;
+    Rr_Sampler *Sampler{};
+    Rr_Buffer *UniformBuffer{};
 
     void Blur(
         Rr_Graph *Graph,
@@ -385,7 +333,7 @@ struct SDualKawaseBlur2D
         std::int32_t Levels,
         float SamplerPosMultiplier)
     {
-        Rr_IntVec2 OriginalSize = Rr_GetImage2DExtent(OriginalImage);
+        auto OriginalSize = Rr_GetImage2DExtent(OriginalImage);
 
         if (Levels == 0)
         {
@@ -398,9 +346,9 @@ struct SDualKawaseBlur2D
 
         Rr_CopyImage2D(Graph, OriginalImage, Rr_IntVec2{}, IntermediateImageA, Rr_IntVec2{}, OriginalSize, 0);
 
-        char *UniformData = (char *)Rr_GetMappedBufferData(UniformBuffer);
-        std::size_t UniformOffset = 0;
-        std::size_t UniformAlignment = Rr_GetUniformAlignment();
+        auto UniformData = (std::byte *)Rr_GetMappedBufferData(UniformBuffer);
+        auto UniformOffset = 0zu;
+        auto UniformAlignment = Rr_GetUniformAlignment();
 
         Rr_BeginGraphLabel(Graph, "DualKawase2DDown");
 
@@ -412,7 +360,7 @@ struct SDualKawaseBlur2D
 
         for (auto Level = 0; Level < Levels; ++Level)
         {
-            Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
+            auto Node = Rr_AddComputeNode(Graph);
             Rr_BindComputePipeline(Node, DownPipeline);
 
             std::memcpy(UniformData + UniformOffset, &GPUUniform, sizeof(GPUUniform));
@@ -440,7 +388,7 @@ struct SDualKawaseBlur2D
 
         for (auto Level = 0; Level < Levels; ++Level)
         {
-            Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
+            auto Node = Rr_AddComputeNode(Graph);
             Rr_BindComputePipeline(Node, UpPipeline);
 
             std::memcpy(UniformData + UniformOffset, &GPUUniform, sizeof(GPUUniform));
@@ -471,7 +419,7 @@ struct SDualKawaseBlur2D
 
     Rr_ComputePipeline *CreateBlurPipeline(Rr_AssetRef ComputeSPV)
     {
-        std::array Specializations = {
+        auto Specializations = std::array{
             Rr_PipelineSpecialization{
                 .ConstantID = 0,
                 .Size = sizeof(LocalSize),
@@ -479,8 +427,8 @@ struct SDualKawaseBlur2D
             },
         };
 
-        Rr_Asset ComputeShader = Rr_LoadAsset(ComputeSPV);
-        Rr_ShaderInfo ShaderInfo = {
+        auto ComputeShader = Rr_LoadAsset(ComputeSPV);
+        auto ShaderInfo = Rr_ShaderInfo{
             .SPVSize = ComputeShader.Size,
             .SPVData = ComputeShader.Data,
             .SpecializationCount = Specializations.size(),
@@ -496,17 +444,16 @@ struct SDualKawaseBlur2D
         DownPipeline = CreateBlurPipeline(EXAMPLE_ASSET_DUALKAWASE2DDOWN_COMP_SPV);
         UpPipeline = CreateBlurPipeline(EXAMPLE_ASSET_DUALKAWASE2DUP_COMP_SPV);
 
-        Rr_SamplerInfo SamplerInfo = {};
-        SamplerInfo.MinFilter = RR_FILTER_LINEAR;
-        SamplerInfo.MagFilter = RR_FILTER_LINEAR;
-        SamplerInfo.AddressModeU = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        SamplerInfo.AddressModeV = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        auto SamplerInfo = Rr_SamplerInfo{
+            .MagFilter = RR_FILTER_LINEAR,
+            .MinFilter = RR_FILTER_LINEAR,
+            .AddressModeU = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+            .AddressModeV = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+
+        };
         Sampler = Rr_CreateSampler(&SamplerInfo);
 
-        UniformBuffer = Rr_CreateBuffer(
-            RR_MEBIBYTES(1),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT | RR_BUFFER_FLAGS_MAPPED_BIT |
-                RR_BUFFER_FLAGS_STAGING_BIT);
+        UniformBuffer = Rr_CreateBuffer(RR_MEBIBYTES(1), RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_DYNAMIC);
     }
 
     ~SDualKawaseBlur2D()
@@ -522,8 +469,8 @@ struct SBoxBlurCube
 {
     Rr_ComputePipeline *BlurCubeXPipeline{};
     Rr_ComputePipeline *BlurCubeYPipeline{};
-    Rr_ImageCube *IntermediateImageA;
-    Rr_ImageCube *IntermediateImageB;
+    Rr_ImageCube *IntermediateImageA{};
+    Rr_ImageCube *IntermediateImageB{};
 
     Rr_ImageFormat Format;
     std::uint32_t ImageSize;
@@ -535,7 +482,7 @@ struct SBoxBlurCube
 
         Rr_CopyImageCube(Rr_GetGraph(), OriginalImage, IntermediateImageA, 0);
 
-        Rr_GraphNode *Node = Rr_AddComputeNode(Graph);
+        auto Node = Rr_AddComputeNode(Graph);
         for (std::int32_t Index = 0; Index < Passes; ++Index)
         {
             Rr_BindComputePipeline(Node, BlurCubeXPipeline);
@@ -557,7 +504,7 @@ struct SBoxBlurCube
 
     Rr_ComputePipeline *CreateBlurPipeline(Rr_AssetRef ComputeSPV, std::uint32_t Radius)
     {
-        std::array Specializations = {
+        auto Specializations = std::array{
             Rr_PipelineSpecialization{
                 .ConstantID = 0,
                 .Size = sizeof(LocalSize),
@@ -575,8 +522,8 @@ struct SBoxBlurCube
             },
         };
 
-        Rr_Asset ComputeShader = Rr_LoadAsset(ComputeSPV);
-        Rr_ShaderInfo ShaderInfo = {
+        auto ComputeShader = Rr_LoadAsset(ComputeSPV);
+        auto ShaderInfo = Rr_ShaderInfo{
             .SPVSize = ComputeShader.Size,
             .SPVData = ComputeShader.Data,
             .SpecializationCount = Specializations.size(),
@@ -630,88 +577,87 @@ enum class EBlurType : std::uint32_t
 
 struct SBlurApp
 {
-    Rr_Buffer *UniformBuffer;
-    Rr_Sampler *Sampler;
+    Rr_Buffer *UniformBuffer{};
+    Rr_Sampler *Sampler{};
 
     CCamera Camera;
-    SCube Cube;
 
-    Rr_Image2D *IntermediateImageA;
-    Rr_Image2D *IntermediateImageB;
+    Rr_Image2D *IntermediateImageA{};
+    Rr_Image2D *IntermediateImageB{};
 
-    Rr_GraphicsPipeline *QuadGraphicsPipeline;
+    Rr_GraphicsPipeline *QuadGraphicsPipeline{};
     Rr_Image2D *OriginalImage2D{};
     Rr_Image2D *BlurredImage2D{};
 
-    std::int32_t Blur2DKernelSize = 5;
-    std::int32_t Blur2DPasses = 2;
+    std::int32_t Blur2DKernelSize{ 5 };
+    std::int32_t Blur2DPasses{ 2 };
     SBoxBlur2D BoxBlur2D;
 
-    std::int32_t KawaseBlur2DPasses = 5;
-    float KawaseBlur2DMultiplier = 1.0f;
+    std::int32_t KawaseBlur2DPasses{ 5 };
+    float KawaseBlur2DMultiplier{ 1.0f };
     SKawaseBlur2D KawaseBlur2D;
 
-    std::int32_t DualKawaseBlur2DLevels = 1;
-    float DualKawaseBlur2DMultiplier = 1.5f;
+    std::int32_t DualKawaseBlur2DLevels{ 1 };
+    float DualKawaseBlur2DMultiplier{ 1.5f };
     SDualKawaseBlur2D DualKawaseBlur2D;
 
-    Rr_GraphicsPipeline *CubeGraphicsPipeline;
-    Rr_ImageCube *OriginalImageCube;
-    Rr_ImageCube *BlurredImageCube;
-    std::int32_t BlurCubeRadius = 4;
-    std::int32_t BlurCubePasses = 4;
+    Rr_GraphicsPipeline *CubeGraphicsPipeline{};
+    Rr_ImageCube *OriginalImageCube{};
+    Rr_ImageCube *BlurredImageCube{};
+    std::int32_t BlurCubeRadius{ 4 };
+    std::int32_t BlurCubePasses{ 4 };
     SBoxBlurCube BoxBlurCube;
 
     EBlurType Type = EBlurType::DUAL_KAWASE_2D;
 
     void InitUniformBuffer()
     {
-        UniformBuffer = Rr_CreateBuffer(
-            sizeof(SGPUUniform),
-            RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT |
-                RR_BUFFER_FLAGS_PER_FRAME_BIT);
+        UniformBuffer = Rr_CreateBuffer(sizeof(SGPUUniform), RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_DYNAMIC);
     }
 
     void InitSampler()
     {
-        Rr_SamplerInfo Info = {};
-        Info.MinFilter = RR_FILTER_LINEAR;
-        Info.MagFilter = RR_FILTER_LINEAR;
+        auto Info = Rr_SamplerInfo{
+            .MagFilter = RR_FILTER_LINEAR,
+            .MinFilter = RR_FILTER_LINEAR,
+        };
         Sampler = Rr_CreateSampler(&Info);
     }
 
     void InitQuadPipeline()
     {
-        Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
+        auto ColorTarget = Rr_ColorTargetInfo{
+            .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
+        };
 
-        Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
-        Rr_ShaderInfo VertexShaderInfo = {
+        auto VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_VERT_SPV);
+        auto VertexShaderInfo = Rr_ShaderInfo{
             .SPVSize = VertexShader.Size,
             .SPVData = VertexShader.Data,
         };
 
-        Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_FRAG_SPV);
-        Rr_ShaderInfo FragmentShaderInfo = {
+        auto FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_QUAD_FRAG_SPV);
+        auto FragmentShaderInfo = Rr_ShaderInfo{
             .SPVSize = FragmentShader.Size,
             .SPVData = FragmentShader.Data,
         };
 
-        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
-        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
-        PipelineInfo.ColorTargetCount = 1;
-        PipelineInfo.ColorTargets = &ColorTarget;
+        auto PipelineInfo = Rr_GraphicsPipelineCreateInfo{
+            .VertexShaderInfo = &VertexShaderInfo,
+            .FragmentShaderInfo = &FragmentShaderInfo,
+            .ColorTargetCount = 1,
+            .ColorTargets = &ColorTarget,
+        };
 
         QuadGraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     void InitImage2D(const SPNGImage &PNGImage)
     {
-        int32_t Width = PNGImage.Width;
-        int32_t Height = PNGImage.Height;
+        auto Width = PNGImage.Width;
+        auto Height = PNGImage.Height;
 
-        int32_t ImageSize = Width * Height * 4;
+        auto ImageSize = Width * Height * 4;
 
         Rr_ReleaseImage(OriginalImage2D);
         OriginalImage2D = Rr_CreateImage2D(
@@ -719,10 +665,9 @@ struct SBlurApp
             RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
 
-        Rr_Buffer *StagingBuffer =
-            Rr_CreateBuffer(Width * Height * 4, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+        auto StagingBuffer = Rr_CreateBuffer(Width * Height * 4, RR_BUFFER_FLAGS_STAGING);
 
-        char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
+        auto StagingData = (std::byte *)Rr_GetMappedBufferData(StagingBuffer);
         std::memcpy(StagingData, PNGImage.Data, ImageSize);
 
         Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, { Width, Height }, OriginalImage2D, 0);
@@ -738,11 +683,11 @@ struct SBlurApp
 
     void InitCubePipeline()
     {
-        std::array VertexAttributes = {
+        auto VertexAttributes = std::array{
             Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_FLOAT3 },
         };
 
-        std::array VertexInputBindings = {
+        auto VertexInputBindings = std::array{
             Rr_VertexInputBinding{
                 .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
                 .AttributeCount = VertexAttributes.size(),
@@ -750,55 +695,55 @@ struct SBlurApp
             },
         };
 
-        Rr_ColorTargetInfo ColorTarget = {};
-        ColorTarget.Format = Rr_GetImageFormat(Rr_GetSwapchainImage());
-        ColorTarget.Blend = Rr_AlphaBlend();
+        auto ColorTarget = Rr_ColorTargetInfo{
+            .Blend = Rr_AlphaBlend(),
+            .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
+        };
 
-        Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_CUBE_VERT_SPV);
-        Rr_ShaderInfo VertexShaderInfo = {
+        auto VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_CUBE_VERT_SPV);
+        auto VertexShaderInfo = Rr_ShaderInfo{
             .SPVSize = VertexShader.Size,
             .SPVData = VertexShader.Data,
         };
 
-        Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_CUBE_FRAG_SPV);
-        Rr_ShaderInfo FragmentShaderInfo = {
+        auto FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_CUBE_FRAG_SPV);
+        auto FragmentShaderInfo = Rr_ShaderInfo{
             .SPVSize = FragmentShader.Size,
             .SPVData = FragmentShader.Data,
         };
 
-        Rr_GraphicsPipelineCreateInfo PipelineInfo = {};
-        PipelineInfo.VertexShaderInfo = &VertexShaderInfo;
-        PipelineInfo.FragmentShaderInfo = &FragmentShaderInfo;
-        PipelineInfo.ColorTargetCount = 1;
-        PipelineInfo.ColorTargets = &ColorTarget;
-        PipelineInfo.Rasterizer.CullMode = RR_CULL_MODE_NONE;
-        PipelineInfo.VertexInputBindingCount = VertexInputBindings.size();
-        PipelineInfo.VertexInputBindings = VertexInputBindings.data();
+        auto PipelineInfo = Rr_GraphicsPipelineCreateInfo{
+            .VertexShaderInfo = &VertexShaderInfo,
+            .FragmentShaderInfo = &FragmentShaderInfo,
+            .VertexInputBindingCount = VertexInputBindings.size(),
+            .VertexInputBindings = VertexInputBindings.data(),
+            .ColorTargetCount = 1,
+            .ColorTargets = &ColorTarget,
+        };
 
         CubeGraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
     }
 
     void InitImageCube()
     {
-        SPNGImage Right{ EXAMPLE_ASSET_RIGHT_PNG };
-        SPNGImage Left{ EXAMPLE_ASSET_LEFT_PNG };
-        SPNGImage Up{ EXAMPLE_ASSET_UP_PNG };
-        SPNGImage Down{ EXAMPLE_ASSET_DOWN_PNG };
-        SPNGImage Front{ EXAMPLE_ASSET_FRONT_PNG };
-        SPNGImage Back{ EXAMPLE_ASSET_BACK_PNG };
+        auto Right = SPNGImage{ EXAMPLE_ASSET_RIGHT_PNG };
+        auto Left = SPNGImage{ EXAMPLE_ASSET_LEFT_PNG };
+        auto Up = SPNGImage{ EXAMPLE_ASSET_UP_PNG };
+        auto Down = SPNGImage{ EXAMPLE_ASSET_DOWN_PNG };
+        auto Front = SPNGImage{ EXAMPLE_ASSET_FRONT_PNG };
+        auto Back = SPNGImage{ EXAMPLE_ASSET_BACK_PNG };
 
-        int32_t Width = Up.Width;
-        int32_t Height = Up.Height;
+        auto Width = Up.Width;
+        auto Height = Up.Height;
 
-        int32_t LayerSize = Width * Height * 4;
+        auto LayerSize = Width * Height * 4;
 
         OriginalImageCube =
             Rr_CreateImageCube({ Width, Height }, RR_IMAGE_FORMAT_R8G8B8A8_SRGB, RR_IMAGE_FLAGS_TRANSFER_BIT);
 
-        Rr_Buffer *StagingBuffer =
-            Rr_CreateBuffer(Width * Height * 4 * 6, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+        auto StagingBuffer = Rr_CreateBuffer(Width * Height * 4 * 6, RR_BUFFER_FLAGS_STAGING);
 
-        char *StagingData = (char *)Rr_GetMappedBufferData(StagingBuffer);
+        auto StagingData = (std::byte *)Rr_GetMappedBufferData(StagingBuffer);
         std::memcpy(StagingData + (LayerSize * 0), Right.Data, LayerSize);
         std::memcpy(StagingData + (LayerSize * 1), Left.Data, LayerSize);
         std::memcpy(StagingData + (LayerSize * 2), Up.Data, LayerSize);
@@ -830,8 +775,7 @@ struct SBlurApp
         {
             case RR_EVENT_TYPE_DROP_FILE:
             {
-                SPNGImage PNGImage{ Event->DropFile.Path };
-                InitImage2D(PNGImage);
+                InitImage2D(SPNGImage{ Event->DropFile.Path });
             }
             break;
             default:
@@ -885,12 +829,12 @@ struct SBlurApp
     {
         Rr_BeginGraphLabel(Graph, "DrawBlur2D");
 
-        Rr_ColorTarget ColorTarget = {
+        auto ColorTarget = Rr_ColorTarget{
             .Image = Rr_GetSwapchainImage(),
             .LoadOp = RR_LOAD_OP_DONT_CARE,
             .StoreOp = RR_STORE_OP_STORE,
         };
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
+        auto GraphicsNode = Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
         Rr_BindGraphicsPipeline(GraphicsNode, QuadGraphicsPipeline);
         Rr_BindCombinedImage2DSampler(GraphicsNode, BlurredImage2D, Sampler, 0, 0);
         Rr_Draw(GraphicsNode, 6, 1, 0, 0);
@@ -903,29 +847,25 @@ struct SBlurApp
         Rr_BeginGraphLabel(Graph, "DrawBlurCube");
 
         auto SwapchainImage = Rr_GetSwapchainImage();
-        auto SwapchainAspect = Rr_GetImage2DAspect(SwapchainImage);
 
-        Camera.UpdatePerspective(SwapchainAspect);
-        Camera.Update();
+        Camera.Update(Rr_GetImage2DAspect(SwapchainImage));
 
-        SGPUUniform Uniform = {
+        auto Uniform = SGPUUniform{
             .View = Camera.GetViewMatrix(),
             .Projection = Camera.GetProjectionMatrix(),
         };
         std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &Uniform, sizeof(SGPUUniform));
 
-        Rr_ColorTarget ColorTarget = {
+        auto ColorTarget = Rr_ColorTarget{
             .Image = Rr_GetSwapchainImage(),
             .LoadOp = RR_LOAD_OP_DONT_CARE,
             .StoreOp = RR_STORE_OP_STORE,
         };
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
+        auto GraphicsNode = Rr_AddGraphicsNode(Graph, 1, &ColorTarget, nullptr);
         Rr_BindGraphicsPipeline(GraphicsNode, CubeGraphicsPipeline);
-        Rr_BindVertexBuffer(GraphicsNode, Cube.Buffer, 0, 0);
-        Rr_BindIndexBuffer(GraphicsNode, Cube.Buffer, 0, Cube.IndexOffset, RR_INDEX_TYPE_UINT16);
         Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(SGPUUniform));
         Rr_BindCombinedImageCubeSampler(GraphicsNode, BlurredImageCube, Sampler, 0, 1);
-        Rr_DrawIndexed(GraphicsNode, Cube.IndexCount, 1, 0, 0, 0);
+        Rr_Draw(GraphicsNode, 3, 1, 0, 0);
 
         Rr_EndGraphLabel(Graph, "DrawBlurCube");
     }
@@ -939,9 +879,9 @@ struct SBlurApp
             "a PNG image into the window to blur it (works only with 2D "
             "algorithms).");
         Rr_UISeparator();
-        std::array BlurTypes = { "Box 2D", "Kawase 2D", "Dual Kawase 2D", "Box Cube" };
+        auto BlurTypes = std::array{ "Box 2D", "Kawase 2D", "Dual Kawase 2D", "Box Cube" };
         Rr_UICombobox("Mode", BlurTypes.size(), BlurTypes.data(), (std::uint32_t *)&Type);
-        Rr_Graph *Graph = Rr_GetGraph();
+        auto Graph = Rr_GetGraph();
         Reblur(Graph);
         switch (Type)
         {
@@ -1012,7 +952,6 @@ struct SBlurApp
         InitSampler();
         InitImage2D(EXAMPLE_ASSET_BACK_PNG);
         InitImageCube();
-        Cube.Init();
         Reblur(Rr_GetGraph());
     }
 
@@ -1028,7 +967,6 @@ struct SBlurApp
         Rr_ReleaseImage(BlurredImageCube);
         Rr_ReleaseImage(IntermediateImageA);
         Rr_ReleaseImage(IntermediateImageB);
-        Cube.Cleanup();
     }
 };
 
