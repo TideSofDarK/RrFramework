@@ -286,7 +286,7 @@ struct Rr_UIContext
     size_t TextInputCursorBegin;
     size_t TextInputCursorEnd;
     size_t TextInputCursorCodepointMaxCol;
-    uint64_t TextInputCursorBlinkTime;
+    uint64_t TextInputCursorBlinkTimeNS;
     uint32_t TextInputClickID;
     RR_ARRAY(char const *) TextInputEvents;
     RR_ARRAY(char) TextInputBuffer;
@@ -2033,8 +2033,9 @@ static inline void Rr_UIDrawInteractiveTextCursor(
     Rr_Vec4 *Color,
     Rr_UIFont *Font)
 {
-    uint64_t TimeDelta = Rr_GetTimeMS() - gUIContext->TextInputCursorBlinkTime;
-    if ((TimeDelta / 500) % 2 == 0)
+    uint64_t TimeDelta =
+        Rr_GetTimeNS() - gUIContext->TextInputCursorBlinkTimeNS;
+    if ((TimeDelta / 500000000) % 2 == 0)
     {
         Rr_UIDrawRect(
             &(Rr_Rect){
@@ -5564,7 +5565,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         return Result;
     }
 
-    uint64_t TimeMS = Rr_GetTimeMS();
+    uint64_t TimeNS = Rr_GetTimeNS();
     size_t BufferLength = strlen(Buffer);
 
     size_t NewCursorBegin;
@@ -5963,7 +5964,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             *CursorBegin = NewCursorBegin;
             *CursorEnd = NewCursorEnd;
-            gUIContext->TextInputCursorBlinkTime = TimeMS;
+            gUIContext->TextInputCursorBlinkTimeNS = TimeNS;
             Result.Edited |= true;
         }
 
@@ -5996,7 +5997,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             *CursorBegin = NewCursorBegin;
             *CursorEnd = NewCursorEnd;
-            gUIContext->TextInputCursorBlinkTime = TimeMS;
+            gUIContext->TextInputCursorBlinkTimeNS = TimeNS;
             Rr_UISetTextInputMaxCol(Buffer, NewCursorEnd);
             Result.Edited |= true;
         }
@@ -6187,7 +6188,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             }
 
             Rr_UISetTextInputMaxCol(Buffer, gUIContext->TextInputCursorEnd);
-            gUIContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
+            gUIContext->TextInputCursorBlinkTimeNS = Rr_GetTimeNS();
         }
 
         Focused = ClickResult.ClickCount || ClickResult.Held;
@@ -6329,14 +6330,14 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             }
 
             Rr_UISetTextInputMaxCol(Buffer, gUIContext->TextInputCursorEnd);
-            gUIContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
+            gUIContext->TextInputCursorBlinkTimeNS = Rr_GetTimeNS();
         }
         else if (Focused && ClickResult.Moved)
         {
             if (!AutoSelect || gUIContext->LeftMouseButton.ClickID >
                                    gUIContext->TextInputClickID)
             {
-                gUIContext->TextInputCursorBlinkTime = Rr_GetTimeMS();
+                gUIContext->TextInputCursorBlinkTimeNS = Rr_GetTimeNS();
                 gUIContext->TextInputCursorEnd = NewCursorEnd;
             }
         }
@@ -9437,6 +9438,7 @@ static inline void Rr_UIDebugOverlayAllocator(Rr_Allocator *Allocator)
 static inline void Rr_UIDebugOverlayTabs(void)
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
+    Rr_Profiler *Profiler = Rr_GetFrameProfiler();
 
     if (Rr_UIBeginWindowEx("General", 0, RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT))
     {
@@ -9515,23 +9517,13 @@ static inline void Rr_UIDebugOverlayTabs(void)
             Rr_UITextF("FPS: %.2f", LastFPS);
         }
 
-        double MainLoopMS =
-            (double)(Rr_GetFrameSectionTicks("Rr.MainLoop") * 1000) /
-            (double)Rr_GetPerformanceFrequency();
-        double IterateMS =
-            (double)(Rr_GetFrameSectionTicks("Rr.Iterate") * 1000) /
-            (double)Rr_GetPerformanceFrequency();
-        double FrameGraphMS =
-            (double)(Rr_GetFrameSectionTicks("Rr.FrameGraph") * 1000) /
-            (double)Rr_GetPerformanceFrequency();
-
         Rr_UITextF(
             "Main Loop: %.3fms\n"
             "Iterate: %.3fms\n"
             "Frame Graph: %.3fms",
-            MainLoopMS,
-            IterateMS,
-            FrameGraphMS);
+            Rr_GetSectionMS(Profiler, "Rr.MainLoop"),
+            Rr_GetSectionMS(Profiler, "Rr.Iterate"),
+            Rr_GetSectionMS(Profiler, "Rr.FrameGraph"));
 
         if (gRHI->MainQueue.TimestampsEnabled)
         {
@@ -9566,23 +9558,13 @@ static inline void Rr_UIDebugOverlayTabs(void)
             gUIContext->Vertices.Capacity,
             gUIContext->Indices.Capacity);
 
-        double DrawWindowsMS =
-            (double)(Rr_GetFrameSectionTicks("Rr.UI.DrawWindows") * 1000) /
-            (double)Rr_GetPerformanceFrequency();
-        double DrawTextMS =
-            (double)(Rr_GetFrameSectionTicks("Rr.UI.DrawText") * 1000) /
-            (double)Rr_GetPerformanceFrequency();
-        double DrawInputTextMS =
-            (double)(Rr_GetFrameSectionTicks("Rr.UI.DrawInputText") * 1000) /
-            (double)Rr_GetPerformanceFrequency();
-
         Rr_UITextF(
             "DrawWindows: %.3fms\n"
             "DrawText: %.3fms\n"
             "DrawInputText: %.3fms",
-            DrawWindowsMS,
-            DrawTextMS,
-            DrawInputTextMS);
+            Rr_GetSectionMS(Profiler, "Rr.UI.DrawWindows"),
+            Rr_GetSectionMS(Profiler, "Rr.UI.DrawText"),
+            Rr_GetSectionMS(Profiler, "Rr.UI.DrawInputText"));
 
         Rr_UITextF(
             "TextInputCursorBegin: %zu\n"

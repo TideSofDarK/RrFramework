@@ -21,8 +21,7 @@
 #include "Rr_Profiler.h"
 
 #include "Rr_Hash.h"
-
-#include <Rr/Rr_System.h>
+#include "Rr_System.h"
 
 #include <string.h>
 
@@ -54,6 +53,7 @@ static inline Rr_ProfilerSection **Rr_FindSection(
 
 void Rr_BeginSection(Rr_Profiler *Profiler, char const *SectionName)
 {
+    Rr_Arena *Arena = Profiler->Arena;
     size_t NameLength = strlen(SectionName);
     Rr_ProfilerSection **SectionRef =
         Rr_FindSection(&Profiler->Section, NameLength, SectionName);
@@ -63,9 +63,8 @@ void Rr_BeginSection(Rr_Profiler *Profiler, char const *SectionName)
 
         return;
     }
-    *SectionRef = Rr_Alloc(sizeof(Rr_ProfilerSection), Profiler->Arena);
-    (*SectionRef)->Name = Rr_AllocNoZero(NameLength + 1, Profiler->Arena);
-    memcpy((*SectionRef)->Name, SectionName, NameLength + 1);
+    *SectionRef = Rr_Alloc(sizeof(Rr_ProfilerSection), Arena);
+    (*SectionRef)->Name = Rr_AllocCopy(SectionName, NameLength + 1, Arena);
     (*SectionRef)->LastTicks = Rr_GetPerformanceCounter();
 }
 
@@ -92,4 +91,16 @@ uint64_t Rr_GetSectionTicks(Rr_Profiler *Profiler, char const *SectionName)
     }
 
     return 0;
+}
+
+double Rr_GetSectionMS(Rr_Profiler *Profiler, char const *Name)
+{
+    return (double)Rr_GetSectionNS(Profiler, Name) / 1000000.0;
+}
+
+uint64_t Rr_GetSectionNS(Rr_Profiler *Profiler, char const *Name)
+{
+    uint64_t Elapsed = Rr_GetSectionTicks(Profiler, Name);
+
+    return Elapsed * Rr_GetSystem()->QPCToNS;
 }

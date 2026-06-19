@@ -71,7 +71,7 @@ void Rr_EndGraph(Rr_Graph *Graph)
 
     Rr_CommandPools *CommandPools = Rr_AcquireCommandPools();
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_Queue *Queue = Rr_GetQueue(Graph->QueueType);
     uint32_t QueueFamilyIndex = Queue->FamilyIndex;
@@ -185,7 +185,7 @@ static inline Rr_DescriptorsState Rr_MakeDescriptorsState(
     VkCommandBuffer CommandBuffer)
 {
     Rr_DescriptorsState DescriptorsState = { 0 };
-    DescriptorsState.Device = &gRHI->Device;
+    DescriptorsState.Device = Rr_GetDevice();
     DescriptorsState.CommandBuffer = CommandBuffer;
     DescriptorsState.EmptyDescriptorSet = gRHI->EmptyDescriptorSet;
     DescriptorsState.DescriptorPoolList = Graph->DescriptorPoolList;
@@ -614,7 +614,7 @@ static void Rr_ExecuteTransferNode(
     Rr_TransferNode *Node,
     VkCommandBuffer CommandBuffer)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     for (size_t Index = 0; Index < Node->Transfers.Count; ++Index)
     {
@@ -638,7 +638,7 @@ static inline void Rr_ExecuteGenerateMipmaps(
     Rr_GraphImage ImageHandle,
     VkCommandBuffer CommandBuffer)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_GraphResource *ImageResource =
         Rr_GetGraphImageResource(Graph, ImageHandle);
@@ -775,7 +775,7 @@ static void Rr_ExecuteBlitNode(
     Rr_BlitNode *Node,
     VkCommandBuffer CommandBuffer)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_AllocatedImage *SrcImage = Rr_GetGraphImage(Graph, Node->SrcImageHandle);
     Rr_AllocatedImage *DstImage = Rr_GetGraphImage(Graph, Node->DstImageHandle);
@@ -976,7 +976,7 @@ static void Rr_ExecuteComputeNode(
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_DescriptorsState DescriptorsState =
         Rr_MakeDescriptorsState(Graph, CommandBuffer);
@@ -1057,7 +1057,7 @@ static void Rr_ExecuteGraphicsNode(
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     /* TODO: See if it's possible to skip minimum viewport calculation. */
     Rr_IntVec4 Viewport = {
@@ -1449,7 +1449,7 @@ static void Rr_ExecuteClearColorImageNode(
     Rr_ClearColorImageNode *Node,
     VkCommandBuffer CommandBuffer)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_AllocatedImage *ColorImage = Rr_GetGraphImage(Graph, Node->ColorImage);
 
@@ -1473,7 +1473,7 @@ static void Rr_ExecuteResolveImageNode(
     Rr_ResolveImageNode *Node,
     VkCommandBuffer CommandBuffer)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     VkExtent3D MinExtent = { INT32_MAX, INT32_MAX, INT32_MAX };
     MinExtent.width =
@@ -1521,7 +1521,7 @@ static void Rr_ExecuteCopyBufferToImageNode(
     Rr_CopyBufferToImageNode *Node,
     VkCommandBuffer CommandBuffer)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_AllocatedImage *AllocatedImage = Rr_GetGraphImage(Graph, Node->Image);
     Rr_Image *Image = AllocatedImage->Container;
@@ -1556,7 +1556,7 @@ static void Rr_ExecuteCopyImageToBufferNode(
     Rr_CopyImageToBufferNode *Node,
     VkCommandBuffer CommandBuffer)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     VkImage ImageHandle = Rr_GetGraphImage(Graph, Node->Image)->Handle;
     VkBuffer BufferHandle = Rr_GetGraphBuffer(Graph, Node->Buffer)->Handle;
@@ -1575,7 +1575,7 @@ static void Rr_ExecuteCopyImageNode(
     Rr_CopyImageNode *Node,
     VkCommandBuffer CommandBuffer)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_AllocatedImage *SrcAllocatedImage =
         Rr_GetGraphImage(Graph, Node->SrcImage);
@@ -1730,7 +1730,7 @@ static void Rr_ApplyBarrierBatch(
 {
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     uint32_t MaxPossibleBarriers = (uint32_t)Batch->BufferBarriers.Count +
                                    (uint32_t)Batch->ImageBarriers.Count;
@@ -1883,7 +1883,7 @@ void Rr_ExecuteGraph(
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     if (EarlyCommandBuffer == VK_NULL_HANDLE)
     {

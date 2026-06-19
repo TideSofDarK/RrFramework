@@ -45,3 +45,7 @@ extern void Rr_BeginSection(Rr_Profiler *Profiler, char const *Name);
 extern void Rr_EndSection(Rr_Profiler *Profiler, char const *Name);
 
 extern uint64_t Rr_GetSectionTicks(Rr_Profiler *Profiler, char const *Name);
+
+extern double Rr_GetSectionMS(Rr_Profiler *Profiler, char const *Name);
+
+extern uint64_t Rr_GetSectionNS(Rr_Profiler *Profiler, char const *Name);

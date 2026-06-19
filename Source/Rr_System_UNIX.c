@@ -43,6 +43,7 @@ void Rr_InitSystem(void)
 
     System->PageSize = (size_t)getpagesize();
     System->AllocationGranularity = (size_t)System->PageSize;
+    System->QPCToNS = 1;
 
     struct timespec Timespec;
     if (clock_gettime(CLOCK_MONOTONIC_RAW, &Timespec) != 0)

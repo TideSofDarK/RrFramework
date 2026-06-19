@@ -238,7 +238,7 @@ void Rr_AddMouseButtonEvent(bool Down, Rr_Vec2 Position, Rr_MouseButton Button)
     static uint8_t Clicks[RR_MOUSE_BUTTON_COUNT] = { 0 };
     if (Down)
     {
-        uint64_t Now = Rr_GetTimeMS();
+        uint64_t Now = Rr_GetTimeNS() / 1000000;
         uint64_t Diff = Now - LastClickTime[Event->MouseButton.Button];
         if (Diff < RR_DOUBLE_CLICK_TIME_MS)
         {

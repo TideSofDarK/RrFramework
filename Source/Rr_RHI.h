@@ -60,7 +60,7 @@ extern void Rr_BeginFrameSection(char const *Name);
 
 extern void Rr_EndFrameSection(char const *Name);
 
-extern uint64_t Rr_GetFrameSectionTicks(char const *Name);
+extern struct Rr_Profiler *Rr_GetFrameProfiler(void);
 
 extern void Rr_ConsumeNextObjectName(char Dst[RR_MAX_OBJECT_NAME_LENGTH]);
 

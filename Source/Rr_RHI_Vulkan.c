@@ -1160,7 +1160,7 @@ static bool Rr_InitSwapchain(void)
     Rr_WaitIdle();
 
     Rr_Instance *Instance = &gRHI->Instance;
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_IntVec2 WindowSize = Rr_GetWindowSize();
 
@@ -1457,7 +1457,7 @@ static bool Rr_RecreateSwapchainIfNeeded(void)
 
 static void Rr_InitFrames(void)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
     Rr_Frame *Frames = gRHI->Frames;
     Rr_CommandPools *CommandPools = Rr_AcquireCommandPools();
 
@@ -1523,7 +1523,7 @@ static void Rr_InitFrames(void)
 
 static void Rr_CleanupFrames(void)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     for (size_t Index = 0; Index < RR_FRAME_OVERLAP; ++Index)
     {
@@ -1540,7 +1540,7 @@ static void Rr_CleanupFrames(void)
 
 static void Rr_InitEmptyDescriptorSet(void)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     VkResult Result = Device->CreateDescriptorPool(
         Device->Handle,
@@ -1580,7 +1580,7 @@ Error:
 
 static void Rr_CleanupEmptyDescriptorSet(void)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Device->DestroyDescriptorPool(
         Device->Handle,
@@ -1590,7 +1590,7 @@ static void Rr_CleanupEmptyDescriptorSet(void)
 
 Rr_DescriptorPoolList *Rr_AcquireDescriptorPoolList(void)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_DescriptorPoolList *Result = NULL;
 
@@ -1647,7 +1647,7 @@ void Rr_ReleaseDescriptorPoolList(Rr_DescriptorPoolList *List)
         return;
     }
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_DescriptorPoolList *First = List;
 
@@ -1673,7 +1673,7 @@ void Rr_AllocateDescriptorSets(
     VkDescriptorSetLayout *Layouts,
     VkDescriptorSet *OutSets)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     VkDescriptorSetAllocateInfo AllocateInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -2074,7 +2074,7 @@ void Rr_DestroyBuffer(Rr_Buffer *Buffer)
 {
     assert(Buffer);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     for (uint32_t Index = 0; Index < Buffer->AllocatedBufferCount; ++Index)
     {
@@ -2151,7 +2151,7 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
 {
     assert(Info != NULL);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_LockSpinlock(&gRHI->SamplersLock);
 
@@ -2220,7 +2220,7 @@ void Rr_DestroySampler(Rr_Sampler *Sampler)
 {
     assert(Sampler != NULL && Sampler->Handle != VK_NULL_HANDLE);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Device->DestroySampler(Device->Handle, Sampler->Handle, NULL);
 
@@ -2255,7 +2255,7 @@ void Rr_DestroyImageViewMap(
     Rr_ImageViewMap *ImageViewMap,
     bool DestroyFramebuffers)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_ImageViewMapIterator It = Rr_BeginInImageViewMap(ImageViewMap);
     while (!Rr_IsImageViewMapEnd(&It))
@@ -2293,7 +2293,7 @@ VkImageView Rr_GetVulkanImageView(
 
     Rr_UnlockSpinlock(&AllocatedImage->ImageViewMapLock);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     VkImageViewCreateInfo ImageViewCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -2535,7 +2535,7 @@ void Rr_DestroyImage(Rr_Image *Image)
 {
     assert(Image);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     bool DestroyFramebuffers =
         (Image->Flags & RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT) ||
@@ -2790,7 +2790,7 @@ FoundEmpty:
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     VkDescriptorSetLayout VulkanDescriptorSetLayouts[RR_MAX_SETS];
     for (size_t Index = 0; Index < PipelineLayoutKey.DescriptorSetLayoutCount;
@@ -2894,7 +2894,7 @@ Rr_ComputePipeline *Rr_CreateComputePipelineWithLayout(
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -3001,7 +3001,7 @@ void Rr_DestroyComputePipeline(Rr_ComputePipeline *ComputePipeline)
 {
     assert(ComputePipeline && ComputePipeline->Handle != VK_NULL_HANDLE);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Device->DestroyPipeline(Device->Handle, ComputePipeline->Handle, NULL);
 
@@ -3080,7 +3080,7 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     VkResult Result;
 
@@ -3436,7 +3436,7 @@ void Rr_DestroyGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline)
 {
     assert(GraphicsPipeline && GraphicsPipeline->Handle != VK_NULL_HANDLE);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Device->DestroyPipeline(Device->Handle, GraphicsPipeline->Handle, NULL);
 
@@ -3488,7 +3488,7 @@ FoundEmpty:
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     RR_ARRAY(VkDescriptorSetLayoutBinding) VkBindings = { 0 };
 
@@ -4398,7 +4398,7 @@ void Rr_InitRHI(const char *Title)
         &gRHI->Instance,
         gRHI->Surface,
         &gRHI->PhysicalDevice,
-        &gRHI->Device,
+        Rr_GetDevice(),
         &gRHI->MainQueue,
         &gRHI->DedicatedTransferQueue);
 
@@ -4522,7 +4522,7 @@ static inline void Rr_DestroyReleasedObjects(void)
 void Rr_CleanupRHI(void)
 {
     Rr_Instance *Instance = &gRHI->Instance;
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_WaitIdle();
 
@@ -4665,7 +4665,7 @@ bool Rr_HandleSwapchainRecreated(void)
 
 void Rr_NewFrame(void)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     gRHI->FrameNumber++;
     gRHI->FrameIndex = gRHI->FrameNumber % RR_FRAME_OVERLAP;
@@ -4829,7 +4829,7 @@ void Rr_DrawFrame(void)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
     Rr_Swapchain *Swapchain = &gRHI->Swapchain;
     Rr_Frame *Frame = Rr_GetCurrentFrame();
 
@@ -5040,15 +5040,9 @@ void Rr_EndFrameSection(char const *Name)
     Rr_EndSection(Rr_GetCurrentFrame()->Profiler, Name);
 }
 
-uint64_t Rr_GetFrameSectionTicks(char const *Name)
+Rr_Profiler *Rr_GetFrameProfiler(void)
 {
-    Rr_Profiler *Profiler = Rr_GetPreviousFrame()->Profiler;
-    if (Profiler)
-    {
-        return Rr_GetSectionTicks(Profiler, Name);
-    }
-
-    return 0;
+    return Rr_GetPreviousFrame()->Profiler;
 }
 
 bool Rr_IsUsingTransferQueue(void)
@@ -5269,7 +5263,7 @@ VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey const *Key)
         .pSubpasses = &SubpassDescription,
     };
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     VkRenderPass Handle = VK_NULL_HANDLE;
     Device->CreateRenderPass(
@@ -5322,7 +5316,7 @@ VkFramebuffer Rr_GetFramebuffer(Rr_FramebufferKey *Key)
         .pAttachments = Key->ImageViews,
     };
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     VkFramebuffer Handle = VK_NULL_HANDLE;
     Device->CreateFramebuffer(Device->Handle, &CreateInfo, NULL, &Handle);
@@ -5342,7 +5336,7 @@ VkFramebuffer Rr_GetFramebuffer(Rr_FramebufferKey *Key)
 
 void Rr_DestroyFramebuffers(VkImageView ImageView)
 {
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_LockSpinlock(&gRHI->FramebufferMapLock);
 
@@ -5390,7 +5384,7 @@ VkSemaphore Rr_AcquireVulkanSemaphore(void)
     }
     else
     {
-        Rr_Device *Device = &gRHI->Device;
+        Rr_Device *Device = Rr_GetDevice();
 
         Device->CreateSemaphore(
             Device->Handle,
@@ -5435,7 +5429,7 @@ VkFence Rr_AcquireVulkanFence(void)
     }
     else
     {
-        Rr_Device *Device = &gRHI->Device;
+        Rr_Device *Device = Rr_GetDevice();
 
         Device->CreateFence(
             Device->Handle,
@@ -5461,7 +5455,7 @@ void Rr_ReleaseVulkanFence(VkFence Fence)
         return;
     }
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_LockSpinlock(&gRHI->FencesLock);
 
@@ -5481,7 +5475,7 @@ Rr_CommandPools *Rr_AcquireCommandPools(void)
         return ThreadContext->CommandPools;
     }
 
-    Rr_Device *Device = &gRHI->Device;
+    Rr_Device *Device = Rr_GetDevice();
 
     Rr_LockSpinlock(&gRHI->CommandPoolsLock);
 

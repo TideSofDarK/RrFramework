@@ -44,6 +44,7 @@ void Rr_InitSystem(void)
     LARGE_INTEGER Frequency;
     QueryPerformanceFrequency(&Frequency);
     System->PerformanceFrequency = (uint64_t)Frequency.QuadPart;
+    System->QPCToNS = 1000000000 / System->PerformanceFrequency;
 
     System->Initialized = true;
 }

@@ -25,6 +25,7 @@
 
 #include "Rr_Platform.h"
 #include "Rr_RHI.h"
+#include "Rr_System.h"
 #include "Rr_Thread.h"
 #include "Rr_UI.h"
 
@@ -78,7 +79,6 @@ static void Rr_InitFrameTime(Rr_FrameTime *FrameTime)
 
     FrameTime->InitTime = Now;
     assert(Rr_GetPerformanceFrequency() <= 1000000000);
-    FrameTime->QPCToNS = 1000000000 / Rr_GetPerformanceFrequency();
 }
 
 static inline void Rr_HandleEvent(Rr_Event const *Event)
@@ -262,15 +262,16 @@ double Rr_GetTimeSeconds(void)
     return (double)(Rr_GetTimeNS()) / 1000000000.0;
 }
 
-uint64_t Rr_GetTimeMS(void)
+double Rr_GetTimeMS(void)
 {
-    return Rr_GetTimeNS() / 1000000;
+    return (double)Rr_GetTimeNS() / 1000000.0;
 }
 
 uint64_t Rr_GetTimeNS(void)
 {
-    return (Rr_GetPerformanceCounter() - gApp->FrameTime.InitTime) *
-           gApp->FrameTime.QPCToNS;
+    uint64_t Elapsed = Rr_GetPerformanceCounter() - gApp->FrameTime.InitTime;
+
+    return Elapsed * Rr_GetSystem()->QPCToNS;
 }
 
 void Rr_Quit(void)

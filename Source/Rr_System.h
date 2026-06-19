@@ -29,6 +29,7 @@ struct Rr_System
     size_t PageSize;
     size_t AllocationGranularity;
     uint64_t PerformanceFrequency;
+    uint64_t QPCToNS;
 };
 
 extern Rr_System *Rr_GetSystem(void);

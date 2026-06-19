@@ -40,7 +40,6 @@ struct Rr_FrameTime
     double DeltaSeconds;
 
     uint64_t InitTime;
-    uint64_t QPCToNS;
 };
 
 typedef struct Rr_App Rr_App;

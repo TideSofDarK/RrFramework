@@ -59,7 +59,7 @@ extern double RR_CC Rr_GetDeltaSeconds(void);
 
 extern double RR_CC Rr_GetTimeSeconds(void);
 
-extern uint64_t RR_CC Rr_GetTimeMS(void);
+extern double RR_CC Rr_GetTimeMS(void);
 
 extern uint64_t RR_CC Rr_GetTimeNS(void);
 
