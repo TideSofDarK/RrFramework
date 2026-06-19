@@ -311,7 +311,7 @@ struct STransferThreadApp
             .Clear = Rr_ColorClear{ 0.0f, 0.0f, 0.0f, 1.0f },
         };
 
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, nullptr);
 
         struct
         {

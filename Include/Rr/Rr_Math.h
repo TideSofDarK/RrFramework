@@ -3861,7 +3861,7 @@ static inline Rr_Vec4 operator-(Rr_Vec4 In)
 
 #endif /* __cplusplus*/
 
-#if defined(__GNUC__) || defined(__clang__)
+#ifdef RR_GNU_OR_CLANG
 #pragma GCC diagnostic pop
 #endif
 

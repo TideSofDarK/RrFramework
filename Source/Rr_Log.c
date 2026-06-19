@@ -20,7 +20,23 @@
 
 #include <Rr/Rr_Log.h>
 
+#include "Rr_Thread.h"
+
 #include <stdio.h>
+
+#ifdef RR_GNU_OR_CLANG
+#pragma GCC diagnostic ignored "-Wmissing-format-attribute"
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#endif
+
+typedef struct Rr_Error Rr_Error;
+struct Rr_Error
+{
+    char String[512];
+    Rr_LogCategory Category;
+};
+
+static RR_THREAD_LOCAL Rr_Error gError;
 
 /* TODO: Maybe make current function and priority thread-local? */
 
@@ -56,15 +72,11 @@ void Rr_SetLogPriority(Rr_LogPriority Priority)
     gLogPriority = Priority;
 }
 
-static void
-#if defined(RR_GNU) || defined(RR_CLANG)
-    __attribute__((format(printf, 3, 0)))
-#endif
-    Rr_DefaultLogFunction(
-        uint32_t Category,
-        Rr_LogPriority Priority,
-        char const *Format,
-        va_list Args)
+static void Rr_DefaultLogFunction(
+    uint32_t Category,
+    Rr_LogPriority Priority,
+    char const *Format,
+    va_list Args)
 {
     FILE *Out = stdout;
     if (Priority == RR_LOG_PRIORITY_ERROR)
@@ -109,8 +121,11 @@ void Rr_Log(uint32_t Category, Rr_LogPriority Priority, char const *Format, ...)
 
 void Rr_LogError(uint32_t Category, char const *Format, ...)
 {
-    RR_CHECK_PRIORITY(RR_LOG_PRIORITY_ERROR);
     va_list Args;
+    va_start(Args, Format);
+    vsnprintf(gError.String, sizeof(gError.String), Format, Args);
+    va_end(Args);
+    RR_CHECK_PRIORITY(RR_LOG_PRIORITY_ERROR);
     va_start(Args, Format);
     gLogFunction(Category, RR_LOG_PRIORITY_ERROR, Format, Args);
     va_end(Args);
@@ -141,4 +156,9 @@ void Rr_LogTrace(uint32_t Category, char const *Format, ...)
     va_start(Args, Format);
     gLogFunction(Category, RR_LOG_PRIORITY_TRACE, Format, Args);
     va_end(Args);
+}
+
+char const *RR_CC Rr_GetError(void)
+{
+    return gError.String;
 }

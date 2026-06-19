@@ -82,6 +82,8 @@ extern void RR_CC Rr_LogInfo(uint32_t Category, char const *Format, ...);
 
 extern void RR_CC Rr_LogTrace(uint32_t Category, char const *Format, ...);
 
+extern char const *RR_CC Rr_GetError(void);
+
 #ifdef __cplusplus
 }
 #endif

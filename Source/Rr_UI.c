@@ -22,6 +22,11 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#ifdef RR_GNU_OR_CLANG
+#pragma GCC diagnostic ignored "-Wmissing-format-attribute"
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#endif
+
 #include "Rr_UI.h"
 
 #include "Rr_BuiltinAssets.inc"

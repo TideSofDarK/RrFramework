@@ -181,7 +181,7 @@ public:
     void Iterate()
     {
         Rr_UIBeginDebugOverlayTabs();
-        Rr_UIBeginWindowEx("LayeredImage.cxx", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+        Rr_UIBeginWindowEx("LayeredImage.cxx", nullptr, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
         Rr_UIText(
             "This example shows sampling of Rr_Image2DArray and "
             "Rr_Image3D objects.");
@@ -207,7 +207,7 @@ public:
 
         std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &UniformData, sizeof(UniformData));
 
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
+        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, nullptr);
 
         Rr_Rect ImageRect{ 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT };
         Rr_Rect SwapchainRect{ 0, 0, (float)SwapchainExtent.Width, (float)SwapchainExtent.Height };

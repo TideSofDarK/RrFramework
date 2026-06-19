@@ -138,7 +138,7 @@ public:
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
         };
-        auto GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
+        auto GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, nullptr);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindVertexBuffer(GraphicsNode, GeometryBuffer, 0, 0);
         Rr_BindVertexBuffer(GraphicsNode, GeometryBuffer, 1, ColorsOffset);
