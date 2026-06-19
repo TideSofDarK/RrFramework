@@ -9291,6 +9291,7 @@ void Rr_EndUI(void)
             if (Window->SkipThisFrame)
             {
                 Window->SkipThisFrame = false;
+
                 continue;
             }
             if (Window->TopLevelParent == Window)
