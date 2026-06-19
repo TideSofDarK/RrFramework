@@ -318,11 +318,11 @@ class CGLTFMeshApp
 
     void InitDepthImage(void)
     {
-        Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
+        auto SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
 
         if (DepthImage != nullptr)
         {
-            Rr_IntVec2 DepthImageSize = Rr_GetImage2DExtent(DepthImage);
+            auto DepthImageSize = Rr_GetImage2DExtent(DepthImage);
 
             if (DepthImageSize.X >= SwapchainSize.X && DepthImageSize.Y >= SwapchainSize.Y)
             {
@@ -333,7 +333,7 @@ class CGLTFMeshApp
         }
 
         DepthImage = Rr_CreateImage2D(
-            (Rr_IntVec2){ SwapchainSize.Width, SwapchainSize.Height },
+            Rr_IntV2(SwapchainSize.Width, SwapchainSize.Height),
             RR_IMAGE_FORMAT_D32_SFLOAT,
             RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
     }
