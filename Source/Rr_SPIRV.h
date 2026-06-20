@@ -27,7 +27,7 @@
 
 typedef RR_ARRAY(Rr_Binding) Rr_BindingArray;
 
-extern size_t Rr_GetBindingsFromSPIRV(
+extern bool Rr_GetBindingsFromSPIRV(
     Rr_ShaderInfo const *ShaderInfo,
     Rr_ShaderStage ShaderStage,
     Rr_BindingArray BindingArrays[RR_MAX_SETS],

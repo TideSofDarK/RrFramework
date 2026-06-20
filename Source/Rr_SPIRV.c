@@ -147,7 +147,7 @@ static inline bool Rr_FindOrAddBinding(
     return false;
 }
 
-static inline void Rr_AddSPIRVBinding(
+static inline bool Rr_AddSPIRVBinding(
     uint32_t BindingIndex,
     uint32_t Count,
     Rr_SPIRVOp const *TypeOp,
@@ -162,7 +162,8 @@ static inline void Rr_AddSPIRVBinding(
     {
         /* Binding already exists, just add current stage to it. */
         Binding->Stages |= ShaderStage;
-        return;
+
+        return true;
     }
     Binding->Count = Count;
     Binding->Stages = ShaderStage;
@@ -189,6 +190,8 @@ static inline void Rr_AddSPIRVBinding(
                 RR_LOG_ERROR(
                     "Couldn't determine buffer type for binding %d!",
                     BindingIndex);
+
+                return false;
             }
         }
         break;
@@ -233,9 +236,13 @@ static inline void Rr_AddSPIRVBinding(
                 "Incorrect type OpCode %d for binding %d!",
                 TypeOp->OpCode,
                 BindingIndex);
+
+            return false;
         }
         break;
     }
+
+    return true;
 }
 
 static inline Rr_SPIRVOp *Rr_UpsertSPIRVOp(
@@ -258,7 +265,7 @@ static inline Rr_SPIRVOp *Rr_UpsertSPIRVOp(
     return &(*Map)->SPIRVOp;
 }
 
-size_t Rr_GetBindingsFromSPIRV(
+bool Rr_GetBindingsFromSPIRV(
     Rr_ShaderInfo const *ShaderInfo,
     Rr_ShaderStage ShaderStage,
     Rr_BindingArray BindingArrays[RR_MAX_SETS],
@@ -278,7 +285,7 @@ size_t Rr_GetBindingsFromSPIRV(
     {
         RR_LOG_ERROR("Magic mismatch!");
 
-        return 0;
+        return false;
     }
 
     size_t Offset = sizeof(Rr_SPIRVHeader) / sizeof(uint32_t);
@@ -393,7 +400,6 @@ size_t Rr_GetBindingsFromSPIRV(
         Offset += Length;
     }
 
-    uint32_t MinimumSetCount = 0;
     for (uint32_t Index = 0; Index < BindingIndices.Count; ++Index)
     {
         uint32_t VariableID = BindingIndices.Data[Index];
@@ -408,8 +414,11 @@ size_t Rr_GetBindingsFromSPIRV(
                 "Binding wants set index %d but maximum set index is %d!",
                 SetIndex,
                 RR_MAX_SETS - 1);
+
+            Rr_DestroyScratch(Scratch);
+
+            return false;
         }
-        MinimumSetCount = RR_MAX(MinimumSetCount, SetIndex + 1U);
         Rr_SPIRVPointer *Pointer =
             &Rr_UpsertSPIRVOp(&SPIRVOpMap, Variable->PointerID, NULL)
                  ->Union.Pointer;
@@ -426,29 +435,39 @@ size_t Rr_GetBindingsFromSPIRV(
                 &Rr_UpsertSPIRVOp(&SPIRVOpMap, Array->LengthID, NULL)
                      ->Union.Constant;
 
-            Rr_AddSPIRVBinding(
-                BindingIndex,
-                ArrayLengthConstant->Value,
-                ArrayElementTypeOp,
-                VariableStorageClass,
-                ShaderStage,
-                &BindingArrays[SetIndex],
-                Arena);
+            if (!Rr_AddSPIRVBinding(
+                    BindingIndex,
+                    ArrayLengthConstant->Value,
+                    ArrayElementTypeOp,
+                    VariableStorageClass,
+                    ShaderStage,
+                    &BindingArrays[SetIndex],
+                    Arena))
+            {
+                Rr_DestroyScratch(Scratch);
+
+                return false;
+            }
         }
         else
         {
-            Rr_AddSPIRVBinding(
-                BindingIndex,
-                1,
-                PointerTypeOp,
-                VariableStorageClass,
-                ShaderStage,
-                &BindingArrays[SetIndex],
-                Arena);
+            if (!Rr_AddSPIRVBinding(
+                    BindingIndex,
+                    1,
+                    PointerTypeOp,
+                    VariableStorageClass,
+                    ShaderStage,
+                    &BindingArrays[SetIndex],
+                    Arena))
+            {
+                Rr_DestroyScratch(Scratch);
+
+                return false;
+            }
         }
     }
 
     Rr_DestroyScratch(Scratch);
 
-    return MinimumSetCount;
+    return true;
 }

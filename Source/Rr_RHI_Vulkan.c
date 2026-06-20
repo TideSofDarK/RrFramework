@@ -2730,7 +2730,14 @@ Rr_PipelineLayout *Rr_GetPipelineLayout(
     size_t BindingSetCount,
     Rr_BindingSet const *BindingSets)
 {
-    assert(BindingSetCount <= RR_MAX_SETS);
+    if (BindingSetCount > RR_MAX_SETS)
+    {
+        RR_LOG_ERROR(
+            "Having more than %zu binding sets is not supported!",
+            BindingSetCount);
+
+        return NULL;
+    }
 
     Rr_PipelineLayoutKey PipelineLayoutKey = {
         .DescriptorSetLayoutCount = (uint32_t)BindingSetCount,
@@ -2859,21 +2866,38 @@ Rr_ComputePipeline *Rr_CreateComputePipeline(Rr_ShaderInfo const *ShaderInfo)
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_BindingArray BindingArrays[RR_MAX_SETS] = { 0 };
-    size_t BindingSetCount = Rr_GetBindingsFromSPIRV(
-        ShaderInfo,
-        RR_SHADER_STAGE_COMPUTE_BIT,
-        BindingArrays,
-        Scratch.Arena);
+    if (!Rr_GetBindingsFromSPIRV(
+            ShaderInfo,
+            RR_SHADER_STAGE_COMPUTE_BIT,
+            BindingArrays,
+            Scratch.Arena))
+    {
+        Rr_DestroyScratch(Scratch);
+
+        return NULL;
+    }
 
     Rr_BindingSet BindingSets[RR_MAX_SETS] = { 0 };
-    for (size_t Index = 0; Index < BindingSetCount; ++Index)
+    size_t MaxBindingSetIndex = 0;
+    for (size_t Index = 0; Index < RR_MAX_SETS; ++Index)
     {
-        BindingSets[Index].BindingCount = BindingArrays[Index].Count;
+        size_t BindingCount = BindingArrays[Index].Count;
+        if (BindingCount)
+        {
+            MaxBindingSetIndex = RR_MAX(MaxBindingSetIndex, Index);
+        }
+        BindingSets[Index].BindingCount = BindingCount;
         BindingSets[Index].Bindings = BindingArrays[Index].Data;
     }
 
     Rr_PipelineLayout *PipelineLayout =
-        Rr_GetPipelineLayout(BindingSetCount, BindingSets);
+        Rr_GetPipelineLayout(MaxBindingSetIndex + 1, BindingSets);
+    if (!PipelineLayout)
+    {
+        Rr_DestroyScratch(Scratch);
+
+        return NULL;
+    }
 
     Rr_DestroyScratch(Scratch);
 
@@ -3027,28 +3051,43 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_BindingArray BindingArrays[RR_MAX_SETS] = { 0 };
-    size_t VertexBindingSetCount = Rr_GetBindingsFromSPIRV(
-        CreateInfo->VertexShaderInfo,
-        RR_SHADER_STAGE_VERTEX_BIT,
-        BindingArrays,
-        Scratch.Arena);
-    size_t FragmentBindingSetCount = Rr_GetBindingsFromSPIRV(
-        CreateInfo->FragmentShaderInfo,
-        RR_SHADER_STAGE_FRAGMENT_BIT,
-        BindingArrays,
-        Scratch.Arena);
-    size_t BindingSetCount =
-        RR_MAX(VertexBindingSetCount, FragmentBindingSetCount);
+    if (!Rr_GetBindingsFromSPIRV(
+            CreateInfo->VertexShaderInfo,
+            RR_SHADER_STAGE_VERTEX_BIT,
+            BindingArrays,
+            Scratch.Arena) ||
+        !Rr_GetBindingsFromSPIRV(
+            CreateInfo->FragmentShaderInfo,
+            RR_SHADER_STAGE_FRAGMENT_BIT,
+            BindingArrays,
+            Scratch.Arena))
+    {
+        Rr_DestroyScratch(Scratch);
+
+        return NULL;
+    }
 
     Rr_BindingSet BindingSets[RR_MAX_SETS] = { 0 };
-    for (size_t Index = 0; Index < BindingSetCount; ++Index)
+    size_t MaxBindingSetIndex = 0;
+    for (size_t Index = 0; Index < RR_MAX_SETS; ++Index)
     {
-        BindingSets[Index].BindingCount = BindingArrays[Index].Count;
+        size_t BindingCount = BindingArrays[Index].Count;
+        if (BindingCount)
+        {
+            MaxBindingSetIndex = RR_MAX(MaxBindingSetIndex, Index);
+        }
+        BindingSets[Index].BindingCount = BindingCount;
         BindingSets[Index].Bindings = BindingArrays[Index].Data;
     }
 
     Rr_PipelineLayout *PipelineLayout =
-        Rr_GetPipelineLayout(BindingSetCount, BindingSets);
+        Rr_GetPipelineLayout(MaxBindingSetIndex + 1, BindingSets);
+    if (!PipelineLayout)
+    {
+        Rr_DestroyScratch(Scratch);
+
+        return NULL;
+    }
 
     Rr_DestroyScratch(Scratch);
 
@@ -3059,21 +3098,9 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
     Rr_GraphicsPipelineCreateInfo const *CreateInfo,
     Rr_PipelineLayout *PipelineLayout)
 {
-    assert(CreateInfo);
-
-    bool HasDepthStencil = CreateInfo->DepthStencil.EnableDepthTest ||
-                           CreateInfo->DepthStencil.EnableStencilTest ||
-                           CreateInfo->DepthStencil.EnableDepthWrite;
-    if (HasDepthStencil)
-    {
-        assert(CreateInfo->DepthStencil.Format != RR_IMAGE_FORMAT_UNDEFINED);
-    }
-
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
     Rr_Device *Device = Rr_GetDevice();
-
-    VkResult Result;
 
     RR_ARRAY(VkPipelineShaderStageCreateInfo) ShaderStages = { 0 };
 
@@ -3085,12 +3112,18 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
             .codeSize = CreateInfo->VertexShaderInfo->SPVSize,
             .pCode = (uint32_t const *)CreateInfo->VertexShaderInfo->SPVData,
         };
-        Result = Device->CreateShaderModule(
-            Device->Handle,
-            &ShaderModuleCreateInfo,
-            NULL,
-            &VertModule);
-        assert(Result == VK_SUCCESS);
+        if (Device->CreateShaderModule(
+                Device->Handle,
+                &ShaderModuleCreateInfo,
+                NULL,
+                &VertModule) != VK_SUCCESS)
+        {
+            RR_LOG_ERROR("Failed to create vertex shader module!");
+
+            Rr_DestroyScratch(Scratch);
+
+            return NULL;
+        }
 
         VkPipelineShaderStageCreateInfo *PipelineShaderStageCreateInfo =
             RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena);
@@ -3117,22 +3150,26 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
     {
         VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-            .pNext = VK_NULL_HANDLE,
             .codeSize = CreateInfo->FragmentShaderInfo->SPVSize,
             .pCode = (uint32_t const *)CreateInfo->FragmentShaderInfo->SPVData,
         };
-        Result = Device->CreateShaderModule(
-            Device->Handle,
-            &ShaderModuleCreateInfo,
-            NULL,
-            &FragModule);
-        assert(Result == VK_SUCCESS);
+        if (Device->CreateShaderModule(
+                Device->Handle,
+                &ShaderModuleCreateInfo,
+                NULL,
+                &FragModule) != VK_SUCCESS)
+        {
+            RR_LOG_ERROR("Failed to create fragment shader module!");
+
+            Rr_DestroyScratch(Scratch);
+
+            return NULL;
+        }
 
         VkPipelineShaderStageCreateInfo *PipelineShaderStageCreateInfo =
             RR_PUSH_INTO_ARRAY(&ShaderStages, Scratch.Arena);
         *PipelineShaderStageCreateInfo = (VkPipelineShaderStageCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .pNext = NULL,
             .pName = CreateInfo->FragmentShaderInfo->EntryPoint
                          ? CreateInfo->FragmentShaderInfo->EntryPoint
                          : "main",
@@ -3306,17 +3343,12 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
 
     VkPipelineColorBlendStateCreateInfo ColorBlendInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-        .pNext = NULL,
-        .logicOpEnable = VK_FALSE,
-        .logicOp = VK_LOGIC_OP_COPY,
         .attachmentCount = (uint32_t)ColorAttachments.Count,
         .pAttachments = ColorAttachments.Data,
     };
 
     VkPipelineDepthStencilStateCreateInfo DepthStencil = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
         .depthTestEnable = CreateInfo->DepthStencil.EnableDepthTest,
         .depthWriteEnable = CreateInfo->DepthStencil.EnableDepthWrite,
         .depthCompareOp =
@@ -3350,53 +3382,62 @@ Rr_GraphicsPipeline *Rr_CreateGraphicsPipelineWithLayout(
             Multisampling.rasterizationSamples),
     };
 
-    VkPipeline Handle = VK_NULL_HANDLE;
-    Result = Device->CreateGraphicsPipelines(
-        Device->Handle,
-        VK_NULL_HANDLE,
-        1,
-        &PipelineInfo,
-        NULL,
-        &Handle);
-
-    Rr_GraphicsPipeline *GraphicsPipeline = NULL;
-
-    if (Result == VK_SUCCESS)
+    VkPipeline Handle;
+    if (Device->CreateGraphicsPipelines(
+            Device->Handle,
+            VK_NULL_HANDLE,
+            1,
+            &PipelineInfo,
+            NULL,
+            &Handle) != VK_SUCCESS)
     {
-        Rr_LockSpinlock(&gRHI->GraphicsPipelinesLock);
+        RR_LOG_ERROR("Failed to create graphics pipeline!");
 
-        GraphicsPipeline = Rr_PushGraphicsPipelineIntoHive(
-                               &gRHI->GraphicsPipelines,
-                               Rr_GetPermanent())
-                               .Element;
+        if (FragModule)
+        {
+            Device->DestroyShaderModule(Device->Handle, FragModule, NULL);
+        }
+        if (VertModule)
+        {
+            Device->DestroyShaderModule(Device->Handle, VertModule, NULL);
+        }
 
-        Rr_UnlockSpinlock(&gRHI->GraphicsPipelinesLock);
+        Rr_DestroyScratch(Scratch);
 
-        *GraphicsPipeline = (Rr_GraphicsPipeline){
-            .Layout = PipelineLayout,
-            .HasDepthStencil = HasDepthStencil,
-            .Handle = Handle,
-            .ColorAttachmentCount = (uint32_t)CreateInfo->ColorTargetCount,
-        };
-
-        Rr_ConsumeNextObjectName(GraphicsPipeline->Name);
-
-        Rr_SetVulkanObjectName(
-            VK_OBJECT_TYPE_PIPELINE,
-            (uint64_t)GraphicsPipeline->Handle,
-            GraphicsPipeline->Name);
-    }
-    else
-    {
-        /* TODO: Set error etc... */
+        return NULL;
     }
 
-    if (VertModule != VK_NULL_HANDLE)
+    Rr_LockSpinlock(&gRHI->GraphicsPipelinesLock);
+
+    Rr_GraphicsPipeline *GraphicsPipeline = Rr_PushGraphicsPipelineIntoHive(
+                                                &gRHI->GraphicsPipelines,
+                                                Rr_GetPermanent())
+                                                .Element;
+
+    Rr_UnlockSpinlock(&gRHI->GraphicsPipelinesLock);
+
+    *GraphicsPipeline = (Rr_GraphicsPipeline){
+        .Layout = PipelineLayout,
+        .HasDepthStencil = CreateInfo->DepthStencil.EnableDepthTest ||
+                           CreateInfo->DepthStencil.EnableStencilTest ||
+                           CreateInfo->DepthStencil.EnableDepthWrite,
+        .Handle = Handle,
+        .ColorAttachmentCount = (uint32_t)CreateInfo->ColorTargetCount,
+    };
+
+    Rr_ConsumeNextObjectName(GraphicsPipeline->Name);
+
+    Rr_SetVulkanObjectName(
+        VK_OBJECT_TYPE_PIPELINE,
+        (uint64_t)GraphicsPipeline->Handle,
+        GraphicsPipeline->Name);
+
+    if (VertModule)
     {
         Device->DestroyShaderModule(Device->Handle, VertModule, NULL);
     }
 
-    if (FragModule != VK_NULL_HANDLE)
+    if (FragModule)
     {
         Device->DestroyShaderModule(Device->Handle, FragModule, NULL);
     }

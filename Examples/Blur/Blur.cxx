@@ -700,13 +700,13 @@ struct SBlurApp
             .Format = Rr_GetImageFormat(Rr_GetSwapchainImage()),
         };
 
-        auto VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_CUBE_VERT_SPV);
+        auto VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_VERT_SPV);
         auto VertexShaderInfo = Rr_ShaderInfo{
             .SPVSize = VertexShader.Size,
             .SPVData = VertexShader.Data,
         };
 
-        auto FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_CUBE_FRAG_SPV);
+        auto FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_SKYBOX_FRAG_SPV);
         auto FragmentShaderInfo = Rr_ShaderInfo{
             .SPVSize = FragmentShader.Size,
             .SPVData = FragmentShader.Data,
