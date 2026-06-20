@@ -23,8 +23,6 @@
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RHI
 #include "Rr_LogMacro.h"
 
-#include "Rr_App.h"
-#include "Rr_Arena.h"
 #include "Rr_Graph_Vulkan.h"
 #include "Rr_Platform.h"
 #include "Rr_SPIRV.h"
@@ -2830,8 +2828,8 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
     VkSpecializationMapEntry *Entries = Rr_AllocNoZero(
         sizeof(VkSpecializationMapEntry) * SpecializationCount,
         Arena);
-    uintptr_t ArenaPosition = Arena->Position;
     char *DataStart = NULL;
+    char *DataEnd = NULL;
     for (size_t Index = 0; Index < SpecializationCount; ++Index)
     {
         Rr_PipelineSpecialization const *Specialization =
@@ -2841,6 +2839,7 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
         {
             DataStart = SpecializationData;
         }
+        DataEnd = SpecializationData + Specialization->Size;
         memcpy(SpecializationData, Specialization->Data, Specialization->Size);
         Entries[Index] = (VkSpecializationMapEntry){
             .constantID = Specialization->ConstantID,
@@ -2850,7 +2849,7 @@ static VkSpecializationInfo *Rr_GetVulkanSpecializationInfo(
     }
     SpecializationInfo->pMapEntries = Entries;
     SpecializationInfo->pData = DataStart;
-    SpecializationInfo->dataSize = Arena->Position - ArenaPosition;
+    SpecializationInfo->dataSize = (size_t)(DataEnd - DataStart);
 
     return SpecializationInfo;
 }
@@ -2911,7 +2910,6 @@ Rr_ComputePipeline *Rr_CreateComputePipelineWithLayout(
         .layout = PipelineLayout->Handle,
         .stage =
             (VkPipelineShaderStageCreateInfo){
-
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                 .stage = VK_SHADER_STAGE_COMPUTE_BIT,
                 .module = ShaderModule,
@@ -4999,7 +4997,11 @@ bool Rr_HasQueue(Rr_QueueType QueueType)
 
 Rr_Queue *Rr_GetQueue(Rr_QueueType QueueType)
 {
-    assert(Rr_HasQueue(QueueType));
+    if (!Rr_HasQueue(QueueType))
+    {
+        return NULL;
+    }
+
     switch (QueueType)
     {
         case RR_QUEUE_TYPE_MAIN:
