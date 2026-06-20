@@ -37,8 +37,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-Rr_RHI *gRHI;
-
 char const *RR_VULKAN_DEVICE_EXTENSIONS[] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
@@ -2147,26 +2145,12 @@ Rr_AllocatedBuffer *Rr_GetCurrentAllocatedBuffer(Rr_Buffer *Buffer)
                 [gRHI->FrameIndex % Buffer->AllocatedBufferCount];
 }
 
-Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
+Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo const *Info)
 {
-    assert(Info != NULL);
-
     Rr_Device *Device = Rr_GetDevice();
-
-    Rr_LockSpinlock(&gRHI->SamplersLock);
-
-    Rr_Sampler *Sampler =
-        Rr_PushSamplerIntoHive(&gRHI->Samplers, Rr_GetPermanent()).Element;
-
-    Rr_UnlockSpinlock(&gRHI->SamplersLock);
-
-    RR_ZERO_PTR(Sampler);
-
-    Rr_ConsumeNextObjectName(Sampler->Name);
 
     VkSamplerCreateInfo SamplerInfo = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .pNext = NULL,
         .magFilter = Rr_ToVulkanFilter(Info->MagFilter),
         .minFilter = Rr_ToVulkanFilter(Info->MinFilter),
         .mipmapMode = Rr_ToVulkanSamplerMipmapMode(Info->MipmapMode),
@@ -2184,12 +2168,27 @@ Rr_Sampler *Rr_CreateSampler(Rr_SamplerInfo *Info)
         .unnormalizedCoordinates = Info->UnnormalizedCoordinates,
     };
 
-    VkResult Result = Device->CreateSampler(
-        Device->Handle,
-        &SamplerInfo,
-        NULL,
-        &Sampler->Handle);
-    assert(Result == VK_SUCCESS);
+    VkSampler Handle;
+    if (Device->CreateSampler(Device->Handle, &SamplerInfo, NULL, &Handle) !=
+        VK_SUCCESS)
+    {
+        RR_LOG_ERROR("Failed to create sampler!");
+
+        return NULL;
+    }
+
+    Rr_LockSpinlock(&gRHI->SamplersLock);
+
+    Rr_Sampler *Sampler =
+        Rr_PushSamplerIntoHive(&gRHI->Samplers, Rr_GetPermanent()).Element;
+
+    Rr_UnlockSpinlock(&gRHI->SamplersLock);
+
+    *Sampler = (Rr_Sampler){
+        .Handle = Handle,
+    };
+
+    Rr_ConsumeNextObjectName(Sampler->Name);
 
     Rr_SetVulkanObjectName(
         VK_OBJECT_TYPE_SAMPLER,
@@ -2886,14 +2885,6 @@ Rr_ComputePipeline *Rr_CreateComputePipelineWithLayout(
     Rr_ShaderInfo const *ShaderInfo,
     Rr_PipelineLayout *PipelineLayout)
 {
-    assert(ShaderInfo);
-    assert(PipelineLayout);
-    assert(
-        ShaderInfo->SpecializationCount == 0 ||
-        ShaderInfo->Specializations != NULL);
-
-    Rr_Scratch Scratch = Rr_GetScratch(NULL);
-
     Rr_Device *Device = Rr_GetDevice();
 
     VkShaderModuleCreateInfo ShaderModuleCreateInfo = {
@@ -2901,79 +2892,81 @@ Rr_ComputePipeline *Rr_CreateComputePipelineWithLayout(
         .codeSize = ShaderInfo->SPVSize,
         .pCode = (uint32_t const *)ShaderInfo->SPVData,
     };
-
     VkShaderModule ShaderModule = VK_NULL_HANDLE;
-    Device->CreateShaderModule(
-        Device->Handle,
-        &ShaderModuleCreateInfo,
-        NULL,
-        &ShaderModule);
+    if (Device->CreateShaderModule(
+            Device->Handle,
+            &ShaderModuleCreateInfo,
+            NULL,
+            &ShaderModule) != VK_SUCCESS)
+    {
+        RR_LOG_ERROR("Failed to create compute shader module!");
 
-    VkPipelineShaderStageCreateInfo ShaderStageCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .stage = VK_SHADER_STAGE_COMPUTE_BIT,
-        .module = ShaderModule,
-        .pName = ShaderInfo->EntryPoint ? ShaderInfo->EntryPoint : "main",
+        return NULL;
+    }
+
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    VkComputePipelineCreateInfo PipelineCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .layout = PipelineLayout->Handle,
+        .stage =
+            (VkPipelineShaderStageCreateInfo){
+
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+                .module = ShaderModule,
+                .pName =
+                    ShaderInfo->EntryPoint ? ShaderInfo->EntryPoint : "main",
+            },
     };
-
     if (ShaderInfo->SpecializationCount)
     {
-        ShaderStageCreateInfo.pSpecializationInfo =
+        PipelineCreateInfo.stage.pSpecializationInfo =
             Rr_GetVulkanSpecializationInfo(
                 ShaderInfo->SpecializationCount,
                 ShaderInfo->Specializations,
                 Scratch.Arena);
     }
+    VkPipeline Handle;
+    if (Device->CreateComputePipelines(
+            Device->Handle,
+            VK_NULL_HANDLE,
+            1,
+            &PipelineCreateInfo,
+            NULL,
+            &Handle) != VK_SUCCESS)
+    {
+        RR_LOG_ERROR("Failed to create compute pipeline!");
 
-    VkComputePipelineCreateInfo PipelineCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-        .layout = PipelineLayout->Handle,
-        .stage = ShaderStageCreateInfo,
+        Device->DestroyShaderModule(Device->Handle, ShaderModule, NULL);
+
+        Rr_DestroyScratch(Scratch);
+
+        return NULL;
+    }
+
+    Device->DestroyShaderModule(Device->Handle, ShaderModule, NULL);
+
+    Rr_LockSpinlock(&gRHI->ComputePipelinesLock);
+
+    Rr_ComputePipeline *ComputePipeline = Rr_PushComputePipelineIntoHive(
+                                              &gRHI->ComputePipelines,
+                                              Rr_GetPermanent())
+                                              .Element;
+
+    Rr_UnlockSpinlock(&gRHI->ComputePipelinesLock);
+
+    *ComputePipeline = (Rr_ComputePipeline){
+        .Layout = PipelineLayout,
+        .Handle = Handle,
     };
 
-    VkPipeline Handle = VK_NULL_HANDLE;
-    VkResult Result = Device->CreateComputePipelines(
-        Device->Handle,
-        VK_NULL_HANDLE,
-        1,
-        &PipelineCreateInfo,
-        NULL,
-        &Handle);
+    Rr_ConsumeNextObjectName(ComputePipeline->Name);
 
-    Rr_ComputePipeline *ComputePipeline = NULL;
-
-    if (Result == VK_SUCCESS)
-    {
-        Rr_LockSpinlock(&gRHI->ComputePipelinesLock);
-
-        ComputePipeline = Rr_PushComputePipelineIntoHive(
-                              &gRHI->ComputePipelines,
-                              Rr_GetPermanent())
-                              .Element;
-
-        Rr_UnlockSpinlock(&gRHI->ComputePipelinesLock);
-
-        *ComputePipeline = (Rr_ComputePipeline){
-            .Layout = PipelineLayout,
-            .Handle = Handle,
-        };
-
-        Rr_ConsumeNextObjectName(ComputePipeline->Name);
-
-        Rr_SetVulkanObjectName(
-            VK_OBJECT_TYPE_PIPELINE,
-            (uint64_t)ComputePipeline->Handle,
-            ComputePipeline->Name);
-    }
-    else
-    {
-        /* TODO: Set error etc... */
-    }
-
-    if (ShaderModule != VK_NULL_HANDLE)
-    {
-        Device->DestroyShaderModule(Device->Handle, ShaderModule, NULL);
-    }
+    Rr_SetVulkanObjectName(
+        VK_OBJECT_TYPE_PIPELINE,
+        (uint64_t)ComputePipeline->Handle,
+        ComputePipeline->Name);
 
     Rr_DestroyScratch(Scratch);
 
@@ -5558,53 +5551,6 @@ bool Rr_IsSRGBFormat(Rr_ImageFormat Format)
            Format == RR_IMAGE_FORMAT_R8G8B8A8_SRGB ||
            Format == RR_IMAGE_FORMAT_B8G8R8A8_SRGB ||
            Format == RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32;
-}
-
-static RR_THREAD_LOCAL char NextObjectName[RR_MAX_OBJECT_NAME_LENGTH] = { 0 };
-
-void Rr_SetNextObjectName(const char *Name)
-{
-    if (!Name)
-    {
-        return;
-    }
-
-    size_t Length = strlen(Name);
-    if (!Length)
-    {
-        return;
-    }
-
-    if (Length > RR_MAX_OBJECT_NAME_LENGTH - 1)
-    {
-        memcpy(NextObjectName, Name, RR_MAX_OBJECT_NAME_LENGTH - 1);
-        NextObjectName[RR_MAX_OBJECT_NAME_LENGTH - 1] = '\0';
-
-        return;
-    }
-
-    memcpy(NextObjectName, Name, Length);
-    NextObjectName[Length] = '\0';
-}
-
-void Rr_SetNextObjectNameF(const char *Format, ...)
-{
-    va_list Args;
-    va_start(Args, Format);
-    vsnprintf(NextObjectName, sizeof(NextObjectName), Format, Args);
-    va_end(Args);
-}
-
-void Rr_ConsumeNextObjectName(char Dst[RR_MAX_OBJECT_NAME_LENGTH])
-{
-    if (NextObjectName[0] != '\0')
-    {
-        for (uint32_t Index = 0; Index < RR_MAX_OBJECT_NAME_LENGTH; ++Index)
-        {
-            Dst[Index] = NextObjectName[Index];
-        }
-        NextObjectName[0] = '\0';
-    }
 }
 
 void Rr_SetVulkanObjectName(

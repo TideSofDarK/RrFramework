@@ -300,7 +300,7 @@ struct Rr_SamplerInfo
     bool UnnormalizedCoordinates;
 };
 
-extern Rr_Sampler *RR_CC Rr_CreateSampler(Rr_SamplerInfo *Info);
+extern Rr_Sampler *RR_CC Rr_CreateSampler(Rr_SamplerInfo const *Info);
 
 extern void RR_CC Rr_ReleaseSampler(Rr_Sampler *Sampler);
 
