@@ -163,8 +163,10 @@ typedef enum
     RR_IMAGE_FORMAT_B8G8R8A8_UINT,
     RR_IMAGE_FORMAT_B8G8R8A8_SINT,
     RR_IMAGE_FORMAT_B8G8R8A8_SRGB,
-    /* A8B8G8R8 */
+    /* A8B8G8R8_PACK32 */
     RR_IMAGE_FORMAT_A8B8G8R8_UNORM_PACK32,
+    RR_IMAGE_FORMAT_A8B8G8R8_UINT_PACK32,
+    RR_IMAGE_FORMAT_A8B8G8R8_SINT_PACK32,
     RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32,
     /* */
     RR_IMAGE_FORMAT_R16G16_SFLOAT,
@@ -207,7 +209,6 @@ typedef enum
     RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT = 1U << 3,
     RR_IMAGE_FLAGS_TRANSFER_BIT = 1U << 4,
     RR_IMAGE_FLAGS_MIP_MAPPED_BIT = 1U << 5,
-    RR_IMAGE_FLAGS_MUTABLE_FORMAT_BIT = 1U << 6,
     RR_IMAGE_FLAGS_SAMPLE_COUNT_1 = 1U << 9,
     RR_IMAGE_FLAGS_SAMPLE_COUNT_2 = 1U << 10,
     RR_IMAGE_FLAGS_SAMPLE_COUNT_4 = 1U << 11,
@@ -235,6 +236,8 @@ extern Rr_ImageCube *RR_CC Rr_CreateImageCube(
 
 extern void RR_CC Rr_ReleaseImage(struct Rr_Image *Image);
 
+extern uint32_t RR_CC Rr_GetImageLevelCount(struct Rr_Image *Image);
+
 extern Rr_ImageFormat RR_CC Rr_GetImageFormat(struct Rr_Image *Image);
 
 extern Rr_IntVec2 RR_CC Rr_GetImage2DExtent(Rr_Image2D *Image);
@@ -243,7 +246,13 @@ extern float RR_CC Rr_GetImage2DAspect(Rr_Image2D *Image);
 
 extern Rr_IntVec3 RR_CC Rr_GetImageExtent(struct Rr_Image *Image);
 
+extern bool RR_CC Rr_IsDepthStencilFormat(Rr_ImageFormat Format);
+
+extern bool RR_CC Rr_IsDepthFormat(Rr_ImageFormat Format);
+
 extern bool RR_CC Rr_IsSRGBFormat(Rr_ImageFormat Format);
+
+extern Rr_ImageFormat RR_CC Rr_ToUNORMFormat(Rr_ImageFormat Format);
 
 /*
  * Sampler

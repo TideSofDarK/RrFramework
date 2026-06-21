@@ -515,6 +515,7 @@ struct Rr_ImageViewKey
 {
     VkImageSubresourceRange SubresourceRange;
     VkImageViewType Type;
+    VkImageUsageFlags UsageFlags;
     VkFormat Format;
 };
 
@@ -551,6 +552,7 @@ struct Rr_Image
     VkExtent3D Extent;
     VkImageAspectFlags AspectFlags;
     VkFormat Format;
+    VkImageUsageFlags UsageFlags;
     VkSampleCountFlags SampleCount;
     Rr_ImageFlags Flags;
     uint32_t LayerCount;
@@ -1354,9 +1356,13 @@ static inline Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
             return RR_IMAGE_FORMAT_B8G8R8A8_SINT;
         case VK_FORMAT_B8G8R8A8_SRGB:
             return RR_IMAGE_FORMAT_B8G8R8A8_SRGB;
-            /* A8B8G8R8 */
+            /* A8B8G8R8_PACK32 */
         case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
             return RR_IMAGE_FORMAT_A8B8G8R8_UNORM_PACK32;
+        case VK_FORMAT_A8B8G8R8_UINT_PACK32:
+            return RR_IMAGE_FORMAT_A8B8G8R8_UINT_PACK32;
+        case VK_FORMAT_A8B8G8R8_SINT_PACK32:
+            return RR_IMAGE_FORMAT_A8B8G8R8_SINT_PACK32;
         case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
             return RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32;
             /* */
@@ -1438,9 +1444,13 @@ static VkFormat Rr_ToVulkanImageFormat(Rr_ImageFormat ImageFormat)
             return VK_FORMAT_B8G8R8A8_SINT;
         case RR_IMAGE_FORMAT_B8G8R8A8_SRGB:
             return VK_FORMAT_B8G8R8A8_SRGB;
-            /* A8B8G8R8 */
+            /* A8B8G8R8_PACK32 */
         case RR_IMAGE_FORMAT_A8B8G8R8_UNORM_PACK32:
             return VK_FORMAT_A8B8G8R8_UNORM_PACK32;
+        case RR_IMAGE_FORMAT_A8B8G8R8_UINT_PACK32:
+            return VK_FORMAT_A8B8G8R8_UINT_PACK32;
+        case RR_IMAGE_FORMAT_A8B8G8R8_SINT_PACK32:
+            return VK_FORMAT_A8B8G8R8_SINT_PACK32;
         case RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32:
             return VK_FORMAT_A8B8G8R8_SRGB_PACK32;
             /* */

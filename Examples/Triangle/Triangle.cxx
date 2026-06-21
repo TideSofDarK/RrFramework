@@ -1,6 +1,6 @@
-#include <Rr/Rr.h>
-
 #include "ExampleAssets.inc"
+
+#include <Rr/Rr.h>
 
 #include <array>
 

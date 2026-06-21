@@ -23,7 +23,6 @@
 #define RR_LOG_MACRO_CATEGORY RR_LOG_CATEGORY_RHI
 #include "Rr_LogMacro.h"
 
-#include "Rr_App.h"
 #include "Rr_RHI.h"
 #include "Rr_Thread.h"
 
@@ -863,6 +862,7 @@ static inline void Rr_ExecuteGenericEncodedCommands(
                         DescriptorsState,
                         Args->Set,
                         Args->Binding),
+                    .UsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
                 });
             Rr_WriteImageDescriptor(
                 DescriptorsState,
@@ -889,6 +889,7 @@ static inline void Rr_ExecuteGenericEncodedCommands(
                         DescriptorsState,
                         Args->Set,
                         Args->Binding),
+                    .UsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
                 });
             Rr_WriteImageDescriptor(
                 DescriptorsState,
@@ -939,6 +940,11 @@ static inline void Rr_ExecuteGenericEncodedCommands(
                 &(Rr_ImageViewKey){
                     .SubresourceRange = Args->SubresourceRange,
                     .Type = Args->ViewType,
+                    .Format = Rr_GetImageFormatForBinding(
+                        DescriptorsState,
+                        Args->Set,
+                        Args->Binding),
+                    .UsageFlags = VK_IMAGE_USAGE_STORAGE_BIT,
                 });
             Rr_WriteImageDescriptor(
                 DescriptorsState,
@@ -1110,6 +1116,7 @@ static void Rr_ExecuteGraphicsNode(
                         .levelCount = 1,
                     },
                 .Type = VK_IMAGE_VIEW_TYPE_2D,
+                .UsageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
             });
 
         Viewport.Width = RR_MIN(
@@ -1155,6 +1162,7 @@ static void Rr_ExecuteGraphicsNode(
                         .levelCount = 1,
                     },
                 .Type = VK_IMAGE_VIEW_TYPE_2D,
+                .UsageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
             });
 
         ResolveAttachmentIndex++;
@@ -1192,6 +1200,7 @@ static void Rr_ExecuteGraphicsNode(
                         .levelCount = 1,
                     },
                 .Type = VK_IMAGE_VIEW_TYPE_2D,
+                .UsageFlags = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
             });
 
         Viewport.Width = RR_MIN(
@@ -3452,39 +3461,6 @@ void Rr_SetScissor(Rr_GraphNode *Node, Rr_IntRect *Rect)
     RR_NODE_ENCODE(RR_NODE_FUNCTION_TYPE_SET_SCISSOR, *Rect);
 }
 
-void Rr_BindSampler(
-    Rr_GraphNode *Node,
-    Rr_Sampler *Sampler,
-    uint32_t Set,
-    uint32_t Binding)
-{
-    Rr_BindSamplerAt(Node, Sampler, Set, Binding, 0);
-}
-
-void Rr_BindSamplerAt(
-    Rr_GraphNode *Node,
-    Rr_Sampler *Sampler,
-    uint32_t Set,
-    uint32_t Binding,
-    uint32_t ArrayIndex)
-{
-    assert(Set < RR_MAX_SETS);
-    assert(Binding < RR_MAX_BINDINGS);
-    assert(Sampler != NULL);
-    assert(Node->CurrentLayout);
-
-    RR_NODE_ENCODE(
-        RR_NODE_FUNCTION_TYPE_BIND_SAMPLER,
-        ((Rr_BindSamplerArgs){
-            .Sampler = Sampler,
-            .Set = (uint32_t)Set,
-            .Binding = (uint32_t)Binding,
-            .ArrayIndex = ArrayIndex,
-        }));
-
-    Rr_MarkSamplerUsed(Node->Graph, Sampler);
-}
-
 static inline VkPipelineStageFlags Rr_GetVulkanPipelineStageMaskForSetBinding(
     Rr_GraphNode *Node,
     uint32_t SetIndex,
@@ -3522,6 +3498,47 @@ static inline VkPipelineStageFlags Rr_GetVulkanPipelineStageMaskForSetBinding(
 
     return StageMask;
 }
+
+/*
+ * Bindings: Rr_Sampler
+ */
+
+void Rr_BindSampler(
+    Rr_GraphNode *Node,
+    Rr_Sampler *Sampler,
+    uint32_t Set,
+    uint32_t Binding)
+{
+    Rr_BindSamplerAt(Node, Sampler, Set, Binding, 0);
+}
+
+void Rr_BindSamplerAt(
+    Rr_GraphNode *Node,
+    Rr_Sampler *Sampler,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex)
+{
+    assert(Set < RR_MAX_SETS);
+    assert(Binding < RR_MAX_BINDINGS);
+    assert(Sampler != NULL);
+    assert(Node->CurrentLayout);
+
+    RR_NODE_ENCODE(
+        RR_NODE_FUNCTION_TYPE_BIND_SAMPLER,
+        ((Rr_BindSamplerArgs){
+            .Sampler = Sampler,
+            .Set = (uint32_t)Set,
+            .Binding = (uint32_t)Binding,
+            .ArrayIndex = ArrayIndex,
+        }));
+
+    Rr_MarkSamplerUsed(Node->Graph, Sampler);
+}
+
+/*
+ * Bindings: Rr_Image (sampled)
+ */
 
 static void Rr_BindSampledImageEx(
     Rr_GraphNode *Node,
@@ -3690,6 +3707,10 @@ void Rr_BindSampledImageCubeAt(
         ArrayIndex);
 }
 
+/*
+ * Bindings: Rr_Image + Rr_Sampler (combined)
+ */
+
 static void Rr_BindCombinedImageSamplerEx(
     Rr_GraphNode *Node,
     Rr_Image *Image,
@@ -3733,6 +3754,37 @@ static void Rr_BindCombinedImageSamplerEx(
     Rr_MarkSamplerUsed(Node->Graph, Sampler);
 }
 
+/*
+ * Bindings: Rr_Image2D + Rr_Sampler (combined)
+ */
+
+void Rr_BindCombinedImage2DSamplerEx(
+    Rr_GraphNode *Node,
+    Rr_Image2D *Image2D,
+    uint32_t BaseLevel,
+    uint32_t LevelCount,
+    Rr_Sampler *Sampler,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex)
+{
+    Rr_BindCombinedImageSamplerEx(
+        Node,
+        Image2D,
+        Sampler,
+        VK_IMAGE_VIEW_TYPE_2D,
+        &(VkImageSubresourceRange){
+            .aspectMask = Image2D->AspectFlags,
+            .baseMipLevel = BaseLevel,
+            .levelCount = LevelCount,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        Set,
+        Binding,
+        ArrayIndex);
+}
+
 void Rr_BindCombinedImage2DSampler(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
@@ -3751,22 +3803,20 @@ void Rr_BindCombinedImage2DSamplerAt(
     uint32_t Binding,
     uint32_t ArrayIndex)
 {
-    Rr_BindCombinedImageSamplerEx(
+    Rr_BindCombinedImage2DSamplerEx(
         Node,
         Image2D,
+        0,
+        Image2D->LevelCount,
         Sampler,
-        VK_IMAGE_VIEW_TYPE_2D,
-        &(VkImageSubresourceRange){
-            .aspectMask = Image2D->AspectFlags,
-            .baseMipLevel = 0,
-            .levelCount = VK_REMAINING_MIP_LEVELS,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
         Set,
         Binding,
         ArrayIndex);
 }
+
+/*
+ * Bindings: Rr_Image2DArray + Rr_Sampler (combined)
+ */
 
 void Rr_BindCombinedImage2DArraySampler(
     Rr_GraphNode *Node,
@@ -3800,14 +3850,18 @@ void Rr_BindCombinedImage2DArraySamplerAt(
         &(VkImageSubresourceRange){
             .aspectMask = Image2DArray->AspectFlags,
             .baseMipLevel = 0,
-            .levelCount = VK_REMAINING_MIP_LEVELS,
+            .levelCount = Image2DArray->LevelCount,
             .baseArrayLayer = 0,
-            .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            .layerCount = Image2DArray->LayerCount,
         },
         Set,
         Binding,
         ArrayIndex);
 }
+
+/*
+ * Bindings: Rr_Image3D + Rr_Sampler (combined)
+ */
 
 void Rr_BindCombinedImage3DSampler(
     Rr_GraphNode *Node,
@@ -3835,14 +3889,18 @@ void Rr_BindCombinedImage3DSamplerAt(
         &(VkImageSubresourceRange){
             .aspectMask = Image3D->AspectFlags,
             .baseMipLevel = 0,
-            .levelCount = VK_REMAINING_MIP_LEVELS,
+            .levelCount = Image3D->LevelCount,
             .baseArrayLayer = 0,
-            .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            .layerCount = 1,
         },
         Set,
         Binding,
         ArrayIndex);
 }
+
+/*
+ * Bindings: Rr_ImageCube + Rr_Sampler (combined)
+ */
 
 void Rr_BindCombinedImageCubeSampler(
     Rr_GraphNode *Node,
@@ -3876,7 +3934,7 @@ void Rr_BindCombinedImageCubeSamplerAt(
         &(VkImageSubresourceRange){
             .aspectMask = ImageCube->AspectFlags,
             .baseMipLevel = 0,
-            .levelCount = VK_REMAINING_MIP_LEVELS,
+            .levelCount = ImageCube->LevelCount,
             .baseArrayLayer = 0,
             .layerCount = 6,
         },
@@ -3884,6 +3942,10 @@ void Rr_BindCombinedImageCubeSamplerAt(
         Binding,
         ArrayIndex);
 }
+
+/*
+ * Bindings: Rr_Buffer (uniform)
+ */
 
 void Rr_BindUniformBuffer(
     Rr_GraphNode *Node,
@@ -3933,6 +3995,10 @@ void Rr_BindUniformBufferAt(
                 Rr_GetVulkanPipelineStageMaskForSetBinding(Node, Set, Binding),
         });
 }
+
+/*
+ * Bindings: Rr_Buffer (storage)
+ */
 
 static void Rr_BindStorageBufferEx(
     Rr_GraphNode *Node,
@@ -3987,7 +4053,7 @@ void Rr_BindStorageBuffer(
     uint64_t Offset,
     uint64_t Size)
 {
-    Rr_BindStorageBufferEx(Node, Buffer, Set, Binding, 0, false, Offset, Size);
+    Rr_BindStorageBufferAt(Node, Buffer, Set, Binding, 0, Offset, Size);
 }
 
 void Rr_BindStorageBufferAt(
@@ -4018,7 +4084,7 @@ void Rr_BindStorageBufferRW(
     uint64_t Offset,
     uint64_t Size)
 {
-    Rr_BindStorageBufferEx(Node, Buffer, Set, Binding, 0, true, Offset, Size);
+    Rr_BindStorageBufferRWAt(Node, Buffer, Set, Binding, 0, Offset, Size);
 }
 
 void Rr_BindStorageBufferRWAt(
@@ -4041,10 +4107,17 @@ void Rr_BindStorageBufferRWAt(
         Size);
 }
 
+/*
+ * Bindings: Rr_Image (storage)
+ */
+
 static void Rr_BindStorageImageEx(
     Rr_GraphNode *Node,
     Rr_Image *Image,
     VkImageViewType ViewType,
+    uint32_t BaseLevel,
+    uint32_t LevelCount,
+    uint32_t BaseLayer,
     uint32_t LayerCount,
     uint32_t Set,
     uint32_t Binding,
@@ -4061,16 +4134,16 @@ static void Rr_BindStorageImageEx(
         RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE,
         ((Rr_BindStorageImageArgs){
             .ImageHandle = *ImageHandle,
-            .Set = (uint32_t)Set,
-            .Binding = (uint32_t)Binding,
-            .ArrayIndex = (uint32_t)ArrayIndex,
+            .Set = Set,
+            .Binding = Binding,
+            .ArrayIndex = ArrayIndex,
             .ViewType = ViewType,
             .SubresourceRange =
                 (VkImageSubresourceRange){
                     .aspectMask = Image->AspectFlags,
-                    .baseMipLevel = 0,
-                    .levelCount = VK_REMAINING_MIP_LEVELS,
-                    .baseArrayLayer = 0,
+                    .baseMipLevel = BaseLevel,
+                    .levelCount = LevelCount,
+                    .baseArrayLayer = BaseLayer,
                     .layerCount = LayerCount,
                 },
         }));
@@ -4092,21 +4165,41 @@ static void Rr_BindStorageImageEx(
         });
 }
 
+/*
+ * Bindings: Rr_Image2D (storage)
+ */
+
+void Rr_BindStorageImage2DEx(
+    Rr_GraphNode *Node,
+    Rr_Image2D *Image2D,
+    uint32_t BaseLevel,
+    uint32_t LevelCount,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    bool ReadWrite)
+{
+    Rr_BindStorageImageEx(
+        Node,
+        Image2D,
+        VK_IMAGE_VIEW_TYPE_2D,
+        BaseLevel,
+        LevelCount,
+        0,
+        1,
+        Set,
+        Binding,
+        ArrayIndex,
+        ReadWrite);
+}
+
 void Rr_BindStorageImage2D(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
     uint32_t Set,
     uint32_t Binding)
 {
-    Rr_BindStorageImageEx(
-        Node,
-        Image2D,
-        VK_IMAGE_VIEW_TYPE_2D,
-        1,
-        Set,
-        Binding,
-        0,
-        false);
+    Rr_BindStorageImage2DAt(Node, Image2D, Set, Binding, 0);
 }
 
 void Rr_BindStorageImage2DAt(
@@ -4120,6 +4213,9 @@ void Rr_BindStorageImage2DAt(
         Node,
         Image2D,
         VK_IMAGE_VIEW_TYPE_2D,
+        0,
+        Image2D->LevelCount,
+        0,
         1,
         Set,
         Binding,
@@ -4133,15 +4229,7 @@ void Rr_BindStorageImage2DRW(
     uint32_t Set,
     uint32_t Binding)
 {
-    Rr_BindStorageImageEx(
-        Node,
-        Image2D,
-        VK_IMAGE_VIEW_TYPE_2D,
-        1,
-        Set,
-        Binding,
-        0,
-        true);
+    Rr_BindStorageImage2DRWAt(Node, Image2D, Set, Binding, 0);
 }
 
 void Rr_BindStorageImage2DRWAt(
@@ -4155,11 +4243,44 @@ void Rr_BindStorageImage2DRWAt(
         Node,
         Image2D,
         VK_IMAGE_VIEW_TYPE_2D,
+        0,
+        Image2D->LevelCount,
+        0,
         1,
         Set,
         Binding,
         ArrayIndex,
         true);
+}
+
+/*
+ * Bindings: Rr_Image2DArray (storage)
+ */
+
+void Rr_BindStorageImage2DArrayEx(
+    Rr_GraphNode *Node,
+    Rr_Image2D *Image2D,
+    uint32_t BaseLevel,
+    uint32_t LevelCount,
+    uint32_t BaseLayer,
+    uint32_t LayerCount,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    bool ReadWrite)
+{
+    Rr_BindStorageImageEx(
+        Node,
+        Image2D,
+        VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+        BaseLevel,
+        LevelCount,
+        BaseLayer,
+        LayerCount,
+        Set,
+        Binding,
+        ArrayIndex,
+        ReadWrite);
 }
 
 void Rr_BindStorageImage2DArray(
@@ -4168,15 +4289,7 @@ void Rr_BindStorageImage2DArray(
     uint32_t Set,
     uint32_t Binding)
 {
-    Rr_BindStorageImageEx(
-        Node,
-        Image2DArray,
-        VK_IMAGE_VIEW_TYPE_2D_ARRAY,
-        VK_REMAINING_ARRAY_LAYERS,
-        Set,
-        Binding,
-        0,
-        false);
+    Rr_BindStorageImage2DArrayAt(Node, Image2DArray, Set, Binding, 0);
 }
 
 void Rr_BindStorageImage2DArrayAt(
@@ -4190,7 +4303,10 @@ void Rr_BindStorageImage2DArrayAt(
         Node,
         Image2DArray,
         VK_IMAGE_VIEW_TYPE_2D_ARRAY,
-        VK_REMAINING_ARRAY_LAYERS,
+        0,
+        Image2DArray->LevelCount,
+        0,
+        Image2DArray->LayerCount,
         Set,
         Binding,
         ArrayIndex,
@@ -4203,15 +4319,7 @@ void Rr_BindStorageImage2DArrayRW(
     uint32_t Set,
     uint32_t Binding)
 {
-    Rr_BindStorageImageEx(
-        Node,
-        Image2DArray,
-        VK_IMAGE_VIEW_TYPE_2D_ARRAY,
-        VK_REMAINING_ARRAY_LAYERS,
-        Set,
-        Binding,
-        0,
-        true);
+    Rr_BindStorageImage2DArrayRWAt(Node, Image2DArray, Set, Binding, 0);
 }
 
 void Rr_BindStorageImage2DArrayRWAt(
@@ -4225,7 +4333,98 @@ void Rr_BindStorageImage2DArrayRWAt(
         Node,
         Image2DArray,
         VK_IMAGE_VIEW_TYPE_2D_ARRAY,
-        VK_REMAINING_ARRAY_LAYERS,
+        0,
+        Image2DArray->LevelCount,
+        0,
+        Image2DArray->LayerCount,
+        Set,
+        Binding,
+        ArrayIndex,
+        true);
+}
+
+/*
+ * Bindings: Rr_Image3D (storage)
+ */
+
+void Rr_BindStorageImage3DEx(
+    Rr_GraphNode *Node,
+    Rr_Image3D *Image3D,
+    uint32_t BaseLevel,
+    uint32_t LevelCount,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex,
+    bool ReadWrite)
+{
+    Rr_BindStorageImageEx(
+        Node,
+        Image3D,
+        VK_IMAGE_VIEW_TYPE_3D,
+        BaseLevel,
+        LevelCount,
+        0,
+        1,
+        Set,
+        Binding,
+        ArrayIndex,
+        ReadWrite);
+}
+
+void Rr_BindStorageImage3D(
+    Rr_GraphNode *Node,
+    Rr_Image3D *Image3D,
+    uint32_t Set,
+    uint32_t Binding)
+{
+    Rr_BindStorageImage3DAt(Node, Image3D, Set, Binding, 0);
+}
+
+void Rr_BindStorageImage3DAt(
+    Rr_GraphNode *Node,
+    Rr_Image3D *Image3D,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex)
+{
+    Rr_BindStorageImageEx(
+        Node,
+        Image3D,
+        VK_IMAGE_VIEW_TYPE_3D,
+        0,
+        Image3D->LevelCount,
+        0,
+        1,
+        Set,
+        Binding,
+        ArrayIndex,
+        false);
+}
+
+void Rr_BindStorageImage3DRW(
+    Rr_GraphNode *Node,
+    Rr_Image3D *Image3D,
+    uint32_t Set,
+    uint32_t Binding)
+{
+    Rr_BindStorageImage3DRWAt(Node, Image3D, Set, Binding, 0);
+}
+
+void Rr_BindStorageImage3DRWAt(
+    Rr_GraphNode *Node,
+    Rr_Image3D *Image3D,
+    uint32_t Set,
+    uint32_t Binding,
+    uint32_t ArrayIndex)
+{
+    Rr_BindStorageImageEx(
+        Node,
+        Image3D,
+        VK_IMAGE_VIEW_TYPE_3D,
+        0,
+        Image3D->LevelCount,
+        0,
+        1,
         Set,
         Binding,
         ArrayIndex,

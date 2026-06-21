@@ -29,6 +29,49 @@ static RR_THREAD_LOCAL char NextObjectName[RR_MAX_OBJECT_NAME_LENGTH] = { 0 };
 
 Rr_RHI *gRHI;
 
+bool Rr_IsDepthStencilFormat(Rr_ImageFormat Format)
+{
+    return Format == RR_IMAGE_FORMAT_D24_UNORM_S8_UINT ||
+           Format == RR_IMAGE_FORMAT_D32_SFLOAT_S8_UINT;
+}
+
+bool Rr_IsDepthFormat(Rr_ImageFormat Format)
+{
+    return Format == RR_IMAGE_FORMAT_D16_UNORM ||
+           Format == RR_IMAGE_FORMAT_D32_SFLOAT;
+}
+
+bool Rr_IsSRGBFormat(Rr_ImageFormat Format)
+{
+    return Format == RR_IMAGE_FORMAT_R8G8_SRGB ||
+           Format == RR_IMAGE_FORMAT_R8G8B8_SRGB ||
+           Format == RR_IMAGE_FORMAT_B8G8R8_SRGB ||
+           Format == RR_IMAGE_FORMAT_R8G8B8A8_SRGB ||
+           Format == RR_IMAGE_FORMAT_B8G8R8A8_SRGB ||
+           Format == RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32;
+}
+
+Rr_ImageFormat Rr_ToUNORMFormat(Rr_ImageFormat Format)
+{
+    switch (Format)
+    {
+        case RR_IMAGE_FORMAT_R8G8_SRGB:
+            return RR_IMAGE_FORMAT_R8G8_UNORM;
+        case RR_IMAGE_FORMAT_R8G8B8_SRGB:
+            return RR_IMAGE_FORMAT_R8G8B8_UNORM;
+        case RR_IMAGE_FORMAT_B8G8R8_SRGB:
+            return RR_IMAGE_FORMAT_B8G8R8_UNORM;
+        case RR_IMAGE_FORMAT_R8G8B8A8_SRGB:
+            return RR_IMAGE_FORMAT_R8G8B8A8_UNORM;
+        case RR_IMAGE_FORMAT_B8G8R8A8_SRGB:
+            return RR_IMAGE_FORMAT_B8G8R8A8_UNORM;
+        case RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32:
+            return RR_IMAGE_FORMAT_A8B8G8R8_UNORM_PACK32;
+        default:
+            return RR_IMAGE_FORMAT_UNDEFINED;
+    }
+}
+
 void Rr_SetNextObjectName(const char *Name)
 {
     if (!Name)

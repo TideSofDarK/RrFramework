@@ -13,8 +13,8 @@ layout(constant_id = 2) const uint RADIUS = 4;
 
 layout(local_size_x = 1, local_size_y_id = 0, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, rgba32f) restrict readonly uniform image2DArray SrcImage;
-layout(set = 0, binding = 1, rgba32f) restrict writeonly uniform image2DArray DstImage;
+layout(set = 0, binding = 0, rgba8) restrict readonly uniform image2DArray SrcImage;
+layout(set = 0, binding = 1, rgba8) restrict writeonly uniform image2DArray DstImage;
 
 ivec3 LeadingFace(uint X) {
     uint Face = gl_GlobalInvocationID.z;

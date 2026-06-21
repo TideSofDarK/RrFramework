@@ -13,7 +13,7 @@ layout(set = 0, binding = 1) readonly buffer Unsorted
     uint UnsortedNumbers[];
 };
 
-layout(rgba8, set = 0, binding = 2) uniform image2D ResultImage;
+layout(set = 0, binding = 2, rgba8) uniform image2D ResultImage;
 
 void main() {
     ivec2 Coord = ivec2(gl_GlobalInvocationID.xy);

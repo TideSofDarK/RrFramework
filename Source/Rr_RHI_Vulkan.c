@@ -38,6 +38,7 @@
 char const *RR_VULKAN_DEVICE_EXTENSIONS[] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
+    VK_KHR_MAINTENANCE_2_EXTENSION_NAME,
 #ifdef __APPLE__
     "VK_KHR_portability_subset",
 #endif
@@ -288,7 +289,11 @@ static bool Rr_CheckPhysicalDevice(
 
     if (!Features.drawIndirectFirstInstance || !Features.samplerAnisotropy ||
         !Features.independentBlend || !Features.imageCubeArray ||
-        !Features.depthBiasClamp)
+        !Features.depthBiasClamp ||
+        !Features.shaderSampledImageArrayDynamicIndexing ||
+        !Features.shaderStorageImageArrayDynamicIndexing ||
+        !Features.shaderUniformBufferArrayDynamicIndexing ||
+        !Features.shaderStorageBufferArrayDynamicIndexing)
     {
         return false;
     }
@@ -2292,8 +2297,14 @@ VkImageView Rr_GetVulkanImageView(
 
     Rr_Device *Device = Rr_GetDevice();
 
+    VkImageViewUsageCreateInfoKHR ImageViewUsageCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO_KHR,
+        .usage = Key->UsageFlags,
+    };
+
     VkImageViewCreateInfo ImageViewCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .pNext = &ImageViewUsageCreateInfo,
         .image = AllocatedImage->Handle,
         .viewType = Key->Type,
         .format = Key->Format != VK_FORMAT_UNDEFINED
@@ -2302,13 +2313,15 @@ VkImageView Rr_GetVulkanImageView(
         .subresourceRange = Key->SubresourceRange,
     };
 
-    VkImageView Handle = VK_NULL_HANDLE;
-    VkResult Result = Device->CreateImageView(
-        Device->Handle,
-        &ImageViewCreateInfo,
-        NULL,
-        &Handle);
-    assert(Result == VK_SUCCESS);
+    VkImageView Handle;
+    if (Device->CreateImageView(
+            Device->Handle,
+            &ImageViewCreateInfo,
+            NULL,
+            &Handle) != VK_SUCCESS)
+    {
+        return VK_NULL_HANDLE;
+    }
 
 #ifdef RR_DEBUG
     if (AllocatedImage->Container->Name[0] != '\0')
@@ -2381,19 +2394,6 @@ static Rr_Image *Rr_CreateImage(
         LevelCount = (uint32_t)floorf(log2f((float)Max)) + 1;
     }
 
-    *Image = (Rr_Image){
-        .Flags = Flags,
-        .Format = Rr_ToVulkanImageFormat(Format),
-        .Extent.width = (uint32_t)Extent.Width,
-        .Extent.height = (uint32_t)Extent.Height,
-        .Extent.depth = (uint32_t)Extent.Depth,
-        .LayerCount = LayerCount,
-        .LevelCount = LevelCount,
-        .AllocatedImageCount = 1,
-    };
-
-    Rr_ConsumeNextObjectName(Image->Name);
-
     VkImageUsageFlags UsageFlags = 0;
     if (Flags & RR_IMAGE_FLAGS_STORAGE_BIT)
     {
@@ -2419,12 +2419,25 @@ static Rr_Image *Rr_CreateImage(
         UsageFlags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     }
 
-    if (Flags & RR_IMAGE_FLAGS_MUTABLE_FORMAT_BIT)
+    *Image = (Rr_Image){
+        .Flags = Flags,
+        .Format = Rr_ToVulkanImageFormat(Format),
+        .UsageFlags = UsageFlags,
+        .Extent.width = (uint32_t)Extent.Width,
+        .Extent.height = (uint32_t)Extent.Height,
+        .Extent.depth = (uint32_t)Extent.Depth,
+        .LayerCount = LayerCount,
+        .LevelCount = LevelCount,
+        .AllocatedImageCount = 1,
+    };
+
+    Rr_ConsumeNextObjectName(Image->Name);
+
+    if (Rr_IsSRGBFormat(Format) && (UsageFlags & VK_IMAGE_USAGE_STORAGE_BIT))
     {
         AdditionalFlags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+        AdditionalFlags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT_KHR;
     }
-
-    /* TODO: Some kind of real usage must be enforced aside from TRANSFER_*. */
 
     Image->SampleCount = Rr_ToVulkanSampleCountFlagBits(Flags);
     if (Image->SampleCount == 0)
@@ -2441,22 +2454,17 @@ static Rr_Image *Rr_CreateImage(
         .arrayLayers = LayerCount,
         .samples = Image->SampleCount,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .usage = UsageFlags,
+        .usage = Image->UsageFlags,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
     };
 
     Image->AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-    if (Image->Format == VK_FORMAT_D16_UNORM_S8_UINT ||
-        Image->Format == VK_FORMAT_D24_UNORM_S8_UINT ||
-        Image->Format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+    if (Rr_IsDepthStencilFormat(Format))
     {
         Image->AspectFlags =
             VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
     }
-    else if (
-        Image->Format == VK_FORMAT_D16_UNORM ||
-        Image->Format == VK_FORMAT_D32_SFLOAT ||
-        Image->Format == VK_FORMAT_X8_D24_UNORM_PACK32)
+    else if (Rr_IsDepthFormat(Format))
     {
         Image->AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
     }
@@ -2626,6 +2634,11 @@ Rr_ImageCube *Rr_CreateImageCube(
         6,
         VK_IMAGE_TYPE_2D,
         VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+}
+
+uint32_t Rr_GetImageLevelCount(struct Rr_Image *Image)
+{
+    return Image->LevelCount;
 }
 
 Rr_ImageFormat Rr_GetImageFormat(struct Rr_Image *Image)
@@ -5584,16 +5597,6 @@ void Rr_ReleaseCommandPools(void)
     Rr_UnlockSpinlock(&gRHI->CommandPoolsLock);
 
     ThreadContext->CommandPools = NULL;
-}
-
-bool Rr_IsSRGBFormat(Rr_ImageFormat Format)
-{
-    return Format == RR_IMAGE_FORMAT_R8G8_SRGB ||
-           Format == RR_IMAGE_FORMAT_R8G8B8_SRGB ||
-           Format == RR_IMAGE_FORMAT_B8G8R8_SRGB ||
-           Format == RR_IMAGE_FORMAT_R8G8B8A8_SRGB ||
-           Format == RR_IMAGE_FORMAT_B8G8R8A8_SRGB ||
-           Format == RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32;
 }
 
 void Rr_SetVulkanObjectName(

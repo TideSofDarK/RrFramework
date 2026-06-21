@@ -10,9 +10,9 @@
 #include <ctime>
 #include <vector>
 
-const uint32_t COUNT_SQRT = 256;
-const uint32_t COUNT = COUNT_SQRT * COUNT_SQRT;
-const uint32_t TOTAL_SIZE = sizeof(uint32_t) * COUNT;
+uint32_t constexpr COUNT_SQRT = 256;
+uint32_t constexpr COUNT = COUNT_SQRT * COUNT_SQRT;
+uint32_t constexpr TOTAL_SIZE = sizeof(uint32_t) * COUNT;
 
 struct SValidator
 {
