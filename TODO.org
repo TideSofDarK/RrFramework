@@ -137,6 +137,7 @@
 - [X] Own implementation of Windows/Linux platform layers.
 - [X] Make Rr_HashMap and Rr_Hive follow somewhat similar conventions.
 - [ ] Vulkan: combine image views if format supports both STORAGE and SAMPLED.
+- [ ] Rr_IntVec* operators.
 - [ ] Convert Rr_HashTrie into inline header-based collection.
 - [ ] Header-based stuff should probably be internal.
       The goal is API that's 100% accessible from other languages.

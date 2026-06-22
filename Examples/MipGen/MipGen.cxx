@@ -135,10 +135,11 @@ class CMipGenApp
         {
             ImageExtent.X /= 2;
             ImageExtent.Y /= 2;
+            auto DispatchSize = Rr_IntV3((ImageExtent.X / LocalSize) + 1, (ImageExtent.Y / LocalSize) + 1, 1);
             // Rr_BindStorageImage2DEx(ComputeNode, Image, LevelIndex, 1, 0, 0, 0, false);
             Rr_BindCombinedImage2DSamplerEx(ComputeNode, Image, LevelIndex, 1, Sampler, 0, 0, 0);
             Rr_BindStorageImage2DEx(ComputeNode, Image, LevelIndex + 1, 1, 0, 1, 0, true);
-            Rr_Dispatch(ComputeNode, (ImageExtent.X / 32) + 1, (ImageExtent.Y / 32) + 1, 1);
+            Rr_Dispatch(ComputeNode, DispatchSize.X, DispatchSize.Y, DispatchSize.Z);
             Rr_ComputeBarrier(ComputeNode);
         }
     }
