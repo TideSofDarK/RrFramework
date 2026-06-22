@@ -73,7 +73,7 @@ struct SValidator
         Rr_BindComputePipeline(ComputeNode, Pipeline);
         Rr_BindStorageBuffer(ComputeNode, SortedBuffer, 0, 0, 0, sizeof(uint32_t) * Count);
         Rr_BindStorageBuffer(ComputeNode, UnsortedBuffer, 0, 1, 0, sizeof(uint32_t) * Count);
-        Rr_BindStorageImage2DRW(ComputeNode, ResultImage, 0, 2);
+        Rr_BindStorageImage2D(ComputeNode, ResultImage, 0, 2);
         Rr_Dispatch(ComputeNode, DispatchSize, DispatchSize, 1);
 
         return ResultImage;
@@ -137,7 +137,7 @@ struct SBitonicSorter
 
         Rr_GraphNode *ComputeNode = Rr_AddComputeNode(Rr_GetGraph());
         Rr_BindComputePipeline(ComputeNode, Pipeline);
-        Rr_BindStorageBufferRW(ComputeNode, Buffer, 0, 0, 0, sizeof(uint32_t) * Count);
+        Rr_BindStorageBuffer(ComputeNode, Buffer, 0, 0, 0, sizeof(uint32_t) * Count);
 
         uint32_t DispatchSize = Count / 2 / ThreadsPerWorkgroup;
         size_t InfoBufferOffset = 0;

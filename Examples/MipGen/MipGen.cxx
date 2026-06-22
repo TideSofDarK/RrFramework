@@ -121,7 +121,7 @@ class CMipGenApp
         ComputePipeline = Rr_CreateComputePipeline(&ShaderInfo);
     }
 
-    void ComputeMips()
+    void GenerateMipmaps()
     {
         auto LevelCount = Rr_GetImageLevelCount(Image);
         if (LevelCount == 1)
@@ -137,7 +137,7 @@ class CMipGenApp
             ImageExtent.Y /= 2;
             auto DispatchSize = Rr_IntV3((ImageExtent.X / LocalSize) + 1, (ImageExtent.Y / LocalSize) + 1, 1);
             Rr_BindCombinedImage2DSamplerEx(ComputeNode, Image, LevelIndex, 1, Sampler, 0, 0, 0);
-            Rr_BindStorageImage2DEx(ComputeNode, Image, LevelIndex + 1, 1, 0, 1, 0, true);
+            Rr_BindStorageImage2DEx(ComputeNode, Image, LevelIndex + 1, 1, 0, 1, 0);
             Rr_Dispatch(ComputeNode, DispatchSize.X, DispatchSize.Y, DispatchSize.Z);
             Rr_ComputeBarrier(ComputeNode);
         }
@@ -160,10 +160,13 @@ public:
         {
             Rr_UIText("This example shows two ways of generating mip maps.");
             Rr_UICheckbox("Use Mips", &UseMips);
-            Rr_UICheckbox("Use Lanczos3", &UseLanczos3);
-            if (Rr_UICheckbox("Interpolate Mips", &InterpolateMips))
+            if (UseMips)
             {
-                InitSampler();
+                Rr_UICheckbox("Use Lanczos3", &UseLanczos3);
+                if (Rr_UICheckbox("Interpolate Mips", &InterpolateMips))
+                {
+                    InitSampler();
+                }
             }
         }
         Rr_UIEndWindow();
@@ -171,7 +174,7 @@ public:
 
         if (UseLanczos3)
         {
-            ComputeMips();
+            GenerateMipmaps();
         }
         else
         {

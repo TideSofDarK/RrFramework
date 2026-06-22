@@ -2,7 +2,7 @@
 
 layout(local_size_x = 32, local_size_y = 32) in;
 
-layout(rgba8, set = 0, binding = 0) uniform image2D Image;
+layout(rgba8, set = 0, binding = 0) writeonly uniform image2D Image;
 
 void main() {
     ivec2 Coord = ivec2(gl_GlobalInvocationID.xy);

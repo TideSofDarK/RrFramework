@@ -1,5 +1,4 @@
 add_subdirectory(AllocatorTest)
-add_subdirectory(BindingTest)
 add_subdirectory(BitonicSort)
 add_subdirectory(Blur)
 add_subdirectory(Cube)

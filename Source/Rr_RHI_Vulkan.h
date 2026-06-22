@@ -103,6 +103,7 @@ struct Rr_VulkanBinding
     VkPipelineStageFlags Stages;
     uint32_t Count;
     VkFormat ImageFormat;
+    Rr_BindingFlags Flags;
 };
 
 struct Rr_Queue
@@ -1632,6 +1633,7 @@ static inline void Rr_ToVulkanBindings(
             VulkanBinding->Count = Binding->Count ? Binding->Count : 1;
             VulkanBinding->ImageFormat =
                 Rr_ToVulkanImageFormat(Binding->ImageFormat);
+            VulkanBinding->Flags = Binding->Flags;
         }
     }
 }

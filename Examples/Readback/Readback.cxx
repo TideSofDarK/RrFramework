@@ -37,7 +37,7 @@ struct SReadbackApp
 
         Rr_GraphNode *ComputeNode = Rr_AddComputeNode(SubGraph);
         Rr_BindComputePipeline(ComputeNode, ComputePipeline);
-        Rr_BindStorageImage2DRW(ComputeNode, ColorImage, 0, 0);
+        Rr_BindStorageImage2D(ComputeNode, ColorImage, 0, 0);
         Rr_Dispatch(ComputeNode, 256 / 32, 256 / 32, 1);
 
         Rr_CopyImage2DToBuffer(

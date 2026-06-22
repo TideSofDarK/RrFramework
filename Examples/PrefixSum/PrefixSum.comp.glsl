@@ -7,17 +7,17 @@ layout(set = 0, binding = 0) uniform SUniformData
     uint Count;
 };
 
-layout(set = 0, binding = 1) buffer SInputBuffer
+layout(set = 0, binding = 1) restrict buffer SInputBuffer
 {
     uint InputBuffer[];
 };
 
-layout(set = 0, binding = 2) buffer SOutputBuffer
+layout(set = 0, binding = 2) restrict buffer SOutputBuffer
 {
     uint OutputBuffer[];
 };
 
-layout(set = 0, binding = 3) buffer SWorkgroupBuffer
+layout(set = 0, binding = 3) restrict buffer SWorkgroupBuffer
 {
     uint WorkgroupBuffer[];
 };

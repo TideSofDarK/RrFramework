@@ -131,12 +131,12 @@ struct SBoxBlur2D
         {
             Rr_BindComputePipeline(Node, Blur2DXPipeline);
             Rr_BindStorageImage2D(Node, IntermediateImageA, 0, 0);
-            Rr_BindStorageImage2DRW(Node, IntermediateImageB, 0, 1);
+            Rr_BindStorageImage2D(Node, IntermediateImageB, 0, 1);
             Rr_Dispatch(Node, ImageSize.Height / LocalSizeX + 1, 1, 1);
             Rr_ComputeBarrier(Node);
             Rr_BindComputePipeline(Node, Blur2DYPipeline);
             Rr_BindStorageImage2D(Node, IntermediateImageB, 0, 0);
-            Rr_BindStorageImage2DRW(Node, IntermediateImageA, 0, 1);
+            Rr_BindStorageImage2D(Node, IntermediateImageA, 0, 1);
             Rr_Dispatch(Node, ImageSize.Width / LocalSizeX + 1, 1, 1);
             Rr_ComputeBarrier(Node);
         }
@@ -253,7 +253,7 @@ struct SKawaseBlur2D
             std::memcpy(UniformData + UniformOffset, &GPUUniform, sizeof(GPUUniform));
 
             Rr_BindCombinedImage2DSampler(Node, IntermediateImageA, Sampler, 0, 0);
-            Rr_BindStorageImage2DRW(Node, IntermediateImageB, 0, 1);
+            Rr_BindStorageImage2D(Node, IntermediateImageB, 0, 1);
             Rr_BindUniformBuffer(Node, UniformBuffer, 0, 2, UniformOffset, sizeof(GPUUniform));
             Rr_Dispatch(Node, OriginalSize.Width / LocalSize + 1, OriginalSize.Height / LocalSize + 1, 1);
 
@@ -366,7 +366,7 @@ struct SDualKawaseBlur2D
             std::memcpy(UniformData + UniformOffset, &GPUUniform, sizeof(GPUUniform));
 
             Rr_BindCombinedImage2DSampler(Node, IntermediateImageA, Sampler, 0, 0);
-            Rr_BindStorageImage2DRW(Node, IntermediateImageB, 0, 1);
+            Rr_BindStorageImage2D(Node, IntermediateImageB, 0, 1);
             Rr_BindUniformBuffer(Node, UniformBuffer, 0, 2, UniformOffset, sizeof(GPUUniform));
             Rr_Dispatch(
                 Node,
@@ -394,7 +394,7 @@ struct SDualKawaseBlur2D
             std::memcpy(UniformData + UniformOffset, &GPUUniform, sizeof(GPUUniform));
 
             Rr_BindCombinedImage2DSampler(Node, IntermediateImageA, Sampler, 0, 0);
-            Rr_BindStorageImage2DRW(Node, IntermediateImageB, 0, 1);
+            Rr_BindStorageImage2D(Node, IntermediateImageB, 0, 1);
             Rr_BindUniformBuffer(Node, UniformBuffer, 0, 2, UniformOffset, sizeof(GPUUniform));
             Rr_Dispatch(
                 Node,
@@ -487,12 +487,12 @@ struct SBoxBlurCube
         {
             Rr_BindComputePipeline(Node, BlurCubeXPipeline);
             Rr_BindStorageImage2DArray(Node, IntermediateImageA, 0, 0);
-            Rr_BindStorageImage2DArrayRW(Node, IntermediateImageB, 0, 1);
+            Rr_BindStorageImage2DArray(Node, IntermediateImageB, 0, 1);
             Rr_Dispatch(Node, 1, ImageSize / LocalSize, 6);
             Rr_ComputeBarrier(Node);
             Rr_BindComputePipeline(Node, BlurCubeYPipeline);
             Rr_BindStorageImage2DArray(Node, IntermediateImageB, 0, 0);
-            Rr_BindStorageImage2DArrayRW(Node, IntermediateImageA, 0, 1);
+            Rr_BindStorageImage2DArray(Node, IntermediateImageA, 0, 1);
             Rr_Dispatch(Node, ImageSize / LocalSize, 1, 6);
             Rr_ComputeBarrier(Node);
         }

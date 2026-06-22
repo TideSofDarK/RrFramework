@@ -620,6 +620,13 @@ typedef enum
     RR_BINDING_TYPE_STORAGE_IMAGE,
 } Rr_BindingType;
 
+typedef enum
+{
+    RR_BINDING_FLAGS_NON_WRITABLE_BIT = 1U << 0,
+    RR_BINDING_FLAGS_NON_READABLE_BIT = 1U << 1,
+} Rr_BindingFlagsBits;
+typedef uint32_t Rr_BindingFlags;
+
 typedef struct Rr_Binding Rr_Binding;
 struct Rr_Binding
 {
@@ -628,6 +635,7 @@ struct Rr_Binding
     Rr_ShaderStage Stages;
     uint32_t Count;
     Rr_ImageFormat ImageFormat;
+    Rr_BindingFlags Flags;
 };
 
 typedef struct Rr_BindingSet Rr_BindingSet;

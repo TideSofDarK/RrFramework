@@ -426,23 +426,6 @@ extern void RR_CC Rr_BindStorageBufferAt(
     uint64_t Offset,
     uint64_t Size);
 
-extern void RR_CC Rr_BindStorageBufferRW(
-    Rr_GraphNode *Node,
-    Rr_Buffer *Buffer,
-    uint32_t Set,
-    uint32_t Binding,
-    uint64_t Offset,
-    uint64_t Size);
-
-extern void RR_CC Rr_BindStorageBufferRWAt(
-    Rr_GraphNode *Node,
-    Rr_Buffer *Buffer,
-    uint32_t Set,
-    uint32_t Binding,
-    uint32_t ArrayIndex,
-    uint64_t Offset,
-    uint64_t Size);
-
 /*
  * Bindings: Rr_Image2D (storage)
  */
@@ -454,8 +437,7 @@ extern void RR_CC Rr_BindStorageImage2DEx(
     uint32_t LevelCount,
     uint32_t Set,
     uint32_t Binding,
-    uint32_t ArrayIndex,
-    bool ReadWrite);
+    uint32_t ArrayIndex);
 
 extern void RR_CC Rr_BindStorageImage2D(
     Rr_GraphNode *Node,
@@ -464,19 +446,6 @@ extern void RR_CC Rr_BindStorageImage2D(
     uint32_t Binding);
 
 extern void RR_CC Rr_BindStorageImage2DAt(
-    Rr_GraphNode *Node,
-    Rr_Image2D *Image2D,
-    uint32_t Set,
-    uint32_t Binding,
-    uint32_t ArrayIndex);
-
-extern void RR_CC Rr_BindStorageImage2DRW(
-    Rr_GraphNode *Node,
-    Rr_Image2D *Image2D,
-    uint32_t Set,
-    uint32_t Binding);
-
-extern void RR_CC Rr_BindStorageImage2DRWAt(
     Rr_GraphNode *Node,
     Rr_Image2D *Image2D,
     uint32_t Set,
@@ -496,8 +465,7 @@ extern void RR_CC Rr_BindStorageImage2DArrayEx(
     uint32_t LayerCount,
     uint32_t Set,
     uint32_t Binding,
-    uint32_t ArrayIndex,
-    bool ReadWrite);
+    uint32_t ArrayIndex);
 
 extern void RR_CC Rr_BindStorageImage2DArray(
     Rr_GraphNode *Node,
@@ -506,19 +474,6 @@ extern void RR_CC Rr_BindStorageImage2DArray(
     uint32_t Binding);
 
 extern void RR_CC Rr_BindStorageImage2DArrayAt(
-    Rr_GraphNode *Node,
-    Rr_Image2DArray *Image2DArray,
-    uint32_t Set,
-    uint32_t Binding,
-    uint32_t ArrayIndex);
-
-extern void RR_CC Rr_BindStorageImage2DArrayRW(
-    Rr_GraphNode *Node,
-    Rr_Image2DArray *Image2DArray,
-    uint32_t Set,
-    uint32_t Binding);
-
-extern void RR_CC Rr_BindStorageImage2DArrayRWAt(
     Rr_GraphNode *Node,
     Rr_Image2DArray *Image2DArray,
     uint32_t Set,
@@ -536,8 +491,7 @@ extern void RR_CC Rr_BindStorageImage3DEx(
     uint32_t LevelCount,
     uint32_t Set,
     uint32_t Binding,
-    uint32_t ArrayIndex,
-    bool ReadWrite);
+    uint32_t ArrayIndex);
 
 extern void RR_CC Rr_BindStorageImage3D(
     Rr_GraphNode *Node,
@@ -546,19 +500,6 @@ extern void RR_CC Rr_BindStorageImage3D(
     uint32_t Binding);
 
 extern void RR_CC Rr_BindStorageImage3DAt(
-    Rr_GraphNode *Node,
-    Rr_Image3D *Image3D,
-    uint32_t Set,
-    uint32_t Binding,
-    uint32_t ArrayIndex);
-
-extern void RR_CC Rr_BindStorageImage3DRW(
-    Rr_GraphNode *Node,
-    Rr_Image3D *Image3D,
-    uint32_t Set,
-    uint32_t Binding);
-
-extern void RR_CC Rr_BindStorageImage3DRWAt(
     Rr_GraphNode *Node,
     Rr_Image3D *Image3D,
     uint32_t Set,

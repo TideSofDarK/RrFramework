@@ -7,8 +7,6 @@
 
 #include <Rr/Rr_Thread.h>
 
-#include <assert.h>
-
 typedef struct Rr_SPIRVHeader Rr_SPIRVHeader;
 struct Rr_SPIRVHeader
 {
@@ -30,9 +28,11 @@ typedef struct Rr_SPIRVVariable Rr_SPIRVVariable;
 struct Rr_SPIRVVariable
 {
     uint32_t PointerID;
-    uint16_t StorageClass;
-    uint8_t Binding;       /* Comes from OpDecorate! */
-    uint8_t DescriptorSet; /* Comes from OpDecorate! */
+    uint8_t Binding;         /* Comes from OpDecorate! */
+    uint8_t DescriptorSet;   /* Comes from OpDecorate! */
+    uint8_t NonWritable : 1; /* Comes from OpDecorate! */
+    uint8_t NonReadable : 1; /* Comes from OpDecorate! */
+    uint8_t StorageClassStorageBuffer : 1;
 };
 
 typedef struct Rr_SPIRVPointer Rr_SPIRVPointer;
@@ -103,6 +103,8 @@ enum
 {
     RR_SPIRV_DECORATION_BLOCK = 2U,
     RR_SPIRV_DECORATION_BUFFER_BLOCK = 3U,
+    RR_SPIRV_DECORATION_NON_WRITABLE = 24U,
+    RR_SPIRV_DECORATION_NON_READABLE = 25U,
     RR_SPIRV_DECORATION_BINDING = 33U,
     RR_SPIRV_DECORATION_DESCRIPTOR_SET = 34U,
 };
@@ -239,7 +241,7 @@ static inline bool Rr_AddSPIRVBinding(
     uint32_t BindingIndex,
     uint32_t Count,
     Rr_SPIRVOp const *TypeOp,
-    uint32_t VariableStorageClass,
+    Rr_SPIRVVariable const *Variable,
     Rr_ShaderStage ShaderStage,
     Rr_BindingArray *BindingArray,
     Rr_Arena *Arena)
@@ -252,6 +254,14 @@ static inline bool Rr_AddSPIRVBinding(
         Binding->Stages |= ShaderStage;
 
         return true;
+    }
+    if (Variable->NonWritable)
+    {
+        Binding->Flags |= RR_BINDING_FLAGS_NON_WRITABLE_BIT;
+    }
+    if (Variable->NonReadable)
+    {
+        Binding->Flags |= RR_BINDING_FLAGS_NON_READABLE_BIT;
     }
     Binding->Count = Count;
     Binding->Stages = ShaderStage;
@@ -269,7 +279,7 @@ static inline bool Rr_AddSPIRVBinding(
             }
             else if (
                 TypeOp->Union.Struct.BufferBlock ||
-                VariableStorageClass == RR_SPIRV_STORAGE_CLASS_STORAGE_BUFFER)
+                Variable->StorageClassStorageBuffer)
             {
                 Binding->Type = RR_BINDING_TYPE_STORAGE_BUFFER;
             }
@@ -418,6 +428,16 @@ bool Rr_GetBindingsFromSPIRV(
                 SPIRVOp->Union.Variable.DescriptorSet = (uint8_t)Set;
             }
 
+            if (Decoration == RR_SPIRV_DECORATION_NON_WRITABLE)
+            {
+                SPIRVOp->Union.Variable.NonWritable = true;
+            }
+
+            if (Decoration == RR_SPIRV_DECORATION_NON_READABLE)
+            {
+                SPIRVOp->Union.Variable.NonReadable = true;
+            }
+
             SPIRVOp->OpCode = OpCode;
         }
 
@@ -430,7 +450,8 @@ bool Rr_GetBindingsFromSPIRV(
             Rr_SPIRVOp *SPIRVOp =
                 Rr_UpsertSPIRVOp(&SPIRVOpMap, ResultID, Scratch.Arena);
 
-            SPIRVOp->Union.Variable.StorageClass = (uint16_t)StorageClass;
+            SPIRVOp->Union.Variable.StorageClassStorageBuffer =
+                StorageClass == RR_SPIRV_STORAGE_CLASS_STORAGE_BUFFER;
             SPIRVOp->Union.Variable.PointerID = ResultTypeID;
 
             SPIRVOp->OpCode = OpCode;
@@ -496,7 +517,6 @@ bool Rr_GetBindingsFromSPIRV(
         uint32_t VariableID = BindingIndices.Data[Index];
         Rr_SPIRVVariable *Variable =
             &Rr_UpsertSPIRVOp(&SPIRVOpMap, VariableID, NULL)->Union.Variable;
-        uint32_t VariableStorageClass = Variable->StorageClass;
         uint8_t BindingIndex = Variable->Binding;
         uint8_t SetIndex = Variable->DescriptorSet;
         if (SetIndex >= RR_MAX_SETS)
@@ -530,7 +550,7 @@ bool Rr_GetBindingsFromSPIRV(
                     BindingIndex,
                     ArrayLengthConstant->Value,
                     ArrayElementTypeOp,
-                    VariableStorageClass,
+                    Variable,
                     ShaderStage,
                     &BindingArrays[SetIndex],
                     Arena))
@@ -546,7 +566,7 @@ bool Rr_GetBindingsFromSPIRV(
                     BindingIndex,
                     1,
                     PointerTypeOp,
-                    VariableStorageClass,
+                    Variable,
                     ShaderStage,
                     &BindingArrays[SetIndex],
                     Arena))
