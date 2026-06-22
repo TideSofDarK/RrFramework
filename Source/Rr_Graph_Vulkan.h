@@ -73,11 +73,9 @@ typedef enum
     RR_NODE_FUNCTION_TYPE_SET_VIEWPORT,
     RR_NODE_FUNCTION_TYPE_SET_SCISSOR,
     RR_NODE_FUNCTION_TYPE_BIND_SAMPLER,
-    RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE,
-    RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
+    RR_NODE_FUNCTION_TYPE_BIND_IMAGE,
     RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER,
     RR_NODE_FUNCTION_TYPE_BIND_STORAGE_BUFFER,
-    RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE,
     RR_NODE_FUNCTION_TYPE_DEBUG_LABEL,
 } Rr_NodeFunctionType;
 
@@ -220,31 +218,22 @@ struct Rr_DrawIndexedArgs
 typedef struct Rr_BindSamplerArgs Rr_BindSamplerArgs;
 struct Rr_BindSamplerArgs
 {
-    Rr_Sampler *Sampler;
+    VkSampler Sampler;
     VkImageLayout Layout;
     uint32_t Set;
     uint32_t Binding;
     uint32_t ArrayIndex;
 };
 
-typedef struct Rr_BindSampledImageArgs Rr_BindSampledImageArgs;
-struct Rr_BindSampledImageArgs
+typedef struct Rr_BindImageArgs Rr_BindImageArgs;
+struct Rr_BindImageArgs
 {
-    Rr_GraphImage ImageHandle;
+    uint32_t ImageResourceIndex;
     VkImageViewType ViewType;
     VkImageSubresourceRange SubresourceRange;
-    uint32_t Set;
-    uint32_t Binding;
-    uint32_t ArrayIndex;
-};
-
-typedef struct Rr_BindCombinedImageSamplerArgs Rr_BindCombinedImageSamplerArgs;
-struct Rr_BindCombinedImageSamplerArgs
-{
-    Rr_GraphImage ImageHandle;
-    Rr_Sampler *Sampler;
-    VkImageViewType ViewType;
-    VkImageSubresourceRange SubresourceRange;
+    VkImageUsageFlags Usage;
+    VkSampler Sampler;
+    VkDescriptorType DescriptorType;
     uint32_t Set;
     uint32_t Binding;
     uint32_t ArrayIndex;
@@ -267,17 +256,6 @@ struct Rr_BindStorageBufferArgs
     Rr_GraphBuffer BufferHandle;
     uint64_t Size;
     uint64_t Offset;
-    uint32_t Set;
-    uint32_t Binding;
-    uint32_t ArrayIndex;
-};
-
-typedef struct Rr_BindStorageImageArgs Rr_BindStorageImageArgs;
-struct Rr_BindStorageImageArgs
-{
-    Rr_GraphImage ImageHandle;
-    VkImageViewType ViewType;
-    VkImageSubresourceRange SubresourceRange;
     uint32_t Set;
     uint32_t Binding;
     uint32_t ArrayIndex;
@@ -397,16 +375,6 @@ struct Rr_Graph
 
     Rr_Arena *Arena;
 };
-
-extern void Rr_MarkSamplerUsed(Rr_Graph *Graph, Rr_Sampler *Sampler);
-
-extern void Rr_MarkComputePipelineUsed(
-    Rr_Graph *Graph,
-    Rr_ComputePipeline *ComputePipeline);
-
-extern void Rr_MarkGraphicsPipelineUsed(
-    Rr_Graph *Graph,
-    Rr_GraphicsPipeline *GraphicsPipeline);
 
 extern void Rr_DecrementRefCounts(Rr_Graph *Graph);
 

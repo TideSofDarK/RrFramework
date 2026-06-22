@@ -224,42 +224,61 @@ static inline Rr_GraphNode *Rr_AddGraphNode(
     return GraphNode;
 }
 
-static inline bool Rr_AddNodeDependency(
+static inline void Rr_AddNodeDependency(
     Rr_GraphNode *Node,
     Rr_NodeDependencyArray *Deps,
     Rr_HashTrie **WriteToNode,
     Rr_GraphHandle *Handle,
-    Rr_SyncState *State,
-    bool AllowMultipleWrites,
-    bool AllowReadWrite)
+    Rr_SyncState *State)
 {
+    bool Compute = Node->Type == RR_GRAPH_NODE_TYPE_COMPUTE;
+    bool Transfer = Node->Type == RR_GRAPH_NODE_TYPE_TRANSFER;
+    bool Image = State->Layout != VK_IMAGE_LAYOUT_UNDEFINED;
+    bool AllowMultipleWrites = Compute || Transfer;
+    bool AllowReadWrite = Compute;
+
+    /* Check if the resource is already referenced by this node.  */
+
     for (size_t Index = 0; Index < Deps->Count; ++Index)
     {
         Rr_NodeDependency *Dependency = Deps->Data + Index;
-
+        VkAccessFlags CurrentAccessMask = Dependency->State.AccessMask;
         if (Dependency->Handle.Values.Index == Handle->Values.Index)
         {
-            bool AlreadyWriting =
-                Dependency->State.AccessMask & RR_VULKAN_WRITES;
+            bool AlreadyWriting = CurrentAccessMask & RR_VULKAN_WRITES;
             bool WantToWrite = State->AccessMask & RR_VULKAN_WRITES;
             if (AlreadyWriting && WantToWrite && !AllowMultipleWrites)
             {
-                RR_LOG_ERROR(
+                RR_LOG_WARNING(
                     "Node \"%s\": already writing to the versioned "
                     "resource!",
                     Node->Name);
 
-                return false;
+                return;
             }
             if (!AlreadyWriting && WantToWrite && !AllowReadWrite)
             {
-                RR_LOG_ERROR(
+                RR_LOG_WARNING(
                     "Node \"%s\": trying to read and write a versioned "
                     "resource at the "
                     "same time!",
                     Node->Name);
 
-                return false;
+                return;
+            }
+
+            /* Sometimes compute passes want both sampled and storage forms of
+             * an image. In this case, I hope, we can get away with forcing its
+             * layout to GENERAL. */
+
+            if (Image && Compute)
+            {
+                VkImageLayout CurrentLayout = Dependency->State.Layout;
+                VkImageLayout WantedLayout = State->Layout;
+                if (CurrentLayout != WantedLayout)
+                {
+                    Dependency->State.Layout = VK_IMAGE_LAYOUT_GENERAL;
+                }
             }
 
             /* Multiple reads might be from different stages. */
@@ -267,9 +286,11 @@ static inline bool Rr_AddNodeDependency(
             Dependency->State.StageMask |= State->StageMask;
             Dependency->State.AccessMask |= State->AccessMask;
 
-            return true;
+            return;
         }
     }
+
+    /* Referencing the resource for the first time. */
 
     Rr_Arena *Arena = Node->Graph->Arena;
 
@@ -296,49 +317,31 @@ static inline bool Rr_AddNodeDependency(
                 "resource!",
                 Node->Name);
 
-            return false;
+            return;
         }
     }
 
-    *RR_PUSH_INTO_ARRAY(Deps, Arena) = (Rr_NodeDependency){
-        .State = *State,
-        .Handle = CurrentHandle,
-    };
+    Rr_NodeDependency *NewDependency = RR_PUSH_INTO_ARRAY(Deps, Arena);
+    NewDependency->State = *State;
+    NewDependency->Handle = CurrentHandle;
 
-    return true;
+    return;
 }
 
-static inline bool Rr_AddBufferDependency(
+static inline void Rr_AddBufferDependency(
     Rr_GraphNode *Node,
     Rr_GraphHandle *Handle,
     Rr_SyncState *State)
 {
-    return Rr_AddNodeDependency(
+    Rr_AddNodeDependency(
         Node,
         &Node->BufferDeps,
         &Node->Graph->BufferWriteToNode,
         Handle,
-        State,
-        false,
-        false);
+        State);
 }
 
-static inline bool Rr_AddStorageBufferDependency(
-    Rr_GraphNode *Node,
-    Rr_GraphHandle *Handle,
-    Rr_SyncState *State)
-{
-    return Rr_AddNodeDependency(
-        Node,
-        &Node->BufferDeps,
-        &Node->Graph->BufferWriteToNode,
-        Handle,
-        State,
-        true,
-        true);
-}
-
-static inline bool Rr_AddImageDependency(
+static inline void Rr_AddImageDependency(
     Rr_GraphNode *Node,
     Rr_GraphHandle *Handle,
     Rr_SyncState *State)
@@ -348,34 +351,12 @@ static inline bool Rr_AddImageDependency(
         Node->UsesLateCommandBuffer = true;
     }
 
-    return Rr_AddNodeDependency(
+    Rr_AddNodeDependency(
         Node,
         &Node->ImageDeps,
         &Node->Graph->ImageWriteToNode,
         Handle,
-        State,
-        false,
-        false);
-}
-
-static inline bool Rr_AddStorageImageDependency(
-    Rr_GraphNode *Node,
-    Rr_GraphHandle *Handle,
-    Rr_SyncState *State)
-{
-    if (Handle == Node->Graph->SwapchainImageHandle)
-    {
-        Node->UsesLateCommandBuffer = true;
-    }
-
-    return Rr_AddNodeDependency(
-        Node,
-        &Node->ImageDeps,
-        &Node->Graph->ImageWriteToNode,
-        Handle,
-        State,
-        true,
-        true);
+        State);
 }
 
 static inline void Rr_ProcessDependencies(
@@ -497,6 +478,8 @@ static void Rr_SortGraph(
     State[CurrentNodeIndex] &= ~OnStackBit;
 }
 
+#ifdef RR_DEBUG_GRAPH
+
 static void Rr_PrintAdjacencyList(
     Rr_GraphNode **Nodes,
     Rr_IndexArray *AdjacencyList,
@@ -519,6 +502,8 @@ static void Rr_PrintAdjacencyList(
     }
 }
 
+#endif
+
 static void Rr_ProcessGraphNodes(
     Rr_Graph *Graph,
     Rr_NodeArray *SortedNodes,
@@ -533,8 +518,9 @@ static void Rr_ProcessGraphNodes(
         Rr_Alloc(sizeof(Rr_IndexArray) * Graph->Nodes.Count, Scratch.Arena);
     Rr_CreateGraphAdjacencyList(Graph, AdjacencyList, Scratch.Arena);
 
-    /* Rr_PrintAdjacencyList(Graph->Nodes.Data, AdjacencyList,
-     * Graph->Nodes.Count); */
+#ifdef RR_DEBUG_GRAPH
+    Rr_PrintAdjacencyList(Graph->Nodes.Data, AdjacencyList, Graph->Nodes.Count);
+#endif
 
     /* Topological sort. */
 
@@ -845,14 +831,16 @@ static inline void Rr_ExecuteGenericEncodedCommands(
                 Args->Set,
                 Args->Binding,
                 Args->ArrayIndex,
-                Args->Sampler->Handle);
+                Args->Sampler);
         }
         break;
-        case RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE:
+        case RR_NODE_FUNCTION_TYPE_BIND_IMAGE:
         {
-            Rr_BindSampledImageArgs *Args = Function->Args;
-            Rr_AllocatedImage *AllocatedImage =
-                Rr_GetGraphImage(Graph, Args->ImageHandle);
+            Rr_BindImageArgs *Args = Function->Args;
+            Rr_GraphResource *ImageResource =
+                &Graph->ImageResources.Data[Args->ImageResourceIndex];
+            Rr_AllocatedImage *AllocatedImage = ImageResource->Allocated;
+            VkImageLayout Layout = ImageResource->SyncState.Layout;
             VkImageView ImageView = Rr_GetVulkanImageView(
                 AllocatedImage,
                 &(Rr_ImageViewKey){
@@ -862,44 +850,17 @@ static inline void Rr_ExecuteGenericEncodedCommands(
                         DescriptorsState,
                         Args->Set,
                         Args->Binding),
-                    .UsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
+                    .UsageFlags = Args->Usage,
                 });
             Rr_WriteImageDescriptor(
                 DescriptorsState,
                 Args->Set,
                 Args->Binding,
                 Args->ArrayIndex,
-                VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                Args->DescriptorType,
                 ImageView,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                NULL);
-        }
-        break;
-        case RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER:
-        {
-            Rr_BindCombinedImageSamplerArgs *Args = Function->Args;
-            Rr_AllocatedImage *AllocatedImage =
-                Rr_GetGraphImage(Graph, Args->ImageHandle);
-            VkImageView ImageView = Rr_GetVulkanImageView(
-                AllocatedImage,
-                &(Rr_ImageViewKey){
-                    .SubresourceRange = Args->SubresourceRange,
-                    .Type = Args->ViewType,
-                    .Format = Rr_GetImageFormatForBinding(
-                        DescriptorsState,
-                        Args->Set,
-                        Args->Binding),
-                    .UsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
-                });
-            Rr_WriteImageDescriptor(
-                DescriptorsState,
-                Args->Set,
-                Args->Binding,
-                Args->ArrayIndex,
-                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                ImageView,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                Args->Sampler->Handle);
+                Layout,
+                Args->Sampler);
         }
         break;
         case RR_NODE_FUNCTION_TYPE_BIND_UNIFORM_BUFFER:
@@ -928,33 +889,6 @@ static inline void Rr_ExecuteGenericEncodedCommands(
                 Rr_GetGraphBuffer(Graph, Args->BufferHandle)->Handle,
                 Args->Size,
                 Args->Offset);
-        }
-        break;
-        case RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE:
-        {
-            Rr_BindStorageImageArgs *Args = Function->Args;
-            Rr_AllocatedImage *AllocatedImage =
-                Rr_GetGraphImage(Graph, Args->ImageHandle);
-            VkImageView ImageView = Rr_GetVulkanImageView(
-                AllocatedImage,
-                &(Rr_ImageViewKey){
-                    .SubresourceRange = Args->SubresourceRange,
-                    .Type = Args->ViewType,
-                    .Format = Rr_GetImageFormatForBinding(
-                        DescriptorsState,
-                        Args->Set,
-                        Args->Binding),
-                    .UsageFlags = VK_IMAGE_USAGE_STORAGE_BIT,
-                });
-            Rr_WriteImageDescriptor(
-                DescriptorsState,
-                Args->Set,
-                Args->Binding,
-                Args->ArrayIndex,
-                VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                ImageView,
-                VK_IMAGE_LAYOUT_GENERAL,
-                NULL);
         }
         break;
         case RR_NODE_FUNCTION_TYPE_DEBUG_LABEL:
@@ -2375,7 +2309,7 @@ Rr_GraphImage *Rr_GetGraphImageHandle(Rr_Graph *Graph, Rr_Image *Container)
         &Container->RefCount);
 }
 
-void Rr_MarkSamplerUsed(Rr_Graph *Graph, Rr_Sampler *Sampler)
+static inline void Rr_AddSamplerDependency(Rr_Graph *Graph, Rr_Sampler *Sampler)
 {
     size_t Count = Graph->Samplers.Count;
     Rr_InsertIntoHandleSet(&Graph->Samplers, (void *)&Sampler, Graph->Arena);
@@ -2385,7 +2319,7 @@ void Rr_MarkSamplerUsed(Rr_Graph *Graph, Rr_Sampler *Sampler)
     }
 }
 
-void Rr_MarkComputePipelineUsed(
+static inline void Rr_AddComputePipelineDependency(
     Rr_Graph *Graph,
     Rr_ComputePipeline *ComputePipeline)
 {
@@ -2400,7 +2334,7 @@ void Rr_MarkComputePipelineUsed(
     }
 }
 
-void Rr_MarkGraphicsPipelineUsed(
+void Rr_AddGraphicsPipelineDependency(
     Rr_Graph *Graph,
     Rr_GraphicsPipeline *GraphicsPipeline)
 {
@@ -2588,17 +2522,13 @@ void Rr_TransferBufferData(
             .AccessMask = VK_ACCESS_TRANSFER_READ_BIT,
         });
 
-    Rr_AddNodeDependency(
+    Rr_AddBufferDependency(
         Node,
-        &Node->BufferDeps,
-        &Node->Graph->BufferWriteToNode,
         DstBufferHandle,
         &(Rr_SyncState){
             .StageMask = VK_PIPELINE_STAGE_TRANSFER_BIT,
             .AccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-        },
-        true,
-        false);
+        });
 }
 
 void Rr_BlitImage2D(
@@ -3238,7 +3168,7 @@ void Rr_BindComputePipeline(
 
     Node->CurrentLayout = ComputePipeline->Layout;
 
-    Rr_MarkComputePipelineUsed(Node->Graph, ComputePipeline);
+    Rr_AddComputePipelineDependency(Node->Graph, ComputePipeline);
 }
 
 void Rr_Dispatch(
@@ -3444,7 +3374,7 @@ void Rr_BindGraphicsPipeline(
 
     Node->CurrentLayout = GraphicsPipeline->Layout;
 
-    Rr_MarkGraphicsPipelineUsed(Node->Graph, GraphicsPipeline);
+    Rr_AddGraphicsPipelineDependency(Node->Graph, GraphicsPipeline);
 }
 
 void Rr_SetViewport(Rr_GraphNode *Node, Rr_Rect *Rect)
@@ -3527,13 +3457,13 @@ void Rr_BindSamplerAt(
     RR_NODE_ENCODE(
         RR_NODE_FUNCTION_TYPE_BIND_SAMPLER,
         ((Rr_BindSamplerArgs){
-            .Sampler = Sampler,
+            .Sampler = Sampler->Handle,
             .Set = (uint32_t)Set,
             .Binding = (uint32_t)Binding,
             .ArrayIndex = ArrayIndex,
         }));
 
-    Rr_MarkSamplerUsed(Node->Graph, Sampler);
+    Rr_AddSamplerDependency(Node->Graph, Sampler);
 }
 
 /*
@@ -3557,14 +3487,16 @@ static void Rr_BindSampledImageEx(
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
 
     RR_NODE_ENCODE(
-        RR_NODE_FUNCTION_TYPE_BIND_SAMPLED_IMAGE,
-        ((Rr_BindSampledImageArgs){
-            .ImageHandle = *ImageHandle,
-            .Set = (uint32_t)Set,
-            .Binding = (uint32_t)Binding,
-            .ArrayIndex = (uint32_t)ArrayIndex,
+        RR_NODE_FUNCTION_TYPE_BIND_IMAGE,
+        ((Rr_BindImageArgs){
+            .ImageResourceIndex = ImageHandle->Values.Index,
             .ViewType = ViewType,
             .SubresourceRange = *SubresourceRange,
+            .Usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+            .DescriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+            .Set = Set,
+            .Binding = Binding,
+            .ArrayIndex = ArrayIndex,
         }));
 
     Rr_AddImageDependency(
@@ -3730,14 +3662,16 @@ static void Rr_BindCombinedImageSamplerEx(
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
 
     RR_NODE_ENCODE(
-        RR_NODE_FUNCTION_TYPE_BIND_COMBINED_IMAGE_SAMPLER,
-        ((Rr_BindCombinedImageSamplerArgs){
-            .ImageHandle = *ImageHandle,
-            .Sampler = Sampler,
+        RR_NODE_FUNCTION_TYPE_BIND_IMAGE,
+        ((Rr_BindImageArgs){
+            .ImageResourceIndex = ImageHandle->Values.Index,
             .ViewType = ViewType,
             .SubresourceRange = *SubresourceRange,
-            .Set = (uint32_t)Set,
-            .Binding = (uint32_t)Binding,
+            .Usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+            .Sampler = Sampler->Handle,
+            .DescriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .Set = Set,
+            .Binding = Binding,
             .ArrayIndex = ArrayIndex,
         }));
 
@@ -3751,7 +3685,7 @@ static void Rr_BindCombinedImageSamplerEx(
             .Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         });
 
-    Rr_MarkSamplerUsed(Node->Graph, Sampler);
+    Rr_AddSamplerDependency(Node->Graph, Sampler);
 }
 
 /*
@@ -4035,7 +3969,7 @@ static void Rr_BindStorageBufferEx(
         AccessMask |= VK_ACCESS_SHADER_WRITE_BIT;
     }
 
-    Rr_AddStorageBufferDependency(
+    Rr_AddBufferDependency(
         Node,
         BufferHandle,
         &(Rr_SyncState){
@@ -4131,12 +4065,9 @@ static void Rr_BindStorageImageEx(
     Rr_GraphImage *ImageHandle = Rr_GetGraphImageHandle(Node->Graph, Image);
 
     RR_NODE_ENCODE(
-        RR_NODE_FUNCTION_TYPE_BIND_STORAGE_IMAGE,
-        ((Rr_BindStorageImageArgs){
-            .ImageHandle = *ImageHandle,
-            .Set = Set,
-            .Binding = Binding,
-            .ArrayIndex = ArrayIndex,
+        RR_NODE_FUNCTION_TYPE_BIND_IMAGE,
+        ((Rr_BindImageArgs){
+            .ImageResourceIndex = ImageHandle->Values.Index,
             .ViewType = ViewType,
             .SubresourceRange =
                 (VkImageSubresourceRange){
@@ -4146,6 +4077,11 @@ static void Rr_BindStorageImageEx(
                     .baseArrayLayer = BaseLayer,
                     .layerCount = LayerCount,
                 },
+            .Usage = VK_IMAGE_USAGE_STORAGE_BIT,
+            .DescriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            .Set = Set,
+            .Binding = Binding,
+            .ArrayIndex = ArrayIndex,
         }));
 
     VkAccessFlags AccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -4154,7 +4090,7 @@ static void Rr_BindStorageImageEx(
         AccessMask |= VK_ACCESS_SHADER_WRITE_BIT;
     }
 
-    Rr_AddStorageImageDependency(
+    Rr_AddImageDependency(
         Node,
         ImageHandle,
         &(Rr_SyncState){
