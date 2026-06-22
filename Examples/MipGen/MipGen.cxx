@@ -47,7 +47,7 @@ class CMipGenApp
     Rr_Buffer *UniformBuffer{};
     Rr_Sampler *Sampler{};
     bool UseMips{ true };
-    bool UseCompute{ true };
+    bool UseLanczos3{ true };
     bool InterpolateMips{ true };
     uint32_t LocalSize{};
 
@@ -62,6 +62,10 @@ class CMipGenApp
             .MagFilter = RR_FILTER_LINEAR,
             .MinFilter = RR_FILTER_LINEAR,
             .MipmapMode = InterpolateMips ? RR_SAMPLER_MIPMAP_MODE_LINEAR : RR_SAMPLER_MIPMAP_MODE_NEAREST,
+            .AddressModeU = RR_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+            .AddressModeV = RR_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+            .AnisotropyEnable = true,
+            .MaxAnisotropy = 8.0f,
         };
         Sampler = Rr_CreateSampler(&SamplerInfo);
     }
@@ -131,7 +135,8 @@ class CMipGenApp
         {
             ImageExtent.X /= 2;
             ImageExtent.Y /= 2;
-            Rr_BindStorageImage2DEx(ComputeNode, Image, LevelIndex, 1, 0, 0, 0, false);
+            // Rr_BindStorageImage2DEx(ComputeNode, Image, LevelIndex, 1, 0, 0, 0, false);
+            Rr_BindCombinedImage2DSamplerEx(ComputeNode, Image, LevelIndex, 1, Sampler, 0, 0, 0);
             Rr_BindStorageImage2DEx(ComputeNode, Image, LevelIndex + 1, 1, 0, 1, 0, true);
             Rr_Dispatch(ComputeNode, (ImageExtent.X / 32) + 1, (ImageExtent.Y / 32) + 1, 1);
             Rr_ComputeBarrier(ComputeNode);
@@ -155,7 +160,7 @@ public:
         {
             Rr_UIText("This example shows two ways of generating mip maps.");
             Rr_UICheckbox("Use Mips", &UseMips);
-            Rr_UICheckbox("Use Compute", &UseCompute);
+            Rr_UICheckbox("Use Lanczos3", &UseLanczos3);
             if (Rr_UICheckbox("Interpolate Mips", &InterpolateMips))
             {
                 InitSampler();
@@ -164,7 +169,7 @@ public:
         Rr_UIEndWindow();
         Rr_UIEndDebugOverlayTabs();
 
-        if (UseCompute)
+        if (UseLanczos3)
         {
             ComputeMips();
         }

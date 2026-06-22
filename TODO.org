@@ -94,6 +94,7 @@
 - [X] Radio buttons.
 - [X] Nested windows.
 - [X] Swap font rendering with stb_truetype.
+- [ ] Vulkan: flexible image subresource layouts inside compute nodes.
 - [ ] Finally fix flickering.
 - [ ] Hide flexible widgets properly when layout lacks available width.
 - [ ] Input field doesn't lose focus when clicking elsewhere.
