@@ -250,11 +250,27 @@ static inline bool Rr_AddSPIRVBinding(
     Rr_Binding *Binding = NULL;
     if (Rr_FindOrAddBinding(BindingArray, BindingIndex, &Binding))
     {
-        /* Binding already exists, just add current stage to it. */
+        /* Binding already exists. */
+
         Binding->Stages |= ShaderStage;
+
+        /* Something is readonly in vertex but writable in fragment?
+         * Or vice versa? */
+
+        if (!Variable->NonWritable)
+        {
+            Binding->Flags &=
+                ~(Rr_BindingFlags)RR_BINDING_FLAGS_NON_WRITABLE_BIT;
+        }
+        if (!Variable->NonReadable)
+        {
+            Binding->Flags &=
+                ~(Rr_BindingFlags)RR_BINDING_FLAGS_NON_READABLE_BIT;
+        }
 
         return true;
     }
+    Binding->Flags = 0;
     if (Variable->NonWritable)
     {
         Binding->Flags |= RR_BINDING_FLAGS_NON_WRITABLE_BIT;
