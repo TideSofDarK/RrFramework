@@ -5,6 +5,7 @@
 #include <array>
 #include <cassert>
 #include <span>
+#include <vector>
 
 struct SBBox
 {
@@ -14,8 +15,8 @@ struct SBBox
 
 struct SBBoxShort
 {
-    int16_t Min;
-    int16_t Max;
+    int16_t Min[3];
+    int16_t Max[3];
 };
 
 struct SPlane
@@ -25,10 +26,7 @@ struct SPlane
     int32_t Type;
 };
 
-struct SVertex
-{
-    float X, Y, Z;
-};
+using SVertex = Rr_Vec3;
 
 struct SEdge
 {
@@ -40,7 +38,7 @@ struct SFace
 {
     uint16_t PlaneIndex;
     uint16_t Side;
-    int32_t EdgeIndex;
+    int32_t EdgeListIndex;
     uint16_t EdgeCount;
     uint8_t LightType;
     uint8_t LightBase;
@@ -63,7 +61,7 @@ struct SLeaf
     int32_t Type;
     int32_t VisList;
     SBBoxShort Bound;
-    uint16_t FaceIndex;
+    uint16_t FaceListIndex;
     uint16_t FaceCount;
     uint8_t SndWater;
     uint8_t SndSky;
@@ -112,13 +110,16 @@ struct SHeader
 
 struct SQuakeBSP
 {
-    std::span<SPlane> Planes;
-    std::span<SVertex> Vertices;
-    std::span<SNode> Nodes;
-    std::span<SFace> Faces;
-    std::span<SLeaf> Leaves;
-    std::span<SEdge> Edges;
-    std::span<SModel> Models;
+    std::span<SPlane const> Planes;
+    std::span<SVertex const> Vertices;
+    std::span<uint8_t const> VisList;
+    std::span<SNode const> Nodes;
+    std::span<SFace const> Faces;
+    std::span<uint16_t const> FaceList;
+    std::span<SLeaf const> Leaves;
+    std::span<SEdge const> Edges;
+    std::span<int32_t const> EdgeList;
+    std::span<SModel const> Models;
 };
 
 template <typename T>
@@ -132,12 +133,13 @@ class CCamera
     float FieldOfView{ RR_ANGLE_DEG(90.0f) };
     float Pitch{};
     float Yaw{};
-    Rr_Vec3 Position{ 0.0f, 1.0f, 0.0f };
 
     Rr_Mat4 Transform = Rr_M4D(1.0f);
     Rr_Mat4 ProjMatrix = Rr_M4D(1.0f);
 
 public:
+    Rr_Vec3 Position{ 540.0f, 260.0f, 100.0f };
+
     Rr_Mat4 GetProjectionMatrix() const
     {
         return ProjMatrix;
@@ -167,24 +169,28 @@ public:
         {
             Rr_SetRelativeMouseMode(true);
 
-            auto constexpr SPEED = 5.0f;
+            auto Speed = 500.0f;
+            if (Rr_IsScancodePressed(RR_SCANCODE_LSHIFT))
+            {
+                Speed *= 2.0f;
+            }
             auto CameraForward = GetForwardVector();
             auto CameraLeft = GetRightVector();
             if (Rr_IsScancodePressed(RR_SCANCODE_W))
             {
-                Position -= CameraForward * SPEED * DeltaTime;
+                Position += CameraForward * Speed * DeltaTime;
             }
             if (Rr_IsScancodePressed(RR_SCANCODE_A))
             {
-                Position -= CameraLeft * SPEED * DeltaTime;
+                Position -= CameraLeft * Speed * DeltaTime;
             }
             if (Rr_IsScancodePressed(RR_SCANCODE_S))
             {
-                Position += CameraForward * SPEED * DeltaTime;
+                Position -= CameraForward * Speed * DeltaTime;
             }
             if (Rr_IsScancodePressed(RR_SCANCODE_D))
             {
-                Position += CameraLeft * SPEED * DeltaTime;
+                Position += CameraLeft * Speed * DeltaTime;
             }
 
             auto constexpr SENSITIVITY = 0.005f;
@@ -199,10 +205,16 @@ public:
         Yaw = Rr_WrapMax(Yaw, RR_PI32 * 2.0f);
         Pitch = RR_CLAMP(RR_PI32 * -0.5f, Pitch, RR_PI32 * 0.5f);
 
-        Transform = Rr_TranslateV(Position) * Rr_Rotate_RH(Yaw, Rr_V3(0.0f, 1.0f, 0.0f)) *
-                    Rr_Rotate_RH(Pitch, Rr_V3(1.0f, 0.0f, 0.0f));
-        ProjMatrix = Rr_Perspective_RH(FieldOfView, Aspect, 0.1f, 100.0f);
-        ProjMatrix.Elements[1][1] *= -1.0f;
+        auto constexpr SWAP_YZ = Rr_Mat4{
+            1, 0, 0, 0, //
+            0, 0, 1, 0, //
+            0, 1, 0, 0, //
+            0, 0, 0, 1  //
+        };
+        Transform = Rr_TranslateV(Position) * Rr_Rotate_LH(-Yaw, Rr_V3(0.0f, 0.0f, 1.0f)) *
+                    Rr_Rotate_LH(-Pitch, Rr_V3(1.0f, 0.0f, 0.0f)) * SWAP_YZ;
+        ProjMatrix = Rr_Perspective_LH(FieldOfView, Aspect, 0.1f, 100000.0f);
+        ProjMatrix[1][1] *= -1.0f;
     }
 };
 
@@ -213,53 +225,129 @@ struct SGPUUniform
     Rr_Mat4 Projection;
 };
 
+struct SGPUVertex
+{
+    Rr_Vec3 Position;
+    Rr_Vec3 Normal;
+};
+
 class CQuakeBSPApp
 {
     Rr_GraphicsPipeline *GraphicsPipeline{};
+    Rr_Image2D *DepthImage{};
     Rr_Buffer *UniformBuffer{};
     Rr_Buffer *GeometryBuffer{};
-    size_t ColorsOffset{};
-    size_t IndicesOffset{};
-    size_t IndexCount{};
     SHeader *Header{};
     SQuakeBSP QuakeBSP;
     CCamera Camera;
+    uint16_t CameraLeafIndex{};
+    std::vector<SGPUVertex> GPUVertices{};
+    std::vector<size_t> VisibleFaces{};
+
+    void GetFaceTriangles(SFace const &Face, std::vector<SGPUVertex> &OutVertices)
+    {
+        auto &Plane = QuakeBSP.Planes[Face.PlaneIndex];
+        SVertex First;
+        for (int EdgeListOffset = 0; EdgeListOffset < Face.EdgeCount; ++EdgeListOffset)
+        {
+            auto EdgeIndex = QuakeBSP.EdgeList[Face.EdgeListIndex + EdgeListOffset];
+            auto &Edge = QuakeBSP.Edges[EdgeIndex < 0 ? -EdgeIndex : EdgeIndex];
+            auto Vertex0 = QuakeBSP.Vertices[Edge.Vertex0];
+            auto Vertex1 = QuakeBSP.Vertices[Edge.Vertex1];
+            if (EdgeIndex < 0)
+            {
+                std::swap(Vertex0, Vertex1);
+            }
+            if (EdgeListOffset == 0)
+            {
+                First = Vertex0;
+            }
+            else
+            {
+                OutVertices.emplace_back(First, Plane.Normal);
+                OutVertices.emplace_back(Vertex0, Plane.Normal);
+                OutVertices.emplace_back(Vertex1, Plane.Normal);
+            }
+        }
+    }
+
+    SLeaf const &FindCameraLeaf(SModel const &Map)
+    {
+        auto NodeIndex = (uint16_t)Map.FirstBSPNodeIndex;
+        while ((NodeIndex & (1 << 15)) == 0)
+        {
+            auto &Node = QuakeBSP.Nodes[NodeIndex];
+            auto &Plane = QuakeBSP.Planes[Node.PlaneIndex];
+
+            auto Distance = Rr_DotV3(Camera.Position, Plane.Normal) - Plane.Distance;
+
+            if (Distance >= 0.0f)
+            {
+                NodeIndex = Node.Front;
+            }
+            else
+            {
+                NodeIndex = Node.Back;
+            }
+        }
+
+        CameraLeafIndex = (uint16_t)~NodeIndex;
+
+        return QuakeBSP.Leaves[CameraLeafIndex];
+    }
+
+    void InitDepthImage(void)
+    {
+        auto SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
+
+        if (DepthImage != nullptr)
+        {
+            auto DepthImageSize = Rr_GetImage2DExtent(DepthImage);
+
+            if (DepthImageSize.X >= SwapchainSize.X && DepthImageSize.Y >= SwapchainSize.Y)
+            {
+                return;
+            }
+
+            Rr_ReleaseImage(DepthImage);
+        }
+
+        DepthImage = Rr_CreateImage2D(
+            Rr_IntV2(SwapchainSize.Width, SwapchainSize.Height),
+            RR_IMAGE_FORMAT_D32_SFLOAT,
+            RR_IMAGE_FLAGS_DEPTH_STENCIL_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
+    }
 
 public:
     CQuakeBSPApp()
     {
         auto BSPAsset = Rr_LoadAsset(EXAMPLE_ASSET_E1M1_BSP);
-        auto Raw = (std::byte *)BSPAsset.Data;
+        auto Raw = (std::byte *)std::memcpy(std::malloc(BSPAsset.Size), BSPAsset.Data, BSPAsset.Size);
         Header = (SHeader *)Raw;
-        assert(Header->Version == 0x1C);
+        assert(Header->Version >= 0x1C);
         QuakeBSP = SQuakeBSP{
             .Planes = GetSpan<SPlane>(Raw, Header->Planes),
             .Vertices = GetSpan<SVertex>(Raw, Header->Vertices),
+            .VisList = GetSpan<uint8_t>(Raw, Header->VisList),
             .Nodes = GetSpan<SNode>(Raw, Header->Nodes),
             .Faces = GetSpan<SFace>(Raw, Header->Faces),
+            .FaceList = GetSpan<uint16_t>(Raw, Header->FaceList),
             .Leaves = GetSpan<SLeaf>(Raw, Header->Leaves),
             .Edges = GetSpan<SEdge>(Raw, Header->Edges),
+            .EdgeList = GetSpan<int32_t>(Raw, Header->EdgeList),
             .Models = GetSpan<SModel>(Raw, Header->Models),
         };
 
-        auto VertexAttributes0 = std::array{
+        auto VertexAttributes = std::array{
             Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_FLOAT3 },
-        };
-
-        auto VertexAttributes1 = std::array{
             Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_FLOAT3 },
         };
 
         auto VertexInputBindings = std::array{
             Rr_VertexInputBinding{
                 .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
-                .AttributeCount = VertexAttributes0.size(),
-                .Attributes = VertexAttributes0.data(),
-            },
-            Rr_VertexInputBinding{
-                .Rate = RR_VERTEX_INPUT_RATE_VERTEX,
-                .AttributeCount = VertexAttributes1.size(),
-                .Attributes = VertexAttributes1.data(),
+                .AttributeCount = VertexAttributes.size(),
+                .Attributes = VertexAttributes.data(),
             },
         };
 
@@ -289,46 +377,38 @@ public:
             .Rasterizer =
                 Rr_Rasterizer{
                     .CullMode = RR_CULL_MODE_BACK,
+                    .FrontFace = RR_FRONT_FACE_CLOCKWISE,
+                },
+            .DepthStencil =
+                Rr_DepthStencil{
+                    .Format = RR_IMAGE_FORMAT_D32_SFLOAT,
+                    .CompareOp = RR_COMPARE_OP_LESS,
+                    .EnableDepthTest = true,
+                    .EnableDepthWrite = true,
                 },
         };
 
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
-        auto constexpr CUBE_POSITIONS = std::array{
-            1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f,
-            1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,
-            1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f,
-            -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,
-            -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,
-        };
-        auto constexpr CUBE_COLORS = std::array{
-            1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-            1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-            0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-        };
-        auto constexpr CUBE_INDICES = std::array{
-            1,  13, 19, 1,  19, 7,  9, 6, 18, 9, 18, 21, 23, 20, 14, 23, 14, 17,
-            16, 4,  10, 16, 10, 22, 5, 2, 8,  5, 8,  11, 15, 12, 0,  15, 0,  3,
-        };
-        auto PositionsSize = sizeof(decltype(CUBE_POSITIONS)::value_type) * CUBE_POSITIONS.size();
-        auto ColorsSize = sizeof(decltype(CUBE_COLORS)::value_type) * CUBE_COLORS.size();
-        auto IndicesSize = sizeof(decltype(CUBE_INDICES)::value_type) * CUBE_INDICES.size();
-        auto TotalSize = PositionsSize + ColorsSize + IndicesSize;
-        auto StagingBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_STAGING);
-        Rr_ReleaseBuffer(StagingBuffer);
-        auto StagingData = (std::byte *)Rr_GetMappedBufferData(StagingBuffer);
-        ColorsOffset = PositionsSize;
-        IndicesOffset = PositionsSize + ColorsSize;
-        IndexCount = CUBE_INDICES.size();
-        std::memcpy(StagingData, CUBE_POSITIONS.data(), PositionsSize);
-        std::memcpy(StagingData + ColorsOffset, CUBE_COLORS.data(), ColorsSize);
-        std::memcpy(StagingData + IndicesOffset, CUBE_INDICES.data(), IndicesSize);
-        GeometryBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_INDEX_BIT);
-        auto TransferNode = Rr_AddTransferNode(Rr_GetGraph());
-        Rr_TransferBufferData(TransferNode, TotalSize, StagingBuffer, 0, GeometryBuffer, 0);
-
         UniformBuffer = Rr_CreateBuffer(sizeof(SGPUUniform), RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_DYNAMIC);
+        GeometryBuffer = Rr_CreateBuffer(RR_MEBIBYTES(4), RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_DYNAMIC);
+
+        InitDepthImage();
+    }
+
+    void Event(Rr_Event const *Event)
+    {
+        switch (Event->Type)
+        {
+            case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
+            {
+                InitDepthImage();
+
+                return;
+            }
+            default:
+                return;
+        }
     }
 
     void Iterate()
@@ -337,6 +417,8 @@ public:
         if (Rr_UIBeginWindow("QuakeBSP.cxx"))
         {
             Rr_UIText("This example shows rendering a Quake map.");
+            Rr_UIInputFloat3("Camera Position", Camera.Position.Elements);
+            Rr_UITextF("Camera Leaf Index: %d\nVisible Face Count: %zu", CameraLeafIndex, VisibleFaces.size());
         }
         Rr_UIEndWindow();
         Rr_UIEndDebugOverlayTabs();
@@ -345,9 +427,42 @@ public:
 
         Camera.Update(Rr_GetImage2DAspect(SwapchainImage));
 
+        GPUVertices.clear();
+        VisibleFaces.clear();
+        auto &Map = QuakeBSP.Models[0];
+        auto &Leaf = FindCameraLeaf(Map);
+        auto VisList = &QuakeBSP.VisList[Leaf.VisList];
+        for (auto Index = 1; Index < QuakeBSP.Models[0].LeafCount; ++VisList)
+        {
+            if (*VisList)
+            {
+                for (auto Bit = 0; Bit < 8; ++Bit, ++Index)
+                {
+                    auto &VisibleLeaf = QuakeBSP.Leaves[Index];
+                    auto First = VisibleLeaf.FaceListIndex;
+                    auto Last = First + VisibleLeaf.FaceCount;
+                    for (auto FaceListIndex = First; FaceListIndex < Last; ++FaceListIndex)
+                    {
+                        VisibleFaces.emplace_back(QuakeBSP.FaceList[FaceListIndex]);
+                    }
+                }
+            }
+            else
+            {
+                Index += (*VisList++) << 3;
+            }
+        }
+        for (auto FaceIndex : VisibleFaces)
+        {
+            GetFaceTriangles(QuakeBSP.Faces[FaceIndex], GPUVertices);
+        }
+        std::memcpy(
+            Rr_GetMappedBufferData(GeometryBuffer),
+            GPUVertices.data(),
+            sizeof(SGPUVertex) * GPUVertices.size());
+
         auto GPUUniform = SGPUUniform{
-            .Model = Rr_Rotate_RH(Rr_GetTimeSeconds(), Rr_V3(1.0f, 0.0f, 0.0f)) *
-                     Rr_Rotate_RH(Rr_GetTimeSeconds(), Rr_V3(0.0f, 1.0f, 0.0f)),
+            .Model = Rr_M4D(1.0f),
             .View = Camera.GetViewMatrix(),
             .Projection = Camera.GetProjectionMatrix(),
         };
@@ -358,13 +473,17 @@ public:
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
         };
-        auto GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, nullptr);
+        auto DepthTarget = Rr_DepthTarget{
+            .Image = DepthImage,
+            .LoadOp = RR_LOAD_OP_CLEAR,
+            .StoreOp = RR_STORE_OP_DONT_CARE,
+            .Clear = Rr_DepthClear{ 1.0f, 0 },
+        };
+        auto GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindVertexBuffer(GraphicsNode, GeometryBuffer, 0, 0);
-        Rr_BindVertexBuffer(GraphicsNode, GeometryBuffer, 1, ColorsOffset);
-        Rr_BindIndexBuffer(GraphicsNode, GeometryBuffer, 0, IndicesOffset, RR_INDEX_TYPE_UINT32);
         Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(GPUUniform));
-        Rr_DrawIndexed(GraphicsNode, IndexCount, 1, 0, 0, 0);
+        Rr_Draw(GraphicsNode, GPUVertices.size(), 1, 0, 0);
     }
 
     ~CQuakeBSPApp()
@@ -383,6 +502,7 @@ int main()
         .WindowTitle = "QuakeBSP",
         .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
         .InitFunc = []() { App = new CQuakeBSPApp(); },
+        .EventFunc = [](Rr_Event const *Event) { App->Event(Event); },
         .IterateFunc = []() { App->Iterate(); },
         .CleanupFunc = []() { delete App; },
     };
