@@ -59,7 +59,7 @@ struct SNode
 struct SLeaf
 {
     int32_t Type;
-    int32_t VisList;
+    int32_t VisListIndex;
     SBBoxShort Bound;
     uint16_t FaceListIndex;
     uint16_t FaceCount;
@@ -431,25 +431,29 @@ public:
         VisibleFaces.clear();
         auto &Map = QuakeBSP.Models[0];
         auto &Leaf = FindCameraLeaf(Map);
-        auto VisList = &QuakeBSP.VisList[Leaf.VisList];
-        for (auto Index = 1; Index < QuakeBSP.Models[0].LeafCount; ++VisList)
+        auto VisListIndex = Leaf.VisListIndex;
+        for (auto Index = 1; Index < Map.LeafCount; ++VisListIndex)
         {
-            if (*VisList)
+            if (QuakeBSP.VisList[VisListIndex] == 0)
             {
-                for (auto Bit = 0; Bit < 8; ++Bit, ++Index)
-                {
-                    auto &VisibleLeaf = QuakeBSP.Leaves[Index];
-                    auto First = VisibleLeaf.FaceListIndex;
-                    auto Last = First + VisibleLeaf.FaceCount;
-                    for (auto FaceListIndex = First; FaceListIndex < Last; ++FaceListIndex)
-                    {
-                        VisibleFaces.emplace_back(QuakeBSP.FaceList[FaceListIndex]);
-                    }
-                }
+                ++VisListIndex;
+                Index += 8 * QuakeBSP.VisList[VisListIndex];
             }
             else
             {
-                Index += (*VisList++) << 3;
+                for (uint8_t Bit = 1; Bit != 0; Bit *= 2, ++Index)
+                {
+                    if (QuakeBSP.VisList[VisListIndex] & Bit)
+                    {
+                        auto &VisibleLeaf = QuakeBSP.Leaves[Index];
+                        auto First = VisibleLeaf.FaceListIndex;
+                        auto Last = First + VisibleLeaf.FaceCount;
+                        for (auto FaceListIndex = First; FaceListIndex < Last; ++FaceListIndex)
+                        {
+                            VisibleFaces.emplace_back(QuakeBSP.FaceList[FaceListIndex]);
+                        }
+                    }
+                }
             }
         }
         for (auto FaceIndex : VisibleFaces)
