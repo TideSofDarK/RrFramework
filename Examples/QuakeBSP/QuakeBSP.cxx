@@ -2,10 +2,27 @@
 
 #include "ExampleAssets.inc"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <span>
+#include <unordered_set>
 #include <vector>
+
+struct SColor
+{
+    uint8_t R;
+    uint8_t G;
+    uint8_t B;
+};
+
+struct SColor4
+{
+    uint8_t R;
+    uint8_t G;
+    uint8_t B;
+    uint8_t A;
+};
 
 struct SBBox
 {
@@ -40,6 +57,7 @@ struct SFace
     uint16_t Side;
     int32_t EdgeListIndex;
     uint16_t EdgeCount;
+    uint16_t SurfaceIndex;
     uint8_t LightType;
     uint8_t LightBase;
     uint8_t Lights[2];
@@ -88,6 +106,33 @@ struct SModel
     int32_t FaceCount;
 };
 
+struct SSurface
+{
+    Rr_Vec3 VectorS;
+    float DistanceS;
+    Rr_Vec3 VectorT;
+    float DistanceT;
+    uint32_t MipTexIndex;
+    uint32_t Animated;
+};
+
+struct SMipHeader
+{
+    int32_t Count;
+    int32_t Offsets[];
+};
+
+struct SMipTex
+{
+    char Name[16];
+    uint32_t Width;
+    uint32_t Height;
+    uint32_t Offset1;
+    uint32_t Offset2;
+    uint32_t Offset4;
+    uint32_t Offset8;
+};
+
 struct SHeader
 {
     int32_t Version;
@@ -97,7 +142,7 @@ struct SHeader
     SEntry Vertices;
     SEntry VisList;
     SEntry Nodes;
-    SEntry TextureInfo;
+    SEntry Surfaces;
     SEntry Faces;
     SEntry Lightmaps;
     SEntry ClipNodes;
@@ -111,9 +156,11 @@ struct SHeader
 struct SQuakeBSP
 {
     std::span<SPlane const> Planes;
+    SMipHeader const *MipHeader;
     std::span<SVertex const> Vertices;
     std::span<uint8_t const> VisList;
     std::span<SNode const> Nodes;
+    std::span<SSurface const> Surfaces;
     std::span<SFace const> Faces;
     std::span<uint16_t const> FaceList;
     std::span<SLeaf const> Leaves;
@@ -130,7 +177,7 @@ auto GetSpan(std::byte const *Raw, SEntry const &Entry) -> std::span<T>
 
 class CCamera
 {
-    float FieldOfView{ RR_ANGLE_DEG(90.0f) };
+    float FieldOfView{ RR_ANGLE_DEG(105.0f) };
     float Pitch{};
     float Yaw{};
 
@@ -228,46 +275,61 @@ struct SGPUUniform
 struct SGPUVertex
 {
     Rr_Vec3 Position;
+    uint32_t SurfaceIndex;
     Rr_Vec3 Normal;
+    uint32_t TextureIndex;
+};
+
+struct SGPUSurface
+{
+    Rr_Vec3 VectorX;
+    float DistanceX;
+    Rr_Vec3 VectorY;
+    float DistanceY;
+};
+
+struct SGPUTexture
+{
+    Rr_Vec2 AtlasTexCoord;
+    Rr_Vec2 AtlasTexSize;
 };
 
 class CQuakeBSPApp
 {
+    Rr_Sampler *Sampler{};
     Rr_GraphicsPipeline *GraphicsPipeline{};
     Rr_Image2D *DepthImage{};
     Rr_Buffer *UniformBuffer{};
-    Rr_Buffer *GeometryBuffer{};
+    Rr_Buffer *VertexBuffer{};
+    Rr_Buffer *IndexBuffer{};
+    Rr_Buffer *TextureBuffer{};
+    Rr_Buffer *SurfaceBuffer{};
     SHeader *Header{};
     SQuakeBSP QuakeBSP;
+    Rr_Image2D *AtlasImage{};
     CCamera Camera;
     uint16_t CameraLeafIndex{};
-    std::vector<SGPUVertex> GPUVertices{};
-    std::vector<size_t> VisibleFaces{};
+    std::vector<SGPUVertex> Vertices{};
+    std::vector<uint16_t> Indices{};
+    std::unordered_set<uint32_t> VisibleFaces{};
 
-    void GetFaceTriangles(SFace const &Face, std::vector<SGPUVertex> &OutVertices)
+    void GetFaceTriangles(SFace const &Face)
     {
+        auto &Surface = QuakeBSP.Surfaces[Face.SurfaceIndex];
         auto &Plane = QuakeBSP.Planes[Face.PlaneIndex];
-        SVertex First;
-        for (int EdgeListOffset = 0; EdgeListOffset < Face.EdgeCount; ++EdgeListOffset)
+        auto FirstVertex = Vertices.size();
+        for (auto Index = 0; Index < Face.EdgeCount; ++Index)
         {
-            auto EdgeIndex = QuakeBSP.EdgeList[Face.EdgeListIndex + EdgeListOffset];
-            auto &Edge = QuakeBSP.Edges[EdgeIndex < 0 ? -EdgeIndex : EdgeIndex];
-            auto Vertex0 = QuakeBSP.Vertices[Edge.Vertex0];
-            auto Vertex1 = QuakeBSP.Vertices[Edge.Vertex1];
-            if (EdgeIndex < 0)
-            {
-                std::swap(Vertex0, Vertex1);
-            }
-            if (EdgeListOffset == 0)
-            {
-                First = Vertex0;
-            }
-            else
-            {
-                OutVertices.emplace_back(First, Plane.Normal);
-                OutVertices.emplace_back(Vertex0, Plane.Normal);
-                OutVertices.emplace_back(Vertex1, Plane.Normal);
-            }
+            auto EdgeIndex = QuakeBSP.EdgeList[Face.EdgeListIndex + Index];
+            auto &Edge = QuakeBSP.Edges[EdgeIndex >= 0 ? EdgeIndex : -EdgeIndex];
+            auto Vertex = QuakeBSP.Vertices[EdgeIndex >= 0 ? Edge.Vertex0 : Edge.Vertex1];
+            Vertices.emplace_back(Vertex, (uint32_t)Face.SurfaceIndex, Plane.Normal, (uint32_t)Surface.MipTexIndex);
+        }
+        for (auto Index = FirstVertex + 2; Index < Vertices.size(); ++Index)
+        {
+            Indices.emplace_back((uint16_t)FirstVertex);
+            Indices.emplace_back((uint16_t)Index);
+            Indices.emplace_back((uint16_t)Index - 1);
         }
     }
 
@@ -296,7 +358,125 @@ class CQuakeBSPApp
         return QuakeBSP.Leaves[CameraLeafIndex];
     }
 
-    void InitDepthImage(void)
+    void InitBSP()
+    {
+        auto BSPAsset = Rr_LoadAsset(EXAMPLE_ASSET_E1M1_BSP);
+        auto Raw = (std::byte *)std::memcpy(std::malloc(BSPAsset.Size), BSPAsset.Data, BSPAsset.Size);
+        Header = (SHeader *)Raw;
+        assert(Header->Version >= 0x1C);
+        QuakeBSP = SQuakeBSP{
+            .Planes = GetSpan<SPlane>(Raw, Header->Planes),
+            .MipHeader = (SMipHeader *)(Raw + Header->MipTextures.Offset),
+            .Vertices = GetSpan<SVertex>(Raw, Header->Vertices),
+            .VisList = GetSpan<uint8_t>(Raw, Header->VisList),
+            .Nodes = GetSpan<SNode>(Raw, Header->Nodes),
+            .Surfaces = GetSpan<SSurface>(Raw, Header->Surfaces),
+            .Faces = GetSpan<SFace>(Raw, Header->Faces),
+            .FaceList = GetSpan<uint16_t>(Raw, Header->FaceList),
+            .Leaves = GetSpan<SLeaf>(Raw, Header->Leaves),
+            .Edges = GetSpan<SEdge>(Raw, Header->Edges),
+            .EdgeList = GetSpan<int32_t>(Raw, Header->EdgeList),
+            .Models = GetSpan<SModel>(Raw, Header->Models),
+        };
+    }
+
+    void InitAtlas()
+    {
+        auto PaletteAsset = Rr_LoadAsset(EXAMPLE_ASSET_PALETTE_LMP);
+        auto PaletteColors = std::span<SColor const>{ (SColor *)PaletteAsset.Data, PaletteAsset.Size / 3 };
+
+        auto AtlasWidth = 1024;
+        auto AtlasHeight = 1024;
+        auto AtlasChannels = 4;
+
+        auto StagingSize = AtlasWidth * AtlasHeight * AtlasChannels;
+        auto StagingBuffer = Rr_CreateBuffer(StagingSize, RR_BUFFER_FLAGS_STAGING);
+        Rr_ReleaseBuffer(StagingBuffer);
+        auto StagingData = (SColor4 *)Rr_GetMappedBufferData(StagingBuffer);
+
+        auto CurrentX = 0;
+        auto CurrentY = 0;
+        auto MaxHeight = 0u;
+
+        auto GPUTextures = std::vector<SGPUTexture>{};
+        for (auto Index = 0; Index < QuakeBSP.MipHeader->Count; ++Index)
+        {
+            auto Offset = QuakeBSP.MipHeader->Offsets[Index];
+            auto MipTexRaw = (std::byte *)QuakeBSP.MipHeader + Offset;
+            auto MipTex = (SMipTex *)MipTexRaw;
+            auto Mip0ColorIndices = (uint8_t *)MipTexRaw + MipTex->Offset1;
+
+            if (CurrentX + MipTex->Width >= AtlasWidth)
+            {
+                CurrentY += MaxHeight;
+                MaxHeight = 0;
+                CurrentX = 0;
+            }
+
+            assert(CurrentY + MipTex->Height < AtlasHeight);
+
+            for (auto Y = 0; Y < MipTex->Height; ++Y)
+            {
+                for (auto X = 0; X < MipTex->Width; ++X)
+                {
+                    auto MipIndex = Y * MipTex->Width + X;
+                    auto MipPixelColorIndex = Mip0ColorIndices[MipIndex];
+
+                    auto &PaletteColor = PaletteColors[MipPixelColorIndex];
+
+                    auto AtlasIndex = (CurrentY + Y) * AtlasWidth + CurrentX + X;
+                    auto &AtlasPixel = StagingData[AtlasIndex];
+
+                    AtlasPixel.R = PaletteColor.R;
+                    AtlasPixel.G = PaletteColor.G;
+                    AtlasPixel.B = PaletteColor.B;
+                    AtlasPixel.A = std::numeric_limits<uint8_t>::max();
+                }
+            }
+
+            GPUTextures.emplace_back(
+                Rr_V2((float)CurrentX / (float)AtlasWidth, (float)CurrentY / (float)AtlasHeight),
+                Rr_V2((float)MipTex->Width / (float)AtlasWidth, (float)MipTex->Height / (float)AtlasHeight));
+
+            MaxHeight = std::max(MaxHeight, MipTex->Height);
+            CurrentX += MipTex->Width;
+        }
+
+        AtlasImage = Rr_CreateImage2D(
+            Rr_IntV2(AtlasWidth, AtlasHeight),
+            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
+        Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, Rr_IntV2(AtlasWidth, AtlasHeight), AtlasImage, 0);
+
+        TextureBuffer = Rr_CreateBuffer(
+            sizeof(SGPUTexture) * GPUTextures.size(),
+            RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_STAGING);
+        std::memcpy(
+            Rr_GetMappedBufferData(TextureBuffer),
+            GPUTextures.data(),
+            sizeof(SGPUTexture) * GPUTextures.size());
+
+        auto GPUSurfaces = std::vector<SGPUSurface>{};
+        for (auto &Surface : QuakeBSP.Surfaces)
+        {
+            GPUSurfaces.emplace_back(Surface.VectorS, Surface.DistanceS, Surface.VectorT, Surface.DistanceT);
+        }
+        SurfaceBuffer = Rr_CreateBuffer(
+            sizeof(SGPUSurface) * GPUSurfaces.size(),
+            RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_STAGING);
+        std::memcpy(
+            Rr_GetMappedBufferData(SurfaceBuffer),
+            GPUSurfaces.data(),
+            sizeof(SGPUSurface) * GPUSurfaces.size());
+    }
+
+    void InitSampler()
+    {
+        auto SamplerInfo = Rr_SamplerInfo{};
+        Sampler = Rr_CreateSampler(&SamplerInfo);
+    }
+
+    void InitDepthImage()
     {
         auto SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
 
@@ -321,26 +501,15 @@ class CQuakeBSPApp
 public:
     CQuakeBSPApp()
     {
-        auto BSPAsset = Rr_LoadAsset(EXAMPLE_ASSET_E1M1_BSP);
-        auto Raw = (std::byte *)std::memcpy(std::malloc(BSPAsset.Size), BSPAsset.Data, BSPAsset.Size);
-        Header = (SHeader *)Raw;
-        assert(Header->Version >= 0x1C);
-        QuakeBSP = SQuakeBSP{
-            .Planes = GetSpan<SPlane>(Raw, Header->Planes),
-            .Vertices = GetSpan<SVertex>(Raw, Header->Vertices),
-            .VisList = GetSpan<uint8_t>(Raw, Header->VisList),
-            .Nodes = GetSpan<SNode>(Raw, Header->Nodes),
-            .Faces = GetSpan<SFace>(Raw, Header->Faces),
-            .FaceList = GetSpan<uint16_t>(Raw, Header->FaceList),
-            .Leaves = GetSpan<SLeaf>(Raw, Header->Leaves),
-            .Edges = GetSpan<SEdge>(Raw, Header->Edges),
-            .EdgeList = GetSpan<int32_t>(Raw, Header->EdgeList),
-            .Models = GetSpan<SModel>(Raw, Header->Models),
-        };
+        InitBSP();
+        InitAtlas();
+        InitSampler();
 
         auto VertexAttributes = std::array{
             Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_FLOAT3 },
-            Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_FLOAT3 },
+            Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_UINT },
+            Rr_VertexInputAttribute{ .Location = 2, .Format = RR_FORMAT_FLOAT3 },
+            Rr_VertexInputAttribute{ .Location = 3, .Format = RR_FORMAT_UINT },
         };
 
         auto VertexInputBindings = std::array{
@@ -377,7 +546,7 @@ public:
             .Rasterizer =
                 Rr_Rasterizer{
                     .CullMode = RR_CULL_MODE_BACK,
-                    .FrontFace = RR_FRONT_FACE_CLOCKWISE,
+                    .FrontFace = RR_FRONT_FACE_COUNTER_CLOCKWISE,
                 },
             .DepthStencil =
                 Rr_DepthStencil{
@@ -391,7 +560,8 @@ public:
         GraphicsPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
         UniformBuffer = Rr_CreateBuffer(sizeof(SGPUUniform), RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_DYNAMIC);
-        GeometryBuffer = Rr_CreateBuffer(RR_MEBIBYTES(4), RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_DYNAMIC);
+        VertexBuffer = Rr_CreateBuffer(RR_MEBIBYTES(2), RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_DYNAMIC);
+        IndexBuffer = Rr_CreateBuffer(RR_MEBIBYTES(2), RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_DYNAMIC);
 
         InitDepthImage();
     }
@@ -427,7 +597,8 @@ public:
 
         Camera.Update(Rr_GetImage2DAspect(SwapchainImage));
 
-        GPUVertices.clear();
+        Vertices.clear();
+        Indices.clear();
         VisibleFaces.clear();
         auto &Map = QuakeBSP.Models[0];
         auto &Leaf = FindCameraLeaf(Map);
@@ -450,7 +621,7 @@ public:
                         auto Last = First + VisibleLeaf.FaceCount;
                         for (auto FaceListIndex = First; FaceListIndex < Last; ++FaceListIndex)
                         {
-                            VisibleFaces.emplace_back(QuakeBSP.FaceList[FaceListIndex]);
+                            VisibleFaces.insert(QuakeBSP.FaceList[FaceListIndex]);
                         }
                     }
                 }
@@ -458,12 +629,10 @@ public:
         }
         for (auto FaceIndex : VisibleFaces)
         {
-            GetFaceTriangles(QuakeBSP.Faces[FaceIndex], GPUVertices);
+            GetFaceTriangles(QuakeBSP.Faces[FaceIndex]);
         }
-        std::memcpy(
-            Rr_GetMappedBufferData(GeometryBuffer),
-            GPUVertices.data(),
-            sizeof(SGPUVertex) * GPUVertices.size());
+        std::memcpy(Rr_GetMappedBufferData(VertexBuffer), Vertices.data(), sizeof(SGPUVertex) * Vertices.size());
+        std::memcpy(Rr_GetMappedBufferData(IndexBuffer), Indices.data(), sizeof(uint16_t) * Indices.size());
 
         auto GPUUniform = SGPUUniform{
             .Model = Rr_M4D(1.0f),
@@ -485,15 +654,24 @@ public:
         };
         auto GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
-        Rr_BindVertexBuffer(GraphicsNode, GeometryBuffer, 0, 0);
+        Rr_BindVertexBuffer(GraphicsNode, VertexBuffer, 0, 0);
+        Rr_BindIndexBuffer(GraphicsNode, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT16);
         Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(GPUUniform));
-        Rr_Draw(GraphicsNode, GPUVertices.size(), 1, 0, 0);
+        Rr_BindCombinedImage2DSampler(GraphicsNode, AtlasImage, Sampler, 0, 1);
+        Rr_BindStorageBuffer(GraphicsNode, SurfaceBuffer, 0, 2, 0, Rr_GetBufferSize(SurfaceBuffer));
+        Rr_BindStorageBuffer(GraphicsNode, TextureBuffer, 0, 3, 0, Rr_GetBufferSize(TextureBuffer));
+        Rr_DrawIndexed(GraphicsNode, Indices.size(), 1, 0, 0, 0);
     }
 
     ~CQuakeBSPApp()
     {
+        Rr_ReleaseSampler(Sampler);
+        Rr_ReleaseImage(AtlasImage);
         Rr_ReleaseBuffer(UniformBuffer);
-        Rr_ReleaseBuffer(GeometryBuffer);
+        Rr_ReleaseBuffer(VertexBuffer);
+        Rr_ReleaseBuffer(IndexBuffer);
+        Rr_ReleaseBuffer(SurfaceBuffer);
+        Rr_ReleaseBuffer(TextureBuffer);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
     }
 };
