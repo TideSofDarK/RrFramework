@@ -98,6 +98,7 @@ float SampleLightmap()
 
     vec2 Size = Face.LightmapSize;
     vec2 TexCoord = InLightmapTexCoord;
+    TexCoord -= 0.5;
     vec2 Blend = fract(TexCoord);
 
     float ResultX0 = SampleLightmapOnce(TexCoord + vec2(0.0));
