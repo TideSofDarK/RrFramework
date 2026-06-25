@@ -40,23 +40,48 @@ layout(set = 0, binding = 4) readonly buffer UFaces
 {
     SGPUFace Faces[];
 };
-layout(set = 1, binding = 0, rgba8) readonly uniform image2D AtlasImage;
+layout(set = 1, binding = 0, rgba8) readonly uniform image2D ColormapImage;
+layout(set = 1, binding = 1, r8) readonly uniform image2D AtlasImage;
 
-vec4 SampleAtlasTexture(ivec4 Texture)
+#define BYTE(X) (int((X).r * 255.0))
+
+int SampleAtlasTexture(ivec4 Texture)
 {
     ivec2 Offset = Texture.xy;
     ivec2 Size = Texture.zw;
 
     ivec2 TexCoord = ivec2(fract(InTexCoord / vec2(Size)) * vec2(Size));
 
-    return imageLoad(AtlasImage, Offset + TexCoord);
+    return BYTE(imageLoad(AtlasImage, Offset + TexCoord));
+}
+
+vec3 SRGBToLinear(vec3 Color)
+{
+    return mix(pow((Color + 0.055) * (1.0 / 1.055), vec3(2.4)),
+        Color * (1.0 / 12.92),
+        lessThanEqual(Color, vec3(0.04045)));
+}
+
+vec3 GetLitColor(int Color, float Light)
+{
+    int Shade;
+    if (Light <= 1.0)
+    {
+        Shade = 64 - int(Light * 32.0);
+    }
+    else
+    {
+        Shade = 32 - int(clamp(Light - 1.0, 0.0, 1.0) * 32.0);
+    }
+
+    return SRGBToLinear(imageLoad(ColormapImage, ivec2(Color, Shade)).rgb);
 }
 
 float LightAnimationForType(int Type)
 {
     if (Type == 10)
     {
-        return abs(cos(Time * 5.0));
+        return clamp((cos(Time * 3.0) + cos(Time * 7.0) + cos(Time * 10.0)), 0.0, 1.0);
     }
 
     return 1.0;
@@ -123,10 +148,6 @@ float SampleLightmap()
 
 void main()
 {
-    OutColor = SampleAtlasTexture(Textures[InTexIndex]);
-    OutColor.rgb *= SampleLightmap();
-
-    // OutColor.rgb *= 63;
-    // OutColor.rgb = floor(OutColor.rgb);
-    // OutColor.rgb /= 63;
+    OutColor.rgb = GetLitColor(SampleAtlasTexture(Textures[InTexIndex]), SampleLightmap());
+    OutColor.a = 1.0;
 }

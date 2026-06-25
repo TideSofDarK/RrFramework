@@ -2,27 +2,15 @@
 
 #include "ExampleAssets.inc"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "../../Vendor/stb/stb_image.h"
+
 #include <algorithm>
 #include <array>
 #include <cassert>
 #include <span>
 #include <unordered_set>
 #include <vector>
-
-struct SColor
-{
-    uint8_t R;
-    uint8_t G;
-    uint8_t B;
-};
-
-struct SColor4
-{
-    uint8_t R;
-    uint8_t G;
-    uint8_t B;
-    uint8_t A;
-};
 
 struct SBBox
 {
@@ -315,6 +303,7 @@ class CQuakeBSPApp
     Rr_Buffer *FacesBuffer{};
     SHeader *Header{};
     SQuakeBSP QuakeBSP;
+    Rr_Image2D *ColormapImage{};
     Rr_Image2D *AtlasImage{};
     CCamera Camera;
     uint16_t CameraLeafIndex{};
@@ -470,19 +459,44 @@ class CQuakeBSPApp
         std::memcpy(Rr_GetMappedBufferData(LightmapBuffer), LightmapData.data(), sizeof(float) * LightmapData.size());
     }
 
+    void InitColormap()
+    {
+        int32_t Width, Height, Channels;
+        auto Asset = Rr_LoadAsset(EXAMPLE_ASSET_COLORMAP_PNG);
+        auto DesiredChannels = 4;
+        auto Data = (std::byte *)stbi_load_from_memory(
+            (stbi_uc *)Asset.Data,
+            (int32_t)Asset.Size,
+            &Width,
+            &Height,
+            &Channels,
+            DesiredChannels);
+        assert(Channels = 4);
+        auto Size = Channels * Width * Height;
+
+        auto StagingBuffer = Rr_CreateBuffer(Size, RR_BUFFER_FLAGS_STAGING);
+        Rr_ReleaseBuffer(StagingBuffer);
+        memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
+        stbi_image_free(Data);
+
+        auto Extent = Rr_IntV2(Width, Height);
+        ColormapImage = Rr_CreateImage2D(
+            Extent,
+            RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
+            RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT);
+        Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, Extent, ColormapImage, 0);
+    }
+
     void InitAtlas()
     {
-        auto PaletteAsset = Rr_LoadAsset(EXAMPLE_ASSET_PALETTE_LMP);
-        auto PaletteColors = std::span<SColor const>{ (SColor *)PaletteAsset.Data, PaletteAsset.Size / 3 };
-
         auto AtlasWidth = 1024;
         auto AtlasHeight = 1024;
-        auto AtlasChannels = 4;
+        auto AtlasChannels = 1;
 
         auto StagingSize = AtlasWidth * AtlasHeight * AtlasChannels;
         auto StagingBuffer = Rr_CreateBuffer(StagingSize, RR_BUFFER_FLAGS_STAGING);
         Rr_ReleaseBuffer(StagingBuffer);
-        auto StagingData = (SColor4 *)Rr_GetMappedBufferData(StagingBuffer);
+        auto StagingData = (uint8_t *)Rr_GetMappedBufferData(StagingBuffer);
 
         auto CurrentX = 0;
         auto CurrentY = 0;
@@ -512,15 +526,8 @@ class CQuakeBSPApp
                     auto MipIndex = Y * MipTex->Width + X;
                     auto MipPixelColorIndex = Mip0ColorIndices[MipIndex];
 
-                    auto &PaletteColor = PaletteColors[MipPixelColorIndex];
-
                     auto AtlasIndex = (CurrentY + Y) * AtlasWidth + CurrentX + X;
-                    auto &AtlasPixel = StagingData[AtlasIndex];
-
-                    AtlasPixel.R = PaletteColor.R;
-                    AtlasPixel.G = PaletteColor.G;
-                    AtlasPixel.B = PaletteColor.B;
-                    AtlasPixel.A = std::numeric_limits<uint8_t>::max();
+                    StagingData[AtlasIndex] = MipPixelColorIndex;
                 }
             }
 
@@ -531,16 +538,13 @@ class CQuakeBSPApp
         }
         AtlasImage = Rr_CreateImage2D(
             Rr_IntV2(AtlasWidth, AtlasHeight),
-            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
+            RR_IMAGE_FORMAT_R8_UNORM,
             RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
         Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, Rr_IntV2(AtlasWidth, AtlasHeight), AtlasImage, 0);
         TextureBuffer = Rr_CreateBuffer(
             sizeof(Rr_IntVec4) * GPUTextures.size(),
             RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_STAGING);
-        std::memcpy(
-            Rr_GetMappedBufferData(TextureBuffer),
-            GPUTextures.data(),
-            sizeof(Rr_IntVec4) * GPUTextures.size());
+        std::memcpy(Rr_GetMappedBufferData(TextureBuffer), GPUTextures.data(), sizeof(Rr_IntVec4) * GPUTextures.size());
 
         auto GPUSurfaces = std::vector<SGPUSurface>{};
         for (auto &Surface : QuakeBSP.Surfaces)
@@ -582,6 +586,7 @@ public:
     CQuakeBSPApp()
     {
         InitBSP();
+        InitColormap();
         InitAtlas();
         InitFaces();
 
@@ -743,7 +748,8 @@ public:
         Rr_BindStorageBuffer(GraphicsNode, TextureBuffer, 0, 2, 0, Rr_GetBufferSize(TextureBuffer));
         Rr_BindStorageBuffer(GraphicsNode, LightmapBuffer, 0, 3, 0, Rr_GetBufferSize(LightmapBuffer));
         Rr_BindStorageBuffer(GraphicsNode, FacesBuffer, 0, 4, 0, Rr_GetBufferSize(FacesBuffer));
-        Rr_BindStorageImage2D(GraphicsNode, AtlasImage, 1, 0);
+        Rr_BindStorageImage2D(GraphicsNode, ColormapImage, 1, 0);
+        Rr_BindStorageImage2D(GraphicsNode, AtlasImage, 1, 1);
         Rr_DrawIndexed(GraphicsNode, Indices.size(), 1, 0, 0, 0);
     }
 
@@ -756,6 +762,7 @@ public:
         Rr_ReleaseBuffer(TextureBuffer);
         Rr_ReleaseBuffer(LightmapBuffer);
         Rr_ReleaseBuffer(FacesBuffer);
+        Rr_ReleaseImage(ColormapImage);
         Rr_ReleaseImage(AtlasImage);
         Rr_ReleaseImage(DepthImage);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);

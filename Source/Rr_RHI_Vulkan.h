@@ -1312,6 +1312,15 @@ static inline Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
     {
         case VK_FORMAT_UNDEFINED:
             return RR_IMAGE_FORMAT_UNDEFINED;
+            /* R8 */
+        case VK_FORMAT_R8_UNORM:
+            return RR_IMAGE_FORMAT_R8_UNORM;
+        case VK_FORMAT_R8_UINT:
+            return RR_IMAGE_FORMAT_R8_UINT;
+        case VK_FORMAT_R8_SINT:
+            return RR_IMAGE_FORMAT_R8_SINT;
+        case VK_FORMAT_R8_SRGB:
+            return RR_IMAGE_FORMAT_R8_SRGB;
             /* R8G8 */
         case VK_FORMAT_R8G8_UNORM:
             return RR_IMAGE_FORMAT_R8G8_UNORM;
@@ -1400,6 +1409,15 @@ static VkFormat Rr_ToVulkanImageFormat(Rr_ImageFormat ImageFormat)
     {
         case RR_IMAGE_FORMAT_UNDEFINED:
             return VK_FORMAT_UNDEFINED;
+            /* R8 */
+        case RR_IMAGE_FORMAT_R8_UNORM:
+            return VK_FORMAT_R8_UNORM;
+        case RR_IMAGE_FORMAT_R8_UINT:
+            return VK_FORMAT_R8_UINT;
+        case RR_IMAGE_FORMAT_R8_SINT:
+            return VK_FORMAT_R8_SINT;
+        case RR_IMAGE_FORMAT_R8_SRGB:
+            return VK_FORMAT_R8_SRGB;
             /* R8G8 */
         case RR_IMAGE_FORMAT_R8G8_UNORM:
             return VK_FORMAT_R8G8_UNORM;

@@ -10,7 +10,7 @@ file(GLOB_RECURSE RR_EXAMPLE_ASSETS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.vert.glsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.frag.glsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.bsp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/*.lmp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.png"
 )
 rr_embed_assets(
     ${PROJECT_NAME}

@@ -161,8 +161,8 @@ static inline Rr_ImageFormat Rr_GetSPIRVImageFormat(uint8_t SPIRVFormat)
             return RR_IMAGE_FORMAT_R8G8_UNORM;
         // case 14:
         //     return RR_IMAGE_FORMAT_R16_UNORM;
-        // case 15:
-        //     return RR_IMAGE_FORMAT_R8_UNORM;
+        case 15:
+            return RR_IMAGE_FORMAT_R8_UNORM;
         // case 16:
         //     return RR_IMAGE_FORMAT_R16G16B16A16_SNORM;
         // case 17:
@@ -189,8 +189,8 @@ static inline Rr_ImageFormat Rr_GetSPIRVImageFormat(uint8_t SPIRVFormat)
             return RR_IMAGE_FORMAT_R8G8_SINT;
         // case 28:
         //     return RR_IMAGE_FORMAT_R16_SINT;
-        // case 29:
-        //     return RR_IMAGE_FORMAT_R8_SINT;
+        case 29:
+            return RR_IMAGE_FORMAT_R8_SINT;
         // case 30:
         //     return RR_IMAGE_FORMAT_R32G32B32A32_UINT;
         // case 31:
@@ -209,8 +209,8 @@ static inline Rr_ImageFormat Rr_GetSPIRVImageFormat(uint8_t SPIRVFormat)
             return RR_IMAGE_FORMAT_R8G8_UINT;
         // case 38:
         //     return RR_IMAGE_FORMAT_R16_UINT;
-        // case 39:
-        //     return RR_IMAGE_FORMAT_R8_UINT;
+        case 39:
+            return RR_IMAGE_FORMAT_R8_UINT;
         default:
             return RR_IMAGE_FORMAT_UNDEFINED;
     }

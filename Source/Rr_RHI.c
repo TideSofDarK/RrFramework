@@ -55,6 +55,8 @@ Rr_ImageFormat Rr_ToUNORMFormat(Rr_ImageFormat Format)
 {
     switch (Format)
     {
+        case RR_IMAGE_FORMAT_R8_SRGB:
+            return RR_IMAGE_FORMAT_R8_UNORM;
         case RR_IMAGE_FORMAT_R8G8_SRGB:
             return RR_IMAGE_FORMAT_R8G8_UNORM;
         case RR_IMAGE_FORMAT_R8G8B8_SRGB:
