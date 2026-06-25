@@ -58,10 +58,8 @@ struct SFace
     int32_t EdgeListIndex;
     uint16_t EdgeCount;
     uint16_t SurfaceIndex;
-    uint8_t LightType;
-    uint8_t LightBase;
-    uint8_t Lights[2];
-    int32_t Lightmap;
+    uint8_t Lights[4];
+    int32_t LightmapOffset;
 };
 
 struct SNode
@@ -162,6 +160,7 @@ struct SQuakeBSP
     std::span<SNode const> Nodes;
     std::span<SSurface const> Surfaces;
     std::span<SFace const> Faces;
+    std::span<uint8_t const> Lightmaps;
     std::span<uint16_t const> FaceList;
     std::span<SLeaf const> Leaves;
     std::span<SEdge const> Edges;
@@ -270,6 +269,7 @@ struct SGPUUniform
     Rr_Mat4 Model;
     Rr_Mat4 View;
     Rr_Mat4 Projection;
+    float Time;
 };
 
 struct SGPUVertex
@@ -278,6 +278,7 @@ struct SGPUVertex
     uint32_t SurfaceIndex;
     Rr_Vec3 Normal;
     uint32_t TextureIndex;
+    uint32_t FaceIndex;
 };
 
 struct SGPUSurface
@@ -294,9 +295,23 @@ struct SGPUTexture
     Rr_Vec2 AtlasTexSize;
 };
 
+struct SGPUFace
+{
+    Rr_IntVec4 Lights;
+    Rr_IntVec2 LightmapSize;
+    int32_t DataOffset;
+    int32_t Unused0;
+    Rr_Vec2 MinUV;
+    Rr_Vec2 MaxUV;
+    Rr_Vec2 MidPolyUV;
+    float Unused1;
+    float Unused2;
+};
+
 class CQuakeBSPApp
 {
     Rr_Sampler *Sampler{};
+    Rr_Sampler *LightmapSampler{};
     Rr_GraphicsPipeline *GraphicsPipeline{};
     Rr_Image2D *DepthImage{};
     Rr_Buffer *UniformBuffer{};
@@ -304,6 +319,8 @@ class CQuakeBSPApp
     Rr_Buffer *IndexBuffer{};
     Rr_Buffer *TextureBuffer{};
     Rr_Buffer *SurfaceBuffer{};
+    Rr_Buffer *LightmapBuffer{};
+    Rr_Buffer *FacesBuffer{};
     SHeader *Header{};
     SQuakeBSP QuakeBSP;
     Rr_Image2D *AtlasImage{};
@@ -313,8 +330,10 @@ class CQuakeBSPApp
     std::vector<uint16_t> Indices{};
     std::unordered_set<uint32_t> VisibleFaces{};
 
-    void GetFaceTriangles(SFace const &Face)
+    void GetFaceTriangles(uint32_t FaceIndex)
     {
+        auto &Map = QuakeBSP.Models[0];
+        auto &Face = QuakeBSP.Faces[FaceIndex];
         auto &Surface = QuakeBSP.Surfaces[Face.SurfaceIndex];
         auto &Plane = QuakeBSP.Planes[Face.PlaneIndex];
         auto FirstVertex = Vertices.size();
@@ -323,7 +342,12 @@ class CQuakeBSPApp
             auto EdgeIndex = QuakeBSP.EdgeList[Face.EdgeListIndex + Index];
             auto &Edge = QuakeBSP.Edges[EdgeIndex >= 0 ? EdgeIndex : -EdgeIndex];
             auto Vertex = QuakeBSP.Vertices[EdgeIndex >= 0 ? Edge.Vertex0 : Edge.Vertex1];
-            Vertices.emplace_back(Vertex, (uint32_t)Face.SurfaceIndex, Plane.Normal, (uint32_t)Surface.MipTexIndex);
+            Vertices.emplace_back(
+                Vertex,
+                (uint32_t)Face.SurfaceIndex,
+                Plane.Normal,
+                (uint32_t)Surface.MipTexIndex,
+                FaceIndex);
         }
         for (auto Index = FirstVertex + 2; Index < Vertices.size(); ++Index)
         {
@@ -372,12 +396,86 @@ class CQuakeBSPApp
             .Nodes = GetSpan<SNode>(Raw, Header->Nodes),
             .Surfaces = GetSpan<SSurface>(Raw, Header->Surfaces),
             .Faces = GetSpan<SFace>(Raw, Header->Faces),
+            .Lightmaps = GetSpan<uint8_t>(Raw, Header->Lightmaps),
             .FaceList = GetSpan<uint16_t>(Raw, Header->FaceList),
             .Leaves = GetSpan<SLeaf>(Raw, Header->Leaves),
             .Edges = GetSpan<SEdge>(Raw, Header->Edges),
             .EdgeList = GetSpan<int32_t>(Raw, Header->EdgeList),
             .Models = GetSpan<SModel>(Raw, Header->Models),
         };
+    }
+
+    void InitFaces()
+    {
+        auto &Map = QuakeBSP.Models[0];
+        auto FirstFace = Map.FaceIndex;
+        auto LastFace = Map.FaceIndex + Map.FaceCount - 1;
+        auto Faces = std::vector<SGPUFace>{};
+        Faces.resize(Map.FaceIndex + Map.FaceCount);
+        for (auto Index = FirstFace; Index <= LastFace; ++Index)
+        {
+            auto &Face = QuakeBSP.Faces[Index];
+            auto &Surface = QuakeBSP.Surfaces[Face.SurfaceIndex];
+            auto &Plane = QuakeBSP.Planes[Face.PlaneIndex];
+
+            std::vector<Rr_Vec2> VertexTexCoords{};
+            VertexTexCoords.resize(Face.EdgeCount);
+            for (auto EdgeListIndex = 0; EdgeListIndex < Face.EdgeCount; ++EdgeListIndex)
+            {
+                auto EdgeIndex = QuakeBSP.EdgeList[Face.EdgeListIndex + EdgeListIndex];
+                auto &Edge = QuakeBSP.Edges[EdgeIndex >= 0 ? EdgeIndex : -EdgeIndex];
+                auto Vertex = QuakeBSP.Vertices[EdgeIndex >= 0 ? Edge.Vertex0 : Edge.Vertex1];
+                VertexTexCoords[EdgeListIndex] = Rr_V2(
+                    Rr_DotV3(Vertex, Surface.VectorS) + Surface.DistanceS,
+                    Rr_DotV3(Vertex, Surface.VectorT) + Surface.DistanceT);
+            }
+
+            Rr_Vec2 MinTexCoord = Rr_V2F(9999999);
+            Rr_Vec2 MaxTexCoord = Rr_V2F(-9999999);
+            for (auto VertexTexCoord : VertexTexCoords)
+            {
+                MinTexCoord.X = std::min(std::floor(VertexTexCoord.X), MinTexCoord.X);
+                MinTexCoord.Y = std::min(std::floor(VertexTexCoord.Y), MinTexCoord.Y);
+                MaxTexCoord.X = std::max(std::ceil(VertexTexCoord.X), MaxTexCoord.X);
+                MaxTexCoord.Y = std::max(std::ceil(VertexTexCoord.Y), MaxTexCoord.Y);
+            }
+
+            if (Face.LightmapOffset == -1)
+            {
+                Faces[Index] = SGPUFace{
+                    .Lights = Rr_IntV4(Face.Lights[0], Face.Lights[1], Face.Lights[2], Face.Lights[3]),
+                    .DataOffset = -1,
+                };
+
+                continue;
+            }
+
+            auto LightmapSize = Rr_V2(
+                std::ceil(MaxTexCoord.X / 16.0f) - std::floor(MinTexCoord.X / 16.0f) + 1,
+                std::ceil(MaxTexCoord.Y / 16.0f) - std::floor(MinTexCoord.Y / 16.0f) + 1);
+
+            Faces[Index] = SGPUFace{
+                .Lights = Rr_IntV4(Face.Lights[0], Face.Lights[1], Face.Lights[2], Face.Lights[3]),
+                .LightmapSize = Rr_CastIntV2(LightmapSize),
+                .DataOffset = Face.LightmapOffset,
+                .MinUV = MinTexCoord,
+                .MaxUV = MaxTexCoord,
+                .MidPolyUV = Rr_DivV2F(Rr_AddV2(MinTexCoord, MaxTexCoord), 2.0f),
+            };
+        }
+        FacesBuffer =
+            Rr_CreateBuffer(sizeof(SGPUFace) * Faces.size(), RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_STAGING);
+        std::memcpy(Rr_GetMappedBufferData(FacesBuffer), Faces.data(), sizeof(SGPUFace) * Faces.size());
+
+        auto LightmapData = std::vector<float>{};
+        LightmapData.reserve(QuakeBSP.Lightmaps.size());
+        for (auto const &Lightmap : QuakeBSP.Lightmaps)
+        {
+            LightmapData.emplace_back((float)Lightmap / 255.0f);
+        }
+        LightmapBuffer =
+            Rr_CreateBuffer(sizeof(float) * LightmapData.size(), RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_STAGING);
+        std::memcpy(Rr_GetMappedBufferData(LightmapBuffer), LightmapData.data(), sizeof(float) * LightmapData.size());
     }
 
     void InitAtlas()
@@ -441,13 +539,11 @@ class CQuakeBSPApp
             MaxHeight = std::max(MaxHeight, MipTex->Height);
             CurrentX += MipTex->Width;
         }
-
         AtlasImage = Rr_CreateImage2D(
             Rr_IntV2(AtlasWidth, AtlasHeight),
             RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
         Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, Rr_IntV2(AtlasWidth, AtlasHeight), AtlasImage, 0);
-
         TextureBuffer = Rr_CreateBuffer(
             sizeof(SGPUTexture) * GPUTextures.size(),
             RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_STAGING);
@@ -470,10 +566,14 @@ class CQuakeBSPApp
             sizeof(SGPUSurface) * GPUSurfaces.size());
     }
 
-    void InitSampler()
+    void InitSamplers()
     {
         auto SamplerInfo = Rr_SamplerInfo{};
         Sampler = Rr_CreateSampler(&SamplerInfo);
+
+        SamplerInfo.MagFilter = RR_FILTER_LINEAR;
+        SamplerInfo.MinFilter = RR_FILTER_LINEAR;
+        LightmapSampler = Rr_CreateSampler(&SamplerInfo);
     }
 
     void InitDepthImage()
@@ -503,13 +603,15 @@ public:
     {
         InitBSP();
         InitAtlas();
-        InitSampler();
+        InitFaces();
+        InitSamplers();
 
         auto VertexAttributes = std::array{
             Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_FLOAT3 },
             Rr_VertexInputAttribute{ .Location = 1, .Format = RR_FORMAT_UINT },
             Rr_VertexInputAttribute{ .Location = 2, .Format = RR_FORMAT_FLOAT3 },
             Rr_VertexInputAttribute{ .Location = 3, .Format = RR_FORMAT_UINT },
+            Rr_VertexInputAttribute{ .Location = 4, .Format = RR_FORMAT_UINT },
         };
 
         auto VertexInputBindings = std::array{
@@ -629,7 +731,7 @@ public:
         }
         for (auto FaceIndex : VisibleFaces)
         {
-            GetFaceTriangles(QuakeBSP.Faces[FaceIndex]);
+            GetFaceTriangles(FaceIndex);
         }
         std::memcpy(Rr_GetMappedBufferData(VertexBuffer), Vertices.data(), sizeof(SGPUVertex) * Vertices.size());
         std::memcpy(Rr_GetMappedBufferData(IndexBuffer), Indices.data(), sizeof(uint16_t) * Indices.size());
@@ -638,6 +740,7 @@ public:
             .Model = Rr_M4D(1.0f),
             .View = Camera.GetViewMatrix(),
             .Projection = Camera.GetProjectionMatrix(),
+            .Time = (float)Rr_GetTimeSeconds(),
         };
         std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &GPUUniform, sizeof(GPUUniform));
 
@@ -657,21 +760,27 @@ public:
         Rr_BindVertexBuffer(GraphicsNode, VertexBuffer, 0, 0);
         Rr_BindIndexBuffer(GraphicsNode, IndexBuffer, 0, 0, RR_INDEX_TYPE_UINT16);
         Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(GPUUniform));
-        Rr_BindCombinedImage2DSampler(GraphicsNode, AtlasImage, Sampler, 0, 1);
-        Rr_BindStorageBuffer(GraphicsNode, SurfaceBuffer, 0, 2, 0, Rr_GetBufferSize(SurfaceBuffer));
-        Rr_BindStorageBuffer(GraphicsNode, TextureBuffer, 0, 3, 0, Rr_GetBufferSize(TextureBuffer));
+        Rr_BindStorageBuffer(GraphicsNode, SurfaceBuffer, 0, 1, 0, Rr_GetBufferSize(SurfaceBuffer));
+        Rr_BindStorageBuffer(GraphicsNode, TextureBuffer, 0, 2, 0, Rr_GetBufferSize(TextureBuffer));
+        Rr_BindStorageBuffer(GraphicsNode, LightmapBuffer, 0, 3, 0, Rr_GetBufferSize(LightmapBuffer));
+        Rr_BindStorageBuffer(GraphicsNode, FacesBuffer, 0, 4, 0, Rr_GetBufferSize(FacesBuffer));
+        Rr_BindCombinedImage2DSampler(GraphicsNode, AtlasImage, Sampler, 1, 0);
         Rr_DrawIndexed(GraphicsNode, Indices.size(), 1, 0, 0, 0);
     }
 
     ~CQuakeBSPApp()
     {
-        Rr_ReleaseSampler(Sampler);
-        Rr_ReleaseImage(AtlasImage);
         Rr_ReleaseBuffer(UniformBuffer);
         Rr_ReleaseBuffer(VertexBuffer);
         Rr_ReleaseBuffer(IndexBuffer);
         Rr_ReleaseBuffer(SurfaceBuffer);
         Rr_ReleaseBuffer(TextureBuffer);
+        Rr_ReleaseBuffer(LightmapBuffer);
+        Rr_ReleaseBuffer(FacesBuffer);
+        Rr_ReleaseSampler(Sampler);
+        Rr_ReleaseSampler(LightmapSampler);
+        Rr_ReleaseImage(AtlasImage);
+        Rr_ReleaseImage(DepthImage);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
     }
 };
