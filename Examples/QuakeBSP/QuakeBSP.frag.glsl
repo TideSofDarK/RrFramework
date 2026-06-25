@@ -117,4 +117,8 @@ void main()
 {
     OutColor = SampleAtlasTexture(Textures[InTexIndex], AtlasImage, 1.0);
     OutColor.rgb *= SampleLightmap();
+
+    OutColor.rgb *= 63;
+    OutColor.rgb = floor(OutColor.rgb);
+    OutColor.rgb /= 63;
 }
