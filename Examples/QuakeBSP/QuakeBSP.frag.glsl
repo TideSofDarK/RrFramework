@@ -63,7 +63,22 @@ float SampleLightmapOnce(vec2 TexCoord)
     ivec2 TexCoordI = ivec2(TexCoord);
     TexCoordI = clamp(TexCoordI, ivec2(0), Face.LightmapSize - 1);
 
-    return Lightmaps[TexCoordI.y * int(Size.x) + TexCoordI.x + Face.DataOffset];
+    int BaseOffset = TexCoordI.y * int(Size.x) + TexCoordI.x;
+    int LightmapDataSize = Face.LightmapSize.x * Face.LightmapSize.y;
+    int LightmapIndex = 0;
+    float Result = 0.0f;
+
+    for(int Index = 0; Index < 4; ++Index)
+    {
+        if(Face.Lights[Index] != 255)
+        {
+            Result = max(Result, Lightmaps[Face.DataOffset + (LightmapIndex * LightmapDataSize) + BaseOffset]);
+
+            LightmapIndex++;
+        }
+    }
+
+    return Result;
 }
 
 float SampleLightmap()
