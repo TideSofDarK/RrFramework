@@ -20,12 +20,6 @@ struct SGPUSurface
     float DistanceY;
 };
 
-struct SGPUTexture
-{
-    vec2 AtlasTexCoord;
-    vec2 AtlasTexSize;
-};
-
 struct SGPUFace
 {
     ivec4 Lights;

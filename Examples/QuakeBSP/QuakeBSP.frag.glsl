@@ -8,12 +8,6 @@ layout(location = 4) in vec2 InLightmapTexCoord;
 
 layout(location = 0) out vec4 OutColor;
 
-struct SGPUTexture
-{
-    vec2 AtlasTexCoord;
-    vec2 AtlasTexSize;
-};
-
 struct SGPUFace
 {
     ivec4 Lights;
@@ -36,7 +30,7 @@ layout(set = 0, binding = 0) uniform SGPUUniform
 };
 layout(set = 0, binding = 2) readonly buffer UTextures
 {
-    SGPUTexture Textures[];
+    ivec4 Textures[];
 };
 layout(set = 0, binding = 3) readonly buffer ULightmaps
 {
@@ -46,13 +40,16 @@ layout(set = 0, binding = 4) readonly buffer UFaces
 {
     SGPUFace Faces[];
 };
-layout(set = 1, binding = 0) uniform sampler2D AtlasImage;
+layout(set = 1, binding = 0, rgba8) readonly uniform image2D AtlasImage;
 
-vec4 SampleAtlasTexture(SGPUTexture Tex, sampler2D Image, float Mul)
+vec4 SampleAtlasTexture(ivec4 Texture)
 {
-    vec2 TexSize = vec2(textureSize(Image, 0)) * Tex.AtlasTexSize;
+    ivec2 Offset = Texture.xy;
+    ivec2 Size = Texture.zw;
 
-    return texture(Image, Tex.AtlasTexCoord + fract(InTexCoord / TexSize) * Tex.AtlasTexSize);
+    ivec2 TexCoord = ivec2(fract(InTexCoord / vec2(Size)) * vec2(Size));
+
+    return imageLoad(AtlasImage, Offset + TexCoord);
 }
 
 float LightAnimationForType(int Type)
@@ -126,10 +123,10 @@ float SampleLightmap()
 
 void main()
 {
-    OutColor = SampleAtlasTexture(Textures[InTexIndex], AtlasImage, 1.0);
+    OutColor = SampleAtlasTexture(Textures[InTexIndex]);
     OutColor.rgb *= SampleLightmap();
 
-    OutColor.rgb *= 63;
-    OutColor.rgb = floor(OutColor.rgb);
-    OutColor.rgb /= 63;
+    // OutColor.rgb *= 63;
+    // OutColor.rgb = floor(OutColor.rgb);
+    // OutColor.rgb /= 63;
 }

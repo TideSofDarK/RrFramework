@@ -289,12 +289,6 @@ struct SGPUSurface
     float DistanceY;
 };
 
-struct SGPUTexture
-{
-    Rr_Vec2 AtlasTexCoord;
-    Rr_Vec2 AtlasTexSize;
-};
-
 struct SGPUFace
 {
     Rr_IntVec4 Lights;
@@ -310,8 +304,6 @@ struct SGPUFace
 
 class CQuakeBSPApp
 {
-    Rr_Sampler *Sampler{};
-    Rr_Sampler *LightmapSampler{};
     Rr_GraphicsPipeline *GraphicsPipeline{};
     Rr_Image2D *DepthImage{};
     Rr_Buffer *UniformBuffer{};
@@ -496,7 +488,7 @@ class CQuakeBSPApp
         auto CurrentY = 0;
         auto MaxHeight = 0u;
 
-        auto GPUTextures = std::vector<SGPUTexture>{};
+        auto GPUTextures = std::vector<Rr_IntVec4>{};
         for (auto Index = 0; Index < QuakeBSP.MipHeader->Count; ++Index)
         {
             auto Offset = QuakeBSP.MipHeader->Offsets[Index];
@@ -532,9 +524,7 @@ class CQuakeBSPApp
                 }
             }
 
-            GPUTextures.emplace_back(
-                Rr_V2((float)CurrentX / (float)AtlasWidth, (float)CurrentY / (float)AtlasHeight),
-                Rr_V2((float)MipTex->Width / (float)AtlasWidth, (float)MipTex->Height / (float)AtlasHeight));
+            GPUTextures.emplace_back(Rr_IntV4(CurrentX, CurrentY, MipTex->Width, MipTex->Height));
 
             MaxHeight = std::max(MaxHeight, MipTex->Height);
             CurrentX += MipTex->Width;
@@ -542,15 +532,15 @@ class CQuakeBSPApp
         AtlasImage = Rr_CreateImage2D(
             Rr_IntV2(AtlasWidth, AtlasHeight),
             RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
-            RR_IMAGE_FLAGS_SAMPLED_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
+            RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
         Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, Rr_IntV2(AtlasWidth, AtlasHeight), AtlasImage, 0);
         TextureBuffer = Rr_CreateBuffer(
-            sizeof(SGPUTexture) * GPUTextures.size(),
+            sizeof(Rr_IntVec4) * GPUTextures.size(),
             RR_BUFFER_FLAGS_STORAGE_BIT | RR_BUFFER_FLAGS_STAGING);
         std::memcpy(
             Rr_GetMappedBufferData(TextureBuffer),
             GPUTextures.data(),
-            sizeof(SGPUTexture) * GPUTextures.size());
+            sizeof(Rr_IntVec4) * GPUTextures.size());
 
         auto GPUSurfaces = std::vector<SGPUSurface>{};
         for (auto &Surface : QuakeBSP.Surfaces)
@@ -564,16 +554,6 @@ class CQuakeBSPApp
             Rr_GetMappedBufferData(SurfaceBuffer),
             GPUSurfaces.data(),
             sizeof(SGPUSurface) * GPUSurfaces.size());
-    }
-
-    void InitSamplers()
-    {
-        auto SamplerInfo = Rr_SamplerInfo{};
-        Sampler = Rr_CreateSampler(&SamplerInfo);
-
-        SamplerInfo.MagFilter = RR_FILTER_LINEAR;
-        SamplerInfo.MinFilter = RR_FILTER_LINEAR;
-        LightmapSampler = Rr_CreateSampler(&SamplerInfo);
     }
 
     void InitDepthImage()
@@ -604,7 +584,6 @@ public:
         InitBSP();
         InitAtlas();
         InitFaces();
-        InitSamplers();
 
         auto VertexAttributes = std::array{
             Rr_VertexInputAttribute{ .Location = 0, .Format = RR_FORMAT_FLOAT3 },
@@ -764,7 +743,7 @@ public:
         Rr_BindStorageBuffer(GraphicsNode, TextureBuffer, 0, 2, 0, Rr_GetBufferSize(TextureBuffer));
         Rr_BindStorageBuffer(GraphicsNode, LightmapBuffer, 0, 3, 0, Rr_GetBufferSize(LightmapBuffer));
         Rr_BindStorageBuffer(GraphicsNode, FacesBuffer, 0, 4, 0, Rr_GetBufferSize(FacesBuffer));
-        Rr_BindCombinedImage2DSampler(GraphicsNode, AtlasImage, Sampler, 1, 0);
+        Rr_BindStorageImage2D(GraphicsNode, AtlasImage, 1, 0);
         Rr_DrawIndexed(GraphicsNode, Indices.size(), 1, 0, 0, 0);
     }
 
@@ -777,8 +756,6 @@ public:
         Rr_ReleaseBuffer(TextureBuffer);
         Rr_ReleaseBuffer(LightmapBuffer);
         Rr_ReleaseBuffer(FacesBuffer);
-        Rr_ReleaseSampler(Sampler);
-        Rr_ReleaseSampler(LightmapSampler);
         Rr_ReleaseImage(AtlasImage);
         Rr_ReleaseImage(DepthImage);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
