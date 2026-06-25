@@ -55,6 +55,16 @@ vec4 SampleAtlasTexture(SGPUTexture Tex, sampler2D Image, float Mul)
     return texture(Image, Tex.AtlasTexCoord + fract(InTexCoord / TexSize) * Tex.AtlasTexSize);
 }
 
+float LightAnimationForType(int Type)
+{
+    if (Type == 10)
+    {
+        return abs(cos(Time * 5.0));
+    }
+
+    return 1.0;
+}
+
 float SampleLightmapOnce(vec2 TexCoord)
 {
     SGPUFace Face = Faces[InFaceIndex];
@@ -68,11 +78,12 @@ float SampleLightmapOnce(vec2 TexCoord)
     int LightmapIndex = 0;
     float Result = 0.0f;
 
-    for(int Index = 0; Index < 4; ++Index)
+    for (int Index = 0; Index < 4; ++Index)
     {
-        if(Face.Lights[Index] != 255)
+        if (Face.Lights[Index] != 255)
         {
-            Result = max(Result, Lightmaps[Face.DataOffset + (LightmapIndex * LightmapDataSize) + BaseOffset]);
+            Result += LightAnimationForType(Face.Lights[Index]) *
+                    Lightmaps[Face.DataOffset + (LightmapIndex * LightmapDataSize) + BaseOffset];
 
             LightmapIndex++;
         }
