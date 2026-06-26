@@ -244,13 +244,16 @@ static void Iterate()
 
     Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
     Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
-    Rr_BlitImage2D(
-        Rr_GetGraph(),
+    Rr_BlitImage2DEx(
+        Graph,
         ResultImage,
+        0,
+        Rr_IntRect{ 0, 0, COUNT_SQRT, COUNT_SQRT },
         SwapchainImage,
-        { 0, 0, COUNT_SQRT, COUNT_SQRT },
-        { 0, 0, SwapchainSize.Width, SwapchainSize.Height },
-        RR_IMAGE_ASPECT_COLOR_BIT);
+        0,
+        Rr_IntRect{ 0, 0, SwapchainSize.Width, SwapchainSize.Height },
+        RR_IMAGE_ASPECT_COLOR_BIT,
+        RR_FILTER_LINEAR);
 }
 
 static void Cleanup()

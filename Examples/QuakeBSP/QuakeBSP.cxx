@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cstring>
 #include <span>
 #include <unordered_set>
 #include <vector>
@@ -258,6 +259,9 @@ struct SGPUUniform
     Rr_Mat4 View;
     Rr_Mat4 Projection;
     float Time;
+    float Anim0;
+    float Anim1;
+    float Anim2;
 };
 
 struct SGPUVertex
@@ -275,6 +279,10 @@ struct SGPUSurface
     float DistanceX;
     Rr_Vec3 VectorY;
     float DistanceY;
+    int32_t Sky;
+    int32_t Water;
+    int32_t Unused1;
+    int32_t Unused2;
 };
 
 struct SGPUFace
@@ -293,6 +301,7 @@ struct SGPUFace
 class CQuakeBSPApp
 {
     Rr_GraphicsPipeline *GraphicsPipeline{};
+    Rr_Image2D *ColorImage{};
     Rr_Image2D *DepthImage{};
     Rr_Buffer *UniformBuffer{};
     Rr_Buffer *VertexBuffer{};
@@ -310,6 +319,7 @@ class CQuakeBSPApp
     std::vector<SGPUVertex> Vertices{};
     std::vector<uint16_t> Indices{};
     std::unordered_set<uint32_t> VisibleFaces{};
+    bool LowResMode{};
 
     void GetFaceTriangles(uint32_t FaceIndex)
     {
@@ -365,7 +375,7 @@ class CQuakeBSPApp
 
     void InitBSP()
     {
-        auto BSPAsset = Rr_LoadAsset(EXAMPLE_ASSET_E1M1_BSP);
+        auto BSPAsset = Rr_LoadAsset(EXAMPLE_ASSET_START_BSP);
         auto Raw = (std::byte *)std::memcpy(std::malloc(BSPAsset.Size), BSPAsset.Data, BSPAsset.Size);
         Header = (SHeader *)Raw;
         assert(Header->Version >= 0x1C);
@@ -398,6 +408,11 @@ class CQuakeBSPApp
             auto &Face = QuakeBSP.Faces[Index];
             auto &Surface = QuakeBSP.Surfaces[Face.SurfaceIndex];
             auto &Plane = QuakeBSP.Planes[Face.PlaneIndex];
+
+            if (Index == 3544)
+            {
+                int g = 23 + 23;
+            }
 
             std::vector<Rr_Vec2> VertexTexCoords{};
             VertexTexCoords.resize(Face.EdgeCount);
@@ -549,7 +564,20 @@ class CQuakeBSPApp
         auto GPUSurfaces = std::vector<SGPUSurface>{};
         for (auto &Surface : QuakeBSP.Surfaces)
         {
-            GPUSurfaces.emplace_back(Surface.VectorS, Surface.DistanceS, Surface.VectorT, Surface.DistanceT);
+            auto Offset = QuakeBSP.MipHeader->Offsets[Surface.MipTexIndex];
+            auto MipTexRaw = (std::byte *)QuakeBSP.MipHeader + Offset;
+            auto MipTex = (SMipTex *)MipTexRaw;
+            auto Sky = std::strncmp("sky", MipTex->Name, std::strlen("sky")) == 0;
+            auto Water = MipTex->Name[0] == '*';
+            GPUSurfaces.emplace_back(
+                SGPUSurface{
+                    .VectorX = Surface.VectorS,
+                    .DistanceX = Surface.DistanceS,
+                    .VectorY = Surface.VectorT,
+                    .DistanceY = Surface.DistanceT,
+                    .Sky = Sky,
+                    .Water = Water,
+                });
         }
         SurfaceBuffer = Rr_CreateBuffer(
             sizeof(SGPUSurface) * GPUSurfaces.size(),
@@ -648,6 +676,10 @@ public:
         UniformBuffer = Rr_CreateBuffer(sizeof(SGPUUniform), RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_DYNAMIC);
         VertexBuffer = Rr_CreateBuffer(RR_MEBIBYTES(2), RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_DYNAMIC);
         IndexBuffer = Rr_CreateBuffer(RR_MEBIBYTES(2), RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_DYNAMIC);
+        ColorImage = Rr_CreateImage2D(
+            Rr_IntV2(320, 240),
+            Rr_GetImageFormat(Rr_GetSwapchainImage()),
+            RR_IMAGE_FLAGS_COLOR_ATTACHMENT_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
 
         InitDepthImage();
     }
@@ -675,11 +707,15 @@ public:
             Rr_UIText("This example shows rendering a Quake map.");
             Rr_UIInputFloat3("Camera Position", Camera.Position.Elements);
             Rr_UITextF("Camera Leaf Index: %d\nVisible Face Count: %zu", CameraLeafIndex, VisibleFaces.size());
+            Rr_UICheckbox("Low Resolution Mode", &LowResMode);
         }
         Rr_UIEndWindow();
         Rr_UIEndDebugOverlayTabs();
 
+        auto Graph = Rr_GetGraph();
+
         auto SwapchainImage = Rr_GetSwapchainImage();
+        auto SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
 
         Camera.Update(Rr_GetImage2DAspect(SwapchainImage));
 
@@ -733,6 +769,10 @@ public:
             .LoadOp = RR_LOAD_OP_CLEAR,
             .StoreOp = RR_STORE_OP_STORE,
         };
+        if (LowResMode)
+        {
+            ColorTarget.Image = ColorImage;
+        }
         auto DepthTarget = Rr_DepthTarget{
             .Image = DepthImage,
             .LoadOp = RR_LOAD_OP_CLEAR,
@@ -751,6 +791,25 @@ public:
         Rr_BindStorageImage2D(GraphicsNode, ColormapImage, 1, 0);
         Rr_BindStorageImage2D(GraphicsNode, AtlasImage, 1, 1);
         Rr_DrawIndexed(GraphicsNode, Indices.size(), 1, 0, 0, 0);
+
+        if (!LowResMode)
+        {
+            return;
+        }
+
+        auto SrcRect = Rr_IntRect{ 0, 0, 320, 240 };
+        auto DstRect = Rr_IntRect{ 0, 0, SwapchainSize.X, SwapchainSize.Y };
+        auto DstRectFit = Rr_FitIntRect(&SrcRect, &DstRect);
+        Rr_BlitImage2DEx(
+            Graph,
+            ColorImage,
+            0,
+            SrcRect,
+            SwapchainImage,
+            0,
+            DstRectFit,
+            RR_IMAGE_ASPECT_COLOR_BIT,
+            RR_FILTER_NEAREST);
     }
 
     ~CQuakeBSPApp()
@@ -764,6 +823,7 @@ public:
         Rr_ReleaseBuffer(FacesBuffer);
         Rr_ReleaseImage(ColormapImage);
         Rr_ReleaseImage(AtlasImage);
+        Rr_ReleaseImage(ColorImage);
         Rr_ReleaseImage(DepthImage);
         Rr_ReleaseGraphicsPipeline(GraphicsPipeline);
     }

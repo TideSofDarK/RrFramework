@@ -8,9 +8,10 @@ layout(location = 4) in uint InFaceIndex;
 
 layout(location = 0) out vec3 OutNormal;
 layout(location = 1) out vec2 OutTexCoord;
-layout(location = 2) out flat uint OutTextureIndex;
-layout(location = 3) out flat uint OutFaceIndex;
-layout(location = 4) out vec2 OutLightmapTexCoord;
+layout(location = 2) out vec2 OutLightmapTexCoord;
+layout(location = 3) out flat uint OutSurfaceIndex;
+layout(location = 4) out flat uint OutTextureIndex;
+layout(location = 5) out flat uint OutFaceIndex;
 
 struct SGPUSurface
 {
@@ -18,6 +19,10 @@ struct SGPUSurface
     float DistanceX;
     vec3 VectorY;
     float DistanceY;
+    int Sky;
+    int Water;
+    int Unused1;
+    int Unused2;
 };
 
 struct SGPUFace
@@ -39,6 +44,9 @@ layout(set = 0, binding = 0) uniform SGPUUniform
     mat4 View;
     mat4 Projection;
     float Time;
+    float Anim0;
+    float Anim1;
+    float Anim2;
 };
 layout(set = 0, binding = 1) readonly buffer USurfaces
 {
@@ -64,6 +72,7 @@ void main()
     vec2 MidTex = vec2(Face.LightmapSize) * 0.5;
     OutLightmapTexCoord = MidTex + (OutTexCoord - Face.MidPolyUV) / 16.0;
 
+    OutSurfaceIndex = InSurfaceIndex;
     OutTextureIndex = InTextureIndex;
     OutFaceIndex = InFaceIndex;
 }

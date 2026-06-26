@@ -133,13 +133,16 @@ extern void RR_CC Rr_CopyImageCube(
     Rr_ImageCube *DstImage,
     uint32_t MipLevel);
 
-extern void RR_CC Rr_BlitImage2D(
+extern void RR_CC Rr_BlitImage2DEx(
     Rr_Graph *Graph,
     Rr_Image2D *SrcImage,
+    uint32_t SrcLevel,
+    Rr_IntRect SrcRect,
     Rr_Image2D *DstImage,
-    Rr_IntVec4 SrcRect,
-    Rr_IntVec4 DstRect,
-    Rr_ImageAspect ImageAspect);
+    uint32_t DstLevel,
+    Rr_IntRect DstRect,
+    Rr_ImageAspect ImageAspect,
+    Rr_Filter Filter);
 
 extern void RR_CC Rr_GenerateMipmaps(Rr_Graph *Graph, struct Rr_Image *Image);
 

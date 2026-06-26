@@ -59,16 +59,19 @@ struct SReadbackApp
     {
         ComputeAndCopyToHost();
 
-        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-        Rr_IntVec2 SwapchainExtent = Rr_GetImage2DExtent(SwapchainImage);
+        auto SwapchainImage = Rr_GetSwapchainImage();
+        auto SwapchainExtent = Rr_GetImage2DExtent(SwapchainImage);
 
-        Rr_BlitImage2D(
+        Rr_BlitImage2DEx(
             Rr_GetGraph(),
             ColorImage,
+            0,
+            Rr_IntRect{ 0, 0, 256, 256 },
             Rr_GetSwapchainImage(),
-            { 0, 0, 256, 256 },
-            { 0, 0, SwapchainExtent.X, SwapchainExtent.Y },
-            RR_IMAGE_ASPECT_COLOR_BIT);
+            0,
+            Rr_IntRect{ 0, 0, SwapchainExtent.X, SwapchainExtent.Y },
+            RR_IMAGE_ASPECT_COLOR_BIT,
+            RR_FILTER_LINEAR);
 
         uint8_t *BufferData = reinterpret_cast<uint8_t *>(Rr_GetMappedBufferData(ReadbackBuffer));
 

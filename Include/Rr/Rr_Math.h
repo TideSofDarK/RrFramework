@@ -2964,7 +2964,7 @@ static inline Rr_Rect Rr_ResizeRect(Rr_Rect *Rect, float Amount)
     return Result;
 }
 
-static inline Rr_Rect Rr_FitRect(Rr_Rect *Src, Rr_Rect *Dst)
+static inline Rr_Rect Rr_FitRect(Rr_Rect const *Src, Rr_Rect const *Dst)
 {
     float X = 0;
     float Y = 0;
@@ -3000,7 +3000,9 @@ static inline Rr_Rect Rr_FitRect(Rr_Rect *Src, Rr_Rect *Dst)
     return Result;
 }
 
-static inline Rr_IntRect Rr_FitIntRect(Rr_IntRect *Src, Rr_IntRect *Dst)
+static inline Rr_IntRect Rr_FitIntRect(
+    Rr_IntRect const *Src,
+    Rr_IntRect const *Dst)
 {
     float X = 0;
     float Y = 0;

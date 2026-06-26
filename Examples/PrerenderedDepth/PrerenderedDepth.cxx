@@ -311,16 +311,19 @@ struct SPrerenderedDepthApp
         Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, Rr_GetBufferSize(UniformBuffer));
         Rr_DrawIndexed(GraphicsNode, Cube.IndexCount, 1, 0, 0, 0);
 
-        Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-        Rr_IntVec2 SwapchainExtent = Rr_GetImage2DExtent(SwapchainImage);
+        auto SwapchainImage = Rr_GetSwapchainImage();
+        auto SwapchainExtent = Rr_GetImage2DExtent(SwapchainImage);
 
-        Rr_BlitImage2D(
+        Rr_BlitImage2DEx(
             Rr_GetGraph(),
             ColorImage,
+            0,
+            Rr_IntRect{ 0, 0, BackgroundExtent.Width, BackgroundExtent.Height },
             SwapchainImage,
-            { 0, 0, BackgroundExtent.Width, BackgroundExtent.Height },
-            { 0, 0, SwapchainExtent.Width, SwapchainExtent.Height },
-            RR_IMAGE_ASPECT_COLOR_BIT);
+            0,
+            Rr_IntRect{ 0, 0, SwapchainExtent.Width, SwapchainExtent.Height },
+            RR_IMAGE_ASPECT_COLOR_BIT,
+            RR_FILTER_LINEAR);
     }
 
     void Cleanup()

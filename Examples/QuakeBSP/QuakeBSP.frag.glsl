@@ -2,11 +2,24 @@
 
 layout(location = 0) in vec3 InNormal;
 layout(location = 1) in vec2 InTexCoord;
-layout(location = 2) in flat uint InTexIndex;
-layout(location = 3) in flat uint InFaceIndex;
-layout(location = 4) in vec2 InLightmapTexCoord;
+layout(location = 2) in vec2 InLightmapTexCoord;
+layout(location = 3) in flat uint InSurfaceIndex;
+layout(location = 4) in flat uint InTextureIndex;
+layout(location = 5) in flat uint InFaceIndex;
 
 layout(location = 0) out vec4 OutColor;
+
+struct SGPUSurface
+{
+    vec3 VectorX;
+    float DistanceX;
+    vec3 VectorY;
+    float DistanceY;
+    int Sky;
+    int Water;
+    int Unused1;
+    int Unused2;
+};
 
 struct SGPUFace
 {
@@ -27,6 +40,13 @@ layout(set = 0, binding = 0) uniform SGPUUniform
     mat4 View;
     mat4 Projection;
     float Time;
+    float Anim0;
+    float Anim1;
+    float Anim2;
+};
+layout(set = 0, binding = 1) readonly buffer USurfaces
+{
+    SGPUSurface Surfaces[];
 };
 layout(set = 0, binding = 2) readonly buffer UTextures
 {
@@ -49,8 +69,18 @@ int SampleAtlasTexture(ivec4 Texture)
 {
     ivec2 Offset = Texture.xy;
     ivec2 Size = Texture.zw;
+    vec2 TexCoordF = InTexCoord;
 
-    ivec2 TexCoord = ivec2(fract(InTexCoord / vec2(Size)) * vec2(Size));
+    SGPUSurface Surface = Surfaces[InSurfaceIndex];
+    if (Surface.Water != 0)
+    {
+        const float ANIM0 = 2.5;
+        const float ANIM1 = 9.5;
+        TexCoordF.x += sin(TexCoordF.y / float(Size.y / ANIM0) + Time) * ANIM1;
+        TexCoordF.y += sin(TexCoordF.x / float(Size.x / ANIM0) + Time) * ANIM1;
+    }
+
+    ivec2 TexCoord = ivec2(fract(TexCoordF / vec2(Size)) * vec2(Size));
 
     return BYTE(imageLoad(AtlasImage, Offset + TexCoord));
 }
@@ -116,6 +146,12 @@ float SampleLightmapOnce(vec2 TexCoord)
 
 float SampleLightmap()
 {
+    SGPUSurface Surface = Surfaces[InSurfaceIndex];
+    if (Surface.Water != 0 || Surface.Sky != 0)
+    {
+        return 1.0;
+    }
+
     SGPUFace Face = Faces[InFaceIndex];
     if (Face.DataOffset == -1)
     {
@@ -148,6 +184,6 @@ float SampleLightmap()
 
 void main()
 {
-    OutColor.rgb = GetLitColor(SampleAtlasTexture(Textures[InTexIndex]), SampleLightmap());
+    OutColor.rgb = GetLitColor(SampleAtlasTexture(Textures[InTextureIndex]), SampleLightmap());
     OutColor.a = 1.0;
 }

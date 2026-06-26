@@ -280,10 +280,12 @@ typedef struct Rr_BlitNode Rr_BlitNode;
 struct Rr_BlitNode
 {
     Rr_GraphImage SrcImageHandle;
+    VkImageSubresourceLayers SrcLayers;
+    Rr_IntRect SrcRect;
     Rr_GraphImage DstImageHandle;
-    Rr_IntVec4 SrcRect;
-    Rr_IntVec4 DstRect;
-    VkImageAspectFlags AspectMask;
+    VkImageSubresourceLayers DstLayers;
+    Rr_IntRect DstRect;
+    VkFilter Filter;
 };
 
 typedef struct Rr_NodeDependency Rr_NodeDependency;

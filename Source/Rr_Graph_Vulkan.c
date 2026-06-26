@@ -745,14 +745,16 @@ static inline void Rr_ExecuteGenerateMipmaps(
     State->Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 }
 
-static inline bool Rr_ClampBlitRect(Rr_IntVec4 *Rect, VkExtent3D *Extent)
+static inline bool Rr_ClampBlitRect(Rr_IntRect *Rect, VkExtent3D *Extent)
 {
-    Rect->X = RR_CLAMP(0, Rect->X, (int)Extent->width);
-    Rect->Y = RR_CLAMP(0, Rect->Y, (int)Extent->height);
-    Rect->Width = RR_CLAMP(0, Rect->Width, (int)Extent->width - Rect->X);
-    Rect->Height = RR_CLAMP(0, Rect->Height, (int)Extent->height - Rect->Y);
+    Rect->Offset.X = RR_CLAMP(0, Rect->Offset.X, (int)Extent->width);
+    Rect->Offset.Y = RR_CLAMP(0, Rect->Offset.Y, (int)Extent->height);
+    Rect->Extent.X =
+        RR_CLAMP(0, Rect->Extent.X, (int)Extent->width - Rect->Offset.X);
+    Rect->Extent.Y =
+        RR_CLAMP(0, Rect->Extent.Y, (int)Extent->height - Rect->Offset.Y);
 
-    return Rect->Width > 0 && Rect->Height > 0;
+    return Rect->Extent.X > 0 && Rect->Extent.Y > 0;
 }
 
 static void Rr_ExecuteBlitNode(
@@ -769,39 +771,29 @@ static void Rr_ExecuteBlitNode(
         Rr_ClampBlitRect(&Node->DstRect, &DstImage->Container->Extent))
     {
         VkImageBlit ImageBlit = {
-            .srcSubresource = {
-                .aspectMask = Node->AspectMask,
-                .mipLevel = 0,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
+            .srcSubresource = Node->SrcLayers,
             .srcOffsets = {
                 {
-                    Node->SrcRect.X,
-                    Node->SrcRect.Y,
+                    Node->SrcRect.Offset.X,
+                    Node->SrcRect.Offset.Y,
                     0,
                 },
                 {
-                    Node->SrcRect.X + Node->SrcRect.Width,
-                    Node->SrcRect.Y + Node->SrcRect.Height,
+                    Node->SrcRect.Offset.X + Node->SrcRect.Extent.X,
+                    Node->SrcRect.Offset.Y + Node->SrcRect.Extent.Y,
                     1,
                 },
             },
-            .dstSubresource = {
-                .aspectMask = Node->AspectMask,
-                .mipLevel = 0,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
+            .dstSubresource = Node->DstLayers,
             .dstOffsets = {
                 {
-                    Node->DstRect.X,
-                    Node->DstRect.Y,
+                    Node->DstRect.Offset.X,
+                    Node->DstRect.Offset.Y,
                     0,
                 },
                 {
-                    Node->DstRect.X + Node->DstRect.Width,
-                    Node->DstRect.Y + Node->DstRect.Height,
+                    Node->DstRect.Offset.X + Node->DstRect.Extent.X,
+                    Node->DstRect.Offset.Y + Node->DstRect.Extent.Y,
                     1,
                 },
             },
@@ -815,7 +807,7 @@ static void Rr_ExecuteBlitNode(
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
             &ImageBlit,
-            VK_FILTER_LINEAR);
+            Node->Filter);
     }
 }
 
@@ -2547,13 +2539,16 @@ void Rr_TransferBufferData(
         });
 }
 
-void Rr_BlitImage2D(
+void Rr_BlitImage2DEx(
     Rr_Graph *Graph,
     Rr_Image2D *SrcImage,
+    uint32_t SrcLevel,
+    Rr_IntRect SrcRect,
     Rr_Image2D *DstImage,
-    Rr_IntVec4 SrcRect,
-    Rr_IntVec4 DstRect,
-    Rr_ImageAspect ImageAspect)
+    uint32_t DstLevel,
+    Rr_IntRect DstRect,
+    Rr_ImageAspect ImageAspect,
+    Rr_Filter Filter)
 {
     assert(
         (Graph->QueueType == RR_QUEUE_TYPE_MAIN) &&
@@ -2567,12 +2562,25 @@ void Rr_BlitImage2D(
     Rr_BlitNode *BlitNode = &GraphNode->Union.Blit;
     *BlitNode = (Rr_BlitNode){
         .SrcImageHandle = *SrcImageHandle,
-        .DstImageHandle = *DstImageHandle,
+        .SrcLayers =
+            (VkImageSubresourceLayers){
+                .aspectMask = Rr_ToVulkanImageAspect(ImageAspect),
+                .mipLevel = SrcLevel,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
         .SrcRect = SrcRect,
+        .DstImageHandle = *DstImageHandle,
+        .DstLayers =
+            (VkImageSubresourceLayers){
+                .aspectMask = Rr_ToVulkanImageAspect(ImageAspect),
+                .mipLevel = DstLevel,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
         .DstRect = DstRect,
+        .Filter = Rr_ToVulkanFilter(Filter),
     };
-
-    BlitNode->AspectMask = Rr_ToVulkanImageAspect(ImageAspect);
 
     Rr_AddImageDependency(
         GraphNode,
