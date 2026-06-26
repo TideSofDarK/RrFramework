@@ -848,7 +848,8 @@ public:
             return;
         }
 
-        auto SrcRect = Rr_IntRect{ 0, 0, 320, 240 };
+        auto ColorImageSize = Rr_GetImage2DExtent(ColorImage);
+        auto SrcRect = Rr_IntRect{ 0, 0, ColorImageSize.X, ColorImageSize.Y };
         auto DstRect = Rr_IntRect{ 0, 0, SwapchainSize.X, SwapchainSize.Y };
         auto DstRectFit = Rr_FitIntRect(&SrcRect, &DstRect);
         Rr_ClearColorImage2D(Graph, Rr_ColorClear{}, SwapchainImage);

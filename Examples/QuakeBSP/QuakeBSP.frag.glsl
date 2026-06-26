@@ -144,7 +144,7 @@ float SampleLightmapOnce(vec2 TexCoord)
     ivec2 TexCoordI = ivec2(TexCoord);
     TexCoordI = clamp(TexCoordI, ivec2(0), Face.LightmapSize - 1);
 
-    int BaseOffset = TexCoordI.y * int(Size.x) + TexCoordI.x;
+    int BaseOffset = TexCoordI.y * Face.LightmapSize.x + TexCoordI.x;
     int LightmapDataSize = Face.LightmapSize.x * Face.LightmapSize.y;
     int LightmapIndex = 0;
     float Result = 0.0f;
@@ -188,6 +188,9 @@ float SampleLightmap()
     vec2 TexCoord = InTexCoord.zw;
     TexCoord -= 0.5;
     vec2 Blend = fract(TexCoord);
+    Blend *= 16.0;
+    Blend = floor(Blend);
+    Blend /= 16.0;
 
     float ResultX0 = SampleLightmapOnce(TexCoord + vec2(0.0));
     float ResultX1 = SampleLightmapOnce(TexCoord + vec2(1.0, 0.0));
