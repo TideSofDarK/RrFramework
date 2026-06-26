@@ -348,12 +348,8 @@ class CGLTFMeshApp
         }
         if (GLTFNode->has_rotation)
         {
-            auto Quat = Rr_Quat{
-                GLTFNode->rotation[0],
-                GLTFNode->rotation[1],
-                GLTFNode->rotation[2],
-                GLTFNode->rotation[3],
-            };
+            auto Quat =
+                Rr_Q(GLTFNode->rotation[0], GLTFNode->rotation[1], GLTFNode->rotation[2], GLTFNode->rotation[3]);
             Transform = Transform * Rr_QToM4(Quat);
         }
         if (GLTFNode->has_scale)
