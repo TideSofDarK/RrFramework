@@ -1,11 +1,10 @@
 #version 450
 
 layout(location = 0) in vec3 InNormal;
-layout(location = 1) in vec2 InTexCoord;
-layout(location = 2) in vec2 InLightmapTexCoord;
-layout(location = 3) in flat uint InSurfaceIndex;
-layout(location = 4) in flat uint InTextureIndex;
-layout(location = 5) in flat uint InFaceIndex;
+layout(location = 1) in vec4 InTexCoord;
+layout(location = 2) in flat uint InSurfaceIndex;
+layout(location = 3) in flat uint InTextureIndex;
+layout(location = 4) in flat uint InFaceIndex;
 
 layout(location = 0) out vec4 OutColor;
 
@@ -63,6 +62,13 @@ layout(set = 0, binding = 4) readonly buffer UFaces
 layout(set = 1, binding = 0, rgba8) readonly uniform image2D ColormapImage;
 layout(set = 1, binding = 1, r8ui) readonly uniform uimage2D AtlasImage;
 
+vec3 SRGBToLinear(vec3 Color)
+{
+    return mix(pow((Color + 0.055) * (1.0 / 1.055), vec3(2.4)),
+        Color * (1.0 / 12.92),
+        lessThanEqual(Color, vec3(0.04045)));
+}
+
 uint SampleAtlasTexture(ivec4 Texture, vec2 TexCoordF)
 {
     ivec2 Offset = Texture.xy;
@@ -82,30 +88,22 @@ uint SampleAtlasTexture(ivec4 Texture, vec2 TexCoordF)
     return imageLoad(AtlasImage, Offset + TexCoord).r;
 }
 
-vec3 SRGBToLinear(vec3 Color)
-{
-    return mix(pow((Color + 0.055) * (1.0 / 1.055), vec3(2.4)),
-        Color * (1.0 / 12.92),
-        lessThanEqual(Color, vec3(0.04045)));
-}
-
 vec3 GetSkyColor()
 {
     ivec4 Texture = Textures[InTextureIndex];
     ivec2 Offset = Texture.xy;
     ivec2 Size = Texture.zw;
     Size.x /= 2;
-    vec2 TexCoordF = InTexCoord;
-    TexCoordF /= 4;
-    TexCoordF.y *= -1.0;
 
-    TexCoordF += floor(Time * 16.0) / 2.0;
-    ivec2 TexCoord0 = ivec2(fract(TexCoordF / vec2(Size)) * vec2(Size));
+    vec2 TexCoordF = normalize(InTexCoord.xyz).xy * 256;
+
+    float Anim0 = floor(Time * 24.0) / 2.0;
+    ivec2 TexCoord0 = ivec2(fract((TexCoordF + Anim0) / vec2(Size)) * vec2(Size));
     uint ColorIndex0 = imageLoad(AtlasImage, Offset + TexCoord0).r;
     vec3 Color0 = SRGBToLinear(imageLoad(ColormapImage, ivec2(int(ColorIndex0), 32)).rgb);
 
-    TexCoordF += floor(Time * 6.0) / 2.0;
-    ivec2 TexCoord1 = ivec2(fract(TexCoordF / vec2(Size)) * vec2(Size));
+    float Anim1 = floor(Time * 12.0) / 2.0;
+    ivec2 TexCoord1 = ivec2(fract((TexCoordF + Anim1) / vec2(Size)) * vec2(Size));
     TexCoord1.x += Size.x;
     uint ColorIndex1 = imageLoad(AtlasImage, Offset + TexCoord1).r;
     vec3 Color1 = SRGBToLinear(imageLoad(ColormapImage, ivec2(int(ColorIndex1), 32)).rgb);
@@ -118,11 +116,11 @@ vec3 GetLitColor(uint Color, float Light)
     int Shade;
     if (Light <= 1.0)
     {
-        Shade = 64 - int(Light * 32.0);
+        Shade = 63 - int(Light * 31.0);
     }
     else
     {
-        Shade = 32 - int(clamp(Light - 1.0, 0.0, 1.0) * 32.0);
+        Shade = 31 - int(clamp(Light - 1.0, 0.0, 1.0) * 31.0);
     }
 
     return SRGBToLinear(imageLoad(ColormapImage, ivec2(int(Color), Shade)).rgb);
@@ -187,7 +185,7 @@ float SampleLightmap()
     }
 
     vec2 Size = Face.LightmapSize;
-    vec2 TexCoord = InLightmapTexCoord;
+    vec2 TexCoord = InTexCoord.zw;
     TexCoord -= 0.5;
     vec2 Blend = fract(TexCoord);
 
@@ -212,7 +210,7 @@ void main()
     }
     else
     {
-        OutColor.rgb = GetLitColor(SampleAtlasTexture(Textures[InTextureIndex], InTexCoord), SampleLightmap());
+        OutColor.rgb = GetLitColor(SampleAtlasTexture(Textures[InTextureIndex], InTexCoord.xy), SampleLightmap());
     }
 
     OutColor.a = 1.0;

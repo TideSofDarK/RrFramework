@@ -7,11 +7,10 @@ layout(location = 3) in uint InTextureIndex;
 layout(location = 4) in uint InFaceIndex;
 
 layout(location = 0) out vec3 OutNormal;
-layout(location = 1) out vec2 OutTexCoord;
-layout(location = 2) out vec2 OutLightmapTexCoord;
-layout(location = 3) out flat uint OutSurfaceIndex;
-layout(location = 4) out flat uint OutTextureIndex;
-layout(location = 5) out flat uint OutFaceIndex;
+layout(location = 1) out vec4 OutTexCoord;
+layout(location = 2) out flat uint OutSurfaceIndex;
+layout(location = 3) out flat uint OutTextureIndex;
+layout(location = 4) out flat uint OutFaceIndex;
 
 struct SGPUSurface
 {
@@ -65,12 +64,18 @@ void main()
     SGPUFace Face = Faces[InFaceIndex];
 
     SGPUSurface Surface = Surfaces[InSurfaceIndex];
-    OutTexCoord = vec2(
-            dot(InPosition, Surface.VectorX) + Surface.DistanceX,
-            dot(InPosition, Surface.VectorY) + Surface.DistanceY);
-
-    vec2 MidTex = vec2(Face.LightmapSize) * 0.5;
-    OutLightmapTexCoord = MidTex + (OutTexCoord - Face.MidPolyUV) / 16.0;
+    if (Surface.Sky != 0)
+    {
+        OutTexCoord = vec4(InPosition - inverse(View)[3].xyz, 0.0);
+        OutTexCoord.z *= 3.0;
+    }
+    else
+    {
+        OutTexCoord.xy = vec2(
+                dot(InPosition, Surface.VectorX) + Surface.DistanceX,
+                dot(InPosition, Surface.VectorY) + Surface.DistanceY);
+        OutTexCoord.zw = vec2(Face.LightmapSize) * 0.5 + (OutTexCoord.xy - Face.MidPolyUV) / 16.0;
+    }
 
     OutSurfaceIndex = InSurfaceIndex;
     OutTextureIndex = InTextureIndex;

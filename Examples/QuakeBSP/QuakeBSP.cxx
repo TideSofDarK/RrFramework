@@ -375,7 +375,7 @@ class CQuakeBSPApp
 
     void InitBSP()
     {
-        auto BSPAsset = Rr_LoadAsset(EXAMPLE_ASSET_START_BSP);
+        auto BSPAsset = Rr_LoadAsset(EXAMPLE_ASSET_E1M1_BSP);
         auto Raw = (std::byte *)std::memcpy(std::malloc(BSPAsset.Size), BSPAsset.Data, BSPAsset.Size);
         Header = (SHeader *)Raw;
         assert(Header->Version >= 0x1C);
@@ -717,7 +717,7 @@ public:
         auto SwapchainImage = Rr_GetSwapchainImage();
         auto SwapchainSize = Rr_GetImage2DExtent(SwapchainImage);
 
-        Camera.Update(Rr_GetImage2DAspect(SwapchainImage));
+        Camera.Update(LowResMode ? Rr_GetImage2DAspect(ColorImage) : Rr_GetImage2DAspect(SwapchainImage));
 
         Vertices.clear();
         Indices.clear();
@@ -800,6 +800,7 @@ public:
         auto SrcRect = Rr_IntRect{ 0, 0, 320, 240 };
         auto DstRect = Rr_IntRect{ 0, 0, SwapchainSize.X, SwapchainSize.Y };
         auto DstRectFit = Rr_FitIntRect(&SrcRect, &DstRect);
+        Rr_ClearColorImage2D(Graph, Rr_ColorClear{}, SwapchainImage);
         Rr_BlitImage2DEx(
             Graph,
             ColorImage,
