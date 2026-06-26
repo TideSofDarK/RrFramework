@@ -553,7 +553,7 @@ class CQuakeBSPApp
         }
         AtlasImage = Rr_CreateImage2D(
             Rr_IntV2(AtlasWidth, AtlasHeight),
-            RR_IMAGE_FORMAT_R8_UNORM,
+            RR_IMAGE_FORMAT_R8_UINT,
             RR_IMAGE_FLAGS_STORAGE_BIT | RR_IMAGE_FLAGS_TRANSFER_BIT);
         Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, Rr_IntV2(AtlasWidth, AtlasHeight), AtlasImage, 0);
         TextureBuffer = Rr_CreateBuffer(

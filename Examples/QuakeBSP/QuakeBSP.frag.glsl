@@ -61,11 +61,9 @@ layout(set = 0, binding = 4) readonly buffer UFaces
     SGPUFace Faces[];
 };
 layout(set = 1, binding = 0, rgba8) readonly uniform image2D ColormapImage;
-layout(set = 1, binding = 1, r8) readonly uniform image2D AtlasImage;
+layout(set = 1, binding = 1, r8ui) readonly uniform uimage2D AtlasImage;
 
-#define BYTE(X) (int((X).r * 255.0))
-
-int SampleAtlasTexture(ivec4 Texture)
+uint SampleAtlasTexture(ivec4 Texture)
 {
     ivec2 Offset = Texture.xy;
     ivec2 Size = Texture.zw;
@@ -82,7 +80,7 @@ int SampleAtlasTexture(ivec4 Texture)
 
     ivec2 TexCoord = ivec2(fract(TexCoordF / vec2(Size)) * vec2(Size));
 
-    return BYTE(imageLoad(AtlasImage, Offset + TexCoord));
+    return imageLoad(AtlasImage, Offset + TexCoord).r;
 }
 
 vec3 SRGBToLinear(vec3 Color)
@@ -92,7 +90,7 @@ vec3 SRGBToLinear(vec3 Color)
         lessThanEqual(Color, vec3(0.04045)));
 }
 
-vec3 GetLitColor(int Color, float Light)
+vec3 GetLitColor(uint Color, float Light)
 {
     int Shade;
     if (Light <= 1.0)
@@ -104,7 +102,7 @@ vec3 GetLitColor(int Color, float Light)
         Shade = 32 - int(clamp(Light - 1.0, 0.0, 1.0) * 32.0);
     }
 
-    return SRGBToLinear(imageLoad(ColormapImage, ivec2(Color, Shade)).rgb);
+    return SRGBToLinear(imageLoad(ColormapImage, ivec2(int(Color), Shade)).rgb);
 }
 
 float LightAnimationForType(int Type)
