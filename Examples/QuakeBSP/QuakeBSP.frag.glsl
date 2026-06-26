@@ -63,11 +63,10 @@ layout(set = 0, binding = 4) readonly buffer UFaces
 layout(set = 1, binding = 0, rgba8) readonly uniform image2D ColormapImage;
 layout(set = 1, binding = 1, r8ui) readonly uniform uimage2D AtlasImage;
 
-uint SampleAtlasTexture(ivec4 Texture)
+uint SampleAtlasTexture(ivec4 Texture, vec2 TexCoordF)
 {
     ivec2 Offset = Texture.xy;
     ivec2 Size = Texture.zw;
-    vec2 TexCoordF = InTexCoord;
 
     SGPUSurface Surface = Surfaces[InSurfaceIndex];
     if (Surface.Water != 0)
@@ -88,6 +87,30 @@ vec3 SRGBToLinear(vec3 Color)
     return mix(pow((Color + 0.055) * (1.0 / 1.055), vec3(2.4)),
         Color * (1.0 / 12.92),
         lessThanEqual(Color, vec3(0.04045)));
+}
+
+vec3 GetSkyColor()
+{
+    ivec4 Texture = Textures[InTextureIndex];
+    ivec2 Offset = Texture.xy;
+    ivec2 Size = Texture.zw;
+    Size.x /= 2;
+    vec2 TexCoordF = InTexCoord;
+    TexCoordF /= 4;
+    TexCoordF.y *= -1.0;
+
+    TexCoordF += floor(Time * 16.0) / 2.0;
+    ivec2 TexCoord0 = ivec2(fract(TexCoordF / vec2(Size)) * vec2(Size));
+    uint ColorIndex0 = imageLoad(AtlasImage, Offset + TexCoord0).r;
+    vec3 Color0 = SRGBToLinear(imageLoad(ColormapImage, ivec2(int(ColorIndex0), 32)).rgb);
+
+    TexCoordF += floor(Time * 6.0) / 2.0;
+    ivec2 TexCoord1 = ivec2(fract(TexCoordF / vec2(Size)) * vec2(Size));
+    TexCoord1.x += Size.x;
+    uint ColorIndex1 = imageLoad(AtlasImage, Offset + TexCoord1).r;
+    vec3 Color1 = SRGBToLinear(imageLoad(ColormapImage, ivec2(int(ColorIndex1), 32)).rgb);
+
+    return length(Color0) > length(Color1) ? Color0 : Color1;
 }
 
 vec3 GetLitColor(uint Color, float Light)
@@ -182,6 +205,15 @@ float SampleLightmap()
 
 void main()
 {
-    OutColor.rgb = GetLitColor(SampleAtlasTexture(Textures[InTextureIndex]), SampleLightmap());
+    SGPUSurface Surface = Surfaces[InSurfaceIndex];
+    if (Surface.Sky != 0)
+    {
+        OutColor.rgb = GetSkyColor();
+    }
+    else
+    {
+        OutColor.rgb = GetLitColor(SampleAtlasTexture(Textures[InTextureIndex], InTexCoord), SampleLightmap());
+    }
+
     OutColor.a = 1.0;
 }

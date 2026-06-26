@@ -165,7 +165,7 @@ auto GetSpan(std::byte const *Raw, SEntry const &Entry) -> std::span<T>
 
 class CCamera
 {
-    float FieldOfView{ RR_ANGLE_DEG(105.0f) };
+    float FieldOfView{ RR_ANGLE_DEG(90.0f) };
     float Pitch{};
     float Yaw{};
 
@@ -567,7 +567,7 @@ class CQuakeBSPApp
             auto Offset = QuakeBSP.MipHeader->Offsets[Surface.MipTexIndex];
             auto MipTexRaw = (std::byte *)QuakeBSP.MipHeader + Offset;
             auto MipTex = (SMipTex *)MipTexRaw;
-            auto Sky = std::strncmp("sky", MipTex->Name, std::strlen("sky")) == 0;
+            auto Sky = !std::strncmp("sky", MipTex->Name, 3);
             auto Water = MipTex->Name[0] == '*';
             GPUSurfaces.emplace_back(
                 SGPUSurface{
