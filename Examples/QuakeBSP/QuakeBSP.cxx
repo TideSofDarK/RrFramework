@@ -2,9 +2,6 @@
 
 #include "ExampleAssets.inc"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "../../Vendor/stb/stb_image.h"
-
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -474,30 +471,84 @@ class CQuakeBSPApp
         std::memcpy(Rr_GetMappedBufferData(LightmapBuffer), LightmapData.data(), sizeof(float) * LightmapData.size());
     }
 
+    uint8_t FindBestColor(uint8_t const Palette[768], int const Channels[3])
+    {
+        auto BestIndex = -1;
+        auto BestDistance = 0;
+
+        for (auto Index = 0; Index < 256; Index++)
+        {
+            auto Distance = 0;
+
+            for (auto Channel = 0; Channel < 3; Channel++)
+            {
+                int Delta = abs(Channels[Channel] - Palette[Index * 3 + Channel]);
+                Distance += Delta * Delta;
+            }
+
+            if (BestIndex == -1 || Distance < BestDistance)
+            {
+                BestIndex = Index;
+                BestDistance = Distance;
+            }
+        }
+
+        return (uint8_t)BestIndex;
+    }
+
+    void GenerateColormap(uint8_t const Palette[768], uint8_t OutColormap[65536])
+    {
+        auto FullbrightCount = 32;
+
+        for (auto X = 0; X < 256; X++)
+        {
+            for (auto Y = 0; Y < 64; Y++)
+            {
+                if (X < 256 - FullbrightCount)
+                {
+                    int Channels[3];
+
+                    for (auto Channel = 0; Channel < 3; Channel++)
+                    {
+                        Channels[Channel] = (Palette[X * 3 + Channel] * (63 - Y) + 16) >> 5;
+                        if (Channels[Channel] > 255)
+                        {
+                            Channels[Channel] = 255;
+                        }
+                    }
+
+                    auto Best = FindBestColor(Palette, Channels);
+
+                    OutColormap[(Y * 256 + X) * 4] = Palette[Best * 3];
+                    OutColormap[(Y * 256 + X) * 4 + 1] = Palette[Best * 3 + 1];
+                    OutColormap[(Y * 256 + X) * 4 + 2] = Palette[Best * 3 + 2];
+                    OutColormap[(Y * 256 + X) * 4 + 3] = 255;
+                }
+                else
+                {
+                    OutColormap[(Y * 256 + X) * 4] = Palette[X * 3];
+                    OutColormap[(Y * 256 + X) * 4 + 1] = Palette[X * 3 + 1];
+                    OutColormap[(Y * 256 + X) * 4 + 2] = Palette[X * 3 + 2];
+                    OutColormap[(Y * 256 + X) * 4 + 3] = 255;
+                }
+            }
+        }
+    }
+
     void InitColormap()
     {
-        int32_t Width, Height, Channels;
-        auto Asset = Rr_LoadAsset(EXAMPLE_ASSET_COLORMAP_PNG);
-        auto DesiredChannels = 4;
-        auto Data = (std::byte *)stbi_load_from_memory(
-            (stbi_uc *)Asset.Data,
-            (int32_t)Asset.Size,
-            &Width,
-            &Height,
-            &Channels,
-            DesiredChannels);
-        assert(Channels = 4);
-        auto Size = Channels * Width * Height;
-
+        auto PaletteAsset = Rr_LoadAsset(EXAMPLE_ASSET_PALETTE_LMP);
+        auto PaletteColors = (uint8_t const *)PaletteAsset.Data;
+        auto Extent = Rr_IntV2(256, 64);
+        auto Size = Extent.Width * Extent.Height * 4;
         auto StagingBuffer = Rr_CreateBuffer(Size, RR_BUFFER_FLAGS_STAGING);
         Rr_ReleaseBuffer(StagingBuffer);
-        memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
-        stbi_image_free(Data);
+        auto ColormapColors = (uint8_t *)Rr_GetMappedBufferData(StagingBuffer);
+        GenerateColormap(PaletteColors, ColormapColors);
 
-        auto Extent = Rr_IntV2(Width, Height);
         ColormapImage = Rr_CreateImage2D(
             Extent,
-            RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
+            RR_IMAGE_FORMAT_R8G8B8A8_UNORM,
             RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_STORAGE_BIT);
         Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, Extent, ColormapImage, 0);
     }
