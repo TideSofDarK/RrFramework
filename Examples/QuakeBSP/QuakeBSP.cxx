@@ -406,12 +406,7 @@ class CQuakeBSPApp
             auto &Surface = QuakeBSP.Surfaces[Face.SurfaceIndex];
             auto &Plane = QuakeBSP.Planes[Face.PlaneIndex];
 
-            if (Index == 3544)
-            {
-                int g = 23 + 23;
-            }
-
-            std::vector<Rr_Vec2> VertexTexCoords{};
+            auto VertexTexCoords = std::vector<Rr_Vec2>{};
             VertexTexCoords.resize(Face.EdgeCount);
             for (auto EdgeListIndex = 0; EdgeListIndex < Face.EdgeCount; ++EdgeListIndex)
             {
@@ -423,14 +418,12 @@ class CQuakeBSPApp
                     Rr_DotV3(Vertex, Surface.VectorT) + Surface.DistanceT);
             }
 
-            Rr_Vec2 MinTexCoord = Rr_V2F(9999999);
-            Rr_Vec2 MaxTexCoord = Rr_V2F(-9999999);
+            auto MinTexCoord = Rr_V2F(9999999);
+            auto MaxTexCoord = Rr_V2F(-9999999);
             for (auto VertexTexCoord : VertexTexCoords)
             {
-                MinTexCoord.X = std::min(std::floor(VertexTexCoord.X), MinTexCoord.X);
-                MinTexCoord.Y = std::min(std::floor(VertexTexCoord.Y), MinTexCoord.Y);
-                MaxTexCoord.X = std::max(std::ceil(VertexTexCoord.X), MaxTexCoord.X);
-                MaxTexCoord.Y = std::max(std::ceil(VertexTexCoord.Y), MaxTexCoord.Y);
+                MinTexCoord = Rr_MinV2(MinTexCoord, Rr_FloorV2(VertexTexCoord));
+                MaxTexCoord = Rr_MaxV2(MaxTexCoord, Rr_CeilV2(VertexTexCoord));
             }
 
             if (Face.LightmapOffset == -1)
@@ -443,9 +436,7 @@ class CQuakeBSPApp
                 continue;
             }
 
-            auto LightmapSize = Rr_V2(
-                std::ceil(MaxTexCoord.X / 16.0f) - std::floor(MinTexCoord.X / 16.0f) + 1,
-                std::ceil(MaxTexCoord.Y / 16.0f) - std::floor(MinTexCoord.Y / 16.0f) + 1);
+            auto LightmapSize = Rr_AddV2F(Rr_CeilV2(MaxTexCoord / 16.0f) - Rr_FloorV2(MinTexCoord / 16.0f), 1.0f);
 
             Faces[Index] = SGPUFace{
                 .Lights = Rr_IntV4(Face.Lights[0], Face.Lights[1], Face.Lights[2], Face.Lights[3]),

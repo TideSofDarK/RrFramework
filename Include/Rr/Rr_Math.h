@@ -558,6 +558,7 @@ typedef union Rr_Quat
 #ifdef RR_MATH_SSE
     __m128 SSE;
 #endif
+
 #ifdef RR_MATH_NEON
     float32x4_t NEON;
 #endif
@@ -1321,6 +1322,45 @@ static inline Rr_Vec3 Rr_Cross(Rr_Vec3 Left, Rr_Vec3 Right)
     return Result;
 }
 
+static inline Rr_Vec2 Rr_CeilV2(Rr_Vec2 A)
+{
+    Rr_Vec2 Result;
+
+    Result.X = ceilf(A.X);
+    Result.Y = ceilf(A.Y);
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_CeilV3(Rr_Vec3 A)
+{
+    Rr_Vec3 Result;
+
+    Result.X = ceilf(A.X);
+    Result.Y = ceilf(A.Y);
+    Result.Z = ceilf(A.Z);
+
+    return Result;
+}
+
+static inline Rr_Vec4 Rr_CeilV4(Rr_Vec4 A)
+{
+    Rr_Vec4 Result;
+
+#ifdef RR_MATH_SSE4_1
+    Result.SSE = _mm_round_ps(A.SSE, _MM_FROUND_NO_EXC | _MM_FROUND_TO_POS_INF);
+#elif defined(__ARM_FEATURE_DIRECTED_ROUNDING)
+    Result.NEON = vrndpq_f32(A.NEON);
+#else
+    Result.X = ceilf(A.X);
+    Result.Y = ceilf(A.Y);
+    Result.Z = ceilf(A.Z);
+    Result.W = ceilf(A.W);
+#endif
+
+    return Result;
+}
+
 static inline Rr_Vec2 Rr_FloorV2(Rr_Vec2 A)
 {
     Rr_Vec2 Result;
@@ -1347,7 +1387,7 @@ static inline Rr_Vec4 Rr_FloorV4(Rr_Vec4 A)
     Rr_Vec4 Result;
 
 #ifdef RR_MATH_SSE4_1
-    Result.SSE = _mm_floor_ps(A.SSE);
+    Result.SSE = _mm_round_ps(A.SSE, _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEG_INF);
 #elif defined(__ARM_FEATURE_DIRECTED_ROUNDING)
     Result.NEON = vrndmq_f32(A.NEON);
 #else
@@ -1355,6 +1395,84 @@ static inline Rr_Vec4 Rr_FloorV4(Rr_Vec4 A)
     Result.Y = floorf(A.Y);
     Result.Z = floorf(A.Z);
     Result.W = floorf(A.W);
+#endif
+
+    return Result;
+}
+
+static inline Rr_Vec2 Rr_TruncV2(Rr_Vec2 A)
+{
+    Rr_Vec2 Result;
+
+    Result.X = truncf(A.X);
+    Result.Y = truncf(A.Y);
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_TruncV3(Rr_Vec3 A)
+{
+    Rr_Vec3 Result;
+
+    Result.X = truncf(A.X);
+    Result.Y = truncf(A.Y);
+    Result.Z = truncf(A.Z);
+
+    return Result;
+}
+
+static inline Rr_Vec4 Rr_TruncV4(Rr_Vec4 A)
+{
+    Rr_Vec4 Result;
+
+#ifdef RR_MATH_SSE4_1
+    Result.SSE = _mm_round_ps(A.SSE, _MM_FROUND_NO_EXC | _MM_FROUND_TO_ZERO);
+#elif defined(__ARM_FEATURE_DIRECTED_ROUNDING)
+    Result.NEON = vrndq_f32(A.NEON);
+#else
+    Result.X = truncf(A.X);
+    Result.Y = truncf(A.Y);
+    Result.Z = truncf(A.Z);
+    Result.W = truncf(A.W);
+#endif
+
+    return Result;
+}
+
+static inline Rr_Vec2 Rr_RoundV2(Rr_Vec2 A)
+{
+    Rr_Vec2 Result;
+
+    Result.X = roundf(A.X);
+    Result.Y = roundf(A.Y);
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_RoundV3(Rr_Vec3 A)
+{
+    Rr_Vec3 Result;
+
+    Result.X = roundf(A.X);
+    Result.Y = roundf(A.Y);
+    Result.Z = roundf(A.Z);
+
+    return Result;
+}
+
+static inline Rr_Vec4 Rr_RoundV4(Rr_Vec4 A)
+{
+    Rr_Vec4 Result;
+
+#ifdef RR_MATH_SSE4_1
+    Result.SSE = _mm_round_ps(A.SSE, _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEAREST_INT);
+#elif defined(__ARM_FEATURE_DIRECTED_ROUNDING)
+    Result.NEON = vrndaq_f32(A.NEON);
+#else
+    Result.X = roundf(A.X);
+    Result.Y = roundf(A.Y);
+    Result.Z = roundf(A.Z);
+    Result.W = roundf(A.W);
 #endif
 
     return Result;

@@ -12,3 +12,4 @@ function(add_rr_test_executable TARGET)
 endfunction()
 
 add_rr_test_executable(TestHashMap SOURCES TestHashMap.c)
+add_rr_test_executable(TestMath SOURCES TestMath.c)
