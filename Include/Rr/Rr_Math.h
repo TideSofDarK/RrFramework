@@ -1343,6 +1343,172 @@ static inline Rr_Vec3 Rr_Cross(Rr_Vec3 Left, Rr_Vec3 Right)
     return Result;
 }
 
+static inline Rr_Vec2 Rr_MinV2(Rr_Vec2 A, Rr_Vec2 B)
+{
+    Rr_Vec2 Result;
+
+    Result.X = RR_MIN(A.X, B.X);
+    Result.Y = RR_MIN(A.Y, B.Y);
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_MinV3(Rr_Vec3 A, Rr_Vec3 B)
+{
+    Rr_Vec3 Result;
+
+    Result.X = RR_MIN(A.X, B.X);
+    Result.Y = RR_MIN(A.Y, B.Y);
+    Result.Z = RR_MIN(A.Z, B.Z);
+
+    return Result;
+}
+
+static inline Rr_Vec4 Rr_MinV4(Rr_Vec4 A, Rr_Vec4 B)
+{
+    Rr_Vec4 Result;
+
+#ifdef RR_MATH_SSE
+    Result.SSE = _mm_min_ps(A.SSE, B.SSE);
+#elif defined(RR_MATH_NEON)
+    Result.NEON = vminq_f32(A.NEON, B.NEON);
+#else
+    Result.X = RR_MIN(A.X, B.X);
+    Result.Y = RR_MIN(A.Y, B.Y);
+    Result.Z = RR_MIN(A.Z, B.Z);
+    Result.W = RR_MIN(A.W, B.W);
+#endif
+
+    return Result;
+}
+
+static inline Rr_Vec2 Rr_MaxV2(Rr_Vec2 A, Rr_Vec2 B)
+{
+    Rr_Vec2 Result;
+
+    Result.X = RR_MAX(A.X, B.X);
+    Result.Y = RR_MAX(A.Y, B.Y);
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_MaxV3(Rr_Vec3 A, Rr_Vec3 B)
+{
+    Rr_Vec3 Result;
+
+    Result.X = RR_MAX(A.X, B.X);
+    Result.Y = RR_MAX(A.Y, B.Y);
+    Result.Z = RR_MAX(A.Z, B.Z);
+
+    return Result;
+}
+
+static inline Rr_Vec4 Rr_MaxV4(Rr_Vec4 A, Rr_Vec4 B)
+{
+    Rr_Vec4 Result;
+
+#ifdef RR_MATH_SSE
+    Result.SSE = _mm_max_ps(A.SSE, B.SSE);
+#elif defined(RR_MATH_NEON)
+    Result.NEON = vmaxq_f32(A.NEON, B.NEON);
+#else
+    Result.X = RR_MAX(A.X, B.X);
+    Result.Y = RR_MAX(A.Y, B.Y);
+    Result.Z = RR_MAX(A.Z, B.Z);
+    Result.W = RR_MAX(A.W, B.W);
+#endif
+
+    return Result;
+}
+
+/*
+ * Unary vector operations
+ */
+
+static inline float Rr_LenSqrV2(Rr_Vec2 A)
+{
+    return Rr_DotV2(A, A);
+}
+
+static inline float Rr_LenSqrV3(Rr_Vec3 A)
+{
+    return Rr_DotV3(A, A);
+}
+
+static inline float Rr_LenSqrV4(Rr_Vec4 A)
+{
+    return Rr_DotV4(A, A);
+}
+
+static inline float Rr_LenV2(Rr_Vec2 A)
+{
+    return Rr_SqrtF(Rr_LenSqrV2(A));
+}
+
+static inline float Rr_LenV3(Rr_Vec3 A)
+{
+    return Rr_SqrtF(Rr_LenSqrV3(A));
+}
+
+static inline float Rr_LenV4(Rr_Vec4 A)
+{
+    return Rr_SqrtF(Rr_LenSqrV4(A));
+}
+
+static inline Rr_Vec2 Rr_NormV2(Rr_Vec2 A)
+{
+    return Rr_MulV2F(A, Rr_InvSqrtF(Rr_DotV2(A, A)));
+}
+
+static inline Rr_Vec3 Rr_NormV3(Rr_Vec3 A)
+{
+    return Rr_MulV3F(A, Rr_InvSqrtF(Rr_DotV3(A, A)));
+}
+
+static inline Rr_Vec4 Rr_NormV4(Rr_Vec4 A)
+{
+    return Rr_MulV4F(A, Rr_InvSqrtF(Rr_DotV4(A, A)));
+}
+
+static inline Rr_Vec2 Rr_FracV2(Rr_Vec2 A)
+{
+    Rr_Vec2 Result;
+
+    Result.X = A.X - floorf(A.X);
+    Result.Y = A.Y - floorf(A.Y);
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_FracV3(Rr_Vec3 A)
+{
+    Rr_Vec3 Result;
+
+    Result.X = A.X - floorf(A.X);
+    Result.Y = A.Y - floorf(A.Y);
+    Result.Z = A.Z - floorf(A.Z);
+
+    return Result;
+}
+
+static inline Rr_Vec4 Rr_FracV4(Rr_Vec4 A)
+{
+    Rr_Vec4 Result;
+
+#ifdef RR_MATH_SSE4_1
+    Result.SSE = _mm_sub_ps(A.SSE, _mm_floor_ps(A.SSE));
+#elif defined(__ARM_FEATURE_DIRECTED_ROUNDING)
+    Result.NEON = vsubq_f32(A.NEON, vrndmq_f32(A.NEON));
+#else
+    Result.X = A.X - floorf(A.X);
+    Result.Y = A.Y - floorf(A.Y);
+    Result.Z = A.Z - floorf(A.Z);
+    Result.W = A.W - floorf(A.W);
+#endif
+
+    return Result;
+}
+
 static inline Rr_Vec2 Rr_CeilV2(Rr_Vec2 A)
 {
     Rr_Vec2 Result;
@@ -1486,7 +1652,8 @@ static inline Rr_Vec4 Rr_RoundV4(Rr_Vec4 A)
     Rr_Vec4 Result;
 
 #ifdef RR_MATH_SSE4_1
-    Result.SSE = _mm_round_ps(A.SSE, _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEAREST_INT);
+    Result.SSE =
+        _mm_round_ps(A.SSE, _MM_FROUND_NO_EXC | _MM_FROUND_TO_NEAREST_INT);
 #elif defined(__ARM_FEATURE_DIRECTED_ROUNDING)
     Result.NEON = vrndaq_f32(A.NEON);
 #else
@@ -1497,172 +1664,6 @@ static inline Rr_Vec4 Rr_RoundV4(Rr_Vec4 A)
 #endif
 
     return Result;
-}
-
-static inline Rr_Vec2 Rr_MinV2(Rr_Vec2 A, Rr_Vec2 B)
-{
-    Rr_Vec2 Result;
-
-    Result.X = RR_MIN(A.X, B.X);
-    Result.Y = RR_MIN(A.Y, B.Y);
-
-    return Result;
-}
-
-static inline Rr_Vec3 Rr_MinV3(Rr_Vec3 A, Rr_Vec3 B)
-{
-    Rr_Vec3 Result;
-
-    Result.X = RR_MIN(A.X, B.X);
-    Result.Y = RR_MIN(A.Y, B.Y);
-    Result.Z = RR_MIN(A.Z, B.Z);
-
-    return Result;
-}
-
-static inline Rr_Vec4 Rr_MinV4(Rr_Vec4 A, Rr_Vec4 B)
-{
-    Rr_Vec4 Result;
-
-#ifdef RR_MATH_SSE
-    Result.SSE = _mm_min_ps(A.SSE, B.SSE);
-#elif defined(RR_MATH_NEON)
-    Result.NEON = vminq_f32(A.NEON, B.NEON);
-#else
-    Result.X = RR_MIN(A.X, B.X);
-    Result.Y = RR_MIN(A.Y, B.Y);
-    Result.Z = RR_MIN(A.Z, B.Z);
-    Result.W = RR_MIN(A.W, B.W);
-#endif
-
-    return Result;
-}
-
-static inline Rr_Vec2 Rr_MaxV2(Rr_Vec2 A, Rr_Vec2 B)
-{
-    Rr_Vec2 Result;
-
-    Result.X = RR_MAX(A.X, B.X);
-    Result.Y = RR_MAX(A.Y, B.Y);
-
-    return Result;
-}
-
-static inline Rr_Vec3 Rr_MaxV3(Rr_Vec3 A, Rr_Vec3 B)
-{
-    Rr_Vec3 Result;
-
-    Result.X = RR_MAX(A.X, B.X);
-    Result.Y = RR_MAX(A.Y, B.Y);
-    Result.Z = RR_MAX(A.Z, B.Z);
-
-    return Result;
-}
-
-static inline Rr_Vec4 Rr_MaxV4(Rr_Vec4 A, Rr_Vec4 B)
-{
-    Rr_Vec4 Result;
-
-#ifdef RR_MATH_SSE
-    Result.SSE = _mm_max_ps(A.SSE, B.SSE);
-#elif defined(RR_MATH_NEON)
-    Result.NEON = vmaxq_f32(A.NEON, B.NEON);
-#else
-    Result.X = RR_MAX(A.X, B.X);
-    Result.Y = RR_MAX(A.Y, B.Y);
-    Result.Z = RR_MAX(A.Z, B.Z);
-    Result.W = RR_MAX(A.W, B.W);
-#endif
-
-    return Result;
-}
-
-static inline Rr_Vec2 Rr_FracV2(Rr_Vec2 A)
-{
-    Rr_Vec2 Result;
-
-    Result.X = A.X - floorf(A.X);
-    Result.Y = A.Y - floorf(A.Y);
-
-    return Result;
-}
-
-static inline Rr_Vec3 Rr_FracV3(Rr_Vec3 A)
-{
-    Rr_Vec3 Result;
-
-    Result.X = A.X - floorf(A.X);
-    Result.Y = A.Y - floorf(A.Y);
-    Result.Z = A.Z - floorf(A.Z);
-
-    return Result;
-}
-
-static inline Rr_Vec4 Rr_FracV4(Rr_Vec4 A)
-{
-    Rr_Vec4 Result;
-
-#ifdef RR_MATH_SSE4_1
-    Result.SSE = _mm_sub_ps(A.SSE, _mm_floor_ps(A.SSE));
-#elif defined(__ARM_FEATURE_DIRECTED_ROUNDING)
-    Result.NEON = vsubq_f32(A.NEON, vrndmq_f32(A.NEON));
-#else
-    Result.X = A.X - floorf(A.X);
-    Result.Y = A.Y - floorf(A.Y);
-    Result.Z = A.Z - floorf(A.Z);
-    Result.W = A.W - floorf(A.W);
-#endif
-
-    return Result;
-}
-
-/*
- * Unary vector operations
- */
-
-static inline float Rr_LenSqrV2(Rr_Vec2 A)
-{
-    return Rr_DotV2(A, A);
-}
-
-static inline float Rr_LenSqrV3(Rr_Vec3 A)
-{
-    return Rr_DotV3(A, A);
-}
-
-static inline float Rr_LenSqrV4(Rr_Vec4 A)
-{
-    return Rr_DotV4(A, A);
-}
-
-static inline float Rr_LenV2(Rr_Vec2 A)
-{
-    return Rr_SqrtF(Rr_LenSqrV2(A));
-}
-
-static inline float Rr_LenV3(Rr_Vec3 A)
-{
-    return Rr_SqrtF(Rr_LenSqrV3(A));
-}
-
-static inline float Rr_LenV4(Rr_Vec4 A)
-{
-    return Rr_SqrtF(Rr_LenSqrV4(A));
-}
-
-static inline Rr_Vec2 Rr_NormV2(Rr_Vec2 A)
-{
-    return Rr_MulV2F(A, Rr_InvSqrtF(Rr_DotV2(A, A)));
-}
-
-static inline Rr_Vec3 Rr_NormV3(Rr_Vec3 A)
-{
-    return Rr_MulV3F(A, Rr_InvSqrtF(Rr_DotV3(A, A)));
-}
-
-static inline Rr_Vec4 Rr_NormV4(Rr_Vec4 A)
-{
-    return Rr_MulV4F(A, Rr_InvSqrtF(Rr_DotV4(A, A)));
 }
 
 /*
