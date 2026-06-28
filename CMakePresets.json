@@ -16,7 +16,8 @@
       "generator": "Ninja",
       "cacheVariables": {
         "RR_C_FLAGS": "-Wall;-Wextra;-Wpedantic;-Wno-missing-format-attribute;-Wno-format-nonliteral;-Wno-missing-braces;-Wno-unused-parameter;-Wno-unused-function;-Wno-unused-variable;-Wconversion;-Wsign-conversion;-Wcast-qual;-Wformat=2;-Wundef;-Wshadow;-Wcast-align;-Wunused;-Wnull-dereference;-Wimplicit-fallthrough",
-        "RR_CXX_FLAGS": "-Wall;-Wextra;-Wpedantic;-Wno-missing-format-attribute;-Wno-format-nonliteral;-Wno-missing-braces;-Wno-unused-parameter;-Wno-unused-function;-Wno-unused-variable;-Wsign-conversion;-Wcast-qual;-Wformat=2;-Wundef;-Wshadow;-Wcast-align;-Wunused;-Wnull-dereference;-Wimplicit-fallthrough;-Woverloaded-virtual;-Wnon-virtual-dtor;-Wold-style-cast"
+        "RR_CXX_FLAGS": "-Wall;-Wextra;-Wpedantic;-Wno-missing-format-attribute;-Wno-format-nonliteral;-Wno-missing-braces;-Wno-unused-parameter;-Wno-unused-function;-Wno-unused-variable;-Wsign-conversion;-Wcast-qual;-Wformat=2;-Wundef;-Wshadow;-Wcast-align;-Wunused;-Wnull-dereference;-Wimplicit-fallthrough;-Woverloaded-virtual;-Wnon-virtual-dtor;-Wold-style-cast",
+        "RR_PLATFORM": "XCB"
       },
       "condition": {
         "type": "equals",
@@ -45,7 +46,8 @@
       "generator": "Ninja",
       "cacheVariables": {
         "RR_C_FLAGS": "/W3",
-        "RR_CXX_FLAGS": "/W3"
+        "RR_CXX_FLAGS": "/W3",
+        "RR_PLATFORM": "Win32"
       },
       "condition": {
         "type": "equals",
