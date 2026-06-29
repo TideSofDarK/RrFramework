@@ -1063,6 +1063,49 @@ static inline void Rr_ProcessXCBKeyEvent(
     }
 }
 
+static inline char const *Rr_DecodeURIPercents(char const *Src, Rr_Arena *Arena)
+{
+    size_t SrcLen = strlen(Src);
+    if (!SrcLen)
+    {
+        return NULL;
+    }
+
+    /* TODO: Decode more than %20! */
+
+    char const *Token = strstr(Src, "%20");
+    if (!Token)
+    {
+        return Src;
+    }
+    char *Dst = Rr_AllocNoZero(SrcLen + 1, Arena);
+    char *DstCursor = Dst;
+    char const *SrcCursor = Src;
+    char const *SrcEnd = Src + SrcLen + 1;
+    do
+    {
+        size_t Distance = (size_t)(Token - Src);
+        memcpy(DstCursor, SrcCursor, Distance);
+
+        DstCursor += Distance;
+        DstCursor[0] = ' ';
+        DstCursor++;
+
+        SrcCursor += Distance;
+        SrcCursor += 3;
+
+        Token = strstr(SrcCursor, "%20");
+    }
+    while (Token);
+
+    if (SrcCursor != SrcEnd)
+    {
+        memcpy(DstCursor, SrcCursor, (size_t)(SrcEnd - SrcCursor));
+    }
+
+    return Dst;
+}
+
 static inline void Rr_ProcessXCBSelectionNotifyEvent(
     xcb_selection_notify_event_t *Event,
     Rr_Arena *Arena)
@@ -1118,8 +1161,10 @@ static inline void Rr_ProcessXCBSelectionNotifyEvent(
             char const *Prefix = "file:///";
             if (strncmp(Line, Prefix, sizeof("file:///") - 1) == 0)
             {
-                char const *Path = Line + sizeof("file:///") - 2;
-                if (strlen(Path))
+                char const *Path = Rr_DecodeURIPercents(
+                    Line + sizeof("file:///") - 2,
+                    Scratch.Arena);
+                if (Path)
                 {
                     Rr_AddDropFileEvent(Path);
                 }
