@@ -41,6 +41,11 @@
 - [X] Does PushXXXIntoHive need to return iterator?
 - [X] Releasing same resource (buffer, image, etc) twice leads to annoying bugs.
 - [X] Replace VMA with custom allocator.
+- [X] Support linear tiling (?) formats such as R8G8B8.
+      Linear tiling appears useless. Added more common format support instead.
+- [X] Public API should use const where applicable.
+- [X] Vulkan: flexible image subresource layouts inside compute nodes.
+- [ ] Vulkan: memory defragmentation.
 - [ ] Minimal error handling pass.
       Implement Rr_GetErrorString().
 	1) Image/buffer creation.
@@ -53,11 +58,9 @@
       More?
 - [ ] Documentation.
 - [ ] Custom assertions.
-- [ ] Public API should use const where applicable.
 - [ ] Replace hash trie usage with Rr_HashTable.h where applicable.
 - [ ] Array implementation is a bit ugly...
 - [ ] Rr_ReleaseXXX functions can validate input pointer via getting hive iterator.
-- [ ] Support linear tiling (?) formats such as R8G8B8.
 
 * Features
 
@@ -94,7 +97,6 @@
 - [X] Radio buttons.
 - [X] Nested windows.
 - [X] Swap font rendering with stb_truetype.
-- [ ] Vulkan: flexible image subresource layouts inside compute nodes.
 - [ ] Finally fix flickering.
 - [ ] Hide flexible widgets properly when layout lacks available width.
 - [ ] Input field doesn't lose focus when clicking elsewhere.

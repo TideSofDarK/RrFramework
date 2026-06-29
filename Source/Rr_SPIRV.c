@@ -135,80 +135,80 @@ static inline Rr_ImageFormat Rr_GetSPIRVImageFormat(uint8_t SPIRVFormat)
     {
         case 1:
             return RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT;
-        // case 2:
-        //     return RR_IMAGE_FORMAT_R16G16B16A16_SFLOAT;
+        case 2:
+            return RR_IMAGE_FORMAT_R16G16B16A16_SFLOAT;
         case 3:
             return RR_IMAGE_FORMAT_R32_SFLOAT;
         case 4:
             return RR_IMAGE_FORMAT_R8G8B8A8_UNORM;
-        // case 5:
-        //     return RR_IMAGE_FORMAT_R8G8B8A8_SNORM;
+        case 5:
+            return RR_IMAGE_FORMAT_R8G8B8A8_SNORM;
         case 6:
             return RR_IMAGE_FORMAT_R32G32_SFLOAT;
         case 7:
             return RR_IMAGE_FORMAT_R16G16_SFLOAT;
         // case 8:
         //     return RR_IMAGE_FORMAT_R11G11B10_SFLOAT;
-        // case 9:
-        //     return RR_IMAGE_FORMAT_R16_SFLOAT;
-        // case 10:
-        //     return RR_IMAGE_FORMAT_R16G16B16A16_UNORM;
+        case 9:
+            return RR_IMAGE_FORMAT_R16_SFLOAT;
+        case 10:
+            return RR_IMAGE_FORMAT_R16G16B16A16_UNORM;
         // case 11:
         //     return RR_IMAGE_FORMAT_R10G10B10A2_UNORM;
-        // case 12:
-        //     return RR_IMAGE_FORMAT_R16G16_UNORM;
+        case 12:
+            return RR_IMAGE_FORMAT_R16G16_UNORM;
         case 13:
             return RR_IMAGE_FORMAT_R8G8_UNORM;
-        // case 14:
-        //     return RR_IMAGE_FORMAT_R16_UNORM;
+        case 14:
+            return RR_IMAGE_FORMAT_R16_UNORM;
         case 15:
             return RR_IMAGE_FORMAT_R8_UNORM;
-        // case 16:
-        //     return RR_IMAGE_FORMAT_R16G16B16A16_SNORM;
-        // case 17:
-        //     return RR_IMAGE_FORMAT_R16G16_SNORM;
-        // case 18:
-        //     return RR_IMAGE_FORMAT_R8G8_SNORM;
-        // case 19:
-        //     return RR_IMAGE_FORMAT_R16_SNORM;
-        // case 20:
-        //     return RR_IMAGE_FORMAT_R8_SNORM;
-        // case 21:
-        //     return RR_IMAGE_FORMAT_R32G32B32A32_SINT;
-        // case 22:
-        //     return RR_IMAGE_FORMAT_R16G16B16A16_SINT;
+        case 16:
+            return RR_IMAGE_FORMAT_R16G16B16A16_SNORM;
+        case 17:
+            return RR_IMAGE_FORMAT_R16G16_SNORM;
+        case 18:
+            return RR_IMAGE_FORMAT_R8G8_SNORM;
+        case 19:
+            return RR_IMAGE_FORMAT_R16_SNORM;
+        case 20:
+            return RR_IMAGE_FORMAT_R8_SNORM;
+        case 21:
+            return RR_IMAGE_FORMAT_R32G32B32A32_SINT;
+        case 22:
+            return RR_IMAGE_FORMAT_R16G16B16A16_SINT;
         case 23:
             return RR_IMAGE_FORMAT_R8G8B8A8_SINT;
         case 24:
             return RR_IMAGE_FORMAT_R32_SINT;
-        // case 25:
-        //     return RR_IMAGE_FORMAT_R32G32_SINT;
-        // case 26:
-        //     return RR_IMAGE_FORMAT_R16G16_SINT;
+        case 25:
+            return RR_IMAGE_FORMAT_R32G32_SINT;
+        case 26:
+            return RR_IMAGE_FORMAT_R16G16_SINT;
         case 27:
             return RR_IMAGE_FORMAT_R8G8_SINT;
-        // case 28:
-        //     return RR_IMAGE_FORMAT_R16_SINT;
+        case 28:
+            return RR_IMAGE_FORMAT_R16_SINT;
         case 29:
             return RR_IMAGE_FORMAT_R8_SINT;
-        // case 30:
-        //     return RR_IMAGE_FORMAT_R32G32B32A32_UINT;
-        // case 31:
-        //     return RR_IMAGE_FORMAT_R16G16B16A16_UINT;
+        case 30:
+            return RR_IMAGE_FORMAT_R32G32B32A32_UINT;
+        case 31:
+            return RR_IMAGE_FORMAT_R16G16B16A16_UINT;
         case 32:
             return RR_IMAGE_FORMAT_R8G8B8A8_UINT;
         case 33:
             return RR_IMAGE_FORMAT_R32_UINT;
         // case 34:
         //     return RR_IMAGE_FORMAT_R10G10B10A2_UINT;
-        // case 35:
-        //     return RR_IMAGE_FORMAT_R32G32_UINT;
-        // case 36:
-        //     return RR_IMAGE_FORMAT_R16G16_UINT;
+        case 35:
+            return RR_IMAGE_FORMAT_R32G32_UINT;
+        case 36:
+            return RR_IMAGE_FORMAT_R16G16_UINT;
         case 37:
             return RR_IMAGE_FORMAT_R8G8_UINT;
-        // case 38:
-        //     return RR_IMAGE_FORMAT_R16_UINT;
+        case 38:
+            return RR_IMAGE_FORMAT_R16_UINT;
         case 39:
             return RR_IMAGE_FORMAT_R8_UINT;
         default:
