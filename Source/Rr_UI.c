@@ -9067,8 +9067,7 @@ void Rr_NewUIFrame(void)
     RR_RESET_ARRAY(&gUIContext->Indices, FrameArena);
 
     Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
-    gUIContext->ScreenSize.Width = (float)SwapchainSize.Width;
-    gUIContext->ScreenSize.Height = (float)SwapchainSize.Height;
+    gUIContext->ScreenSize = Rr_CastV2(SwapchainSize);
 }
 
 void Rr_BeginUI(void)
