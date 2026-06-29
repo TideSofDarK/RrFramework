@@ -14,12 +14,12 @@ Rr_Image2D *LoadImage2D(Rr_AssetRef AssetRef)
     auto DesiredChannels = 4;
     auto Data = (std::byte *)
         stbi_load_from_memory((stbi_uc *)Asset.Data, (int32_t)Asset.Size, &Width, &Height, &Channels, DesiredChannels);
-    assert(Channels = 4);
+    assert(Channels == 4);
     auto Size = Channels * Width * Height;
 
     auto StagingBuffer = Rr_CreateBuffer(Size, RR_BUFFER_FLAGS_STAGING);
     Rr_ReleaseBuffer(StagingBuffer);
-    memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
+    std::memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
     stbi_image_free(Data);
 
     auto Extent = Rr_IntV2(Width, Height);

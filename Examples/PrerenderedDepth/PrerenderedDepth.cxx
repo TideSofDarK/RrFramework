@@ -18,28 +18,27 @@
 
 Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
 {
-    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
+    auto Asset = Rr_LoadAsset(AssetRef);
 
-    const char *Error{};
+    char const *Error{};
 
-    EXRVersion Version;
-    int32_t Result = ParseEXRVersionFromMemory(&Version, (unsigned char *)Asset.Data, Asset.Size);
+    auto Version = EXRVersion{};
+    auto Result = ParseEXRVersionFromMemory(&Version, (uint8_t *)Asset.Data, Asset.Size);
     if (Result != 0)
     {
         std::abort();
     }
 
-    EXRHeader Header;
-    Result = ParseEXRHeaderFromMemory(&Header, &Version, (unsigned char *)Asset.Data, Asset.Size, &Error);
+    auto Header = EXRHeader{};
+    Result = ParseEXRHeaderFromMemory(&Header, &Version, (uint8_t *)Asset.Data, Asset.Size, &Error);
     if (Result != 0)
     {
         std::abort();
     }
 
-    EXRImage Image;
+    auto Image = EXRImage{};
     InitEXRImage(&Image);
-
-    Result = LoadEXRImageFromMemory(&Image, &Header, (unsigned char *)Asset.Data, Asset.Size, &Error);
+    Result = LoadEXRImageFromMemory(&Image, &Header, (uint8_t *)Asset.Data, Asset.Size, &Error);
     if (Result != 0)
     {
         std::abort();
@@ -47,65 +46,61 @@ Rr_Image2D *CreateDepthImageFromEXR(float Near, float Far, Rr_AssetRef AssetRef)
 
     /* Calculate depth (https://en.wikipedia.org/wiki/Z-buffering) */
 
-    float FarPlusNear = Far + Near;
-    float FarMinusNear = Far - Near;
-    float FTimesNear = Far * Near;
-    for (int32_t Index = 0; Index < Image.width * Image.height; Index++)
+    auto FarPlusNear = Far + Near;
+    auto FarMinusNear = Far - Near;
+    auto FTimesNear = Far * Near;
+    for (auto Index = 0; Index < Image.width * Image.height; Index++)
     {
-        float *Current = (float *)Image.images[0] + Index;
-        float ZReciprocal = 1.0f / *Current;
-        float Depth = FarPlusNear / FarMinusNear + ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
+        auto Current = (float *)Image.images[0] + Index;
+        auto ZReciprocal = 1.0f / *Current;
+        auto Depth = FarPlusNear / FarMinusNear + ZReciprocal * ((-2.0f * FTimesNear) / (FarMinusNear));
         Depth = (Depth + 1.0f) / 2.0f;
         Depth = std::clamp(Depth, 0.0f, 1.0f);
         *Current = Depth;
     }
 
-    Rr_IntVec2 Extent = {
+    auto Extent = Rr_IntVec2{
         .Width = Image.width,
         .Height = Image.height,
     };
 
-    size_t DataSize = Extent.Width * Extent.Height * sizeof(float);
+    auto DataSize = Extent.Width * Extent.Height * sizeof(float);
 
-    Rr_Image2D *DepthImage =
-        Rr_CreateImage2D(Extent, RR_IMAGE_FORMAT_D32_SFLOAT, RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
-
-    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(DataSize, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
-
+    auto StagingBuffer = Rr_CreateBuffer(DataSize, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
     std::memcpy(Rr_GetMappedBufferData(StagingBuffer), Image.images[0], DataSize);
+    Rr_ReleaseBuffer(StagingBuffer);
 
+    auto DepthImage =
+        Rr_CreateImage2D(Extent, RR_IMAGE_FORMAT_D32_SFLOAT, RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
     Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, Extent, DepthImage, 0);
 
     FreeEXRHeader(&Header);
     FreeEXRImage(&Image);
-
-    Rr_ReleaseBuffer(StagingBuffer);
 
     return DepthImage;
 }
 
 Rr_Image2D *CreateColorImageFromPNG(Rr_AssetRef AssetRef)
 {
-    Rr_Asset Asset = Rr_LoadAsset(AssetRef);
-    int32_t DesiredChannels = 4;
     int32_t Width, Height, Channels;
-    char *Data = (char *)
+    auto Asset = Rr_LoadAsset(AssetRef);
+    auto DesiredChannels = 4;
+    auto Data = (std::byte *)
         stbi_load_from_memory((stbi_uc *)Asset.Data, (int32_t)Asset.Size, &Width, &Height, &Channels, DesiredChannels);
+    assert(Channels == 4);
+    auto Size = Channels * Width * Height;
 
-    Rr_Image2D *ColorImage = Rr_CreateImage2D(
-        { Width, Height },
+    auto StagingBuffer = Rr_CreateBuffer(Size, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
+    Rr_ReleaseBuffer(StagingBuffer);
+    std::memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
+    stbi_image_free(Data);
+
+    auto Extent = Rr_IntV2(Width, Height);
+    auto ColorImage = Rr_CreateImage2D(
+        Extent,
         RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
         RR_IMAGE_FLAGS_TRANSFER_BIT | RR_IMAGE_FLAGS_SAMPLED_BIT);
-
-    size_t Size = Width * Height * DesiredChannels;
-
-    Rr_Buffer *StagingBuffer = Rr_CreateBuffer(Size, RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
-
-    std::memcpy(Rr_GetMappedBufferData(StagingBuffer), Data, Size);
-
-    Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, { Width, Height }, ColorImage, 0);
-
-    Rr_ReleaseBuffer(StagingBuffer);
+    Rr_CopyBufferToImage2D(Rr_GetGraph(), StagingBuffer, 0, Extent, ColorImage, 0);
 
     return ColorImage;
 }
@@ -130,10 +125,10 @@ struct SCube
 
     void Init()
     {
-        size_t TotalSize = sizeof(CubePositions) + sizeof(CubeIndices);
-        Rr_Buffer *StagingBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
+        auto TotalSize = sizeof(CubePositions) + sizeof(CubeIndices);
+        auto StagingBuffer = Rr_CreateBuffer(TotalSize, RR_BUFFER_FLAGS_STAGING_BIT | RR_BUFFER_FLAGS_MAPPED_BIT);
         Rr_ReleaseBuffer(StagingBuffer);
-        char *BufferData = (char *)Rr_GetMappedBufferData(StagingBuffer);
+        auto BufferData = (std::byte *)Rr_GetMappedBufferData(StagingBuffer);
         std::memcpy(BufferData, CubePositions, sizeof(CubePositions));
         BufferData += sizeof(CubePositions);
         std::memcpy(BufferData, CubeIndices, sizeof(CubeIndices));
@@ -153,12 +148,12 @@ struct SCube
 
 struct SPrerenderedDepthApp
 {
-    static const Rr_ImageFormat DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
+    static auto const DEPTH_FORMAT = RR_IMAGE_FORMAT_D32_SFLOAT;
 
-    Rr_GraphicsPipeline *GraphicsPipeline;
+    Rr_GraphicsPipeline *GraphicsPipeline{};
     SCube Cube{};
 
-    Rr_Buffer *UniformBuffer;
+    Rr_Buffer *UniformBuffer{};
     struct
     {
         Rr_Mat4 Model;
@@ -168,12 +163,12 @@ struct SPrerenderedDepthApp
         float Far;
     } UniformData;
 
-    Rr_Image2D *ColorImage;
-    Rr_Image2D *DepthImage;
+    Rr_Image2D *ColorImage{};
+    Rr_Image2D *DepthImage{};
 
-    Rr_Image2D *BackgroundColorImage;
-    Rr_Image2D *BackgroundDepthImage;
-    Rr_IntVec2 BackgroundExtent;
+    Rr_Image2D *BackgroundColorImage{};
+    Rr_Image2D *BackgroundDepthImage{};
+    Rr_IntVec2 BackgroundExtent{};
 
     void InitPipeline()
     {
@@ -189,23 +184,23 @@ struct SPrerenderedDepthApp
             },
         };
 
-        Rr_ColorTargetInfo ColorTarget = {
+        auto ColorTarget = Rr_ColorTargetInfo{
             .Format = RR_IMAGE_FORMAT_R8G8B8A8_SRGB,
         };
 
-        Rr_Asset VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_PRERENDEREDDEPTH_VERT_SPV);
-        Rr_ShaderInfo VertexShaderInfo = {
+        auto VertexShader = Rr_LoadAsset(EXAMPLE_ASSET_PRERENDEREDDEPTH_VERT_SPV);
+        auto VertexShaderInfo = Rr_ShaderInfo{
             .SPVSize = VertexShader.Size,
             .SPVData = VertexShader.Data,
         };
 
-        Rr_Asset FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_PRERENDEREDDEPTH_FRAG_SPV);
-        Rr_ShaderInfo FragmentShaderInfo = {
+        auto FragmentShader = Rr_LoadAsset(EXAMPLE_ASSET_PRERENDEREDDEPTH_FRAG_SPV);
+        auto FragmentShaderInfo = Rr_ShaderInfo{
             .SPVSize = FragmentShader.Size,
             .SPVData = FragmentShader.Data,
         };
 
-        Rr_GraphicsPipelineCreateInfo PipelineInfo = {
+        auto PipelineInfo = Rr_GraphicsPipelineCreateInfo{
             .VertexShaderInfo = &VertexShaderInfo,
             .FragmentShaderInfo = &FragmentShaderInfo,
             .VertexInputBindingCount = VertexInputBindings.size(),
@@ -262,8 +257,8 @@ struct SPrerenderedDepthApp
 
     void Iterate()
     {
-        static Rr_Vec3 Position = Rr_V3(7.35889f, 4.0f, 6.92579f);
-        static Rr_Vec3 Rotation = Rr_V3(63.5593f - 90.0f, 46.6919f + 90.0f, 0.0f);
+        static auto Position = Rr_V3(7.35889f, 4.0f, 6.92579f);
+        static auto Rotation = Rr_V3(63.5593f - 90.0f, 46.6919f + 90.0f, 0.0f);
 
         Rr_UIBeginDebugOverlayTabs();
         Rr_UIBeginWindow("PrerenderedDepth.cxx");
@@ -277,14 +272,11 @@ struct SPrerenderedDepthApp
         Rr_UIEndDebugOverlayTabs();
 
         Rr_CopyImage2D(Rr_GetGraph(), BackgroundColorImage, { 0 }, ColorImage, { 0 }, BackgroundExtent, 0);
-
         Rr_CopyImage2D(Rr_GetGraph(), BackgroundDepthImage, { 0 }, DepthImage, { 0 }, BackgroundExtent, 0);
 
-        float Time = Rr_GetTimeSeconds() * 1.5f;
+        auto Time = Rr_GetTimeSeconds() * 1.5f;
         UniformData.Model = Rr_TranslateV(Rr_V3(cosf(Time) * 3.5f - 1.0f, 0.0f, sinf(Time) * 3.0f)) *
-
                             Rr_Rotate_RH(Time * 3.0f, Rr_V3(0.0f, 1.0f, 0.0f)) * Rr_ScaleV(Rr_V3F(0.5f));
-
         UniformData.View =
             Rr_RotateAngles(Rr_V3(RR_ANGLE_DEG(Rotation.X), RR_ANGLE_DEG(Rotation.Y), RR_ANGLE_DEG(Rotation.Z))) *
             Rr_TranslateV(Position);
@@ -294,17 +286,17 @@ struct SPrerenderedDepthApp
         UniformData.Far = 50.0f;
         std::memcpy(Rr_GetMappedBufferData(UniformBuffer), &UniformData, sizeof(UniformData));
 
-        Rr_ColorTarget ColorTarget = {
+        auto ColorTarget = Rr_ColorTarget{
             .Image = ColorImage,
             .LoadOp = RR_LOAD_OP_LOAD,
             .StoreOp = RR_STORE_OP_STORE,
         };
-        Rr_DepthTarget DepthTarget = {
+        auto DepthTarget = Rr_DepthTarget{
             .Image = DepthImage,
             .LoadOp = RR_LOAD_OP_LOAD,
             .StoreOp = RR_STORE_OP_STORE,
         };
-        Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
+        auto GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, &DepthTarget);
         Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
         Rr_BindVertexBuffer(GraphicsNode, Cube.Buffer, 0, 0);
         Rr_BindIndexBuffer(GraphicsNode, Cube.Buffer, 0, Cube.IndexOffset, RR_INDEX_TYPE_UINT16);
