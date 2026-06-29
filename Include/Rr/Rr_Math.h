@@ -67,16 +67,6 @@
 #endif
 #endif
 
-#if defined(__cplusplus)
-#define RR_REINTERPRET_CAST(Type, Expression) reinterpret_cast<Type>(Expression)
-#define RR_STATIC_CAST(Type, Expression)      static_cast<Type>(Expression)
-#define RR_CONST_CAST(Type, Expression)       const_cast<Type>(Expression)
-#else
-#define RR_REINTERPRET_CAST(Type, Expression) ((Type)(Expression))
-#define RR_STATIC_CAST(Type, Expression)      ((Type)(Expression))
-#define RR_CONST_CAST(Type, Expression)       ((Type)(Expression))
-#endif
-
 #if !defined(RR_MATH_USE_DEGREES) && !defined(RR_MATH_USE_TURNS) && \
     !defined(RR_MATH_USE_RADIANS)
 #define RR_MATH_USE_RADIANS
@@ -89,12 +79,12 @@
 #define RR_TURNHALF   0.5
 #define RR_TURNHALF32 0.5f
 
-#define RR_RAD_TO_DEG  (RR_STATIC_CAST(float, RR_DEG180 / RR_PI))
-#define RR_RAD_TO_TURN (RR_STATIC_CAST(float, RR_TURNHALF / RR_PI))
-#define RR_DEG_TO_RAD  (RR_STATIC_CAST(float, RR_PI / RR_DEG180))
-#define RR_DEG_TO_TURN (RR_STATIC_CAST(float, RR_TURNHALF / RR_DEG180))
-#define RR_TURN_TO_RAD (RR_STATIC_CAST(float, RR_PI / RR_TURNHALF))
-#define RR_TURN_TO_DEG (RR_STATIC_CAST(float, RR_DEG180 / RR_TURNHALF))
+#define RR_RAD_TO_DEG  ((float)(RR_DEG180 / RR_PI))
+#define RR_RAD_TO_TURN ((float)(RR_TURNHALF / RR_PI))
+#define RR_DEG_TO_RAD  ((float)(RR_PI / RR_DEG180))
+#define RR_DEG_TO_TURN ((float)(RR_TURNHALF / RR_DEG180))
+#define RR_TURN_TO_RAD ((float)(RR_PI / RR_TURNHALF))
+#define RR_TURN_TO_DEG ((float)(RR_DEG180 / RR_TURNHALF))
 
 #if defined(RR_MATH_USE_RADIANS)
 #define RR_ANGLE_RAD(a)  (a)
@@ -3477,7 +3467,7 @@ static inline Rr_Vec3 Rr_RotateV3AxisAngle_RH(
 }
 
 /*
- * Rect Functions
+ * Rect Operations
  */
 
 static inline bool Rr_RectContains(Rr_Rect const *Rect, Rr_Vec2 Point)
@@ -3503,78 +3493,49 @@ static inline Rr_Rect Rr_ResizeRect(Rr_Rect *Rect, float Amount)
     return Result;
 }
 
-static inline Rr_Rect Rr_FitRect(Rr_Rect const *Src, Rr_Rect const *Dst)
+static inline Rr_Rect Rr_FitRect(Rr_Vec2 SrcExtent, Rr_Vec2 DstExtent)
 {
-    float X = 0;
-    float Y = 0;
-    float Width = 0;
-    float Height = 0;
+    Rr_Rect Result;
 
-    float DstWidth = Dst->Extent.Width;
-    float DstHeight = Dst->Extent.Height;
-    float SrcWidth = Src->Extent.Width;
-    float SrcHeight = Src->Extent.Height;
-    float DstRatio = DstWidth / DstHeight;
-    float SrcRatio = SrcWidth / SrcHeight;
-
-    if (DstRatio > SrcRatio)
+    float DstAspect = DstExtent.Width / DstExtent.Height;
+    float SrcAspect = SrcExtent.Width / SrcExtent.Height;
+    if (DstAspect > SrcAspect)
     {
-        Width = (SrcWidth / SrcHeight) * DstHeight;
-        Height = DstHeight;
+        Result.Extent.Width = SrcAspect * DstExtent.Height;
+        Result.Extent.Height = DstExtent.Height;
     }
     else
     {
-        Width = DstWidth;
-        Height = (SrcHeight / SrcWidth) * DstWidth;
+        Result.Extent.Width = DstExtent.Width;
+        Result.Extent.Height = (1.0f / SrcAspect) * DstExtent.Width;
     }
-    X = (DstWidth / 2.0f) - (Width / 2.0f);
-    Y = (DstHeight / 2.0f) - (Height / 2.0f);
-
-    Rr_Rect Result;
-
-    Result.Offset.X = X;
-    Result.Offset.Y = Y;
-    Result.Extent.Width = Width;
-    Result.Extent.Height = Height;
+    Result.Offset.X = (DstExtent.Width - Result.Extent.Width) * 0.5f;
+    Result.Offset.Y = (DstExtent.Height - Result.Extent.Height) * 0.5f;
 
     return Result;
 }
 
 static inline Rr_IntRect Rr_FitIntRect(
-    Rr_IntRect const *Src,
-    Rr_IntRect const *Dst)
+    Rr_IntVec2 SrcExtent,
+    Rr_IntVec2 DstExtent)
 {
-    float X = 0;
-    float Y = 0;
-    float Width = 0;
-    float Height = 0;
+    Rr_IntRect Result;
 
-    float DstWidth = (float)Dst->Extent.Width;
-    float DstHeight = (float)Dst->Extent.Height;
-    float SrcWidth = (float)Src->Extent.Width;
-    float SrcHeight = (float)Src->Extent.Height;
-    float DstRatio = DstWidth / DstHeight;
-    float SrcRatio = SrcWidth / SrcHeight;
-
-    if (DstRatio > SrcRatio)
+    float DstAspect = (float)DstExtent.Width / (float)DstExtent.Height;
+    float SrcAspect = (float)SrcExtent.Width / (float)SrcExtent.Height;
+    if (DstAspect > SrcAspect)
     {
-        Width = (SrcWidth / SrcHeight) * DstHeight;
-        Height = DstHeight;
+        Result.Extent.Width = (int32_t)(SrcAspect * (float)DstExtent.Height);
+        Result.Extent.Height = DstExtent.Height;
     }
     else
     {
-        Width = DstWidth;
-        Height = (SrcHeight / SrcWidth) * DstWidth;
+        Result.Extent.Width = DstExtent.Width;
+        Result.Extent.Height =
+            (int32_t)((1.0f / SrcAspect) * (float)DstExtent.Width);
     }
-    X = (DstWidth / 2.0f) - (Width / 2.0f);
-    Y = (DstHeight / 2.0f) - (Height / 2.0f);
-
-    Rr_IntRect Result;
-
-    Result.Offset.X = (int32_t)X;
-    Result.Offset.Y = (int32_t)Y;
-    Result.Extent.Width = (int32_t)Width;
-    Result.Extent.Height = (int32_t)Height;
+    Result.Offset.X = (DstExtent.Width - Result.Extent.Width) / 2;
+    Result.Offset.Y = (DstExtent.Height - Result.Extent.Height) / 2;
 
     return Result;
 }
@@ -3631,19 +3592,124 @@ static inline Rr_Quat Rr_Norm(Rr_Quat A)
     return Rr_NormQ(A);
 }
 
-static inline float Rr_Dot(Rr_Vec2 Left, Rr_Vec2 VecTwo)
+static inline Rr_Vec2 Rr_Frac(Rr_Vec2 A)
 {
-    return Rr_DotV2(Left, VecTwo);
+    return Rr_FracV2(A);
 }
 
-static inline float Rr_Dot(Rr_Vec3 Left, Rr_Vec3 VecTwo)
+static inline Rr_Vec3 Rr_Frac(Rr_Vec3 A)
 {
-    return Rr_DotV3(Left, VecTwo);
+    return Rr_FracV3(A);
 }
 
-static inline float Rr_Dot(Rr_Vec4 Left, Rr_Vec4 VecTwo)
+static inline Rr_Vec4 Rr_Frac(Rr_Vec4 A)
 {
-    return Rr_DotV4(Left, VecTwo);
+    return Rr_FracV4(A);
+}
+
+static inline Rr_Vec2 Rr_Ceil(Rr_Vec2 A)
+{
+    return Rr_CeilV2(A);
+}
+
+static inline Rr_Vec3 Rr_Ceil(Rr_Vec3 A)
+{
+    return Rr_CeilV3(A);
+}
+
+static inline Rr_Vec4 Rr_Ceil(Rr_Vec4 A)
+{
+    return Rr_CeilV4(A);
+}
+
+static inline Rr_Vec2 Rr_Floor(Rr_Vec2 A)
+{
+    return Rr_FloorV2(A);
+}
+
+static inline Rr_Vec3 Rr_Floor(Rr_Vec3 A)
+{
+    return Rr_FloorV3(A);
+}
+
+static inline Rr_Vec4 Rr_Floor(Rr_Vec4 A)
+{
+    return Rr_FloorV4(A);
+}
+
+static inline Rr_Vec2 Rr_Trunc(Rr_Vec2 A)
+{
+    return Rr_TruncV2(A);
+}
+
+static inline Rr_Vec3 Rr_Trunc(Rr_Vec3 A)
+{
+    return Rr_TruncV3(A);
+}
+
+static inline Rr_Vec4 Rr_Trunc(Rr_Vec4 A)
+{
+    return Rr_TruncV4(A);
+}
+
+static inline Rr_Vec2 Rr_Round(Rr_Vec2 A)
+{
+    return Rr_RoundV2(A);
+}
+
+static inline Rr_Vec3 Rr_Round(Rr_Vec3 A)
+{
+    return Rr_RoundV3(A);
+}
+
+static inline Rr_Vec4 Rr_Round(Rr_Vec4 A)
+{
+    return Rr_RoundV4(A);
+}
+
+static inline float Rr_Dot(Rr_Vec2 Left, Rr_Vec2 Right)
+{
+    return Rr_DotV2(Left, Right);
+}
+
+static inline float Rr_Dot(Rr_Vec3 Left, Rr_Vec3 Right)
+{
+    return Rr_DotV3(Left, Right);
+}
+
+static inline float Rr_Dot(Rr_Vec4 Left, Rr_Vec4 Right)
+{
+    return Rr_DotV4(Left, Right);
+}
+
+static inline Rr_Vec2 Rr_Min(Rr_Vec2 Left, Rr_Vec2 Right)
+{
+    return Rr_MinV2(Left, Right);
+}
+
+static inline Rr_Vec3 Rr_Min(Rr_Vec3 Left, Rr_Vec3 Right)
+{
+    return Rr_MinV3(Left, Right);
+}
+
+static inline Rr_Vec4 Rr_Min(Rr_Vec4 Left, Rr_Vec4 Right)
+{
+    return Rr_MinV4(Left, Right);
+}
+
+static inline Rr_Vec2 Rr_Max(Rr_Vec2 Left, Rr_Vec2 Right)
+{
+    return Rr_MaxV2(Left, Right);
+}
+
+static inline Rr_Vec3 Rr_Max(Rr_Vec3 Left, Rr_Vec3 Right)
+{
+    return Rr_MaxV3(Left, Right);
+}
+
+static inline Rr_Vec4 Rr_Max(Rr_Vec4 Left, Rr_Vec4 Right)
+{
+    return Rr_MaxV4(Left, Right);
 }
 
 static inline Rr_Vec2 Rr_Lerp(Rr_Vec2 Left, float Time, Rr_Vec2 Right)
@@ -3651,14 +3717,29 @@ static inline Rr_Vec2 Rr_Lerp(Rr_Vec2 Left, float Time, Rr_Vec2 Right)
     return Rr_LerpV2(Left, Time, Right);
 }
 
+static inline Rr_Vec2 Rr_Damp(Rr_Vec2 Left, float Time, Rr_Vec2 Right)
+{
+    return Rr_DampV2(Left, Time, Right);
+}
+
 static inline Rr_Vec3 Rr_Lerp(Rr_Vec3 Left, float Time, Rr_Vec3 Right)
 {
     return Rr_LerpV3(Left, Time, Right);
 }
 
+static inline Rr_Vec3 Rr_Damp(Rr_Vec3 Left, float Time, Rr_Vec3 Right)
+{
+    return Rr_DampV3(Left, Time, Right);
+}
+
 static inline Rr_Vec4 Rr_Lerp(Rr_Vec4 Left, float Time, Rr_Vec4 Right)
 {
     return Rr_LerpV4(Left, Time, Right);
+}
+
+static inline Rr_Vec4 Rr_Damp(Rr_Vec4 Left, float Time, Rr_Vec4 Right)
+{
+    return Rr_DampV4(Left, Time, Right);
 }
 
 static inline Rr_Mat2 Rr_Transpose(Rr_Mat2 Matrix)
@@ -3706,9 +3787,9 @@ static inline Rr_Mat4 Rr_InvGeneral(Rr_Mat4 Matrix)
     return Rr_InvGeneralM4(Matrix);
 }
 
-static inline float Rr_Dot(Rr_Quat QuatOne, Rr_Quat QuatTwo)
+static inline float Rr_Dot(Rr_Quat Left, Rr_Quat Right)
 {
-    return Rr_DotQ(QuatOne, QuatTwo);
+    return Rr_DotQ(Left, Right);
 }
 
 static inline Rr_Vec2 Rr_Add(Rr_Vec2 Left, Rr_Vec2 Right)
@@ -4398,6 +4479,36 @@ static inline Rr_Vec4 operator-(Rr_Vec4 In)
 #endif
 
     return Result;
+}
+
+static inline Rr_IntVec2 Rr_Min(Rr_IntVec2 Left, Rr_IntVec2 Right)
+{
+    return Rr_MinIntV2(Left, Right);
+}
+
+static inline Rr_IntVec3 Rr_Min(Rr_IntVec3 Left, Rr_IntVec3 Right)
+{
+    return Rr_MinIntV3(Left, Right);
+}
+
+static inline Rr_IntVec4 Rr_Min(Rr_IntVec4 Left, Rr_IntVec4 Right)
+{
+    return Rr_MinIntV4(Left, Right);
+}
+
+static inline Rr_IntVec2 Rr_Max(Rr_IntVec2 Left, Rr_IntVec2 Right)
+{
+    return Rr_MaxIntV2(Left, Right);
+}
+
+static inline Rr_IntVec3 Rr_Max(Rr_IntVec3 Left, Rr_IntVec3 Right)
+{
+    return Rr_MaxIntV3(Left, Right);
+}
+
+static inline Rr_IntVec4 Rr_Max(Rr_IntVec4 Left, Rr_IntVec4 Right)
+{
+    return Rr_MaxIntV4(Left, Right);
 }
 
 static inline Rr_IntVec2 operator+(Rr_IntVec2 Left, Rr_IntVec2 Right)

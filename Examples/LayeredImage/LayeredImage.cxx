@@ -209,9 +209,7 @@ public:
 
         Rr_GraphNode *GraphicsNode = Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, nullptr);
 
-        Rr_Rect ImageRect{ 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT };
-        Rr_Rect SwapchainRect{ 0, 0, (float)SwapchainExtent.Width, (float)SwapchainExtent.Height };
-        Rr_Rect Viewport = Rr_FitRect(&ImageRect, &SwapchainRect);
+        auto Viewport = Rr_FitRect(Rr_V2(IMAGE_WIDTH, IMAGE_HEIGHT), Rr_CastV2(SwapchainExtent));
         Rr_SetViewport(GraphicsNode, &Viewport);
 
         Rr_BindGraphicsPipeline(GraphicsNode, UseImage3D ? Image3DPipeline : Image2DArrayPipeline);

@@ -297,12 +297,6 @@ struct STransferThreadApp
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
         Rr_IntVec2 SwapchainExtent = Rr_GetImage2DExtent(SwapchainImage);
-        Rr_Rect SwapchainRect{
-            0,
-            0,
-            (float)SwapchainExtent.Width,
-            (float)SwapchainExtent.Height,
-        };
 
         Rr_ColorTarget ColorTarget = {
             .Image = SwapchainImage,
@@ -323,16 +317,10 @@ struct STransferThreadApp
 
         if (!Images.empty())
         {
-            Rr_Image2D *Image2D = Images.at(CurrentImageIndex);
+            auto Image2D = Images.at(CurrentImageIndex);
 
-            Rr_IntVec2 ImageSize = Rr_GetImage2DExtent(Image2D);
-            Rr_Rect ImageRect{
-                0,
-                0,
-                (float)ImageSize.Width,
-                (float)ImageSize.Height,
-            };
-            Rr_Rect Viewport = Rr_FitRect(&ImageRect, &SwapchainRect);
+            auto ImageSize = Rr_GetImage2DExtent(Image2D);
+            auto Viewport = Rr_FitRect(Rr_CastV2(ImageSize), Rr_CastV2(SwapchainExtent));
             Rr_SetViewport(GraphicsNode, &Viewport);
             Rr_BindGraphicsPipeline(GraphicsNode, GraphicsPipeline);
             Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(UniformData));
@@ -342,8 +330,7 @@ struct STransferThreadApp
 
         if (Thread.IsBusy)
         {
-            Rr_Rect ImageRect{ 0, 0, 1, 1 };
-            Rr_Rect Viewport = Rr_FitRect(&ImageRect, &SwapchainRect);
+            auto Viewport = Rr_FitRect(Rr_V2F(1.0f), Rr_CastV2(SwapchainExtent));
             Rr_SetViewport(GraphicsNode, &Viewport);
             Rr_BindGraphicsPipeline(GraphicsNode, PlaceholderPipeline);
             Rr_BindUniformBuffer(GraphicsNode, UniformBuffer, 0, 0, 0, sizeof(UniformData));

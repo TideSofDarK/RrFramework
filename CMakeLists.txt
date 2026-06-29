@@ -153,7 +153,7 @@ target_sources(
     Include/Rr/Rr_App.h
     Include/Rr/Rr_Arena.h
     Include/Rr/Rr_Asset.h
-    Include/Rr/Rr_Defines.h
+    Include/Rr/Rr_Common.h
     Include/Rr/Rr_Graph.h
     Include/Rr/Rr_Log.h
     Include/Rr/Rr_Math.h

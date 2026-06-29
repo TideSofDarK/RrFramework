@@ -840,9 +840,8 @@ public:
         }
 
         auto ColorImageSize = Rr_GetImage2DExtent(ColorImage);
-        auto SrcRect = Rr_IntRect{ 0, 0, ColorImageSize.X, ColorImageSize.Y };
-        auto DstRect = Rr_IntRect{ 0, 0, SwapchainSize.X, SwapchainSize.Y };
-        auto DstRectFit = Rr_FitIntRect(&SrcRect, &DstRect);
+        auto SrcRect = Rr_IntRect{ Rr_IntV2I(0), ColorImageSize };
+        auto DstRect = Rr_FitIntRect(ColorImageSize, SwapchainSize);
         Rr_ClearColorImage2D(Graph, Rr_ColorClear{}, SwapchainImage);
         Rr_BlitImage2DEx(
             Graph,
@@ -851,7 +850,7 @@ public:
             SrcRect,
             SwapchainImage,
             0,
-            DstRectFit,
+            DstRect,
             RR_IMAGE_ASPECT_COLOR_BIT,
             RR_FILTER_NEAREST);
     }
