@@ -674,74 +674,6 @@ static inline float Rr_InvSqrtF(float Float)
 }
 
 /*
- * RrFramework functions
- */
-
-static inline float Rr_GetVerticalFoV(
-    const float HorizontalFoV,
-    const float Aspect)
-{
-    return 2.0f * atanf((tanf(HorizontalFoV / 2.0f) * Aspect));
-}
-
-static inline void Rr_PerspectiveResize(float Aspect, Rr_Mat4 *Proj)
-{
-    if (Proj->Elements[0][0] == 0.0f)
-    {
-        return;
-    }
-
-    Proj->Elements[0][0] = Proj->Elements[1][1] / Aspect;
-}
-
-static inline Rr_Mat4 Rr_VulkanMatrix(void)
-{
-    Rr_Mat4 Out = { 0 };
-    Out.Elements[0][0] = 1.0f;
-    Out.Elements[1][1] = -1.0f;
-    Out.Elements[2][2] = -1.0f;
-    Out.Elements[3][3] = 1.0f;
-    return Out;
-}
-
-static inline Rr_Mat4 Rr_EulerXYZ(Rr_Vec3 Angles)
-{
-    float CosX, CosY, CosZ, SinX, SinY, SinZ, CosZSinX, CosXCosZ, SinYSinZ;
-
-    Rr_Mat4 Out;
-
-    SinX = Rr_SinF(Angles.X);
-    CosX = Rr_CosF(Angles.X);
-    SinY = Rr_SinF(Angles.Y);
-    CosY = Rr_CosF(Angles.Y);
-    SinZ = Rr_SinF(Angles.Z);
-    CosZ = Rr_CosF(Angles.Z);
-
-    CosZSinX = CosZ * SinX;
-    CosXCosZ = CosX * CosZ;
-    SinYSinZ = SinY * SinZ;
-
-    Out.Elements[0][0] = CosY * CosZ;
-    Out.Elements[0][1] = CosZSinX * SinY + CosX * SinZ;
-    Out.Elements[0][2] = -CosXCosZ * SinY + SinX * SinZ;
-    Out.Elements[1][0] = -CosY * SinZ;
-    Out.Elements[1][1] = CosXCosZ - SinX * SinYSinZ;
-    Out.Elements[1][2] = CosZSinX + CosX * SinYSinZ;
-    Out.Elements[2][0] = SinY;
-    Out.Elements[2][1] = -CosY * SinX;
-    Out.Elements[2][2] = CosX * CosY;
-    Out.Elements[0][3] = 0.0f;
-    Out.Elements[1][3] = 0.0f;
-    Out.Elements[2][3] = 0.0f;
-    Out.Elements[3][0] = 0.0f;
-    Out.Elements[3][1] = 0.0f;
-    Out.Elements[3][2] = 0.0f;
-    Out.Elements[3][3] = 1.0f;
-
-    return Out;
-}
-
-/*
  * Utility Functions
  */
 
@@ -755,8 +687,15 @@ static inline float Rr_Damp(float A, float Time, float B)
     return Rr_Lerp(A, 1.0f - expf(-Time), B);
 }
 
+static inline float Rr_ToVerticalFieldOfView(
+    const float HorizontalFieldOfView,
+    const float Aspect)
+{
+    return 2.0f * atanf((tanf(HorizontalFieldOfView / 2.0f) * Aspect));
+}
+
 /*
- * Vector initialization
+ * Vector Initialization
  */
 
 static inline Rr_Vec2 Rr_V2(float X, float Y)
@@ -865,7 +804,7 @@ static inline Rr_Vec4 Rr_CastV4(Rr_IntVec4 A)
 }
 
 /*
- * Integer vector initialization
+ * Integer Vector Initialization
  */
 
 static inline Rr_IntVec2 Rr_IntV2(int32_t X, int32_t Y)
@@ -969,7 +908,7 @@ static inline Rr_IntVec4 Rr_CastIntV4(Rr_Vec4 A)
 }
 
 /*
- * Binary vector operations
+ * Binary Vector Operations
  */
 
 static inline Rr_Vec2 Rr_AddV2(Rr_Vec2 Left, Rr_Vec2 Right)
@@ -1307,11 +1246,9 @@ static inline float Rr_DotV4(Rr_Vec4 Left, Rr_Vec4 Right)
 {
     float Result;
 
-    // NOTE(zak): IN the future if we wanna check what version SSE is support
-    // we can use _mm_dp_ps (4.3) but for now we will use the old way.
-    // Or a r = _mm_mul_ps(v1, v2), r = _mm_hadd_ps(r, r), r = _mm_hadd_ps(r, r)
-    // for SSE3
-#if defined(RR_MATH_SSE)
+#if defined(RR_MATH_SSE4_1)
+    Result = _mm_cvtss_f32(_mm_dp_ps(Left.SSE, Right.SSE, 0xFF));
+#elif defined(RR_MATH_SSE)
     __m128 SSEResultOne = _mm_mul_ps(Left.SSE, Right.SSE);
     __m128 SSEResultTwo =
         _mm_shuffle_ps(SSEResultOne, SSEResultOne, _MM_SHUFFLE(2, 3, 0, 1));
@@ -1424,7 +1361,7 @@ static inline Rr_Vec4 Rr_MaxV4(Rr_Vec4 A, Rr_Vec4 B)
 }
 
 /*
- * Binary integer vector operations
+ * Binary Integer Vector Operations
  */
 
 static inline Rr_IntVec2 Rr_AddIntV2(Rr_IntVec2 Left, Rr_IntVec2 Right)
@@ -1810,7 +1747,7 @@ static inline Rr_IntVec4 Rr_MaxIntV4(Rr_IntVec4 A, Rr_IntVec4 B)
 }
 
 /*
- * Unary vector operations
+ * Unary Vector Operations
  */
 
 static inline float Rr_LenSqrV2(Rr_Vec2 A)
@@ -2055,7 +1992,7 @@ static inline Rr_Vec4 Rr_RoundV4(Rr_Vec4 A)
 }
 
 /*
- * Ternary vector operations
+ * Ternary Vector Operations
  */
 
 static inline Rr_Vec2 Rr_LerpV2(Rr_Vec2 A, float Time, Rr_Vec2 B)
@@ -2086,66 +2023,6 @@ static inline Rr_Vec4 Rr_LerpV4(Rr_Vec4 A, float Time, Rr_Vec4 B)
 static inline Rr_Vec4 Rr_DampV4(Rr_Vec4 A, float Time, Rr_Vec4 B)
 {
     return Rr_LerpV4(A, 1.0f - expf(-Time), B);
-}
-
-/*
- * SSE stuff
- */
-
-static inline Rr_Vec4 Rr_LinearCombineV4M4(Rr_Vec4 Left, Rr_Mat4 Right)
-{
-    Rr_Vec4 Result;
-
-#if defined(RR_MATH_SSE)
-    Result.SSE = _mm_mul_ps(
-        _mm_shuffle_ps(Left.SSE, Left.SSE, 0x00),
-        Right.Columns[0].SSE);
-    Result.SSE = _mm_add_ps(
-        Result.SSE,
-        _mm_mul_ps(
-            _mm_shuffle_ps(Left.SSE, Left.SSE, 0x55),
-            Right.Columns[1].SSE));
-    Result.SSE = _mm_add_ps(
-        Result.SSE,
-        _mm_mul_ps(
-            _mm_shuffle_ps(Left.SSE, Left.SSE, 0xaa),
-            Right.Columns[2].SSE));
-    Result.SSE = _mm_add_ps(
-        Result.SSE,
-        _mm_mul_ps(
-            _mm_shuffle_ps(Left.SSE, Left.SSE, 0xff),
-            Right.Columns[3].SSE));
-#elif defined(RR_MATH_NEON)
-    Result.NEON = vmulq_laneq_f32(Right.Columns[0].NEON, Left.NEON, 0);
-    Result.NEON =
-        vfmaq_laneq_f32(Result.NEON, Right.Columns[1].NEON, Left.NEON, 1);
-    Result.NEON =
-        vfmaq_laneq_f32(Result.NEON, Right.Columns[2].NEON, Left.NEON, 2);
-    Result.NEON =
-        vfmaq_laneq_f32(Result.NEON, Right.Columns[3].NEON, Left.NEON, 3);
-#else
-    Result.X = Left.Elements[0] * Right.Columns[0].X;
-    Result.Y = Left.Elements[0] * Right.Columns[0].Y;
-    Result.Z = Left.Elements[0] * Right.Columns[0].Z;
-    Result.W = Left.Elements[0] * Right.Columns[0].W;
-
-    Result.X += Left.Elements[1] * Right.Columns[1].X;
-    Result.Y += Left.Elements[1] * Right.Columns[1].Y;
-    Result.Z += Left.Elements[1] * Right.Columns[1].Z;
-    Result.W += Left.Elements[1] * Right.Columns[1].W;
-
-    Result.X += Left.Elements[2] * Right.Columns[2].X;
-    Result.Y += Left.Elements[2] * Right.Columns[2].Y;
-    Result.Z += Left.Elements[2] * Right.Columns[2].Z;
-    Result.W += Left.Elements[2] * Right.Columns[2].W;
-
-    Result.X += Left.Elements[3] * Right.Columns[3].X;
-    Result.Y += Left.Elements[3] * Right.Columns[3].Y;
-    Result.Z += Left.Elements[3] * Right.Columns[3].Z;
-    Result.W += Left.Elements[3] * Right.Columns[3].W;
-#endif
-
-    return Result;
 }
 
 /*
@@ -2516,14 +2393,70 @@ static inline Rr_Mat4 Rr_SubM4(Rr_Mat4 Left, Rr_Mat4 Right)
     return Result;
 }
 
+static inline Rr_Vec4 Rr_MulM4V4(Rr_Mat4 Matrix, Rr_Vec4 Vector)
+{
+    Rr_Vec4 Result;
+
+#if defined(RR_MATH_SSE)
+    Result.SSE = _mm_mul_ps(
+        _mm_shuffle_ps(Vector.SSE, Vector.SSE, 0x00),
+        Matrix.Columns[0].SSE);
+    Result.SSE = _mm_add_ps(
+        Result.SSE,
+        _mm_mul_ps(
+            _mm_shuffle_ps(Vector.SSE, Vector.SSE, 0x55),
+            Matrix.Columns[1].SSE));
+    Result.SSE = _mm_add_ps(
+        Result.SSE,
+        _mm_mul_ps(
+            _mm_shuffle_ps(Vector.SSE, Vector.SSE, 0xaa),
+            Matrix.Columns[2].SSE));
+    Result.SSE = _mm_add_ps(
+        Result.SSE,
+        _mm_mul_ps(
+            _mm_shuffle_ps(Vector.SSE, Vector.SSE, 0xff),
+            Matrix.Columns[3].SSE));
+#elif defined(RR_MATH_NEON)
+    Result.NEON = vmulq_laneq_f32(Matrix.Columns[0].NEON, Vector.NEON, 0);
+    Result.NEON =
+        vfmaq_laneq_f32(Result.NEON, Matrix.Columns[1].NEON, Vector.NEON, 1);
+    Result.NEON =
+        vfmaq_laneq_f32(Result.NEON, Matrix.Columns[2].NEON, Vector.NEON, 2);
+    Result.NEON =
+        vfmaq_laneq_f32(Result.NEON, Matrix.Columns[3].NEON, Vector.NEON, 3);
+#else
+    Result.X = Vector.Elements[0] * Matrix.Columns[0].X;
+    Result.Y = Vector.Elements[0] * Matrix.Columns[0].Y;
+    Result.Z = Vector.Elements[0] * Matrix.Columns[0].Z;
+    Result.W = Vector.Elements[0] * Matrix.Columns[0].W;
+
+    Result.X += Vector.Elements[1] * Matrix.Columns[1].X;
+    Result.Y += Vector.Elements[1] * Matrix.Columns[1].Y;
+    Result.Z += Vector.Elements[1] * Matrix.Columns[1].Z;
+    Result.W += Vector.Elements[1] * Matrix.Columns[1].W;
+
+    Result.X += Vector.Elements[2] * Matrix.Columns[2].X;
+    Result.Y += Vector.Elements[2] * Matrix.Columns[2].Y;
+    Result.Z += Vector.Elements[2] * Matrix.Columns[2].Z;
+    Result.W += Vector.Elements[2] * Matrix.Columns[2].W;
+
+    Result.X += Vector.Elements[3] * Matrix.Columns[3].X;
+    Result.Y += Vector.Elements[3] * Matrix.Columns[3].Y;
+    Result.Z += Vector.Elements[3] * Matrix.Columns[3].Z;
+    Result.W += Vector.Elements[3] * Matrix.Columns[3].W;
+#endif
+
+    return Result;
+}
+
 static inline Rr_Mat4 Rr_MulM4(Rr_Mat4 Left, Rr_Mat4 Right)
 {
     Rr_Mat4 Result;
 
-    Result.Columns[0] = Rr_LinearCombineV4M4(Right.Columns[0], Left);
-    Result.Columns[1] = Rr_LinearCombineV4M4(Right.Columns[1], Left);
-    Result.Columns[2] = Rr_LinearCombineV4M4(Right.Columns[2], Left);
-    Result.Columns[3] = Rr_LinearCombineV4M4(Right.Columns[3], Left);
+    Result.Columns[0] = Rr_MulM4V4(Left, Right.Columns[0]);
+    Result.Columns[1] = Rr_MulM4V4(Left, Right.Columns[1]);
+    Result.Columns[2] = Rr_MulM4V4(Left, Right.Columns[2]);
+    Result.Columns[3] = Rr_MulM4V4(Left, Right.Columns[3]);
 
     return Result;
 }
@@ -2563,11 +2496,6 @@ static inline Rr_Mat4 Rr_MulM4F(Rr_Mat4 Matrix, float Scalar)
 #endif
 
     return Result;
-}
-
-static inline Rr_Vec4 Rr_MulM4V4(Rr_Mat4 Matrix, Rr_Vec4 Vector)
-{
-    return Rr_LinearCombineV4M4(Vector, Matrix);
 }
 
 static inline Rr_Mat4 Rr_DivM4F(Rr_Mat4 Matrix, float Scalar)
@@ -2802,6 +2730,17 @@ static inline Rr_Mat4 Rr_InvPerspective_LH(Rr_Mat4 PerspectiveMatrix)
     return Result;
 }
 
+static inline Rr_Mat4 Rr_PerspectiveResize(
+    float Aspect,
+    Rr_Mat4 PerspectiveMatrix)
+{
+    Rr_Mat4 Result = PerspectiveMatrix;
+
+    Result.Elements[0][0] = Result.Elements[1][1] / Aspect;
+
+    return Result;
+}
+
 static inline Rr_Mat4 Rr_Translate(float X, float Y, float Z)
 {
     Rr_Mat4 Result = Rr_M4D(1.0f);
@@ -2858,6 +2797,43 @@ static inline Rr_Mat4 Rr_Rotate_LH(float Angle, Rr_Vec3 Axis)
 {
     /* NOTE(lcf): Matrix will be inverse/transpose of RH. */
     return Rr_Rotate_RH(-Angle, Axis);
+}
+
+static inline Rr_Mat4 Rr_RotateAngles(Rr_Vec3 Angles)
+{
+    float CosX, CosY, CosZ, SinX, SinY, SinZ, CosZSinX, CosXCosZ, SinYSinZ;
+
+    Rr_Mat4 Out;
+
+    SinX = Rr_SinF(Angles.X);
+    CosX = Rr_CosF(Angles.X);
+    SinY = Rr_SinF(Angles.Y);
+    CosY = Rr_CosF(Angles.Y);
+    SinZ = Rr_SinF(Angles.Z);
+    CosZ = Rr_CosF(Angles.Z);
+
+    CosZSinX = CosZ * SinX;
+    CosXCosZ = CosX * CosZ;
+    SinYSinZ = SinY * SinZ;
+
+    Out.Elements[0][0] = CosY * CosZ;
+    Out.Elements[0][1] = CosZSinX * SinY + CosX * SinZ;
+    Out.Elements[0][2] = -CosXCosZ * SinY + SinX * SinZ;
+    Out.Elements[1][0] = -CosY * SinZ;
+    Out.Elements[1][1] = CosXCosZ - SinX * SinYSinZ;
+    Out.Elements[1][2] = CosZSinX + CosX * SinYSinZ;
+    Out.Elements[2][0] = SinY;
+    Out.Elements[2][1] = -CosY * SinX;
+    Out.Elements[2][2] = CosX * CosY;
+    Out.Elements[0][3] = 0.0f;
+    Out.Elements[1][3] = 0.0f;
+    Out.Elements[2][3] = 0.0f;
+    Out.Elements[3][0] = 0.0f;
+    Out.Elements[3][1] = 0.0f;
+    Out.Elements[3][2] = 0.0f;
+    Out.Elements[3][3] = 1.0f;
+
+    return Out;
 }
 
 static inline Rr_Mat4 Rr_InvRotate(Rr_Mat4 RotationMatrix)

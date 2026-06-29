@@ -286,7 +286,7 @@ struct SPrerenderedDepthApp
                             Rr_Rotate_RH(Time * 3.0f, Rr_V3(0.0f, 1.0f, 0.0f)) * Rr_ScaleV(Rr_V3F(0.5f));
 
         UniformData.View =
-            Rr_EulerXYZ(Rr_V3(RR_ANGLE_DEG(Rotation.X), RR_ANGLE_DEG(Rotation.Y), RR_ANGLE_DEG(Rotation.Z))) *
+            Rr_RotateAngles(Rr_V3(RR_ANGLE_DEG(Rotation.X), RR_ANGLE_DEG(Rotation.Y), RR_ANGLE_DEG(Rotation.Z))) *
             Rr_TranslateV(Position);
         UniformData.Projection =
             Rr_Perspective_RH(RR_ANGLE_DEG(25.48), (float)BackgroundExtent.X / (float)BackgroundExtent.Y, 0.5f, 50.0f);
