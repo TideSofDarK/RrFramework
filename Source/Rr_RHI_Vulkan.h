@@ -1330,24 +1330,6 @@ static inline Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
             return RR_IMAGE_FORMAT_R8G8_SINT;
         case VK_FORMAT_R8G8_SRGB:
             return RR_IMAGE_FORMAT_R8G8_SRGB;
-            /* R8G8B8 */
-        case VK_FORMAT_R8G8B8_UNORM:
-            return RR_IMAGE_FORMAT_R8G8B8_UNORM;
-        case VK_FORMAT_R8G8B8_UINT:
-            return RR_IMAGE_FORMAT_R8G8B8_UINT;
-        case VK_FORMAT_R8G8B8_SINT:
-            return RR_IMAGE_FORMAT_R8G8B8_SINT;
-        case VK_FORMAT_R8G8B8_SRGB:
-            return RR_IMAGE_FORMAT_R8G8B8_SRGB;
-            /* B8G8R8 */
-        case VK_FORMAT_B8G8R8_UNORM:
-            return RR_IMAGE_FORMAT_B8G8R8_UNORM;
-        case VK_FORMAT_B8G8R8_UINT:
-            return RR_IMAGE_FORMAT_B8G8R8_UINT;
-        case VK_FORMAT_B8G8R8_SINT:
-            return RR_IMAGE_FORMAT_B8G8R8_SINT;
-        case VK_FORMAT_B8G8R8_SRGB:
-            return RR_IMAGE_FORMAT_B8G8R8_SRGB;
             /* R8G8B8A8 */
         case VK_FORMAT_R8G8B8A8_UNORM:
             return RR_IMAGE_FORMAT_R8G8B8A8_UNORM;
@@ -1427,24 +1409,6 @@ static VkFormat Rr_ToVulkanImageFormat(Rr_ImageFormat ImageFormat)
             return VK_FORMAT_R8G8_SINT;
         case RR_IMAGE_FORMAT_R8G8_SRGB:
             return VK_FORMAT_R8G8_SRGB;
-            /* R8G8B8 */
-        case RR_IMAGE_FORMAT_R8G8B8_UNORM:
-            return VK_FORMAT_R8G8B8_UNORM;
-        case RR_IMAGE_FORMAT_R8G8B8_UINT:
-            return VK_FORMAT_R8G8B8_UINT;
-        case RR_IMAGE_FORMAT_R8G8B8_SINT:
-            return VK_FORMAT_R8G8B8_SINT;
-        case RR_IMAGE_FORMAT_R8G8B8_SRGB:
-            return VK_FORMAT_R8G8B8_SRGB;
-            /* B8G8R8 */
-        case RR_IMAGE_FORMAT_B8G8R8_UNORM:
-            return VK_FORMAT_B8G8R8_UNORM;
-        case RR_IMAGE_FORMAT_B8G8R8_UINT:
-            return VK_FORMAT_B8G8R8_UINT;
-        case RR_IMAGE_FORMAT_B8G8R8_SINT:
-            return VK_FORMAT_B8G8R8_SINT;
-        case RR_IMAGE_FORMAT_B8G8R8_SRGB:
-            return VK_FORMAT_B8G8R8_SRGB;
             /* R8G8B8A8 */
         case RR_IMAGE_FORMAT_R8G8B8A8_UNORM:
             return VK_FORMAT_R8G8B8A8_UNORM;

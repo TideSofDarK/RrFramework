@@ -44,8 +44,6 @@ bool Rr_IsDepthFormat(Rr_ImageFormat Format)
 bool Rr_IsSRGBFormat(Rr_ImageFormat Format)
 {
     return Format == RR_IMAGE_FORMAT_R8G8_SRGB ||
-           Format == RR_IMAGE_FORMAT_R8G8B8_SRGB ||
-           Format == RR_IMAGE_FORMAT_B8G8R8_SRGB ||
            Format == RR_IMAGE_FORMAT_R8G8B8A8_SRGB ||
            Format == RR_IMAGE_FORMAT_B8G8R8A8_SRGB ||
            Format == RR_IMAGE_FORMAT_A8B8G8R8_SRGB_PACK32;
@@ -59,10 +57,6 @@ Rr_ImageFormat Rr_ToUNORMFormat(Rr_ImageFormat Format)
             return RR_IMAGE_FORMAT_R8_UNORM;
         case RR_IMAGE_FORMAT_R8G8_SRGB:
             return RR_IMAGE_FORMAT_R8G8_UNORM;
-        case RR_IMAGE_FORMAT_R8G8B8_SRGB:
-            return RR_IMAGE_FORMAT_R8G8B8_UNORM;
-        case RR_IMAGE_FORMAT_B8G8R8_SRGB:
-            return RR_IMAGE_FORMAT_B8G8R8_UNORM;
         case RR_IMAGE_FORMAT_R8G8B8A8_SRGB:
             return RR_IMAGE_FORMAT_R8G8B8A8_UNORM;
         case RR_IMAGE_FORMAT_B8G8R8A8_SRGB:
