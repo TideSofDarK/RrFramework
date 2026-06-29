@@ -15,9 +15,9 @@ layout(location = 4) out flat uint OutFaceIndex;
 struct SGPUSurface
 {
     vec3 VectorX;
-    float DistanceX;
+    float OffsetX;
     vec3 VectorY;
-    float DistanceY;
+    float OffsetY;
     int Sky;
     int Water;
     int Unused1;
@@ -72,8 +72,8 @@ void main()
     else
     {
         OutTexCoord.xy = vec2(
-                dot(InPosition, Surface.VectorX) + Surface.DistanceX,
-                dot(InPosition, Surface.VectorY) + Surface.DistanceY);
+                dot(InPosition, Surface.VectorX) + Surface.OffsetX,
+                dot(InPosition, Surface.VectorY) + Surface.OffsetY);
         OutTexCoord.zw = vec2(Face.LightmapSize) * 0.5 + (OutTexCoord.xy - Face.MidPolyUV) / 16.0;
     }
 

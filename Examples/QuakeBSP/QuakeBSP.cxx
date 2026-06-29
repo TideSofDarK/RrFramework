@@ -5,8 +5,8 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <cstring>
 #include <span>
+#include <string_view>
 #include <unordered_set>
 #include <vector>
 
@@ -92,10 +92,10 @@ struct SModel
 
 struct SSurface
 {
-    Rr_Vec3 VectorS;
-    float DistanceS;
-    Rr_Vec3 VectorT;
-    float DistanceT;
+    Rr_Vec3 VectorX;
+    float OffsetX;
+    Rr_Vec3 VectorY;
+    float OffsetY;
     uint32_t MipTexIndex;
     uint32_t Animated;
 };
@@ -414,8 +414,8 @@ class CQuakeBSPApp
                 auto &Edge = QuakeBSP.Edges[EdgeIndex >= 0 ? EdgeIndex : -EdgeIndex];
                 auto Vertex = QuakeBSP.Vertices[EdgeIndex >= 0 ? Edge.Vertex0 : Edge.Vertex1];
                 VertexTexCoords[EdgeListIndex] = Rr_V2(
-                    Rr_DotV3(Vertex, Surface.VectorS) + Surface.DistanceS,
-                    Rr_DotV3(Vertex, Surface.VectorT) + Surface.DistanceT);
+                    Rr_DotV3(Vertex, Surface.VectorX) + Surface.OffsetX,
+                    Rr_DotV3(Vertex, Surface.VectorY) + Surface.OffsetY);
             }
 
             auto MinTexCoord = Rr_V2F(9999999);
@@ -609,14 +609,14 @@ class CQuakeBSPApp
             auto Offset = QuakeBSP.MipHeader->Offsets[Surface.MipTexIndex];
             auto MipTexRaw = (std::byte *)QuakeBSP.MipHeader + Offset;
             auto MipTex = (SMipTex *)MipTexRaw;
-            auto Sky = !std::strncmp("sky", MipTex->Name, 3);
+            auto Sky = std::string_view{ MipTex->Name }.starts_with("sky");
             auto Water = MipTex->Name[0] == '*';
             GPUSurfaces.emplace_back(
                 SGPUSurface{
-                    .VectorX = Surface.VectorS,
-                    .DistanceX = Surface.DistanceS,
-                    .VectorY = Surface.VectorT,
-                    .DistanceY = Surface.DistanceT,
+                    .VectorX = Surface.VectorX,
+                    .DistanceX = Surface.OffsetX,
+                    .VectorY = Surface.VectorY,
+                    .DistanceY = Surface.OffsetY,
                     .Sky = Sky,
                     .Water = Water,
                 });

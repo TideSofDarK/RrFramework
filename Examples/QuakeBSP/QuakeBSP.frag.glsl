@@ -11,9 +11,9 @@ layout(location = 0) out vec4 OutColor;
 struct SGPUSurface
 {
     vec3 VectorX;
-    float DistanceX;
+    float OffsetX;
     vec3 VectorY;
-    float DistanceY;
+    float OffsetY;
     int Sky;
     int Water;
     int Unused1;
