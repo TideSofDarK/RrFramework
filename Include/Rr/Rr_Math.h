@@ -21,7 +21,7 @@
 #ifndef RR_MATH_H
 #define RR_MATH_H
 
-#include <Rr/Rr_Defines.h>
+#include <Rr/Rr_Common.h>
 
 #if defined(__cplusplus)
 #include <cmath>

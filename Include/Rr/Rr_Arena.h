@@ -21,7 +21,7 @@
 #ifndef RR_ARENA_H
 #define RR_ARENA_H
 
-#include <Rr/Rr_Defines.h>
+#include <Rr/Rr_Common.h>
 
 typedef struct Rr_Arena Rr_Arena;
 typedef struct Rr_TSArena Rr_TSArena;

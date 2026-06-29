@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <Rr/Rr_Defines.h>
+#include <Rr/Rr_Common.h>
 
 #if defined(RR_MSVC)
 #define WIN32_LEAN_AND_MEAN

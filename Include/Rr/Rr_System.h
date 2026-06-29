@@ -21,7 +21,7 @@
 #ifndef RR_SYSTEM_H
 #define RR_SYSTEM_H
 
-#include <Rr/Rr_Defines.h>
+#include <Rr/Rr_Common.h>
 
 #ifdef __cplusplus
 extern "C" {

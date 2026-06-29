@@ -45,21 +45,15 @@
       Linear tiling appears useless. Added more common format support instead.
 - [X] Public API should use const where applicable.
 - [X] Vulkan: flexible image subresource layouts inside compute nodes.
-- [ ] Vulkan: memory defragmentation.
-- [ ] Minimal error handling pass.
-      Implement Rr_GetErrorString().
-	1) Image/buffer creation.
-	2) Graph node creation.
-	3) Binding resources.
+- [X] Error handling: RHI resource creation.
+- [ ] Reassess usage of assert() across the library code.
 - [ ] Extend Rr_Config.
       More window options.
       Arena sizes.
       GPU memory strategies.
       More?
 - [ ] Documentation.
-- [ ] Custom assertions.
 - [ ] Replace hash trie usage with Rr_HashTable.h where applicable.
-- [ ] Array implementation is a bit ugly...
 - [ ] Rr_ReleaseXXX functions can validate input pointer via getting hive iterator.
 
 * Features
@@ -139,9 +133,11 @@
 - [X] Own implementation of Windows/Linux platform layers.
 - [X] Make Rr_HashMap and Rr_Hive follow somewhat similar conventions.
 - [X] Rr_IntVec* operators.
+- [ ] Vulkan: memory defragmentation.
 - [ ] Vulkan: combine image views if format supports both STORAGE and SAMPLED.
 - [ ] Add support for uniform texel buffers.
 - [ ] Convert Rr_HashTrie into inline header-based collection.
+- [ ] Convert RR_ARRAY into inline header-based collection.
 - [ ] Header-based stuff should probably be internal.
       The goal is API that's 100% accessible from other languages.
       Nothing can be done about Rr_Math.h though?

@@ -21,7 +21,7 @@
 #ifndef RR_LOG_H
 #define RR_LOG_H
 
-#include <Rr/Rr_Defines.h>
+#include <Rr/Rr_Common.h>
 
 #ifdef __cplusplus
 #include <cstdarg>

@@ -24,7 +24,7 @@
 #include <Rr/Rr_App.h>
 #include <Rr/Rr_Arena.h>
 #include <Rr/Rr_Asset.h>
-#include <Rr/Rr_Defines.h>
+#include <Rr/Rr_Common.h>
 #include <Rr/Rr_Graph.h>
 #include <Rr/Rr_Log.h>
 #include <Rr/Rr_Math.h>

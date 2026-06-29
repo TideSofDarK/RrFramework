@@ -21,7 +21,7 @@
 #ifndef RR_ASSET_H
 #define RR_ASSET_H
 
-#include <Rr/Rr_Defines.h>
+#include <Rr/Rr_Common.h>
 
 typedef struct Rr_Asset Rr_Asset;
 struct Rr_Asset

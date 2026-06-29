@@ -21,7 +21,7 @@
 #ifndef RR_SERIALIZATION_H
 #define RR_SERIALIZATION_H
 
-#include <Rr/Rr_Defines.h>
+#include <Rr/Rr_Common.h>
 
 struct Rr_PipelineSpecialization;
 struct Rr_ShaderInfo;
