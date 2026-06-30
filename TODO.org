@@ -48,10 +48,9 @@
 - [X] Error handling: RHI resource creation.
 - [ ] Reassess usage of assert() across the library code.
 - [ ] Extend Rr_Config.
-      More window options.
-      Arena sizes.
-      GPU memory strategies.
-      More?
+  - [ ] More window options.
+  - [ ] Arena reserve/commit size.
+  - [ ] GPU allocator chunk size.
 - [ ] Documentation.
 - [ ] Replace hash trie usage with Rr_HashTable.h where applicable.
 - [ ] Rr_ReleaseXXX functions can validate input pointer via getting hive iterator.
@@ -91,7 +90,6 @@
 - [X] Radio buttons.
 - [X] Nested windows.
 - [X] Swap font rendering with stb_truetype.
-- [ ] Finally fix flickering.
 - [ ] Hide flexible widgets properly when layout lacks available width.
 - [ ] Input field doesn't lose focus when clicking elsewhere.
 - [ ] Child window borders ignore mouse wheel events.
@@ -99,6 +97,13 @@
 - [ ] Horizontal scrollbar.
 - [ ] Some options for horizontal child layouts + asserts.
 - [ ] More animations.
+- [ ] Flickering:
+  - [ ] Uncollapsing a child window. Parent fails to adjust its size immediately.
+  - [ ] Uncollapsing something for the first time. Flexible widgets have no idea how much width is available.
+        Seems unfixable without deferring?
+  - [ ] Scrollbar hide/show lags one frame behind.
+  - [ ] Tabs flicker 2 or 3 times depending on the order.
+        Probably tackle this after fixing the rest of the flickering.
 
 ** Debug
 
@@ -110,9 +115,10 @@
 
 ** Examples
 
-- [X] Modern Rendering
-- [ ] Modern Rendering: Better SSAO
-- [ ] Modern Rendering: Temporal AA?
+- [ ] Modern Rendering
+  - [X] Implement PBR.
+  - [ ] Improve SSAO.
+  - [ ] Fix or replace MSAA.
 - [X] Pre-rendered Depth
 - [ ] Particles
 - [ ] Light Space Perspective Shadow Maps
@@ -143,3 +149,4 @@
       Nothing can be done about Rr_Math.h though?
 - [ ] Further RHI decoupling.
 - [ ] Support for immutable buffers/images that don't require synchronization.
+- [ ] Controller support.
