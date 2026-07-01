@@ -4355,6 +4355,40 @@ static inline bool Rr_UIShouldHightlightWindow(Rr_UIWindow *Window)
     return ClickParent;
 }
 
+static inline void Rr_UIClampWindowToScreen(Rr_UIWindow *Window)
+{
+    Rr_Vec2 *TopLevelOffset = &Window->TopLevelParent->Rect.Offset;
+    Rr_Vec2 *TopLevelExtent = &Window->TopLevelParent->Rect.Extent;
+
+    float MinOffset = Rr_UIWindowNoBorders(Window->TopLevelParent)
+                          ? 0.0f
+                          : gUIContext->FrameThickness;
+
+    if (TopLevelOffset->X < MinOffset)
+    {
+        TopLevelOffset->X = MinOffset;
+    }
+    else if (
+        TopLevelOffset->X >
+        gUIContext->ScreenSize.X - TopLevelExtent->X - MinOffset)
+    {
+        TopLevelOffset->X =
+            gUIContext->ScreenSize.X - TopLevelExtent->X - MinOffset;
+    }
+
+    if (TopLevelOffset->Y < MinOffset)
+    {
+        TopLevelOffset->Y = MinOffset;
+    }
+    else if (
+        TopLevelOffset->Y >
+        gUIContext->ScreenSize.Y - TopLevelExtent->Y - MinOffset)
+    {
+        TopLevelOffset->Y =
+            gUIContext->ScreenSize.Y - TopLevelExtent->Y - MinOffset;
+    }
+}
+
 void Rr_UIEndWindow(void)
 {
     Rr_UIAssertWindow();
@@ -4554,36 +4588,7 @@ void Rr_UIEndWindow(void)
 
         if (Layout->DeferredClampOffsetToScreen)
         {
-            Rr_Vec2 *TopLevelOffset = &Window->TopLevelParent->Rect.Offset;
-            Rr_Vec2 *TopLevelExtent = &Window->TopLevelParent->Rect.Extent;
-
-            float MinOffset = Rr_UIWindowNoBorders(Window->TopLevelParent)
-                                  ? 0.0f
-                                  : gUIContext->FrameThickness;
-
-            if (TopLevelOffset->X < MinOffset)
-            {
-                TopLevelOffset->X = MinOffset;
-            }
-            else if (
-                TopLevelOffset->X >
-                gUIContext->ScreenSize.X - TopLevelExtent->X - MinOffset)
-            {
-                TopLevelOffset->X =
-                    gUIContext->ScreenSize.X - TopLevelExtent->X - MinOffset;
-            }
-
-            if (TopLevelOffset->Y < MinOffset)
-            {
-                TopLevelOffset->Y = MinOffset;
-            }
-            else if (
-                TopLevelOffset->Y >
-                gUIContext->ScreenSize.Y - TopLevelExtent->Y - MinOffset)
-            {
-                TopLevelOffset->Y =
-                    gUIContext->ScreenSize.Y - TopLevelExtent->Y - MinOffset;
-            }
+            Rr_UIClampWindowToScreen(Window);
         }
     }
 
