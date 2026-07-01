@@ -3756,6 +3756,18 @@ static inline bool Rr_UIPushWindowLayout(
         }
     }
 
+    Rr_UIApplyNextWindowVec2(
+        &Window->Rect.Offset,
+        gUI->NextWindowFlags.OffsetX,
+        gUI->NextWindowFlags.OffsetY,
+        gUI->NextWindowOffset);
+
+    Rr_UIApplyNextWindowVec2(
+        &Window->Rect.Extent,
+        gUI->NextWindowFlags.ExtentX,
+        gUI->NextWindowFlags.ExtentY,
+        gUI->NextWindowExtent);
+
     /* Return if closed.
      * Also handle show after being closed.
      * This will put window on top unless there is a flag
@@ -8596,13 +8608,6 @@ void Rr_InitUI(void)
 
     gUI = Rr_Alloc(sizeof(Rr_UI), Arena);
     gUI->Arena = Arena;
-
-    gUI->NextWindowExtent = Rr_V2F(INFINITY);
-    gUI->NextWindowMinExtent = Rr_V2F(INFINITY);
-    gUI->NextWindowMaxExtent = Rr_V2F(INFINITY);
-    gUI->NextWindowOffset = Rr_V2F(INFINITY);
-    gUI->NextWindowOpenOffset = Rr_V2F(INFINITY);
-    gUI->NextWindowPadding = Rr_V2F(INFINITY);
 
     float DefaultFontSize = 10.0f * Rr_GetDisplayScale();
     Rr_Asset FontAsset = Rr_LoadAsset(RR_BUILTIN_SOURCESERIF4_TTF);
