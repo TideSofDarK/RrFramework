@@ -3483,7 +3483,7 @@ static inline Rr_Vec2 Rr_RectCenter(Rr_Rect *Rect)
     return Rr_AddV2(Rect->Offset, Rr_MulV2F(Rect->Extent, 0.5f));
 }
 
-static inline Rr_Rect Rr_ResizeRect(Rr_Rect *Rect, float Amount)
+static inline Rr_Rect Rr_ResizeRect(Rr_Rect const *Rect, float Amount)
 {
     Rr_Rect Result = *Rect;
 
