@@ -4328,6 +4328,11 @@ void Rr_UIEndWindow(void)
     Rr_UIWindow *Window = Layout->Window;
     Rr_UIFont *Font = Rr_UICurrentFont();
 
+    bool Resize = !(Window->Flags & RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
+    bool TitleBar = !(Window->Flags & RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT);
+    bool Borders = !(Window->Flags & RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT);
+    bool Background = !(Window->Flags & RR_UI_WINDOW_FLAGS_NO_BACKGROUND_BIT);
+
     Rr_UIAssertNoHorizontal(Layout);
 
     /* Apply deferred layout properties. */
@@ -4340,7 +4345,7 @@ void Rr_UIEndWindow(void)
     Window->SelectedTab = Layout->DeferredSelectedTab;
 
     Rr_Rect TotalClipRect = Layout->Rect;
-    if (!Rr_UIWindowNoBorders(Window))
+    if (Borders)
     {
         TotalClipRect = Rr_ResizeRect(&Layout->Rect, gUI->DoubleBevelThickness);
     }
@@ -4435,7 +4440,7 @@ void Rr_UIEndWindow(void)
         }
     }
 
-    if (!Rr_UIWindowNoBorders(Window))
+    if (Borders)
     {
         Rr_UIDrawDoubleBevel(
             &TotalClipRect,
@@ -4458,20 +4463,23 @@ void Rr_UIEndWindow(void)
 
     if (Window->Child || Layout->DeferredAutoResize)
     {
-        Rr_Vec2 TitleSize = Rr_UICalculateTitleBarSize(Layout);
+        Rr_Vec2 Extent = {
+            Window->ContentsRect.Extent.X + Layout->WindowPadding.X * 2.0f,
+            Window->ContentsRect.Extent.Y + Layout->WindowPadding.Y,
+        };
 
-        Rr_Vec2 Extent;
-        Extent.X =
-            Window->ContentsRect.Extent.X + Layout->WindowPadding.X * 2.0f;
-        Extent.X = RR_MAX(Extent.X, TitleSize.X);
-        Extent.Y = Window->ContentsRect.Extent.Y + Layout->WindowPadding.Y;
+        if (Layout->WasCollapsed && !Window->Child)
+        {
+            Rr_Vec2 TitleSize = Rr_UICalculateTitleBarSize(Layout);
+            Extent.X = TitleSize.X;
+        }
 
-        if (!Rr_UIWindowNoTitleBar(Window))
+        if (TitleBar)
         {
             Extent.Y += gUI->TitleBarHeight;
         }
 
-        if (!Rr_UIWindowNoBorders(Window))
+        if (Borders)
         {
             Extent = Rr_AddV2F(Extent, gUI->DoubleBevelThickness * 2.0f);
         }
@@ -4534,6 +4542,7 @@ void Rr_UIEndWindow(void)
                 }
                 /* Window->Open = false; */
                 RR_ZERO_PTR(Event);
+
                 break;
             }
         }
