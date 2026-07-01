@@ -175,7 +175,8 @@ struct Rr_UILayout
 
     Rr_UIWindow *LastAddedTab;
 
-    bool LockOffset;
+    bool LockOffsetX;
+    bool LockOffsetY;
     bool LockExtentX;
     bool LockExtentY;
 
@@ -213,7 +214,26 @@ typedef enum
     RR_UI_RESIZE_TYPE_SE,
 } Rr_UIResizeType;
 
-struct Rr_UIContext
+typedef struct Rr_UINextWindowFlags Rr_UINextWindowFlags;
+struct Rr_UINextWindowFlags
+{
+    int8_t OpenOffsetX : 1;
+    int8_t OpenOffsetY : 1;
+    int8_t OffsetX : 1;
+    int8_t OffsetY : 1;
+    int8_t ExtentX : 1;
+    int8_t ExtentY : 1;
+    int8_t MinExtentX : 1;
+    int8_t MinExtentY : 1;
+    int8_t MaxExtentX : 1;
+    int8_t MaxExtentY : 1;
+    int8_t PaddingX : 1;
+    int8_t PaddingY : 1;
+    int8_t CreateCollapsed : 2; /* -1 is false and 1 is true! */
+};
+
+typedef struct Rr_UI Rr_UI;
+struct Rr_UI
 {
     Rr_UIColors Colors;
     Rr_UIStyle Style;
@@ -239,13 +259,13 @@ struct Rr_UIContext
     RR_ARRAY(Rr_Vec2) WidgetExtentStack;
     RR_ARRAY(uint32_t) FormatFloatDecimalPlacesStack;
 
+    Rr_UINextWindowFlags NextWindowFlags;
     Rr_Vec2 NextWindowExtent;
     Rr_Vec2 NextWindowMinExtent;
     Rr_Vec2 NextWindowMaxExtent;
     Rr_Vec2 NextWindowOffset;
     Rr_Vec2 NextWindowOpenOffset;
     Rr_Vec2 NextWindowPadding;
-    int8_t NextWindowCreateCollapsed;
 
     Rr_UIMouseButton LeftMouseButton;
     bool MouseMoved;
@@ -336,7 +356,7 @@ struct Rr_UIContext
     Rr_Arena *Arena;
 };
 
-static Rr_UIContext *gUIContext;
+static Rr_UI *gUI;
 
 typedef enum
 {
@@ -362,11 +382,11 @@ static inline Rr_UIStorage *Rr_UIGetStorage(
     Rr_UIStorageType Type)
 {
     Rr_UIStorage **StorageRef =
-        RR_FIND_IN_HASH_TRIE(&Window->WidgetMap, Hash, gUIContext->Arena);
+        RR_FIND_IN_HASH_TRIE(&Window->WidgetMap, Hash, gUI->Arena);
     if (*StorageRef == NULL)
     {
         /* TODO: Storages could be allocated from a hive. */
-        *StorageRef = Rr_Alloc(sizeof(Rr_UIStorage), gUIContext->Arena);
+        *StorageRef = Rr_Alloc(sizeof(Rr_UIStorage), gUI->Arena);
         Rr_UIStorage *Storage = *StorageRef;
         Storage->Type = Type;
 
@@ -532,7 +552,7 @@ static inline Rr_UIFont *Rr_UICreateFontEx(
         AllocationSize += GlyphCount * sizeof(Rr_UIGlyph);
     }
 
-    Rr_UIFont *Font = Rr_AllocNoZero(AllocationSize, gUIContext->Arena);
+    Rr_UIFont *Font = Rr_AllocNoZero(AllocationSize, gUI->Arena);
     Font->AllocationSize = AllocationSize;
     Font->CreatedForSRGBSwapchain = IsSRGBSwapchain;
     Font->RangeCount = CodepointRangeCount;
@@ -707,26 +727,26 @@ void Rr_UIReleaseFont(Rr_UIFont *Font)
 
 static inline Rr_UIFont *Rr_UICurrentFont(void)
 {
-    if (gUIContext->FontStack.Count)
+    if (gUI->FontStack.Count)
     {
-        return RR_LAST_ARRAY_ELEMENT(&gUIContext->FontStack);
+        return RR_LAST_ARRAY_ELEMENT(&gUI->FontStack);
     }
 
-    return gUIContext->DefaultFont;
+    return gUI->DefaultFont;
 }
 
 static inline void Rr_UIConsumeMouseInput(void)
 {
-    gUIContext->LeftMouseButton.Down = false;
-    gUIContext->LeftMouseButton.DownOverWindow = false;
-    gUIContext->LeftMouseButton.Up = false;
-    gUIContext->LeftMouseButton.Held = false;
+    gUI->LeftMouseButton.Down = false;
+    gUI->LeftMouseButton.DownOverWindow = false;
+    gUI->LeftMouseButton.Up = false;
+    gUI->LeftMouseButton.Held = false;
 }
 
 static inline void Rr_UIConsumeMouseAndKeyboardInput(void)
 {
     Rr_UIConsumeMouseInput();
-    RR_CLEAR_ARRAY(&gUIContext->KeyboardInputEvents);
+    RR_CLEAR_ARRAY(&gUI->KeyboardInputEvents);
 }
 
 static inline bool Rr_UIWindowNoTitleBar(Rr_UIWindow *Window)
@@ -791,9 +811,8 @@ static inline bool Rr_UIWindowTabs(Rr_UIWindow *Window)
 
 static inline Rr_UIHash Rr_UICurrentHash(void)
 {
-    return gUIContext->HashStack.Count > 0
-               ? RR_LAST_ARRAY_ELEMENT(&gUIContext->HashStack)
-               : 0;
+    return gUI->HashStack.Count > 0 ? RR_LAST_ARRAY_ELEMENT(&gUI->HashStack)
+                                    : 0;
 }
 
 static inline Rr_UIHash Rr_UIGetHash(
@@ -842,7 +861,7 @@ static inline Rr_UIHash Rr_UIGetTitleHash(
 
 static inline void Rr_UIPushIDHash(Rr_UIHash Hash)
 {
-    *RR_PUSH_INTO_ARRAY(&gUIContext->HashStack, gUIContext->FrameArena) = Hash;
+    *RR_PUSH_INTO_ARRAY(&gUI->HashStack, gUI->FrameArena) = Hash;
 }
 
 void Rr_UIPushID(char const *IDString)
@@ -854,47 +873,44 @@ void Rr_UIPushID(char const *IDString)
 
 void Rr_UIPopID(void)
 {
-    assert(
-        gUIContext->HashStack.Count && "Did you forget to call Rr_UIPushID()?");
-    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->HashStack));
+    assert(gUI->HashStack.Count && "Did you forget to call Rr_UIPushID()?");
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUI->HashStack));
 }
 
 static inline Rr_Vec2 Rr_UICurrentWindowPadding(void)
 {
-    return gUIContext->WindowPaddingStack.Count
-               ? RR_LAST_ARRAY_ELEMENT(&gUIContext->WindowPaddingStack)
-               : gUIContext->WindowPadding;
+    return gUI->WindowPaddingStack.Count
+               ? RR_LAST_ARRAY_ELEMENT(&gUI->WindowPaddingStack)
+               : gUI->WindowPadding;
 }
 
 void Rr_UIPushWindowPadding(Rr_Vec2 WindowPadding)
 {
-    *RR_PUSH_INTO_ARRAY(
-        &gUIContext->WindowPaddingStack,
-        gUIContext->FrameArena) = WindowPadding;
+    *RR_PUSH_INTO_ARRAY(&gUI->WindowPaddingStack, gUI->FrameArena) =
+        WindowPadding;
 }
 
 void Rr_UIPopWindowPadding(void)
 {
-    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->WindowPaddingStack));
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUI->WindowPaddingStack));
 }
 
 static inline Rr_Vec2 Rr_UICurrentContentsMargin(void)
 {
-    return gUIContext->ContentsMarginStack.Count
-               ? RR_LAST_ARRAY_ELEMENT(&gUIContext->ContentsMarginStack)
-               : gUIContext->ContentsMargin;
+    return gUI->ContentsMarginStack.Count
+               ? RR_LAST_ARRAY_ELEMENT(&gUI->ContentsMarginStack)
+               : gUI->ContentsMargin;
 }
 
 void Rr_UIPushContentsMargin(Rr_Vec2 ContentsMargin)
 {
-    *RR_PUSH_INTO_ARRAY(
-        &gUIContext->ContentsMarginStack,
-        gUIContext->FrameArena) = ContentsMargin;
+    *RR_PUSH_INTO_ARRAY(&gUI->ContentsMarginStack, gUI->FrameArena) =
+        ContentsMargin;
 }
 
 void Rr_UIPopContentsMargin(void)
 {
-    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->ContentsMarginStack));
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUI->ContentsMarginStack));
 }
 
 static inline Rr_Rect Rr_UIRectIntersection(
@@ -913,12 +929,12 @@ static inline Rr_Rect Rr_UIRectIntersection(
 
 static inline Rr_UILayout *Rr_UICurrentLayout(void)
 {
-    if (gUIContext->LayoutStack.Count == 0)
+    if (gUI->LayoutStack.Count == 0)
     {
         return NULL;
     }
 
-    return RR_LAST_ARRAY_ELEMENT(&gUIContext->LayoutStack);
+    return RR_LAST_ARRAY_ELEMENT(&gUI->LayoutStack);
 }
 
 static inline void Rr_UIPushEmptyLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
@@ -926,27 +942,24 @@ static inline void Rr_UIPushEmptyLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
     /* I guess we can skip zeroing since skip flags should make it clear it's an
      * empty layout. */
 
-    Rr_UILayout *Layout =
-        Rr_AllocNoZero(sizeof(Rr_UILayout), gUIContext->FrameArena);
+    Rr_UILayout *Layout = Rr_AllocNoZero(sizeof(Rr_UILayout), gUI->FrameArena);
     Layout->Window = Window;
     Layout->SkipCompletely = true;
     Layout->SkipItems = true;
 
     Rr_UIPushIDHash(Hash);
 
-    *RR_PUSH_INTO_ARRAY(&gUIContext->LayoutStack, gUIContext->FrameArena) =
-        Layout;
+    *RR_PUSH_INTO_ARRAY(&gUI->LayoutStack, gUI->FrameArena) = Layout;
 }
 
 static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash)
 {
-    Rr_UILayout *Layout = Rr_Alloc(sizeof(Rr_UILayout), gUIContext->FrameArena);
+    Rr_UILayout *Layout = Rr_Alloc(sizeof(Rr_UILayout), gUI->FrameArena);
 
     Rr_UIPushIDHash(Hash);
 
-    *RR_PUSH_INTO_ARRAY(&gUIContext->LayoutStack, gUIContext->FrameArena) =
-        Layout;
-    *RR_PUSH_INTO_ARRAY(&gUIContext->ActiveLayouts, gUIContext->Arena) = Layout;
+    *RR_PUSH_INTO_ARRAY(&gUI->LayoutStack, gUI->FrameArena) = Layout;
+    *RR_PUSH_INTO_ARRAY(&gUI->ActiveLayouts, gUI->Arena) = Layout;
 
     return Layout;
 }
@@ -954,8 +967,8 @@ static inline Rr_UILayout *Rr_UIPushLayout(Rr_UIHash Hash)
 static inline void Rr_UIPopLayout(void)
 {
     Rr_UIPopID();
-    assert(gUIContext->LayoutStack.Count);
-    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->LayoutStack));
+    assert(gUI->LayoutStack.Count);
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUI->LayoutStack));
 }
 
 static inline bool Rr_UISkipItems(void)
@@ -1006,17 +1019,15 @@ static inline void Rr_UIAssertNoHorizontal(Rr_UILayout *Layout)
 
 Rr_UIPrimitive Rr_UIReservePrimitive(size_t VertexCount, size_t IndexCount)
 {
-    Rr_UIIndex BaseVertex = (Rr_UIIndex)gUIContext->Vertices.Count;
+    Rr_UIIndex BaseVertex = (Rr_UIIndex)gUI->Vertices.Count;
 
     return (Rr_UIPrimitive){
         .Vertices = RR_PUSH_INTO_ARRAY_MANY(
-            &gUIContext->Vertices,
+            &gUI->Vertices,
             VertexCount,
-            gUIContext->FrameArena),
-        .Indices = RR_PUSH_INTO_ARRAY_MANY(
-            &gUIContext->Indices,
-            IndexCount,
-            gUIContext->FrameArena),
+            gUI->FrameArena),
+        .Indices =
+            RR_PUSH_INTO_ARRAY_MANY(&gUI->Indices, IndexCount, gUI->FrameArena),
         .BaseVertex = BaseVertex,
     };
 }
@@ -1659,9 +1670,9 @@ static inline void Rr_UIDrawCheckmark(
     Rr_Vec2 const NE = { -cosf(RR_PI32 * 0.25f), sinf(RR_PI32 * 0.25f) };
     Rr_Vec2 const NW = { cosf(RR_PI32 * 0.25f), sinf(RR_PI32 * 0.25f) };
 
-    float ShortX = Size * gUIContext->Style.CheckmarkRatios.X;
+    float ShortX = Size * gUI->Style.CheckmarkRatios.X;
     float LongX = Size - ShortX;
-    float Thickness = Size * gUIContext->Style.CheckmarkRatios.Y;
+    float Thickness = Size * gUI->Style.CheckmarkRatios.Y;
     float HypoY = sqrtf(Thickness * Thickness + Thickness * Thickness);
     float ShortY = Thickness / sqrtf(2.0f);
 
@@ -1817,16 +1828,12 @@ static inline void Rr_UIDrawDoubleBevel(
     float Thickness)
 {
     Rr_Vec4 ColorLight;
-    ColorLight.RGB = Rr_LerpV3(
-        Color->RGB,
-        gUIContext->Style.BevelIntensityLight,
-        RR_UI_VEC3_ONE);
+    ColorLight.RGB =
+        Rr_LerpV3(Color->RGB, gUI->Style.BevelIntensityLight, RR_UI_VEC3_ONE);
     ColorLight.A = 1.0f;
     Rr_Vec4 ColorDark;
-    ColorDark.RGB = Rr_LerpV3(
-        Color->RGB,
-        gUIContext->Style.BevelIntensityDark,
-        RR_UI_VEC3_ZERO);
+    ColorDark.RGB =
+        Rr_LerpV3(Color->RGB, gUI->Style.BevelIntensityDark, RR_UI_VEC3_ZERO);
     ColorDark.A = 1.0f;
 
     Rr_UIPrimitive BevelFramePrimitive = Rr_UIReserveBevelFrame();
@@ -1878,16 +1885,16 @@ static inline void Rr_UIBevelEx(
     Rr_Vec4 TopLeftColor;
     TopLeftColor.RGB = Rr_LerpV3(
         BaseColor.RGB,
-        Pressed ? gUIContext->Style.BevelIntensityDark
-                : gUIContext->Style.BevelIntensityLight,
+        Pressed ? gUI->Style.BevelIntensityDark
+                : gUI->Style.BevelIntensityLight,
         Rr_V3F(Pressed ? 0.0f : 1.0f));
     TopLeftColor.A = 1.0f;
     Rr_Vec4 BottomRightColor;
 
     BottomRightColor.RGB = Rr_LerpV3(
         BaseColor.RGB,
-        Pressed ? gUIContext->Style.BevelIntensityLight
-                : gUIContext->Style.BevelIntensityDark,
+        Pressed ? gUI->Style.BevelIntensityLight
+                : gUI->Style.BevelIntensityDark,
         Rr_V3F(Pressed ? 1.0f : 0.0f));
     BottomRightColor.A = 1.0f;
 
@@ -1902,7 +1909,7 @@ static inline void Rr_UIBevelEx(
     Rr_UIVertex *Vertices = Primitive.Vertices;
     Rr_UIIndex *Indices = Primitive.Indices;
 
-    float Thickness = gUIContext->BevelThickness;
+    float Thickness = gUI->BevelThickness;
 
     float Width = Rect->Extent.Width;
     float Height = Rect->Extent.Height;
@@ -2031,14 +2038,13 @@ static inline void Rr_UIDrawInteractiveTextCursor(
     Rr_Vec4 *Color,
     Rr_UIFont *Font)
 {
-    uint64_t TimeDelta =
-        Rr_GetTimeNS() - gUIContext->TextInputCursorBlinkTimeNS;
+    uint64_t TimeDelta = Rr_GetTimeNS() - gUI->TextInputCursorBlinkTimeNS;
     if ((TimeDelta / 500000000) % 2 == 0)
     {
         Rr_UIDrawRect(
             &(Rr_Rect){
                 Position,
-                Rr_V2(gUIContext->FrameThickness * 2.0f, Font->LineHeight),
+                Rr_V2(gUI->FrameThickness * 2.0f, Font->LineHeight),
             },
             Color);
     }
@@ -2063,7 +2069,7 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
     float CurrentY = 0.0f;
     uint32_t LineIndex = 0;
 
-    Rr_Vec2 MousePosition = gUIContext->MousePosition;
+    Rr_Vec2 MousePosition = gUI->MousePosition;
     Rr_Vec2 MouseOffset = Rr_SubV2(MousePosition, Position);
     uint32_t MouseLineIndex = RR_MAX(0, (uint32_t)(MouseOffset.Y / LineHeight));
     float MouseCharacterDistance = FLT_MAX;
@@ -2114,7 +2120,7 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
                         GlyphPosition,
                         Rr_V2(Glyph->XAdvance, Font->LineHeight),
                     },
-                    &gUIContext->Colors.SelectedTextBackground);
+                    &gUI->Colors.SelectedTextBackground);
             }
             if (*CursorEnd == CStringIndex)
             {
@@ -2128,7 +2134,7 @@ static inline Rr_Vec2 Rr_UIDrawInputText(
         }
 
         Rr_Vec4 *GlyphColor =
-            GlyphSelected ? &gUIContext->Colors.SelectedTextForeground : Color;
+            GlyphSelected ? &gUI->Colors.SelectedTextForeground : Color;
         if (!Glyph)
         {
             /* TODO: Proper missing glyph handling! */
@@ -2366,17 +2372,16 @@ static inline Rr_Vec2 Rr_UICalculateTextSize(
 
 static inline bool Rr_UIIsFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
 {
-    return gUIContext->FocusedWidgetParent == Window &&
-           gUIContext->FocusedWidgetHash == Hash;
+    return gUI->FocusedWidgetParent == Window && gUI->FocusedWidgetHash == Hash;
 }
 
 static inline bool Rr_UIWasFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
 {
-    bool Result = gUIContext->PrevFocusedWidgetParent == Window &&
-                  gUIContext->PrevFocusedWidgetHash == Hash;
+    bool Result = gUI->PrevFocusedWidgetParent == Window &&
+                  gUI->PrevFocusedWidgetHash == Hash;
     if (Result)
     {
-        gUIContext->PrevFocusedWidgetParent = NULL;
+        gUI->PrevFocusedWidgetParent = NULL;
     }
 
     return Result;
@@ -2388,27 +2393,27 @@ static inline void Rr_UISetFocus(Rr_UIWindow *Window, Rr_UIHash Hash)
     {
         return;
     }
-    if (gUIContext->FocusedWidgetParent != NULL)
+    if (gUI->FocusedWidgetParent != NULL)
     {
-        gUIContext->PrevFocusedWidgetParent = gUIContext->FocusedWidgetParent;
-        gUIContext->PrevFocusedWidgetHash = gUIContext->FocusedWidgetHash;
+        gUI->PrevFocusedWidgetParent = gUI->FocusedWidgetParent;
+        gUI->PrevFocusedWidgetHash = gUI->FocusedWidgetHash;
     }
-    gUIContext->FocusedWidgetParent = Window;
-    gUIContext->FocusedWidgetHash = Hash;
+    gUI->FocusedWidgetParent = Window;
+    gUI->FocusedWidgetHash = Hash;
 }
 
 static inline void Rr_UIResetClickAndDrag(void)
 {
-    gUIContext->ClickParent = NULL;
-    gUIContext->ClickHash = 0;
-    gUIContext->DragParent = NULL;
-    gUIContext->DragHash = 0;
+    gUI->ClickParent = NULL;
+    gUI->ClickHash = 0;
+    gUI->DragParent = NULL;
+    gUI->DragHash = 0;
 }
 
 static inline void Rr_UIResetDrag(void)
 {
-    gUIContext->DragParent = NULL;
-    gUIContext->DragHash = 0;
+    gUI->DragParent = NULL;
+    gUI->DragHash = 0;
 }
 
 typedef struct Rr_UIClickResult Rr_UIClickResult;
@@ -2430,79 +2435,77 @@ static inline Rr_UIClickResult Rr_UIClickEx(
 {
     Rr_UIWindow *Window = Layout->Window;
 
-    bool Up = gUIContext->LeftMouseButton.Up;
-    bool Down = gUIContext->LeftMouseButton.Down;
-    bool Held = gUIContext->LeftMouseButton.Held;
+    bool Up = gUI->LeftMouseButton.Up;
+    bool Down = gUI->LeftMouseButton.Down;
+    bool Held = gUI->LeftMouseButton.Held;
 
     bool Contains = Layout->MouseInsideClipRect &&
-                    Window == gUIContext->HoveredWindow &&
-                    Rr_RectContains(Rect, gUIContext->MousePosition);
+                    Window == gUI->HoveredWindow &&
+                    Rr_RectContains(Rect, gUI->MousePosition);
 
     Rr_UIClickResult ClickResult = { 0 };
     ClickResult.Hovered = Contains;
 
     uint8_t ClickCount =
-        (uint8_t)RR_CLAMP(1, gUIContext->LeftMouseButton.Clicks, UCHAR_MAX);
+        (uint8_t)RR_CLAMP(1, gUI->LeftMouseButton.Clicks, UCHAR_MAX);
 
-    bool DragMatch =
-        Window == gUIContext->DragParent && Hash == gUIContext->DragHash;
-    bool ClickMatch =
-        Window == gUIContext->ClickParent && Hash == gUIContext->ClickHash;
+    bool DragMatch = Window == gUI->DragParent && Hash == gUI->DragHash;
+    bool ClickMatch = Window == gUI->ClickParent && Hash == gUI->ClickHash;
 
     if (Type == RR_UI_CLICK_TYPE_DRAG_RELAXED)
     {
-        if (Down && Contains && !gUIContext->DragConsumed)
+        if (Down && Contains && !gUI->DragConsumed)
         {
-            gUIContext->DragParent = Window;
-            gUIContext->DragHash = Hash;
-            gUIContext->DragMouseStart = gUIContext->MousePosition;
-            gUIContext->DragValueStart = Value;
-            gUIContext->DragMoved = false;
+            gUI->DragParent = Window;
+            gUI->DragHash = Hash;
+            gUI->DragMouseStart = gUI->MousePosition;
+            gUI->DragValueStart = Value;
+            gUI->DragMoved = false;
 
-            if (!gUIContext->ClickConsumed)
+            if (!gUI->ClickConsumed)
             {
-                gUIContext->ClickParent = Window;
-                gUIContext->ClickHash = Hash;
+                gUI->ClickParent = Window;
+                gUI->ClickHash = Hash;
             }
 
             Rr_UISetFocus(NULL, 0);
         }
         else if (Up && (DragMatch || ClickMatch))
         {
-            gUIContext->DragParent = NULL;
+            gUI->DragParent = NULL;
         }
         else if (Held && DragMatch)
         {
-            if (gUIContext->MouseMoved)
+            if (gUI->MouseMoved)
             {
-                gUIContext->ClickParent = Window;
-                gUIContext->ClickHash = Hash;
+                gUI->ClickParent = Window;
+                gUI->ClickHash = Hash;
             }
 
-            gUIContext->ClickConsumed = true;
+            gUI->ClickConsumed = true;
 
             ClickResult.Held = true;
-            ClickResult.Moved = gUIContext->MouseMoved;
+            ClickResult.Moved = gUI->MouseMoved;
         }
     }
 
-    if (gUIContext->ClickConsumed)
+    if (gUI->ClickConsumed)
     {
         return ClickResult;
     }
 
     if (Type == RR_UI_CLICK_TYPE_DOWN)
     {
-        if (Down && Contains && !gUIContext->MouseMoved)
+        if (Down && Contains && !gUI->MouseMoved)
         {
             if (ClickCount == 1 || (ClickCount > 1 && ClickMatch))
             {
-                gUIContext->ClickParent = Window;
-                gUIContext->ClickHash = Hash;
+                gUI->ClickParent = Window;
+                gUI->ClickHash = Hash;
 
                 ClickResult.ClickCount = ClickCount;
 
-                gUIContext->ClickConsumed = true;
+                gUI->ClickConsumed = true;
 
                 Rr_UISetFocus(NULL, 0);
             }
@@ -2513,22 +2516,22 @@ static inline Rr_UIClickResult Rr_UIClickEx(
     {
         if (Down && Contains)
         {
-            gUIContext->DragParent = Window;
-            gUIContext->DragHash = Hash;
-            gUIContext->DragConsumed = true;
+            gUI->DragParent = Window;
+            gUI->DragHash = Hash;
+            gUI->DragConsumed = true;
 
-            gUIContext->ClickParent = Window;
-            gUIContext->ClickHash = Hash;
-            gUIContext->ClickConsumed = true;
+            gUI->ClickParent = Window;
+            gUI->ClickHash = Hash;
+            gUI->ClickConsumed = true;
 
             Rr_UISetFocus(NULL, 0);
         }
         else if (Up && DragMatch)
         {
-            gUIContext->DragParent = NULL;
-            gUIContext->DragConsumed = true;
+            gUI->DragParent = NULL;
+            gUI->DragConsumed = true;
 
-            gUIContext->ClickConsumed = true;
+            gUI->ClickConsumed = true;
 
             if (Contains)
             {
@@ -2537,9 +2540,9 @@ static inline Rr_UIClickResult Rr_UIClickEx(
         }
         else if (Held && DragMatch)
         {
-            gUIContext->ClickConsumed = true;
+            gUI->ClickConsumed = true;
 
-            gUIContext->DragConsumed = true;
+            gUI->DragConsumed = true;
 
             ClickResult.Held = Contains;
         }
@@ -2549,16 +2552,16 @@ static inline Rr_UIClickResult Rr_UIClickEx(
     {
         if (Down && Contains)
         {
-            gUIContext->DragParent = Window;
-            gUIContext->DragHash = Hash;
-            gUIContext->DragMouseStart = gUIContext->MousePosition;
-            gUIContext->DragValueStart = Value;
-            gUIContext->DragConsumed = true;
-            gUIContext->DragMoved = false;
+            gUI->DragParent = Window;
+            gUI->DragHash = Hash;
+            gUI->DragMouseStart = gUI->MousePosition;
+            gUI->DragValueStart = Value;
+            gUI->DragConsumed = true;
+            gUI->DragMoved = false;
 
-            gUIContext->ClickParent = Window;
-            gUIContext->ClickHash = Hash;
-            gUIContext->ClickConsumed = true;
+            gUI->ClickParent = Window;
+            gUI->ClickHash = Hash;
+            gUI->ClickConsumed = true;
 
             ClickResult.ClickCount = ClickCount;
 
@@ -2566,23 +2569,22 @@ static inline Rr_UIClickResult Rr_UIClickEx(
         }
         else if (Up && DragMatch)
         {
-            gUIContext->DragParent = NULL;
-            gUIContext->DragConsumed = true;
+            gUI->DragParent = NULL;
+            gUI->DragConsumed = true;
 
-            gUIContext->ClickConsumed = true;
+            gUI->ClickConsumed = true;
         }
         else if (Held && DragMatch)
         {
-            ClickResult.MovedFirstTime =
-                gUIContext->MouseMoved && !gUIContext->DragMoved;
+            ClickResult.MovedFirstTime = gUI->MouseMoved && !gUI->DragMoved;
 
-            gUIContext->DragConsumed = true;
-            gUIContext->DragMoved |= gUIContext->MouseMoved;
+            gUI->DragConsumed = true;
+            gUI->DragMoved |= gUI->MouseMoved;
 
-            gUIContext->ClickConsumed = true;
+            gUI->ClickConsumed = true;
 
             ClickResult.Held = true;
-            ClickResult.Moved = gUIContext->MouseMoved;
+            ClickResult.Moved = gUI->MouseMoved;
         }
     }
 
@@ -2590,43 +2592,42 @@ static inline Rr_UIClickResult Rr_UIClickEx(
     {
         if (Down && Contains)
         {
-            gUIContext->DragParent = Window;
-            gUIContext->DragHash = Hash;
-            gUIContext->DragMouseStart = gUIContext->MousePosition;
-            gUIContext->DragValueStart = Value;
-            gUIContext->DragConsumed = true;
-            gUIContext->DragMoved = false;
+            gUI->DragParent = Window;
+            gUI->DragHash = Hash;
+            gUI->DragMouseStart = gUI->MousePosition;
+            gUI->DragValueStart = Value;
+            gUI->DragConsumed = true;
+            gUI->DragMoved = false;
 
-            gUIContext->ClickParent = Window;
-            gUIContext->ClickHash = Hash;
-            gUIContext->ClickConsumed = true;
+            gUI->ClickParent = Window;
+            gUI->ClickHash = Hash;
+            gUI->ClickConsumed = true;
 
             Rr_UISetFocus(NULL, 0);
         }
         else if (Up && DragMatch)
         {
-            gUIContext->DragParent = NULL;
-            gUIContext->DragConsumed = true;
+            gUI->DragParent = NULL;
+            gUI->DragConsumed = true;
 
-            gUIContext->ClickConsumed = true;
+            gUI->ClickConsumed = true;
 
-            if (!gUIContext->DragMoved)
+            if (!gUI->DragMoved)
             {
                 ClickResult.ClickCount = ClickCount;
             }
         }
         else if (Held && DragMatch)
         {
-            ClickResult.MovedFirstTime =
-                gUIContext->MouseMoved && !gUIContext->DragMoved;
+            ClickResult.MovedFirstTime = gUI->MouseMoved && !gUI->DragMoved;
 
-            gUIContext->DragConsumed = true;
-            gUIContext->DragMoved |= gUIContext->MouseMoved;
+            gUI->DragConsumed = true;
+            gUI->DragMoved |= gUI->MouseMoved;
 
-            gUIContext->ClickConsumed = true;
+            gUI->ClickConsumed = true;
 
             ClickResult.Held = true;
-            ClickResult.Moved = gUIContext->MouseMoved;
+            ClickResult.Moved = gUI->MouseMoved;
         }
     }
 
@@ -2673,15 +2674,14 @@ static inline bool Rr_UIScrollBehavior(
     Rr_Rect *Rect,
     float *YScroll)
 {
-    if (Window == gUIContext->HoveredWindow &&
-        gUIContext->ClickConsumed == false &&
-        Rr_RectContains(Rect, gUIContext->MousePosition))
+    if (Window == gUI->HoveredWindow && gUI->ClickConsumed == false &&
+        Rr_RectContains(Rect, gUI->MousePosition))
     {
-        if (gUIContext->MouseWheelDelta.Y != 0.0f)
+        if (gUI->MouseWheelDelta.Y != 0.0f)
         {
             Rr_UIResetDrag();
-            *YScroll = *YScroll + gUIContext->MouseWheelDelta.Y *
-                                      gUIContext->DefaultFont->LineHeight;
+            *YScroll = *YScroll +
+                       gUI->MouseWheelDelta.Y * gUI->DefaultFont->LineHeight;
 
             return true;
         }
@@ -2700,8 +2700,7 @@ static inline Rr_UIClipRect *Rr_UIEndClipRect(Rr_UILayout *Layout)
     if (Layout->ClipRects->Count > 0)
     {
         Rr_UIClipRect *Last = &RR_LAST_ARRAY_ELEMENT(Layout->ClipRects);
-        Last->IndexCount =
-            (uint32_t)gUIContext->Indices.Count - Last->FirstIndex;
+        Last->IndexCount = (uint32_t)gUI->Indices.Count - Last->FirstIndex;
 
         return Last;
     }
@@ -2714,8 +2713,8 @@ static inline Rr_UIClipRect *Rr_UIBeginClipRect(
     Rr_Rect *Rect)
 {
     Rr_UIClipRect *ClipRect =
-        RR_PUSH_INTO_ARRAY(Layout->ClipRects, gUIContext->FrameArena);
-    ClipRect->FirstIndex = (uint32_t)gUIContext->Indices.Count;
+        RR_PUSH_INTO_ARRAY(Layout->ClipRects, gUI->FrameArena);
+    ClipRect->FirstIndex = (uint32_t)gUI->Indices.Count;
     if (Layout->ParentClipRect)
     {
         ClipRect->Rect =
@@ -2730,7 +2729,7 @@ static inline Rr_UIClipRect *Rr_UIBeginClipRect(
 
     Layout->CurrentClipRect = ClipRect;
     Layout->MouseInsideClipRect =
-        Rr_RectContains(&ClipRect->Rect, gUIContext->MousePosition);
+        Rr_RectContains(&ClipRect->Rect, gUI->MousePosition);
 
     return ClipRect;
 }
@@ -2761,59 +2760,52 @@ static inline void Rr_UIPopSubClipRect(Rr_UILayout *Layout)
 
 static inline void Rr_UIRecalculateStyle(void)
 {
-    Rr_UIStyle *Style = &gUIContext->Style;
+    Rr_UIStyle *Style = &gUI->Style;
     Rr_UIFont *Font = Rr_UICurrentFont();
     float LineHeight = Font->LineHeight;
 
-    gUIContext->WindowPadding =
+    gUI->WindowPadding =
         RR_UI_ROUND_V2(Rr_MulV2F(Style->WindowPadding, LineHeight));
-    gUIContext->ContentsMargin =
+    gUI->ContentsMargin =
         RR_UI_ROUND_V2(Rr_MulV2F(Style->ContentsMargin, LineHeight));
-    gUIContext->ComponentMargin =
-        RR_UI_ROUND(Style->ComponentMargin * LineHeight);
+    gUI->ComponentMargin = RR_UI_ROUND(Style->ComponentMargin * LineHeight);
 
-    gUIContext->FrameThickness = floorf(LineHeight * Style->FrameThickness);
-    gUIContext->ResizeHandleSize =
-        RR_UI_ROUND(LineHeight * Style->ScrollbarAreaWidth);
-    gUIContext->ScrollbarWidth = gUIContext->ResizeHandleSize;
-    gUIContext->ScrollbarHandleWidth =
-        RR_UI_ROUND(gUIContext->ResizeHandleSize * 0.75f);
-    gUIContext->SeparatorLineHeight = RR_UI_ROUND(LineHeight * 0.5f);
-    gUIContext->ButtonPadding =
+    gUI->FrameThickness = floorf(LineHeight * Style->FrameThickness);
+    gUI->ResizeHandleSize = RR_UI_ROUND(LineHeight * Style->ScrollbarAreaWidth);
+    gUI->ScrollbarWidth = gUI->ResizeHandleSize;
+    gUI->ScrollbarHandleWidth = RR_UI_ROUND(gUI->ResizeHandleSize * 0.75f);
+    gUI->SeparatorLineHeight = RR_UI_ROUND(LineHeight * 0.5f);
+    gUI->ButtonPadding =
         RR_UI_ROUND_V2(Rr_MulV2F(Style->ButtonPadding, LineHeight));
-    gUIContext->BevelThickness = ceilf(LineHeight * Style->BevelThickness);
-    gUIContext->DoubleBevelThickness =
+    gUI->BevelThickness = ceilf(LineHeight * Style->BevelThickness);
+    gUI->DoubleBevelThickness =
         RR_UI_ROUND(LineHeight * Style->DoubleBevelThickness);
-    gUIContext->InputFieldPadding =
+    gUI->InputFieldPadding =
         RR_UI_ROUND_V2(Rr_MulV2F(Style->InputFieldPadding, LineHeight));
-    gUIContext->FlexibleTitleMargin =
-        ceilf(Style->FlexibleTitleMargin * LineHeight);
-    gUIContext->DefaultFlexibleWidth = RR_UI_ROUND(10.0f * LineHeight);
+    gUI->FlexibleTitleMargin = ceilf(Style->FlexibleTitleMargin * LineHeight);
+    gUI->DefaultFlexibleWidth = RR_UI_ROUND(10.0f * LineHeight);
 
-    gUIContext->TitleBarPadding = Rr_MulV2F(Style->TitleBarPadding, LineHeight);
-    gUIContext->TitleBarHeight =
-        RR_UI_ROUND(gUIContext->TitleBarPadding.Y * 2.0f + LineHeight);
-    gUIContext->MinWindowSizeNoTitle =
-        Rr_MulV2F(gUIContext->WindowPadding, 2.0f);
-    gUIContext->MinWindowSizeNoTitle.X += gUIContext->ScrollbarWidth;
-    gUIContext->MinWindowSizeNoTitle.X += LineHeight * 2.0f;
-    gUIContext->MinWindowSizeNoTitle.Y += LineHeight * 2.0f;
-    gUIContext->MinWindowSizeNoTitle =
-        RR_UI_ROUND_V2(gUIContext->MinWindowSizeNoTitle);
-    gUIContext->MinWindowSize = gUIContext->MinWindowSizeNoTitle;
-    gUIContext->MinWindowSize.Y += gUIContext->TitleBarHeight;
-    gUIContext->MinWindowSize = RR_UI_ROUND_V2(gUIContext->MinWindowSize);
+    gUI->TitleBarPadding = Rr_MulV2F(Style->TitleBarPadding, LineHeight);
+    gUI->TitleBarHeight =
+        RR_UI_ROUND(gUI->TitleBarPadding.Y * 2.0f + LineHeight);
+    gUI->MinWindowSizeNoTitle = Rr_MulV2F(gUI->WindowPadding, 2.0f);
+    gUI->MinWindowSizeNoTitle.X += gUI->ScrollbarWidth;
+    gUI->MinWindowSizeNoTitle.X += LineHeight * 2.0f;
+    gUI->MinWindowSizeNoTitle.Y += LineHeight * 2.0f;
+    gUI->MinWindowSizeNoTitle = RR_UI_ROUND_V2(gUI->MinWindowSizeNoTitle);
+    gUI->MinWindowSize = gUI->MinWindowSizeNoTitle;
+    gUI->MinWindowSize.Y += gUI->TitleBarHeight;
+    gUI->MinWindowSize = RR_UI_ROUND_V2(gUI->MinWindowSize);
 
-    gUIContext->TopLevelTreeOffset =
-        LineHeight * 0.75f + gUIContext->ButtonPadding.X;
-    gUIContext->TreeOffset = LineHeight * 0.75f;
+    gUI->TopLevelTreeOffset = LineHeight * 0.75f + gUI->ButtonPadding.X;
+    gUI->TreeOffset = LineHeight * 0.75f;
 }
 
 void Rr_UIPushFont(Rr_UIFont *Font)
 {
     assert(Font);
 
-    *RR_PUSH_INTO_ARRAY(&gUIContext->FontStack, gUIContext->FrameArena) = Font;
+    *RR_PUSH_INTO_ARRAY(&gUI->FontStack, gUI->FrameArena) = Font;
 
     Rr_UIRecalculateStyle();
 
@@ -2827,10 +2819,8 @@ void Rr_UIPushFont(Rr_UIFont *Font)
 
 void Rr_UIPopFont(void)
 {
-    assert(
-        gUIContext->FontStack.Count &&
-        "Did you forget to call Rr_UIPushFont()?");
-    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->FontStack));
+    assert(gUI->FontStack.Count && "Did you forget to call Rr_UIPushFont()?");
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUI->FontStack));
 
     Rr_UIRecalculateStyle();
 
@@ -2848,13 +2838,12 @@ static inline Rr_Vec2 Rr_UIGetMinWindowExtent(Rr_UIWindowFlags Flags)
     Size = Rr_AddV2(Size, Rr_MulV2F(Rr_UICurrentWindowPadding(), 2.0f));
     if (!(Flags & RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT))
     {
-        Size.Y += gUIContext->TitleBarHeight;
+        Size.Y += gUI->TitleBarHeight;
     }
     if (!(Flags & RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT))
     {
-        Size = Rr_AddV2(
-            Size,
-            Rr_MulV2F(Rr_V2F(gUIContext->DoubleBevelThickness), 2.0f));
+        Size =
+            Rr_AddV2(Size, Rr_MulV2F(Rr_V2F(gUI->DoubleBevelThickness), 2.0f));
     }
 
     return Rr_FloorV2(Size);
@@ -2877,7 +2866,7 @@ void Rr_UIAdvance(Rr_Vec2 Size)
     Rr_Rect *ContentsRect = &Layout->DeferredContentsRect;
     Rr_Vec2 ContentsMargin = Rr_UICurrentContentsMargin();
 
-    if (gUIContext->VisualizeAdvances)
+    if (gUI->VisualizeAdvances)
     {
         Rr_UIHash Hash = Rr_UIGetHash(
             sizeof(Layout->AdvanceCount),
@@ -2984,7 +2973,7 @@ static inline bool Rr_UIAddCollapseButton(Rr_UILayout *Layout)
 
     Rr_Rect ButtonRect;
     ButtonRect.Offset = Layout->Rect.Offset;
-    ButtonRect.Extent = Rr_V2F(gUIContext->TitleBarHeight);
+    ButtonRect.Extent = Rr_V2F(gUI->TitleBarHeight);
 
     Rr_UIHash Hash =
         Rr_UIGetHash(sizeof("Rr.Collapse"), "Rr.Collapse", Rr_UICurrentHash());
@@ -2997,18 +2986,18 @@ static inline bool Rr_UIAddCollapseButton(Rr_UILayout *Layout)
 
     Rr_UIDrawBevel(
         &ButtonRect,
-        &gUIContext->Colors.TitleCollapseButtonBackground,
+        &gUI->Colors.TitleCollapseButtonBackground,
         ClickResult.Held && ClickResult.Hovered);
 
     Rr_Vec2 TriangleCenter = Rr_AddV2(
         ButtonRect.Offset,
-        Rr_MulV2F(Rr_V2F(gUIContext->TitleBarHeight), 0.5f));
-    float TriangleSize = gUIContext->TitleBarHeight * 0.3f;
+        Rr_MulV2F(Rr_V2F(gUI->TitleBarHeight), 0.5f));
+    float TriangleSize = gUI->TitleBarHeight * 0.3f;
     Rr_UIDrawFitTriangleFilled(
         TriangleCenter,
         TriangleSize,
         !Window->Collapsed ? RR_ANGLE_DEG(90.0f) : 0.0f,
-        &gUIContext->Colors.TitleForeground);
+        &gUI->Colors.TitleForeground);
 
     return ClickResult.ClickCount;
 }
@@ -3017,11 +3006,10 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout)
 {
     /* Assuming having a title/tab bar. */
 
-    float Width = gUIContext->TitleBarHeight * gUIContext->Style.CrossWidth;
-    float Thickness =
-        gUIContext->TitleBarHeight * gUIContext->Style.CrossThickness;
+    float Width = gUI->TitleBarHeight * gUI->Style.CrossWidth;
+    float Thickness = gUI->TitleBarHeight * gUI->Style.CrossThickness;
     Rr_Rect TitleRect = Layout->Rect;
-    TitleRect.Extent.Height = gUIContext->TitleBarHeight;
+    TitleRect.Extent.Height = gUI->TitleBarHeight;
     Rr_Rect BarRect;
     Rr_Vec2 Margin = {
         TitleRect.Extent.Width - (TitleRect.Extent.Height + Width) * 0.5f,
@@ -3036,11 +3024,11 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout)
     Rr_Rect ButtonRect;
     ButtonRect.Offset.X =
         TitleRect.Offset.X + TitleRect.Extent.Width -
-        (TitleRect.Extent.Height + gUIContext->TitleBarHeight) * 0.5f,
+        (TitleRect.Extent.Height + gUI->TitleBarHeight) * 0.5f,
     ButtonRect.Offset.Y =
         TitleRect.Offset.Y +
-        (TitleRect.Extent.Height - gUIContext->TitleBarHeight) * 0.5f;
-    ButtonRect.Extent = Rr_V2F(gUIContext->TitleBarHeight);
+        (TitleRect.Extent.Height - gUI->TitleBarHeight) * 0.5f;
+    ButtonRect.Extent = Rr_V2F(gUI->TitleBarHeight);
 
     Rr_UIHash Hash =
         Rr_UIGetHash(sizeof("Rr.Close"), "Rr.Close", Rr_UICurrentHash());
@@ -3053,17 +3041,17 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout)
 
     Rr_UIDrawBevel(
         &ButtonRect,
-        &gUIContext->Colors.TitleCloseButtonBackground,
+        &gUI->Colors.TitleCloseButtonBackground,
         ClickResult.Held && ClickResult.Hovered);
 
     Rr_UIDrawRotatedQuad(
         &BarRect,
         RR_ANGLE_DEG(45.0f),
-        &gUIContext->Colors.TitleForeground);
+        &gUI->Colors.TitleForeground);
     Rr_UIDrawRotatedQuad(
         &BarRect,
         RR_ANGLE_DEG(-45.0f),
-        &gUIContext->Colors.TitleForeground);
+        &gUI->Colors.TitleForeground);
 }
 
 static inline Rr_Vec2 Rr_UIGetWindowOffsetRelativeToTitle(
@@ -3072,13 +3060,13 @@ static inline Rr_Vec2 Rr_UIGetWindowOffsetRelativeToTitle(
 {
     if (!Rr_UIWindowNoBorders(Window))
     {
-        Offset = Rr_SubV2(Offset, Rr_V2F(gUIContext->DoubleBevelThickness));
+        Offset = Rr_SubV2(Offset, Rr_V2F(gUI->DoubleBevelThickness));
     }
     if (!Rr_UIWindowNoCollapse(Window))
     {
-        Offset.X -= gUIContext->TitleBarHeight;
+        Offset.X -= gUI->TitleBarHeight;
     }
-    Offset = Rr_SubV2(Offset, gUIContext->TitleBarPadding);
+    Offset = Rr_SubV2(Offset, gUI->TitleBarPadding);
 
     return Offset;
 }
@@ -3102,18 +3090,18 @@ static inline Rr_Vec2 Rr_UICalculateTitleBarSize(Rr_UILayout *Layout)
     else
     {
         Width += Rr_UICalculateTextSize(SIZE_MAX, Window->Title, 0.0f).X;
-        Width += gUIContext->TitleBarPadding.Width * 2.0f;
+        Width += gUI->TitleBarPadding.Width * 2.0f;
     }
 
     if (!Rr_UIWindowNoClose(Window) && Layout->Open)
     {
-        Width += gUIContext->TitleBarHeight;
+        Width += gUI->TitleBarHeight;
     }
     if (!Rr_UIWindowNoCollapse(Window))
     {
-        Width += gUIContext->TitleBarHeight;
+        Width += gUI->TitleBarHeight;
     }
-    Height += gUIContext->TitleBarHeight;
+    Height += gUI->TitleBarHeight;
 
     return Rr_V2(Width, Height);
 }
@@ -3126,19 +3114,18 @@ static inline void Rr_UIAddWindowTabBar(Rr_UILayout *Layout)
 
     Rr_Rect TabBarBackgroundRect = {
         .Offset = Layout->Cursor,
-        .Extent = Rr_V2(Layout->Rect.Extent.Width, gUIContext->TitleBarHeight),
+        .Extent = Rr_V2(Layout->Rect.Extent.Width, gUI->TitleBarHeight),
     };
     Rr_UIDrawSolidQuad(
         &TabBarBackgroundRect,
-        Window->Child ? &gUIContext->Colors.ChildBackground
-                      : &gUIContext->Colors.Background);
+        Window->Child ? &gUI->Colors.ChildBackground : &gUI->Colors.Background);
 
     Rr_Rect TitleBarRect = {
         Layout->Rect.Offset,
-        Rr_V2(Layout->Rect.Extent.Width, gUIContext->TitleBarHeight),
+        Rr_V2(Layout->Rect.Extent.Width, gUI->TitleBarHeight),
     };
 
-    Rr_UIDrawRect(&TitleBarRect, &gUIContext->Colors.TitleBackgroundTabs);
+    Rr_UIDrawRect(&TitleBarRect, &gUI->Colors.TitleBackgroundTabs);
 
     Rr_Vec2 TabsCursor = Layout->Rect.Offset;
 
@@ -3147,16 +3134,16 @@ static inline void Rr_UIAddWindowTabBar(Rr_UILayout *Layout)
     {
         Rr_UIAddCollapseButton(Layout);
 
-        TabsCursor.X += gUIContext->TitleBarHeight;
-        TitleBarRect.Offset.X += gUIContext->TitleBarHeight;
-        TitleBarRect.Extent.X -= gUIContext->TitleBarHeight;
+        TabsCursor.X += gUI->TitleBarHeight;
+        TitleBarRect.Offset.X += gUI->TitleBarHeight;
+        TitleBarRect.Extent.X -= gUI->TitleBarHeight;
     }
 
     if (!Rr_UIWindowNoClose(Window) && Layout->Open)
     {
         Rr_UIAddCloseButton(Layout);
 
-        TitleBarRect.Extent.Width -= gUIContext->TitleBarHeight;
+        TitleBarRect.Extent.Width -= gUI->TitleBarHeight;
     }
 
     Layout->TabsCursorStart = TabsCursor;
@@ -3170,11 +3157,10 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
 
     Rr_Rect TitleBarRect = {
         Layout->Rect.Offset,
-        Rr_V2(Layout->Rect.Extent.Width, gUIContext->TitleBarHeight),
+        Rr_V2(Layout->Rect.Extent.Width, gUI->TitleBarHeight),
     };
 
-    Rr_Vec2 TitleOffset =
-        Rr_AddV2(Layout->Rect.Offset, gUIContext->TitleBarPadding);
+    Rr_Vec2 TitleOffset = Rr_AddV2(Layout->Rect.Offset, gUI->TitleBarPadding);
 
     bool HasCollapse = !Rr_UIWindowNoCollapse(Window);
     bool CollapseButtonClicked = false;
@@ -3182,9 +3168,9 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
     {
         CollapseButtonClicked = Rr_UIAddCollapseButton(Layout);
 
-        TitleOffset.X += gUIContext->TitleBarHeight;
-        TitleBarRect.Offset.X += gUIContext->TitleBarHeight;
-        TitleBarRect.Extent.X -= gUIContext->TitleBarHeight;
+        TitleOffset.X += gUI->TitleBarHeight;
+        TitleBarRect.Offset.X += gUI->TitleBarHeight;
+        TitleBarRect.Extent.X -= gUI->TitleBarHeight;
     }
 
     Rr_UIDrawText(
@@ -3193,13 +3179,13 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
         SIZE_MAX,
         Window->Title,
         0.0f,
-        &gUIContext->Colors.TitleForeground);
+        &gUI->Colors.TitleForeground);
 
     if (!Rr_UIWindowNoClose(Window) && Layout->Open)
     {
         Rr_UIAddCloseButton(Layout);
 
-        TitleBarRect.Extent.Width -= gUIContext->TitleBarHeight;
+        TitleBarRect.Extent.Width -= gUI->TitleBarHeight;
     }
 
     /* Allow double clicking the title bevel to toggle collapse state. */
@@ -3235,10 +3221,10 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
         }
     }
 
-    Rr_Vec4 Colors[4] = { gUIContext->Colors.TitleBackground,
-                          gUIContext->Colors.TitleBackground2,
-                          gUIContext->Colors.TitleBackground,
-                          gUIContext->Colors.TitleBackground2 };
+    Rr_Vec4 Colors[4] = { gUI->Colors.TitleBackground,
+                          gUI->Colors.TitleBackground2,
+                          gUI->Colors.TitleBackground,
+                          gUI->Colors.TitleBackground2 };
     Rr_UIBevelEx(BevelPrimitive, &TitleBarRect, Colors, false);
 }
 
@@ -3249,7 +3235,7 @@ static inline Rr_UIClickResult Rr_UIAddResizeHandle(
 {
     Rr_UIWindow *Window = Layout->Window;
 
-    float DoubleBevelThickness = gUIContext->DoubleBevelThickness;
+    float DoubleBevelThickness = gUI->DoubleBevelThickness;
 
     Rr_Rect Rect;
     switch (ResizeType)
@@ -3288,7 +3274,7 @@ static inline Rr_UIClickResult Rr_UIAddResizeHandle(
         break;
         case RR_UI_RESIZE_TYPE_SE:
         {
-            Rr_Vec2 ResizeHandleExtent = Rr_V2F(gUIContext->ResizeHandleSize);
+            Rr_Vec2 ResizeHandleExtent = Rr_V2F(gUI->ResizeHandleSize);
             Rect.Offset = Rr_SubV2(
                 Rr_AddV2(Window->Rect.Offset, Window->Rect.Extent),
                 ResizeHandleExtent);
@@ -3312,9 +3298,8 @@ static inline Rr_UIClickResult Rr_UIAddResizeHandle(
         Window->Rect);
 
     if (ClickResult.Held ||
-        (gUIContext->DragParent == Window &&
-         gUIContext->DragHash == ResizeHash) ||
-        (ClickResult.Hovered && gUIContext->DragParent == NULL))
+        (gUI->DragParent == Window && gUI->DragHash == ResizeHash) ||
+        (ClickResult.Hovered && gUI->DragParent == NULL))
     {
         Rr_CursorType CursorType;
         switch (ResizeType)
@@ -3342,7 +3327,7 @@ static inline Rr_UIClickResult Rr_UIAddResizeHandle(
             }
             break;
         }
-        gUIContext->CursorType = CursorType;
+        gUI->CursorType = CursorType;
     }
 
     if (ClickResult.ClickCount == 2)
@@ -3356,67 +3341,61 @@ static inline Rr_UIClickResult Rr_UIAddResizeHandle(
         {
             case RR_UI_RESIZE_TYPE_N:
             {
-                float Height = gUIContext->DragValueStart.Extent.Y +
-                               (gUIContext->DragMouseStart.Y -
-                                gUIContext->MousePosition.Y);
+                float Height = gUI->DragValueStart.Extent.Y +
+                               (gUI->DragMouseStart.Y - gUI->MousePosition.Y);
                 Rr_UISetWindowExtentChecked(Layout, Rr_V2(INFINITY, Height));
-                float Offset = gUIContext->MousePosition.Y +
-                               (gUIContext->DragValueStart.Offset.Y -
-                                gUIContext->DragMouseStart.Y);
+                float Offset =
+                    gUI->MousePosition.Y +
+                    (gUI->DragValueStart.Offset.Y - gUI->DragMouseStart.Y);
                 Offset = RR_MIN(
                     Offset,
-                    gUIContext->DragValueStart.Offset.Y +
-                        gUIContext->DragValueStart.Extent.Y -
-                        Layout->MinExtent.Y);
+                    gUI->DragValueStart.Offset.Y +
+                        gUI->DragValueStart.Extent.Y - Layout->MinExtent.Y);
                 Rr_UISetWindowOffsetChecked(Layout, Rr_V2(INFINITY, Offset));
             }
             break;
             case RR_UI_RESIZE_TYPE_S:
             {
-                float Height = gUIContext->MousePosition.Y -
-                               Window->Rect.Offset.Y +
-                               (gUIContext->DragValueStart.Offset.Y +
-                                gUIContext->DragValueStart.Extent.Y -
-                                gUIContext->DragMouseStart.Y);
+                float Height =
+                    gUI->MousePosition.Y - Window->Rect.Offset.Y +
+                    (gUI->DragValueStart.Offset.Y +
+                     gUI->DragValueStart.Extent.Y - gUI->DragMouseStart.Y);
                 Rr_UISetWindowExtentChecked(Layout, Rr_V2(INFINITY, Height));
             }
             break;
             case RR_UI_RESIZE_TYPE_E:
             {
-                float Width = gUIContext->MousePosition.X -
-                              Window->Rect.Offset.X +
-                              (gUIContext->DragValueStart.Offset.X +
-                               gUIContext->DragValueStart.Extent.X -
-                               gUIContext->DragMouseStart.X);
+                float Width =
+                    gUI->MousePosition.X - Window->Rect.Offset.X +
+                    (gUI->DragValueStart.Offset.X +
+                     gUI->DragValueStart.Extent.X - gUI->DragMouseStart.X);
                 Rr_UISetWindowExtentChecked(Layout, Rr_V2(Width, INFINITY));
             }
             break;
             case RR_UI_RESIZE_TYPE_W:
             {
-                float Width = gUIContext->DragValueStart.Extent.X +
-                              (gUIContext->DragMouseStart.X -
-                               gUIContext->MousePosition.X);
+                float Width = gUI->DragValueStart.Extent.X +
+                              (gUI->DragMouseStart.X - gUI->MousePosition.X);
                 Rr_UISetWindowExtentChecked(Layout, Rr_V2(Width, INFINITY));
-                float Offset = gUIContext->MousePosition.X +
-                               (gUIContext->DragValueStart.Offset.X -
-                                gUIContext->DragMouseStart.X);
+                float Offset =
+                    gUI->MousePosition.X +
+                    (gUI->DragValueStart.Offset.X - gUI->DragMouseStart.X);
                 Offset = RR_MIN(
                     Offset,
-                    gUIContext->DragValueStart.Offset.X +
-                        gUIContext->DragValueStart.Extent.X -
-                        Layout->MinExtent.X);
+                    gUI->DragValueStart.Offset.X +
+                        gUI->DragValueStart.Extent.X - Layout->MinExtent.X);
                 Rr_UISetWindowOffsetChecked(Layout, Rr_V2(Offset, INFINITY));
             }
             break;
             case RR_UI_RESIZE_TYPE_SE:
             {
                 Rr_Vec2 Extent = Rr_AddV2(
-                    Rr_SubV2(gUIContext->MousePosition, Window->Rect.Offset),
+                    Rr_SubV2(gUI->MousePosition, Window->Rect.Offset),
                     Rr_SubV2(
                         Rr_AddV2(
-                            gUIContext->DragValueStart.Offset,
-                            gUIContext->DragValueStart.Extent),
-                        gUIContext->DragMouseStart));
+                            gUI->DragValueStart.Offset,
+                            gUI->DragValueStart.Extent),
+                        gUI->DragMouseStart));
                 Rr_UISetWindowExtentChecked(Layout, Extent);
             }
             break;
@@ -3439,9 +3418,8 @@ static inline void Rr_UIAddResizeHandles(Rr_UILayout *Layout)
      * to accomodate for borders. */
 
     if (!Rr_UIWindowNoBorders(Window) &&
-        (gUIContext->HoveredWindow == Window ||
-         gUIContext->DragParent ==
-             Window)) /* Don't test every window out there. */
+        (gUI->HoveredWindow == Window ||
+         gUI->DragParent == Window)) /* Don't test every window out there. */
     {
         Rr_UIAddResizeHandle(Layout, "Rr.ResizeN", RR_UI_RESIZE_TYPE_N);
         Rr_UIAddResizeHandle(Layout, "Rr.ResizeS", RR_UI_RESIZE_TYPE_S);
@@ -3454,18 +3432,15 @@ static inline void Rr_UIAddResizeHandles(Rr_UILayout *Layout)
 
     if (ClickResult.Held)
     {
-        Layout->DeferredResizeHandleColor =
-            &gUIContext->Colors.ResizeHandleHeld;
+        Layout->DeferredResizeHandleColor = &gUI->Colors.ResizeHandleHeld;
     }
     else if (ClickResult.Hovered)
     {
-        Layout->DeferredResizeHandleColor =
-            &gUIContext->Colors.ResizeHandleHovered;
+        Layout->DeferredResizeHandleColor = &gUI->Colors.ResizeHandleHovered;
     }
     else
     {
-        Layout->DeferredResizeHandleColor =
-            &gUIContext->Colors.ResizeHandleNormal;
+        Layout->DeferredResizeHandleColor = &gUI->Colors.ResizeHandleNormal;
     }
 }
 
@@ -3479,8 +3454,8 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(
 
     if (!Rr_UIWindowNoTitleBar(Window))
     {
-        Rect.Offset.Y += gUIContext->TitleBarHeight;
-        Rect.Extent.Y -= gUIContext->TitleBarHeight;
+        Rect.Offset.Y += gUI->TitleBarHeight;
+        Rect.Extent.Y -= gUI->TitleBarHeight;
     }
 
     float ContentsHeight = Window->ContentsRect.Extent.Y;
@@ -3496,7 +3471,7 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(
     }
     if (!Rr_UIWindowNoVerticalScrollbar(Window) && FillRatio > 1.0f)
     {
-        Rect.Extent.X -= gUIContext->ScrollbarWidth;
+        Rect.Extent.X -= gUI->ScrollbarWidth;
     }
 
     return Rect;
@@ -3524,23 +3499,22 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
         {
             Rr_Vec2 ScrollbarPosition = ContentsAreaRect.Offset;
             ScrollbarPosition.X += ContentsAreaRect.Extent.X;
-            Rr_Vec2 ScrollbarSize = { gUIContext->ScrollbarWidth,
+            Rr_Vec2 ScrollbarSize = { gUI->ScrollbarWidth,
                                       ContentsAreaRect.Extent.Y };
             Rr_UIDrawSolidQuad(
                 &(Rr_Rect){
                     ScrollbarPosition,
                     ScrollbarSize,
                 },
-                &gUIContext->Colors.ScrollbarBackground);
+                &gUI->Colors.ScrollbarBackground);
 
-            float ScrollbarHandleOffset = (gUIContext->ScrollbarWidth -
-                                           gUIContext->ScrollbarHandleWidth) /
-                                          2.0f;
+            float ScrollbarHandleOffset =
+                (gUI->ScrollbarWidth - gUI->ScrollbarHandleWidth) / 2.0f;
 
             Rr_Vec2 ScrollbarHandlePosition = ScrollbarPosition;
             Rr_Vec2 ScrollbarHandleSize = ScrollbarSize;
             ScrollbarHandlePosition.X += ScrollbarHandleOffset;
-            ScrollbarHandleSize.X = gUIContext->ScrollbarHandleWidth;
+            ScrollbarHandleSize.X = gUI->ScrollbarHandleWidth;
             ScrollbarHandleSize.Y *= FillRatio;
 
             ScrollbarHandlePosition.Y += roundf(Window->VScroll * FillRatio);
@@ -3549,9 +3523,8 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
 
             ScrollbarHandlePosition.Y += ScrollbarHandleOffset;
             ScrollbarHandleSize.Y -= ScrollbarHandleOffset * 2.0f;
-            ScrollbarHandleSize.Y = RR_MAX(
-                ScrollbarHandleSize.Y,
-                gUIContext->BevelThickness * 3.0f);
+            ScrollbarHandleSize.Y =
+                RR_MAX(ScrollbarHandleSize.Y, gUI->BevelThickness * 3.0f);
 
             /* This cuts a bit of height from the scrollbar hitbox so the resize
              * handle is always on top. */
@@ -3563,8 +3536,8 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
             if (HasResize)
             {
                 float ResizeHandleY = ScrollbarPosition.Y + ScrollbarSize.Y -
-                                      gUIContext->ResizeHandleSize;
-                if (gUIContext->MousePosition.Y >= ResizeHandleY)
+                                      gUI->ResizeHandleSize;
+                if (gUI->MousePosition.Y >= ResizeHandleY)
                 {
                     ClickableRect.Extent = Rr_V2F(-1.0f);
                 }
@@ -3580,34 +3553,31 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
             {
                 /* Handle clicking outside the handle. */
 
-                if (gUIContext->MousePosition.Y >
+                if (gUI->MousePosition.Y >
                     ScrollbarHandlePosition.Y + ScrollbarHandleSize.Y)
                 {
                     Window->VScroll = Window->VScrollTarget =
-                        (gUIContext->MousePosition.Y - ScrollbarPosition.Y -
+                        (gUI->MousePosition.Y - ScrollbarPosition.Y -
                          ScrollbarHandleOffset * 2.0f) /
                             (ScrollbarSize.Y / ContentsHeight) -
                         (ScrollbarHandleSize.Height / FillRatio);
-                    gUIContext->DragValueStart.Offset.Y = Window->VScroll;
+                    gUI->DragValueStart.Offset.Y = Window->VScroll;
                 }
-                else if (
-                    gUIContext->MousePosition.Y < ScrollbarHandlePosition.Y)
+                else if (gUI->MousePosition.Y < ScrollbarHandlePosition.Y)
                 {
                     Window->VScroll = Window->VScrollTarget =
-                        (gUIContext->MousePosition.Y - ScrollbarPosition.Y -
+                        (gUI->MousePosition.Y - ScrollbarPosition.Y -
                          ScrollbarHandleOffset * 2.0f) /
                         ((ScrollbarSize.Y) / ContentsHeight);
-                    gUIContext->DragValueStart.Offset.Y = Window->VScroll;
+                    gUI->DragValueStart.Offset.Y = Window->VScroll;
                 }
             }
 
             if (ClickResult.Moved)
             {
-                float Delta =
-                    gUIContext->MousePosition.Y - gUIContext->DragMouseStart.Y;
+                float Delta = gUI->MousePosition.Y - gUI->DragMouseStart.Y;
                 Window->VScroll = Window->VScrollTarget =
-                    gUIContext->DragValueStart.Offset.Y +
-                    (Delta * 1.0f / FillRatio);
+                    gUI->DragValueStart.Offset.Y + (Delta * 1.0f / FillRatio);
             }
 
             Rr_UIDrawBevel(
@@ -3615,8 +3585,8 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
                     ScrollbarHandlePosition,
                     ScrollbarHandleSize,
                 },
-                ClickResult.Held ? &gUIContext->Colors.ScrollbarHeld
-                                 : &gUIContext->Colors.ScrollbarNormal,
+                ClickResult.Held ? &gUI->Colors.ScrollbarHeld
+                                 : &gUI->Colors.ScrollbarNormal,
                 false);
 
             Layout->VerticalScrollbarAdded = true;
@@ -3637,27 +3607,26 @@ static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
 
 Rr_UIStyle *Rr_UIGetStyle(void)
 {
-    return &gUIContext->Style;
+    return &gUI->Style;
 }
 
 Rr_UIColors *Rr_UIGetColors(void)
 {
-    return &gUIContext->Colors;
+    return &gUI->Colors;
 }
 
 void Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places)
 {
-    *RR_PUSH_INTO_ARRAY(
-        &gUIContext->FormatFloatDecimalPlacesStack,
-        gUIContext->FrameArena) = Places;
+    *RR_PUSH_INTO_ARRAY(&gUI->FormatFloatDecimalPlacesStack, gUI->FrameArena) =
+        Places;
 }
 
 void Rr_UIPopFormatFloatDecimalPlaces(void)
 {
     assert(
-        gUIContext->FormatFloatDecimalPlacesStack.Count &&
+        gUI->FormatFloatDecimalPlacesStack.Count &&
         "Did you forget to call Rr_UIPushFormatFloatDecimalPlaces()?");
-    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->FormatFloatDecimalPlacesStack));
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUI->FormatFloatDecimalPlacesStack));
 }
 
 static inline int Rr_UIFormatDouble(
@@ -3665,10 +3634,10 @@ static inline int Rr_UIFormatDouble(
     char *Buffer,
     double Value)
 {
-    if (gUIContext->FormatFloatDecimalPlacesStack.Count > 0)
+    if (gUI->FormatFloatDecimalPlacesStack.Count > 0)
     {
         uint32_t Top =
-            RR_LAST_ARRAY_ELEMENT(&gUIContext->FormatFloatDecimalPlacesStack);
+            RR_LAST_ARRAY_ELEMENT(&gUI->FormatFloatDecimalPlacesStack);
         switch (Top)
         {
             case 0:
@@ -3699,97 +3668,44 @@ static inline int Rr_UIFormatDouble(
     return snprintf(Buffer, BufferCapacity, "%.2f", Value);
 }
 
-static inline bool Rr_UIConsumeWindowFloat(float *Src, float *Dst)
+void Rr_UISetNextWindowOpenOffset(Rr_Vec2 Offset)
 {
-    if (*Src != INFINITY)
-    {
-        *Dst = floorf(*Src);
-        *Src = INFINITY;
-
-        return true;
-    }
-
-    return false;
-}
-
-static inline bool Rr_UIConsumeWindowFloat2(Rr_Vec2 *Src, Rr_Vec2 *Dst)
-{
-    return Rr_UIConsumeWindowFloat(&Src->X, &Dst->X) ||
-           Rr_UIConsumeWindowFloat(&Src->Y, &Dst->Y);
+    gUI->NextWindowFlags.OpenOffsetX = Offset.X != INFINITY;
+    gUI->NextWindowFlags.OpenOffsetY = Offset.Y != INFINITY;
+    gUI->NextWindowOpenOffset = Offset;
 }
 
 void Rr_UISetNextWindowOffset(Rr_Vec2 Offset)
 {
-    gUIContext->NextWindowOffset = Offset;
-}
-
-static inline bool Rr_UIConsumeNextWindowOffset(Rr_UIWindow *Window)
-{
-    if (gUIContext->NextWindowOffset.X != INFINITY &&
-        gUIContext->NextWindowOffset.Y != INFINITY)
-    {
-        Window->Rect.Offset = Rr_FloorV2(gUIContext->NextWindowOffset);
-        gUIContext->NextWindowOffset = Rr_V2F(INFINITY);
-
-        return true;
-    }
-
-    return false;
-}
-
-void Rr_UISetNextWindowOpenOffset(Rr_Vec2 Offset)
-{
-    gUIContext->NextWindowOpenOffset = Offset;
-}
-
-static inline bool Rr_UIConsumeNextWindowOpenOffset(Rr_Vec2 *OutResult)
-{
-    if (gUIContext->NextWindowOpenOffset.X != INFINITY &&
-        gUIContext->NextWindowOpenOffset.Y != INFINITY)
-    {
-        *OutResult = Rr_FloorV2(gUIContext->NextWindowOpenOffset);
-        gUIContext->NextWindowOpenOffset = Rr_V2F(INFINITY);
-
-        return true;
-    }
-
-    return false;
+    gUI->NextWindowFlags.OffsetX = Offset.X != INFINITY;
+    gUI->NextWindowFlags.OffsetY = Offset.Y != INFINITY;
+    gUI->NextWindowOffset = Offset;
 }
 
 void Rr_UISetNextWindowExtent(Rr_Vec2 Extent)
 {
-    gUIContext->NextWindowExtent = Extent;
+    gUI->NextWindowFlags.ExtentX = Extent.X != INFINITY;
+    gUI->NextWindowFlags.ExtentY = Extent.Y != INFINITY;
+    gUI->NextWindowExtent = Extent;
 }
 
 void Rr_UISetNextWindowMinExtent(Rr_Vec2 Extent)
 {
-    gUIContext->NextWindowMinExtent = Extent;
+    gUI->NextWindowFlags.MinExtentX = Extent.X != INFINITY;
+    gUI->NextWindowFlags.MinExtentY = Extent.Y != INFINITY;
+    gUI->NextWindowMinExtent = Extent;
 }
 
 void Rr_UISetNextWindowMaxExtent(Rr_Vec2 Extent)
 {
-    gUIContext->NextWindowMaxExtent = Extent;
+    gUI->NextWindowFlags.MaxExtentX = Extent.X != INFINITY;
+    gUI->NextWindowFlags.MaxExtentY = Extent.Y != INFINITY;
+    gUI->NextWindowMaxExtent = Extent;
 }
 
 void Rr_UISetNextWindowCreateCollapsed(bool Collapsed)
 {
-    gUIContext->NextWindowCreateCollapsed = Collapsed ? 1 : -1;
-}
-
-static inline void Rr_UIConsumeNextWindowCreateCollapsed(Rr_UIWindow *Window)
-{
-    if (Window->CreatedThisFrame)
-    {
-        if (Window->Child)
-        {
-            Window->Collapsed = true;
-        }
-        if (gUIContext->NextWindowCreateCollapsed != 0)
-        {
-            Window->Collapsed = gUIContext->NextWindowCreateCollapsed == 1;
-        }
-    }
-    gUIContext->NextWindowCreateCollapsed = 0;
+    gUI->NextWindowFlags.CreateCollapsed = Collapsed ? 1 : -1;
 }
 
 static inline void Rr_UIPutWindowOnTop(Rr_UIWindow *Window)
@@ -3798,11 +3714,27 @@ static inline void Rr_UIPutWindowOnTop(Rr_UIWindow *Window)
     {
         return;
     }
-    if (!gUIContext->HighestWindow || gUIContext->HighestWindow == Window)
+    if (!gUI->HighestWindow || gUI->HighestWindow == Window)
     {
         return;
     }
-    Window->TopLevelParent->Z = gUIContext->HighestWindow->Z + 1;
+    Window->TopLevelParent->Z = gUI->HighestWindow->Z + 1;
+}
+
+static inline void Rr_UIApplyNextWindowVec2(
+    Rr_Vec2 *Dst,
+    bool ChangeX,
+    bool ChangeY,
+    Rr_Vec2 Changes)
+{
+    if (ChangeX)
+    {
+        Dst->X = floorf(Changes.X);
+    }
+    if (ChangeY)
+    {
+        Dst->Y = floorf(Changes.Y);
+    }
 }
 
 static inline bool Rr_UIPushWindowLayout(
@@ -3812,40 +3744,17 @@ static inline bool Rr_UIPushWindowLayout(
 {
     assert(!Window->Added && "There already is a window with this hash!");
 
-    bool LockExtentX = Rr_UIConsumeWindowFloat(
-        &gUIContext->NextWindowExtent.X,
-        &Window->Rect.Extent.X);
-    bool LockExtentY = Rr_UIConsumeWindowFloat(
-        &gUIContext->NextWindowExtent.Y,
-        &Window->Rect.Extent.Y);
-
-    Rr_Vec2 GenericMinExtent = Rr_UIGetMinWindowExtent(Window->Flags);
-
-    float MinExtentX = GenericMinExtent.X;
-    bool LockMinExtentX = Rr_UIConsumeWindowFloat(
-        &gUIContext->NextWindowMinExtent.X,
-        &MinExtentX);
-    float MinExtentY = GenericMinExtent.Y;
-    bool LockMinExtentY = Rr_UIConsumeWindowFloat(
-        &gUIContext->NextWindowMinExtent.Y,
-        &MinExtentY);
-
-    float MaxExtentX = INFINITY;
-    bool LockMaxExtentX = Rr_UIConsumeWindowFloat(
-        &gUIContext->NextWindowMaxExtent.X,
-        &MaxExtentX);
-    float MaxExtentY = INFINITY;
-    bool LockMaxExtentY = Rr_UIConsumeWindowFloat(
-        &gUIContext->NextWindowMaxExtent.Y,
-        &MaxExtentY);
-
-    bool LockExtent = Rr_UIConsumeNextWindowOffset(Window);
-
-    Rr_Vec2 OpenOffset;
-    bool WindowOpenOffsetConsumed =
-        Rr_UIConsumeNextWindowOpenOffset(&OpenOffset);
-
-    Rr_UIConsumeNextWindowCreateCollapsed(Window);
+    if (Window->CreatedThisFrame)
+    {
+        if (Window->Child)
+        {
+            Window->Collapsed = true;
+        }
+        if (gUI->NextWindowFlags.CreateCollapsed != 0)
+        {
+            Window->Collapsed = gUI->NextWindowFlags.CreateCollapsed > 0;
+        }
+    }
 
     /* Return if closed.
      * Also handle show after being closed.
@@ -3861,14 +3770,17 @@ static inline bool Rr_UIPushWindowLayout(
     {
         Rr_UIPushEmptyLayout(Hash, Window);
 
+        RR_ZERO(gUI->NextWindowFlags);
+
         return false;
     }
     else if (WasClosed)
     {
-        if (WindowOpenOffsetConsumed)
-        {
-            Window->Rect.Offset = OpenOffset;
-        }
+        Rr_UIApplyNextWindowVec2(
+            &Window->Rect.Offset,
+            gUI->NextWindowFlags.OpenOffsetX,
+            gUI->NextWindowFlags.OpenOffsetY,
+            gUI->NextWindowOpenOffset);
 
         Window->OpenedThisFrame = true;
         Window->SkipThisFrame = true;
@@ -3889,11 +3801,22 @@ static inline bool Rr_UIPushWindowLayout(
     Layout->HorizontalX = INFINITY;
     Layout->DeferredAutoResize = Rr_UIWindowAutoResize(Window);
     Layout->Open = Open;
-    Layout->LockOffset = LockExtent;
-    Layout->LockExtentX = LockExtentX;
-    Layout->LockExtentY = LockExtentY;
-    Layout->MinExtent = Rr_V2(MinExtentX, MinExtentY);
-    Layout->MaxExtent = Rr_V2(MaxExtentX, MaxExtentY);
+    Layout->LockOffsetX = gUI->NextWindowFlags.OffsetX;
+    Layout->LockOffsetY = gUI->NextWindowFlags.OffsetY;
+    Layout->LockExtentX = gUI->NextWindowFlags.ExtentX;
+    Layout->LockExtentY = gUI->NextWindowFlags.ExtentY;
+    Layout->MinExtent = Rr_UIGetMinWindowExtent(Window->Flags);
+    Rr_UIApplyNextWindowVec2(
+        &Layout->MinExtent,
+        gUI->NextWindowFlags.MinExtentX,
+        gUI->NextWindowFlags.MinExtentY,
+        gUI->NextWindowMinExtent);
+    Layout->MaxExtent = Rr_V2F(INFINITY);
+    Rr_UIApplyNextWindowVec2(
+        &Layout->MaxExtent,
+        gUI->NextWindowFlags.MaxExtentX,
+        gUI->NextWindowFlags.MaxExtentY,
+        gUI->NextWindowMaxExtent);
 
     if (Window->Child)
     {
@@ -3904,7 +3827,7 @@ static inline bool Rr_UIPushWindowLayout(
     else
     {
         Layout->ClipRects =
-            Rr_Alloc(sizeof(Rr_UIClipRectArray), gUIContext->FrameArena);
+            Rr_Alloc(sizeof(Rr_UIClipRectArray), gUI->FrameArena);
         Layout->TopLevelParent = Layout;
     }
 
@@ -3918,7 +3841,7 @@ static inline bool Rr_UIPushWindowLayout(
         Layout->WindowPadding = Rr_UICurrentWindowPadding();
     }
 
-    if (!(LockExtentX || LockExtentY))
+    if (!(gUI->NextWindowFlags.ExtentX || gUI->NextWindowFlags.ExtentY))
     {
         if (Window->Child)
         {
@@ -3940,11 +3863,11 @@ static inline bool Rr_UIPushWindowLayout(
 
     if (Layout->WasCollapsed)
     {
-        Layout->Rect.Extent.Y = gUIContext->TitleBarHeight;
+        Layout->Rect.Extent.Y = gUI->TitleBarHeight;
 
         if (!Rr_UIWindowNoBorders(Window))
         {
-            Layout->Rect.Extent.Y += gUIContext->DoubleBevelThickness * 2.0f;
+            Layout->Rect.Extent.Y += gUI->DoubleBevelThickness * 2.0f;
         }
     }
 
@@ -3952,10 +3875,8 @@ static inline bool Rr_UIPushWindowLayout(
 
     if (!Rr_UIWindowNoBorders(Window))
     {
-        Layout->Rect =
-            Rr_ResizeRect(&Layout->Rect, -gUIContext->DoubleBevelThickness);
-        Layout->Cursor =
-            Rr_AddV2F(Layout->Cursor, gUIContext->DoubleBevelThickness);
+        Layout->Rect = Rr_ResizeRect(&Layout->Rect, -gUI->DoubleBevelThickness);
+        Layout->Cursor = Rr_AddV2F(Layout->Cursor, gUI->DoubleBevelThickness);
     }
 
     /* Add title bar or tab bar if necessary. */
@@ -3964,14 +3885,16 @@ static inline bool Rr_UIPushWindowLayout(
     {
         Rr_UIAddWindowTabBar(Layout);
 
-        Layout->Cursor.Y += gUIContext->TitleBarHeight;
+        Layout->Cursor.Y += gUI->TitleBarHeight;
     }
     else if (HasTitleBar)
     {
         Rr_UIAddWindowTitleBar(Layout, Open);
 
-        Layout->Cursor.Y += gUIContext->TitleBarHeight;
+        Layout->Cursor.Y += gUI->TitleBarHeight;
     }
+
+    RR_ZERO(gUI->NextWindowFlags);
 
     /* NOTE: At this point window might have become collapsed! */
 
@@ -3992,8 +3915,8 @@ static inline bool Rr_UIPushWindowLayout(
         };
         Rr_UIDrawSolidQuad(
             &BackgroundRect,
-            Window->Child ? &gUIContext->Colors.ChildBackground
-                          : &gUIContext->Colors.Background);
+            Window->Child ? &gUI->Colors.ChildBackground
+                          : &gUI->Colors.Background);
     }
 
     Layout->TotalAvailableContentsWidth = Layout->Rect.Extent.X;
@@ -4004,7 +3927,7 @@ static inline bool Rr_UIPushWindowLayout(
     {
         if (Rr_UIAddVerticalScrollbar(Layout))
         {
-            Layout->TotalAvailableContentsWidth -= gUIContext->ScrollbarWidth;
+            Layout->TotalAvailableContentsWidth -= gUI->ScrollbarWidth;
         }
 
         Window->VScroll = Rr_Damp(
@@ -4041,9 +3964,9 @@ static inline void Rr_UIShowPopupWindow(
     Rr_UIWindow *ParentWindow,
     Rr_UIHash Hash)
 {
-    gUIContext->PopupWindowParent = ParentWindow;
-    gUIContext->PopupWindowHash = Hash;
-    gUIContext->PopupWindowOpen = true;
+    gUI->PopupWindowParent = ParentWindow;
+    gUI->PopupWindowHash = Hash;
+    gUI->PopupWindowOpen = true;
     /* gUIContext->PopupWindow.SkipThisFrame = true; */
 }
 
@@ -4051,14 +3974,13 @@ static inline bool Rr_UIShouldShowPopupWindow(
     Rr_UIWindow *ParentWindow,
     Rr_UIHash Hash)
 {
-    return gUIContext->PopupWindowOpen &&
-           gUIContext->PopupWindowParent == ParentWindow &&
-           gUIContext->PopupWindowHash == Hash;
+    return gUI->PopupWindowOpen && gUI->PopupWindowParent == ParentWindow &&
+           gUI->PopupWindowHash == Hash;
 }
 
 static inline void Rr_UIBeginPopupWindow(Rr_UIHash Hash, Rr_UIWindowFlags Flags)
 {
-    Rr_UIWindow *Window = &gUIContext->PopupWindow;
+    Rr_UIWindow *Window = &gUI->PopupWindow;
     Window->Flags = Flags;
     Window->TopLevelParent = Window;
     Rr_UIPushWindowLayout(Window, Hash, NULL);
@@ -4067,15 +3989,15 @@ static inline void Rr_UIBeginPopupWindow(Rr_UIHash Hash, Rr_UIWindowFlags Flags)
 
 static inline void Rr_UIClosePopupWindow(void)
 {
-    gUIContext->PopupWindowParent = NULL;
-    gUIContext->PopupWindowHash = 0;
-    gUIContext->PopupWindowOpen = false;
-    gUIContext->PopupWindow.Open = false;
+    gUI->PopupWindowParent = NULL;
+    gUI->PopupWindowHash = 0;
+    gUI->PopupWindowOpen = false;
+    gUI->PopupWindow.Open = false;
 }
 
 static bool Rr_UIPopupWindowActive(void)
 {
-    return gUIContext->PopupWindowParent && gUIContext->PopupWindowOpen;
+    return gUI->PopupWindowParent && gUI->PopupWindowOpen;
 }
 
 static inline Rr_UIWindow *Rr_UICreateWindow(
@@ -4084,11 +4006,9 @@ static inline Rr_UIWindow *Rr_UICreateWindow(
     uint64_t TitleHash,
     Rr_UIWindowFlags Flags)
 {
-    Rr_UIWindow *Window = Rr_Alloc(sizeof(Rr_UIWindow), gUIContext->Arena);
-    char *TitleCopy = memcpy(
-        Rr_Alloc(TitleLength + 1, gUIContext->Arena),
-        Title,
-        TitleLength);
+    Rr_UIWindow *Window = Rr_Alloc(sizeof(Rr_UIWindow), gUI->Arena);
+    char *TitleCopy =
+        memcpy(Rr_Alloc(TitleLength + 1, gUI->Arena), Title, TitleLength);
     TitleCopy[TitleLength] = '\0';
     Window->Title = TitleCopy;
     Window->Flags = Flags;
@@ -4171,25 +4091,25 @@ static bool Rr_UIBeginDockedChildWindow(
         Rr_Rect ButtonRect = {
             .Offset = ParentLayout->TabsCursor,
             .Extent = Rr_V2(
-                TitleSize.X + gUIContext->TitleBarPadding.X * 2.0f,
-                gUIContext->TitleBarHeight),
+                TitleSize.X + gUI->TitleBarPadding.X * 2.0f,
+                gUI->TitleBarHeight),
         };
         if (Rr_UIGenericButton(
                 ParentLayout,
                 Window->Title,
                 &ButtonRect,
-                &gUIContext->Colors.TitleForeground,
-                Selected ? &gUIContext->Colors.TitleBackground
-                         : &gUIContext->Colors.TitleBackgroundInactive,
-                Selected ? &gUIContext->Colors.TitleBackground
-                         : &gUIContext->Colors.ButtonHeld))
+                &gUI->Colors.TitleForeground,
+                Selected ? &gUI->Colors.TitleBackground
+                         : &gUI->Colors.TitleBackgroundInactive,
+                Selected ? &gUI->Colors.TitleBackground
+                         : &gUI->Colors.ButtonHeld))
         {
             if (Rr_UIWindowUndockable(Window) &&
                 (gPlatform.Keymod & RR_KEYMOD_CTRL))
             {
                 Rr_Vec2 TitlePosition = ButtonRect.Offset;
-                TitlePosition.X += gUIContext->TitleBarPadding.X;
-                TitlePosition.Y += gUIContext->TitleBarPadding.Y;
+                TitlePosition.X += gUI->TitleBarPadding.X;
+                TitlePosition.Y += gUI->TitleBarPadding.Y;
                 Window->UndockedOffset =
                     Rr_UIGetWindowOffsetRelativeToTitle(Window, TitlePosition);
                 Window->UndockNextFrame = true;
@@ -4272,10 +4192,7 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
     {
         ParentWindow = ParentLayout->Window;
     }
-    WindowRef = RR_FIND_IN_HASH_TRIE(
-        &gUIContext->WindowMap,
-        TitleHash,
-        gUIContext->Arena);
+    WindowRef = RR_FIND_IN_HASH_TRIE(&gUI->WindowMap, TitleHash, gUI->Arena);
     Window = *WindowRef;
     if (Window == NULL)
     {
@@ -4306,9 +4223,8 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
 
     if (Window->CreatedThisFrame)
     {
-        Window->Z = gUIContext->TotalWindowCount++;
-        Window->Rect.Offset =
-            Rr_FloorV2(Rr_V2F(gUIContext->DefaultFont->LineHeight));
+        Window->Z = gUI->TotalWindowCount++;
+        Window->Rect.Offset = Rr_FloorV2(Rr_V2F(gUI->DefaultFont->LineHeight));
     }
 
     Window->Tab = false;
@@ -4325,7 +4241,7 @@ bool Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags)
         /* Window->SkipThisFrame = true; */
         Window->Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
         Rr_UIPutWindowOnTop(Window);
-        gUIContext->ClickParent = Window;
+        gUI->ClickParent = Window;
         Rr_UIResetDrag();
     }
 
@@ -4344,10 +4260,10 @@ bool Rr_UIBeginWindow(char const *Title)
 
 static inline bool Rr_UIShouldHightlightWindow(Rr_UIWindow *Window)
 {
-    bool ClickParent = gUIContext->ClickParent;
+    bool ClickParent = gUI->ClickParent;
     if (ClickParent)
     {
-        ClickParent = gUIContext->ClickParent->TopLevelParent == Window;
+        ClickParent = gUI->ClickParent->TopLevelParent == Window;
         /* || gUIContext->ClickParent == Window || */
         /*    gUIContext->ClickParent == Window->TabsParent || */
         /*    gUIContext->ClickParent == Window->SelectedTab; */
@@ -4362,18 +4278,16 @@ static inline void Rr_UIClampWindowToScreen(Rr_UIWindow *Window)
 
     float MinOffset = Rr_UIWindowNoBorders(Window->TopLevelParent)
                           ? 0.0f
-                          : gUIContext->FrameThickness;
+                          : gUI->FrameThickness;
 
     if (TopLevelOffset->X < MinOffset)
     {
         TopLevelOffset->X = MinOffset;
     }
     else if (
-        TopLevelOffset->X >
-        gUIContext->ScreenSize.X - TopLevelExtent->X - MinOffset)
+        TopLevelOffset->X > gUI->ScreenSize.X - TopLevelExtent->X - MinOffset)
     {
-        TopLevelOffset->X =
-            gUIContext->ScreenSize.X - TopLevelExtent->X - MinOffset;
+        TopLevelOffset->X = gUI->ScreenSize.X - TopLevelExtent->X - MinOffset;
     }
 
     if (TopLevelOffset->Y < MinOffset)
@@ -4381,11 +4295,9 @@ static inline void Rr_UIClampWindowToScreen(Rr_UIWindow *Window)
         TopLevelOffset->Y = MinOffset;
     }
     else if (
-        TopLevelOffset->Y >
-        gUIContext->ScreenSize.Y - TopLevelExtent->Y - MinOffset)
+        TopLevelOffset->Y > gUI->ScreenSize.Y - TopLevelExtent->Y - MinOffset)
     {
-        TopLevelOffset->Y =
-            gUIContext->ScreenSize.Y - TopLevelExtent->Y - MinOffset;
+        TopLevelOffset->Y = gUI->ScreenSize.Y - TopLevelExtent->Y - MinOffset;
     }
 }
 
@@ -4418,8 +4330,7 @@ void Rr_UIEndWindow(void)
     Rr_Rect TotalClipRect = Layout->Rect;
     if (!Rr_UIWindowNoBorders(Window))
     {
-        TotalClipRect =
-            Rr_ResizeRect(&Layout->Rect, gUIContext->DoubleBevelThickness);
+        TotalClipRect = Rr_ResizeRect(&Layout->Rect, gUI->DoubleBevelThickness);
     }
 
     /* Since window wasn't collapsed, current clip rect refers to
@@ -4445,8 +4356,7 @@ void Rr_UIEndWindow(void)
 
         if (FillRatio > 1.0f)
         {
-            Rr_Vec4 *ScrolloffBackground =
-                &gUIContext->Colors.ScrolloffBackground;
+            Rr_Vec4 *ScrolloffBackground = &gUI->Colors.ScrolloffBackground;
 
             float DarkenSize = RR_MIN(Font->LineHeight, ContentsHeight);
 
@@ -4500,8 +4410,8 @@ void Rr_UIEndWindow(void)
             Rr_Vec2 BottomRight =
                 Rr_AddV2(Layout->Rect.Offset, Layout->Rect.Extent);
             Rr_Vec2 Positions[] = {
-                { BottomRight.X - gUIContext->ResizeHandleSize, BottomRight.Y },
-                { BottomRight.X, BottomRight.Y - gUIContext->ResizeHandleSize },
+                { BottomRight.X - gUI->ResizeHandleSize, BottomRight.Y },
+                { BottomRight.X, BottomRight.Y - gUI->ResizeHandleSize },
                 { BottomRight.X, BottomRight.Y },
             };
             if (Layout->DeferredResizeHandleColor)
@@ -4517,10 +4427,9 @@ void Rr_UIEndWindow(void)
     {
         Rr_UIDrawDoubleBevel(
             &TotalClipRect,
-            Rr_UIShouldHightlightWindow(Window)
-                ? &gUIContext->Colors.SelectedOutline
-                : &gUIContext->Colors.Outline,
-            gUIContext->DoubleBevelThickness);
+            Rr_UIShouldHightlightWindow(Window) ? &gUI->Colors.SelectedOutline
+                                                : &gUI->Colors.Outline,
+            gUI->DoubleBevelThickness);
     }
 
     /* NOTE: Forward scroll wheel behavior to the top-level parent. */
@@ -4547,12 +4456,12 @@ void Rr_UIEndWindow(void)
 
         if (!Rr_UIWindowNoTitleBar(Window))
         {
-            Extent.Y += gUIContext->TitleBarHeight;
+            Extent.Y += gUI->TitleBarHeight;
         }
 
         if (!Rr_UIWindowNoBorders(Window))
         {
-            Extent = Rr_AddV2F(Extent, gUIContext->DoubleBevelThickness * 2.0f);
+            Extent = Rr_AddV2F(Extent, gUI->DoubleBevelThickness * 2.0f);
         }
 
         Rr_UISetWindowExtentChecked(Layout, Extent);
@@ -4576,14 +4485,13 @@ void Rr_UIEndWindow(void)
         RR_UI_CLICK_TYPE_DRAG_RELAXED,
         MoveHash,
         (Rr_Rect){ .Offset = Window->TopLevelParent->Rect.Offset });
-    if (!Layout->LockOffset)
+    if (!Layout->LockOffsetX || !Layout->LockOffsetY)
     {
         if (!Rr_UIWindowNoMove(Window->TopLevelParent) && ClickResult.Moved)
         {
-            Rr_Vec2 Delta =
-                Rr_SubV2(gUIContext->MousePosition, gUIContext->DragMouseStart);
+            Rr_Vec2 Delta = Rr_SubV2(gUI->MousePosition, gUI->DragMouseStart);
             Window->TopLevelParent->Rect.Offset =
-                Rr_FloorV2(Rr_AddV2(gUIContext->DragValueStart.Offset, Delta));
+                Rr_FloorV2(Rr_AddV2(gUI->DragValueStart.Offset, Delta));
         }
 
         if (Layout->DeferredClampOffsetToScreen)
@@ -4595,17 +4503,16 @@ void Rr_UIEndWindow(void)
     /* Handle keyboard events. */
 
     bool EscapeCloses = Rr_UIWindowEscapeCloses(Window);
-    if (EscapeCloses && gUIContext->KeyboardInputEvents.Count)
+    if (EscapeCloses && gUI->KeyboardInputEvents.Count)
     {
         assert(!Window->Child);
-        for (size_t Index = 0; Index < gUIContext->KeyboardInputEvents.Count;
-             ++Index)
+        for (size_t Index = 0; Index < gUI->KeyboardInputEvents.Count; ++Index)
         {
-            Rr_KeyEvent *Event = gUIContext->KeyboardInputEvents.Data + Index;
+            Rr_KeyEvent *Event = gUI->KeyboardInputEvents.Data + Index;
             if (Event->Down && Event->Keymod == 0 &&
                 Event->Scancode == RR_SCANCODE_ESCAPE)
             {
-                if (Window == &gUIContext->PopupWindow)
+                if (Window == &gUI->PopupWindow)
                 {
                     Rr_UIClosePopupWindow();
                 }
@@ -4636,12 +4543,11 @@ void Rr_UIEndWindow(void)
             Rr_Vec2 ExtentThisFrame = Window->Rect.Extent;
             if (Layout->WasCollapsed)
             {
-                ExtentThisFrame.Y = gUIContext->TitleBarHeight;
+                ExtentThisFrame.Y = gUI->TitleBarHeight;
 
                 if (!Rr_UIWindowNoBorders(Window))
                 {
-                    ExtentThisFrame.Y +=
-                        gUIContext->DoubleBevelThickness * 2.0f;
+                    ExtentThisFrame.Y += gUI->DoubleBevelThickness * 2.0f;
                 }
             }
             Rr_UIAdvance(ExtentThisFrame);
@@ -4684,8 +4590,7 @@ void Rr_UIEndHorizontal(void)
 
 static inline float Rr_UIGetOffsetForTreeDepth(int32_t Depth)
 {
-    return gUIContext->TopLevelTreeOffset +
-           (float)(Depth - 1) * gUIContext->TreeOffset;
+    return gUI->TopLevelTreeOffset + (float)(Depth - 1) * gUI->TreeOffset;
 }
 
 static inline float Rr_UISetupFlexibleWidget(
@@ -4717,7 +4622,7 @@ static inline float Rr_UISetupFlexibleWidget(
     //                          gUIContext->FlexibleTitleMargin;
     // }
 
-    return RR_MAX(gUIContext->DefaultFlexibleWidth, DesiredWidgetWidth);
+    return RR_MAX(gUI->DefaultFlexibleWidth, DesiredWidgetWidth);
 }
 
 void Rr_UISetNextTreeExpanded(void)
@@ -4764,14 +4669,12 @@ bool Rr_UIBeginTree(char const *Title)
              ->Union.TreeExpanded;
     bool WasExpanded = *Expanded;
 
-    float TreeButtonHeight =
-        TopLevel ? gUIContext->TitleBarHeight : Font->LineHeight;
+    float TreeButtonHeight = TopLevel ? gUI->TitleBarHeight : Font->LineHeight;
 
-    float TreeOffset =
-        TopLevel ? gUIContext->TopLevelTreeOffset : gUIContext->TreeOffset;
+    float TreeOffset = TopLevel ? gUI->TopLevelTreeOffset : gUI->TreeOffset;
 
-    float TriangleSize = gUIContext->TitleBarHeight * 0.3f;
-    float TriangleOffset = TopLevel ? gUIContext->ButtonPadding.X : 0.0f;
+    float TriangleSize = gUI->TitleBarHeight * 0.3f;
+    float TriangleOffset = TopLevel ? gUI->ButtonPadding.X : 0.0f;
     Rr_Vec2 TriangleCenter = Rr_V2(
         Layout->Cursor.X + TriangleOffset + TriangleSize,
         Layout->Cursor.Y + TreeButtonHeight * 0.5f);
@@ -4780,27 +4683,27 @@ bool Rr_UIBeginTree(char const *Title)
         TriangleCenter,
         TriangleSize,
         WasExpanded ? RR_ANGLE_DEG(90.0f) : 0.0f,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     if (!TopLevel)
     {
         Rr_UITree *ParentTree = &RR_LAST_ARRAY_ELEMENT(&Layout->TreeStack);
 
         Rr_Vec2 RectOffset = ParentTree->ParentPoint;
-        RectOffset.X -= gUIContext->FrameThickness;
+        RectOffset.X -= gUI->FrameThickness;
         if (CurrentDepth == 1)
         {
-            RectOffset.Y += gUIContext->TitleBarHeight * 0.75f;
+            RectOffset.Y += gUI->TitleBarHeight * 0.75f;
         }
         else
         {
             RectOffset.Y += TriangleSize * 1.25f;
         }
-        Rr_Vec2 RectExtent = { gUIContext->FrameThickness,
+        Rr_Vec2 RectExtent = { gUI->FrameThickness,
                                TriangleCenter.Y - ParentTree->ParentPoint.Y };
         if (CurrentDepth == 1)
         {
-            RectExtent.Y -= gUIContext->TitleBarHeight * 0.75f;
+            RectExtent.Y -= gUI->TitleBarHeight * 0.75f;
         }
         else
         {
@@ -4808,25 +4711,25 @@ bool Rr_UIBeginTree(char const *Title)
         }
         Rr_UIDrawSolidQuad(
             &(Rr_Rect){ RectOffset, RectExtent },
-            &gUIContext->Colors.ForegroundDimmed);
+            &gUI->Colors.ForegroundDimmed);
 
         RectOffset = ParentTree->ParentPoint;
-        RectOffset.X -= gUIContext->FrameThickness;
+        RectOffset.X -= gUI->FrameThickness;
         RectOffset.Y += TriangleCenter.Y - ParentTree->ParentPoint.Y;
         RectExtent = (Rr_Vec2){ TriangleCenter.X - ParentTree->ParentPoint.X,
-                                gUIContext->FrameThickness };
+                                gUI->FrameThickness };
         RectExtent.X -= TriangleSize;
 
         Rr_UIDrawSolidQuad(
             &(Rr_Rect){ RectOffset, RectExtent },
-            &gUIContext->Colors.ForegroundDimmed);
+            &gUI->Colors.ForegroundDimmed);
     }
 
     Rr_Vec2 TitlePosition =
         Rr_V2(Layout->Cursor.X + TreeOffset, Layout->Cursor.Y);
     if (TopLevel)
     {
-        TitlePosition.Y += gUIContext->TitleBarPadding.Y;
+        TitlePosition.Y += gUI->TitleBarPadding.Y;
     }
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         false,
@@ -4834,7 +4737,7 @@ bool Rr_UIBeginTree(char const *Title)
         TitleLength,
         Title,
         0,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_Vec2 TotalExtent;
     TotalExtent.X = TitleSize.X + TreeOffset;
@@ -4864,12 +4767,12 @@ bool Rr_UIBeginTree(char const *Title)
         Rr_UIBevel(
             BevelPrimitive,
             &ButtonRect,
-            ClickResult.Held ? &gUIContext->Colors.ButtonHeld
-                             : &gUIContext->Colors.ButtonNormal,
+            ClickResult.Held ? &gUI->Colors.ButtonHeld
+                             : &gUI->Colors.ButtonNormal,
             ClickResult.Held);
     }
 
-    TotalExtent.X += gUIContext->ButtonPadding.X;
+    TotalExtent.X += gUI->ButtonPadding.X;
 
     Rr_UIAdvance(TotalExtent);
 
@@ -4893,10 +4796,9 @@ bool Rr_UIBeginTree(char const *Title)
 
         Rr_UIPushIDHash(TitleHash);
 
-        *RR_PUSH_INTO_ARRAY(&Layout->TreeStack, gUIContext->FrameArena) =
-            (Rr_UITree){
-                .ParentPoint = TriangleCenter,
-            };
+        *RR_PUSH_INTO_ARRAY(&Layout->TreeStack, gUI->FrameArena) = (Rr_UITree){
+            .ParentPoint = TriangleCenter,
+        };
     }
 
     return WasExpanded || *Expanded;
@@ -4924,9 +4826,9 @@ void Rr_UIEndTree(void)
 
 static inline bool Rr_UIApplyWidgetExtent(Rr_Vec2 *OutExtent)
 {
-    if (gUIContext->WidgetExtentStack.Count)
+    if (gUI->WidgetExtentStack.Count)
     {
-        *OutExtent = RR_LAST_ARRAY_ELEMENT(&gUIContext->WidgetExtentStack);
+        *OutExtent = RR_LAST_ARRAY_ELEMENT(&gUI->WidgetExtentStack);
 
         return true;
     }
@@ -4936,14 +4838,12 @@ static inline bool Rr_UIApplyWidgetExtent(Rr_Vec2 *OutExtent)
 
 void Rr_UIPushWidgetExtent(Rr_Vec2 Extent)
 {
-    *RR_PUSH_INTO_ARRAY(
-        &gUIContext->WidgetExtentStack,
-        gUIContext->FrameArena) = Extent;
+    *RR_PUSH_INTO_ARRAY(&gUI->WidgetExtentStack, gUI->FrameArena) = Extent;
 }
 
 void Rr_UIPopWidgetExtent(void)
 {
-    RR_UNUSED(RR_POP_FROM_ARRAY(&gUIContext->WidgetExtentStack));
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUI->WidgetExtentStack));
 }
 
 void Rr_UISeparator(void)
@@ -4963,35 +4863,28 @@ void Rr_UISeparator(void)
     Rr_Rect Rect;
     Rect.Extent = (Rr_Vec2){
         AvailableWidth,
-        gUIContext->DoubleBevelThickness * 0.5f,
+        gUI->DoubleBevelThickness * 0.5f,
     };
     Rect.Offset = (Rr_Vec2){
         Layout->Cursor.X + AvailableWidth * 0.5f - Rect.Extent.X * 0.5f,
-        Layout->Cursor.Y + gUIContext->SeparatorLineHeight * 0.5f -
-            Rect.Extent.Y,
+        Layout->Cursor.Y + gUI->SeparatorLineHeight * 0.5f - Rect.Extent.Y,
     };
     Rr_Vec4 *Color = Rr_UIShouldHightlightWindow(Window)
-                         ? &gUIContext->Colors.SelectedOutline
-                         : &gUIContext->Colors.Outline;
+                         ? &gUI->Colors.SelectedOutline
+                         : &gUI->Colors.Outline;
     Rr_Vec4 ColorLight;
-    ColorLight.RGB = Rr_LerpV3(
-        Color->RGB,
-        gUIContext->Style.BevelIntensityLight,
-        RR_UI_VEC3_ONE);
+    ColorLight.RGB =
+        Rr_LerpV3(Color->RGB, gUI->Style.BevelIntensityLight, RR_UI_VEC3_ONE);
     ColorLight.A = 1.0f;
     Rr_Vec4 ColorDark;
-    ColorDark.RGB = Rr_LerpV3(
-        Color->RGB,
-        gUIContext->Style.BevelIntensityDark,
-        RR_UI_VEC3_ZERO);
+    ColorDark.RGB =
+        Rr_LerpV3(Color->RGB, gUI->Style.BevelIntensityDark, RR_UI_VEC3_ZERO);
     ColorDark.A = 1.0f;
     Rr_UIDrawSolidQuad(&Rect, &ColorLight);
     Rect.Offset.Y += Rect.Extent.Y;
     Rr_UIDrawSolidQuad(&Rect, &ColorDark);
 
-    Rr_UIAdvance(Rr_V2(
-        gUIContext->SeparatorLineHeight,
-        gUIContext->SeparatorLineHeight));
+    Rr_UIAdvance(Rr_V2(gUI->SeparatorLineHeight, gUI->SeparatorLineHeight));
 }
 
 void Rr_UIImageEx(Rr_Image *Image, Rr_Vec2 Extent, Rr_Vec2 UVMin, Rr_Vec2 UVMax)
@@ -5058,7 +4951,7 @@ void Rr_UIText(char const *Text)
         SIZE_MAX,
         Text,
         0.0f,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_UIAdvance(TextSize);
 }
@@ -5107,7 +5000,7 @@ void Rr_UITextWrapped(char const *Text, float WrapWidth)
         SIZE_MAX,
         Text,
         WrapWidth,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_UIAdvance(TextSize);
 }
@@ -5134,20 +5027,20 @@ void Rr_UILabelText(char const *Title, char const *Text)
         SIZE_MAX,
         Text,
         0.0f,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += FlexibleWidth + gUIContext->FlexibleTitleMargin;
+    TitleOffset.X += FlexibleWidth + gUI->FlexibleTitleMargin;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
         TitleOffset,
         TitleLength,
         Title,
         0,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_Vec2 Extent = {
-        FlexibleWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        FlexibleWidth + gUI->FlexibleTitleMargin + TitleExtent.X,
         TextSize.Y,
     };
 
@@ -5173,8 +5066,7 @@ bool Rr_UIButton(char const *Text)
     Rr_Vec2 ButtonSize;
     if (!Rr_UIApplyWidgetExtent(&ButtonSize))
     {
-        ButtonSize =
-            Rr_AddV2(TitleSize, Rr_MulV2F(gUIContext->ButtonPadding, 2.0f));
+        ButtonSize = Rr_AddV2(TitleSize, Rr_MulV2F(gUI->ButtonPadding, 2.0f));
     }
 
     Rr_Vec2 ButtonPosition = Layout->Cursor;
@@ -5189,7 +5081,7 @@ bool Rr_UIButton(char const *Text)
         TitleLength,
         Text,
         0.0f,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_UIClickResult ClickResult = Rr_UIClickSimple(
         Layout,
@@ -5207,8 +5099,7 @@ bool Rr_UIButton(char const *Text)
     Rr_UIBevel(
         Primitive,
         &ButtonRect,
-        ClickResult.Held ? &gUIContext->Colors.ButtonHeld
-                         : &gUIContext->Colors.ButtonNormal,
+        ClickResult.Held ? &gUI->Colors.ButtonHeld : &gUI->Colors.ButtonNormal,
         ClickResult.Held);
 
     Rr_UIAdvance(ButtonSize);
@@ -5243,20 +5134,20 @@ bool Rr_UIRadioButton(
     Rr_Vec2 Cursor = Layout->Cursor;
 
     Rr_Vec2 TitlePosition = Cursor;
-    TitlePosition.X += OuterRadius * 2.0f + gUIContext->ButtonPadding.X;
+    TitlePosition.X += OuterRadius * 2.0f + gUI->ButtonPadding.X;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         false,
         TitlePosition,
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_Rect ButtonRect = {
         Cursor,
         Rr_V2(
-            TitleSize.X + gUIContext->ButtonPadding.X +
-                gUIContext->ButtonPadding.X + OuterRadius * 2.0f,
+            TitleSize.X + gUI->ButtonPadding.X + gUI->ButtonPadding.X +
+                OuterRadius * 2.0f,
             TitleSize.Y),
     };
 
@@ -5273,8 +5164,8 @@ bool Rr_UIRadioButton(
     Rr_Vec2 CircleOffset =
         Rr_V2(Cursor.X + OuterRadius, Cursor.Y + ButtonSize * 0.5f);
 
-    Rr_Vec4 BaseColor = ClickResult.Held ? gUIContext->Colors.RadioButtonHeld
-                                         : gUIContext->Colors.RadioButtonNormal;
+    Rr_Vec4 BaseColor = ClickResult.Held ? gUI->Colors.RadioButtonHeld
+                                         : gUI->Colors.RadioButtonNormal;
 
     Rr_UIDrawCircleFilled(CircleOffset, OuterRadius, &BaseColor);
     if (Selected)
@@ -5282,14 +5173,14 @@ bool Rr_UIRadioButton(
         Rr_UIDrawCircleFilled(
             CircleOffset,
             InnerRadius,
-            &gUIContext->Colors.Foreground);
+            &gUI->Colors.Foreground);
     }
 
     Rr_UIDrawCircle(
         CircleOffset,
         OuterRadius - OutlineThickness,
         OutlineThickness,
-        &gUIContext->Colors.RadioButtonOutline);
+        &gUI->Colors.RadioButtonOutline);
 
     Rr_UIAdvance(ButtonRect.Extent);
 
@@ -5318,19 +5209,19 @@ bool Rr_UICheckbox(char const *Title, bool *Checked)
     };
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
-    TitlePosition.X += CheckboxRect.Extent.X + gUIContext->ButtonPadding.X;
+    TitlePosition.X += CheckboxRect.Extent.X + gUI->ButtonPadding.X;
     Rr_Vec2 TitleSize = Rr_UIDrawText(
         false,
         TitlePosition,
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_Rect ButtonRect = {
         Layout->Cursor,
         Rr_V2(
-            TitleSize.X + gUIContext->ButtonPadding.X * 2.0f + Font->LineHeight,
+            TitleSize.X + gUI->ButtonPadding.X * 2.0f + Font->LineHeight,
             TitleSize.Y),
     };
 
@@ -5344,19 +5235,18 @@ bool Rr_UICheckbox(char const *Title, bool *Checked)
 
     Rr_UIDrawBevel(
         &CheckboxRect,
-        ClickResult.Held ? &gUIContext->Colors.ButtonHeld
-                         : &gUIContext->Colors.ButtonNormal,
+        ClickResult.Held ? &gUI->Colors.ButtonHeld : &gUI->Colors.ButtonNormal,
         ClickResult.Held);
 
     if (*Checked)
     {
         CheckboxRect = Rr_ResizeRect(
             &CheckboxRect,
-            -CheckboxRect.Extent.X * (1.0f - gUIContext->Style.CheckmarkSize));
+            -CheckboxRect.Extent.X * (1.0f - gUI->Style.CheckmarkSize));
         Rr_UIDrawCheckmark(
             CheckboxRect.Offset,
             CheckboxRect.Extent.X,
-            &gUIContext->Colors.Foreground);
+            &gUI->Colors.Foreground);
     }
 
     Rr_UIAdvance(ButtonRect.Extent);
@@ -5488,7 +5378,7 @@ static inline void Rr_UISetTextInputMaxCol(char *Buffer, size_t Cursor)
     size_t CursorMaxCol = Cursor - ThisLine;
     if (CursorMaxCol == 0)
     {
-        gUIContext->TextInputCursorCodepointMaxCol = 0;
+        gUI->TextInputCursorCodepointMaxCol = 0;
 
         return;
     }
@@ -5501,8 +5391,7 @@ static inline void Rr_UISetTextInputMaxCol(char *Buffer, size_t Cursor)
         Rr_UTF8Decode(&Decoder);
         if (Decoder.CStringCodepointIndex == Cursor)
         {
-            gUIContext->TextInputCursorCodepointMaxCol =
-                Decoder.CodepointCount - 1;
+            gUI->TextInputCursorCodepointMaxCol = Decoder.CodepointCount - 1;
 
             return;
         }
@@ -5526,8 +5415,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
     bool EnterToConfirm)
 {
     Rr_UIEditResult Result = { 0 };
-    if (gUIContext->TextInputEvents.Count == 0 &&
-        gUIContext->KeyboardInputEvents.Count == 0)
+    if (gUI->TextInputEvents.Count == 0 && gUI->KeyboardInputEvents.Count == 0)
     {
         return Result;
     }
@@ -5547,10 +5435,9 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
     const Rr_KeymodFlags DEFAULT_MOD = RR_KEYMOD_CTRL;
 #endif
 
-    for (size_t Index = 0; Index < gUIContext->KeyboardInputEvents.Count;
-         ++Index)
+    for (size_t Index = 0; Index < gUI->KeyboardInputEvents.Count; ++Index)
     {
-        Rr_KeyEvent *Event = gUIContext->KeyboardInputEvents.Data + Index;
+        Rr_KeyEvent *Event = gUI->KeyboardInputEvents.Data + Index;
 
         if (!Event->Down)
         {
@@ -5756,7 +5643,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
                     while (true)
                     {
                         if (Decoder.CodepointCount ==
-                            gUIContext->TextInputCursorCodepointMaxCol)
+                            gUI->TextInputCursorCodepointMaxCol)
                         {
                             NewCursorEnd = Decoder.CStringParserIndex;
                             break;
@@ -5786,7 +5673,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
                 while (true)
                 {
                     if (Decoder.CodepointCount ==
-                        gUIContext->TextInputCursorCodepointMaxCol)
+                        gUI->TextInputCursorCodepointMaxCol)
                     {
                         NewCursorEnd = Decoder.CStringParserIndex;
                         break;
@@ -5931,7 +5818,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             *CursorBegin = NewCursorBegin;
             *CursorEnd = NewCursorEnd;
-            gUIContext->TextInputCursorBlinkTimeNS = TimeNS;
+            gUI->TextInputCursorBlinkTimeNS = TimeNS;
             Result.Edited |= true;
         }
 
@@ -5941,7 +5828,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         }
     }
 
-    for (size_t Index = 0; Index < gUIContext->TextInputEvents.Count; ++Index)
+    for (size_t Index = 0; Index < gUI->TextInputEvents.Count; ++Index)
     {
         NewCursorBegin = *CursorBegin;
         NewCursorEnd = *CursorEnd;
@@ -5949,7 +5836,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         /* CursorMin = RR_MIN(NewCursorBegin, NewCursorEnd); */
         /* CursorMax = RR_MAX(NewCursorBegin, NewCursorEnd); */
 
-        char const *CString = gUIContext->TextInputEvents.Data[Index];
+        char const *CString = gUI->TextInputEvents.Data[Index];
         size_t Length = strlen(CString);
 
         if (Rr_UIConsumeTextInput(
@@ -5964,14 +5851,14 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
         {
             *CursorBegin = NewCursorBegin;
             *CursorEnd = NewCursorEnd;
-            gUIContext->TextInputCursorBlinkTimeNS = TimeNS;
+            gUI->TextInputCursorBlinkTimeNS = TimeNS;
             Rr_UISetTextInputMaxCol(Buffer, NewCursorEnd);
             Result.Edited |= true;
         }
     }
 
-    RR_CLEAR_ARRAY(&gUIContext->TextInputEvents);
-    RR_CLEAR_ARRAY(&gUIContext->KeyboardInputEvents);
+    RR_CLEAR_ARRAY(&gUI->TextInputEvents);
+    RR_CLEAR_ARRAY(&gUI->KeyboardInputEvents);
 
     return Result;
 }
@@ -6004,7 +5891,7 @@ static inline void Rr_UIApplyInputFieldPlaceholder(
             SIZE_MAX,
             PlaceholderString,
             0.0f,
-            &gUIContext->Colors.ForegroundDimmed);
+            &gUI->Colors.ForegroundDimmed);
     }
     else
     {
@@ -6043,7 +5930,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         return (Rr_UIInputFieldResult){
             .Extent = { 0.0f,
                         Rr_UICurrentLineHeight() +
-                            gUIContext->InputFieldPadding.Y * 2.0f }
+                            gUI->InputFieldPadding.Y * 2.0f }
         };
     }
 
@@ -6080,14 +5967,12 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
     if (Drag && !Focused)
     {
         size_t BufferLength = strlen(Buffer);
-        BufferOffset = Rr_AddV2(Offset, gUIContext->InputFieldPadding);
+        BufferOffset = Rr_AddV2(Offset, gUI->InputFieldPadding);
         BufferExtent = Rr_UICalculateTextSize(BufferLength, Buffer, 0.0f);
 
         FieldRect = (Rr_Rect){
             Offset,
-            Rr_AddV2(
-                BufferExtent,
-                Rr_MulV2F(gUIContext->InputFieldPadding, 2.0f)),
+            Rr_AddV2(BufferExtent, Rr_MulV2F(gUI->InputFieldPadding, 2.0f)),
         };
         if (UseFixedWidth)
         {
@@ -6095,7 +5980,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         }
 
         Rr_Rect ClipRect =
-            Rr_ResizeRect(&FieldRect, gUIContext->BevelThickness * -2.0f);
+            Rr_ResizeRect(&FieldRect, gUI->BevelThickness * -2.0f);
         Rr_UIPushSubClipRect(Layout, &ClipRect);
 
         if (AutoCenter)
@@ -6109,7 +5994,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             BufferLength,
             Buffer,
             0.0f,
-            &gUIContext->Colors.Foreground);
+            &gUI->Colors.Foreground);
 
         Rr_UIApplyInputFieldPlaceholder(
             Offset,
@@ -6131,8 +6016,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
 
         if (ClickResult.Moved)
         {
-            Dragged =
-                gUIContext->MousePosition.X - gUIContext->DragMouseStart.X;
+            Dragged = gUI->MousePosition.X - gUI->DragMouseStart.X;
         }
 
         if (ClickResult.ClickCount == 1)
@@ -6143,30 +6027,28 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             {
                 /* Select everything on first click. */
 
-                gUIContext->TextInputCursorBegin = 0;
-                gUIContext->TextInputCursorEnd = BufferLength;
-                gUIContext->TextInputClickID =
-                    gUIContext->LeftMouseButton.ClickID;
+                gUI->TextInputCursorBegin = 0;
+                gUI->TextInputCursorEnd = BufferLength;
+                gUI->TextInputClickID = gUI->LeftMouseButton.ClickID;
             }
 
             if (UsePersistentBuffer && !Focused)
             {
-                gUIContext->DeferTextInputBufferCopy = true;
+                gUI->DeferTextInputBufferCopy = true;
             }
 
-            Rr_UISetTextInputMaxCol(Buffer, gUIContext->TextInputCursorEnd);
-            gUIContext->TextInputCursorBlinkTimeNS = Rr_GetTimeNS();
+            Rr_UISetTextInputMaxCol(Buffer, gUI->TextInputCursorEnd);
+            gUI->TextInputCursorBlinkTimeNS = Rr_GetTimeNS();
         }
 
         Focused = ClickResult.ClickCount || ClickResult.Held;
 
-        bool ChangeCursor =
-            ClickResult.Hovered &&
-            (!gUIContext->DragParent || (gUIContext->DragHash == Hash));
+        bool ChangeCursor = ClickResult.Hovered &&
+                            (!gUI->DragParent || (gUI->DragHash == Hash));
         ChangeCursor |= ClickResult.Held;
         if (ChangeCursor)
         {
-            gUIContext->CursorType = RR_CURSOR_TYPE_RESIZE_EW;
+            gUI->CursorType = RR_CURSOR_TYPE_RESIZE_EW;
         }
     }
     else
@@ -6174,36 +6056,33 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         /* NOTE: A bit hacky way to make sure initial memcpy to persistent
          * buffer occurs only once. Defering the copy also protects from issues
          * coming from unfocusing an input field that goes after current one. */
-        if (UsePersistentBuffer && Focused &&
-            gUIContext->DeferTextInputBufferCopy)
+        if (UsePersistentBuffer && Focused && gUI->DeferTextInputBufferCopy)
         {
             /* NOTE: May waste quite a bit of memory. */
-            if (gUIContext->TextInputBuffer.Capacity < BufferCapacity ||
-                !gUIContext->TextInputBuffer.Data)
+            if (gUI->TextInputBuffer.Capacity < BufferCapacity ||
+                !gUI->TextInputBuffer.Data)
             {
-                gUIContext->TextInputBuffer.Data =
-                    Rr_AllocNoZero(BufferCapacity, gUIContext->Arena);
-                gUIContext->TextInputBuffer.Capacity = BufferCapacity;
+                gUI->TextInputBuffer.Data =
+                    Rr_AllocNoZero(BufferCapacity, gUI->Arena);
+                gUI->TextInputBuffer.Capacity = BufferCapacity;
             }
             /* NOTE: It was BufferLength + 1 before. */
-            memcpy(gUIContext->TextInputBuffer.Data, Buffer, BufferCapacity);
+            memcpy(gUI->TextInputBuffer.Data, Buffer, BufferCapacity);
 
-            gUIContext->DeferTextInputBufferCopy = false;
+            gUI->DeferTextInputBufferCopy = false;
         }
 
-        size_t NewCursorEnd = gUIContext->TextInputCursorEnd;
+        size_t NewCursorEnd = gUI->TextInputCursorEnd;
         char const *BufferString =
             UsePersistentBuffer && (Focused || WasFocused)
-                ? gUIContext->TextInputBuffer.Data
+                ? gUI->TextInputBuffer.Data
                 : Buffer;
-        BufferOffset = Rr_AddV2(Offset, gUIContext->InputFieldPadding);
+        BufferOffset = Rr_AddV2(Offset, gUI->InputFieldPadding);
         BufferExtent = Rr_UICalculateTextSize(SIZE_MAX, BufferString, 0.0f);
 
         FieldRect = (Rr_Rect){
             Offset,
-            Rr_AddV2(
-                BufferExtent,
-                Rr_MulV2F(gUIContext->InputFieldPadding, 2.0f)),
+            Rr_AddV2(BufferExtent, Rr_MulV2F(gUI->InputFieldPadding, 2.0f)),
         };
         if (UseFixedWidth)
         {
@@ -6211,7 +6090,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         }
 
         Rr_Rect ClipRect =
-            Rr_ResizeRect(&FieldRect, gUIContext->BevelThickness * -2.0f);
+            Rr_ResizeRect(&FieldRect, gUI->BevelThickness * -2.0f);
         Rr_UIPushSubClipRect(Layout, &ClipRect);
 
         if (AutoCenter)
@@ -6223,10 +6102,10 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             BufferString,
             Focused,
             BufferOffset,
-            gUIContext->TextInputCursorBegin,
+            gUI->TextInputCursorBegin,
             &NewCursorEnd,
             0.0f,
-            &gUIContext->Colors.Foreground);
+            &gUI->Colors.Foreground);
 
         Rr_UIApplyInputFieldPlaceholder(
             Offset,
@@ -6248,21 +6127,20 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             {
                 /* Select everything on first click. */
 
-                gUIContext->TextInputCursorBegin = 0;
-                gUIContext->TextInputCursorEnd = BufferLength;
-                gUIContext->TextInputClickID =
-                    gUIContext->LeftMouseButton.ClickID;
+                gUI->TextInputCursorBegin = 0;
+                gUI->TextInputCursorEnd = BufferLength;
+                gUI->TextInputClickID = gUI->LeftMouseButton.ClickID;
             }
             else
             {
-                uint32_t Clicks = (gUIContext->LeftMouseButton.Clicks - 1) % 3;
+                uint32_t Clicks = (gUI->LeftMouseButton.Clicks - 1) % 3;
                 if (Clicks == 2)
                 {
                     /* Select whole line. */
 
-                    gUIContext->TextInputCursorBegin =
+                    gUI->TextInputCursorBegin =
                         Rr_UILineStart(Buffer, NewCursorEnd);
-                    gUIContext->TextInputCursorEnd =
+                    gUI->TextInputCursorEnd =
                         Rr_UILineEnd(Buffer, NewCursorEnd);
                 }
                 else if (Clicks == 1)
@@ -6271,41 +6149,40 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
 
                     if (!(NewCursorEnd > 0 && Buffer[NewCursorEnd - 1] == ' '))
                     {
-                        gUIContext->TextInputCursorBegin =
+                        gUI->TextInputCursorBegin =
                             Rr_PreviousUTF8WordOffset(Buffer, NewCursorEnd);
                     }
-                    gUIContext->TextInputCursorEnd =
-                        Rr_LastUTF8CharInWordOffset(
-                            Buffer,
-                            gUIContext->TextInputCursorBegin);
+                    gUI->TextInputCursorEnd = Rr_LastUTF8CharInWordOffset(
+                        Buffer,
+                        gUI->TextInputCursorBegin);
 
-                    gUIContext->TextInputCursorEnd = RR_CLAMP(
-                        gUIContext->TextInputCursorBegin,
-                        gUIContext->TextInputCursorEnd,
+                    gUI->TextInputCursorEnd = RR_CLAMP(
+                        gUI->TextInputCursorBegin,
+                        gUI->TextInputCursorEnd,
                         BufferCapacity);
                 }
                 else if (Clicks == 0)
                 {
-                    gUIContext->TextInputCursorBegin = NewCursorEnd;
-                    gUIContext->TextInputCursorEnd = NewCursorEnd;
+                    gUI->TextInputCursorBegin = NewCursorEnd;
+                    gUI->TextInputCursorEnd = NewCursorEnd;
                 }
             }
 
             if (UsePersistentBuffer && !Focused)
             {
-                gUIContext->DeferTextInputBufferCopy = true;
+                gUI->DeferTextInputBufferCopy = true;
             }
 
-            Rr_UISetTextInputMaxCol(Buffer, gUIContext->TextInputCursorEnd);
-            gUIContext->TextInputCursorBlinkTimeNS = Rr_GetTimeNS();
+            Rr_UISetTextInputMaxCol(Buffer, gUI->TextInputCursorEnd);
+            gUI->TextInputCursorBlinkTimeNS = Rr_GetTimeNS();
         }
         else if (Focused && ClickResult.Moved)
         {
-            if (!AutoSelect || gUIContext->LeftMouseButton.ClickID >
-                                   gUIContext->TextInputClickID)
+            if (!AutoSelect ||
+                gUI->LeftMouseButton.ClickID > gUI->TextInputClickID)
             {
-                gUIContext->TextInputCursorBlinkTimeNS = Rr_GetTimeNS();
-                gUIContext->TextInputCursorEnd = NewCursorEnd;
+                gUI->TextInputCursorBlinkTimeNS = Rr_GetTimeNS();
+                gUI->TextInputCursorEnd = NewCursorEnd;
             }
         }
 
@@ -6314,15 +6191,15 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
             bool EnterToConfirm =
                 !(Flags & RR_UI_INPUT_FIELD_FLAGS_MULTILINE_BIT);
             EditResult = Rr_UIEditUTF8Buffer(
-                &gUIContext->TextInputCursorBegin,
-                &gUIContext->TextInputCursorEnd,
+                &gUI->TextInputCursorBegin,
+                &gUI->TextInputCursorEnd,
                 BufferCapacity,
-                UsePersistentBuffer ? gUIContext->TextInputBuffer.Data : Buffer,
+                UsePersistentBuffer ? gUI->TextInputBuffer.Data : Buffer,
                 FilterFunc,
                 EnterToConfirm);
             if (EditResult.Confirmed)
             {
-                gUIContext->FocusedWidgetParent = NULL;
+                gUI->FocusedWidgetParent = NULL;
             }
         }
         else
@@ -6332,16 +6209,15 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
 
         if (EditResult.Edited && UsePersistentBuffer)
         {
-            memcpy(Buffer, gUIContext->TextInputBuffer.Data, BufferCapacity);
+            memcpy(Buffer, gUI->TextInputBuffer.Data, BufferCapacity);
         }
 
-        bool ChangeCursor =
-            ClickResult.Hovered &&
-            (!gUIContext->DragParent || (gUIContext->DragHash == Hash));
+        bool ChangeCursor = ClickResult.Hovered &&
+                            (!gUI->DragParent || (gUI->DragHash == Hash));
         ChangeCursor |= ClickResult.Held;
         if (ChangeCursor)
         {
-            gUIContext->CursorType = RR_CURSOR_TYPE_TEXT;
+            gUI->CursorType = RR_CURSOR_TYPE_TEXT;
         }
     }
 
@@ -6350,8 +6226,8 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         Rr_UIBevel(
             BackgroundBevelPrimitive,
             &FieldRect,
-            Focused ? &gUIContext->Colors.InputFieldActive
-                    : &gUIContext->Colors.InputFieldNormal,
+            Focused ? &gUI->Colors.InputFieldActive
+                    : &gUI->Colors.InputFieldNormal,
             true);
     }
 
@@ -6572,10 +6448,10 @@ static inline float Rr_UICalculateGenericInputScalarMultiWidth(
         }
     }
 
-    MaxTextWidth += gUIContext->InputFieldPadding.X * 2.0f;
+    MaxTextWidth += gUI->InputFieldPadding.X * 2.0f;
 
     return MaxTextWidth * (float)Cols +
-           gUIContext->ComponentMargin * (float)(Cols - 1);
+           gUI->ComponentMargin * (float)(Cols - 1);
 }
 
 static inline void Rr_UIRecordDragScalar(void *Data, Rr_UIScalarType Type)
@@ -6584,32 +6460,32 @@ static inline void Rr_UIRecordDragScalar(void *Data, Rr_UIScalarType Type)
     {
         case RR_UI_SCALAR_TYPE_INT:
         {
-            gUIContext->DragScalarValue.Int32 = *(int32_t *)Data;
+            gUI->DragScalarValue.Int32 = *(int32_t *)Data;
         }
         break;
         case RR_UI_SCALAR_TYPE_INT64:
         {
-            gUIContext->DragScalarValue.Int64 = *(int64_t *)Data;
+            gUI->DragScalarValue.Int64 = *(int64_t *)Data;
         }
         break;
         case RR_UI_SCALAR_TYPE_UINT:
         {
-            gUIContext->DragScalarValue.UnsignedInt32 = *(uint32_t *)Data;
+            gUI->DragScalarValue.UnsignedInt32 = *(uint32_t *)Data;
         }
         break;
         case RR_UI_SCALAR_TYPE_UINT64:
         {
-            gUIContext->DragScalarValue.UnsignedInt64 = *(uint64_t *)Data;
+            gUI->DragScalarValue.UnsignedInt64 = *(uint64_t *)Data;
         }
         break;
         case RR_UI_SCALAR_TYPE_FLOAT:
         {
-            gUIContext->DragScalarValue.Float = *(float *)Data;
+            gUI->DragScalarValue.Float = *(float *)Data;
         }
         break;
         case RR_UI_SCALAR_TYPE_DOUBLE:
         {
-            gUIContext->DragScalarValue.Double = *(double *)Data;
+            gUI->DragScalarValue.Double = *(double *)Data;
         }
         break;
         default:
@@ -6627,7 +6503,7 @@ static inline void Rr_UIModifyUnsignedInt(
     float Amount)
 {
     uint32_t Abs = (uint32_t)fabsf(Amount);
-    uint32_t Old = gUIContext->DragScalarValue.UnsignedInt32;
+    uint32_t Old = gUI->DragScalarValue.UnsignedInt32;
     if (Amount > 0.0f)
     {
         if (Old + Abs < Old)
@@ -6636,7 +6512,7 @@ static inline void Rr_UIModifyUnsignedInt(
 
             return;
         }
-        *UnsignedInt = gUIContext->DragScalarValue.UnsignedInt32 + Abs;
+        *UnsignedInt = gUI->DragScalarValue.UnsignedInt32 + Abs;
     }
     if (Amount < 0.0f)
     {
@@ -6646,7 +6522,7 @@ static inline void Rr_UIModifyUnsignedInt(
 
             return;
         }
-        *UnsignedInt = gUIContext->DragScalarValue.UnsignedInt32 - Abs;
+        *UnsignedInt = gUI->DragScalarValue.UnsignedInt32 - Abs;
     }
     *UnsignedInt = RR_CLAMP(Min, *UnsignedInt, Max);
 }
@@ -6658,7 +6534,7 @@ static inline void Rr_UIModifyUnsignedInt64(
     float Amount)
 {
     uint64_t Abs = (uint64_t)fabsf(Amount);
-    uint64_t Old = gUIContext->DragScalarValue.UnsignedInt64;
+    uint64_t Old = gUI->DragScalarValue.UnsignedInt64;
     if (Amount > 0.0f)
     {
         if (Old + Abs < Old)
@@ -6667,7 +6543,7 @@ static inline void Rr_UIModifyUnsignedInt64(
 
             return;
         }
-        *UnsignedInt = gUIContext->DragScalarValue.UnsignedInt64 + Abs;
+        *UnsignedInt = gUI->DragScalarValue.UnsignedInt64 + Abs;
     }
     if (Amount < 0.0f)
     {
@@ -6677,7 +6553,7 @@ static inline void Rr_UIModifyUnsignedInt64(
 
             return;
         }
-        *UnsignedInt = gUIContext->DragScalarValue.UnsignedInt64 - Abs;
+        *UnsignedInt = gUI->DragScalarValue.UnsignedInt64 - Abs;
     }
     *UnsignedInt = RR_CLAMP(Min, *UnsignedInt, Max);
 }
@@ -6691,14 +6567,12 @@ static inline void Rr_UIModifyDragScalar(
     {
         case RR_UI_SCALAR_TYPE_INT:
         {
-            *(int32_t *)Data =
-                gUIContext->DragScalarValue.Int32 + (int32_t)Amount;
+            *(int32_t *)Data = gUI->DragScalarValue.Int32 + (int32_t)Amount;
         }
         break;
         case RR_UI_SCALAR_TYPE_INT64:
         {
-            *(int64_t *)Data =
-                gUIContext->DragScalarValue.Int64 + (int64_t)Amount;
+            *(int64_t *)Data = gUI->DragScalarValue.Int64 + (int64_t)Amount;
         }
         break;
         case RR_UI_SCALAR_TYPE_UINT:
@@ -6715,12 +6589,12 @@ static inline void Rr_UIModifyDragScalar(
         break;
         case RR_UI_SCALAR_TYPE_FLOAT:
         {
-            *(float *)Data = gUIContext->DragScalarValue.Float + Amount;
+            *(float *)Data = gUI->DragScalarValue.Float + Amount;
         }
         break;
         case RR_UI_SCALAR_TYPE_DOUBLE:
         {
-            *(double *)Data = gUIContext->DragScalarValue.Double + Amount;
+            *(double *)Data = gUI->DragScalarValue.Double + Amount;
         }
         break;
         default:
@@ -6746,8 +6620,8 @@ static inline void Rr_UIModifyDragScalarRange(
             int32_t Max = *(int32_t const *)DataMax;
             int32_t Range = Max - Min;
             int32_t *Int = (int32_t *)Data;
-            *Int = gUIContext->DragScalarValue.Int32 +
-                   (int32_t)(Amount * (float)Range);
+            *Int =
+                gUI->DragScalarValue.Int32 + (int32_t)(Amount * (float)Range);
             *Int = RR_CLAMP(Min, *Int, Max);
         }
         break;
@@ -6757,8 +6631,8 @@ static inline void Rr_UIModifyDragScalarRange(
             int64_t Max = *(int64_t const *)DataMax;
             int64_t Range = Max - Min;
             int64_t *Int = (int64_t *)Data;
-            *Int = gUIContext->DragScalarValue.Int64 +
-                   (int64_t)(Amount * (float)Range);
+            *Int =
+                gUI->DragScalarValue.Int64 + (int64_t)(Amount * (float)Range);
             *Int = RR_CLAMP(Min, *Int, Max);
         }
         break;
@@ -6794,7 +6668,7 @@ static inline void Rr_UIModifyDragScalarRange(
             float Max = *(float const *)DataMax;
             float Range = Max - Min;
             float *Float = (float *)Data;
-            *Float = gUIContext->DragScalarValue.Float + Amount * Range;
+            *Float = gUI->DragScalarValue.Float + Amount * Range;
             *Float = RR_CLAMP(Min, *Float, Max);
         }
         break;
@@ -6804,7 +6678,7 @@ static inline void Rr_UIModifyDragScalarRange(
             double Max = *(double const *)DataMax;
             double Range = Max - Min;
             double *Double = (double *)Data;
-            *Double = gUIContext->DragScalarValue.Double + Amount * Range;
+            *Double = gUI->DragScalarValue.Double + Amount * Range;
             *Double = RR_CLAMP(Min, *Double, Max);
         }
         break;
@@ -6948,9 +6822,9 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
     float SingleFieldWidth = 0.0f;
     if (FixedTotalWidth != 0.0f)
     {
-        SingleFieldWidth = (FixedTotalWidth -
-                            (gUIContext->ComponentMargin * (float)(Cols - 1))) /
-                           (float)Cols;
+        SingleFieldWidth =
+            (FixedTotalWidth - (gUI->ComponentMargin * (float)(Cols - 1))) /
+            (float)Cols;
     }
 
     char const *COMPONENT_TITLES[] = {
@@ -7105,17 +6979,17 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputScalarMulti(
 
             MaxFieldHeightRow =
                 RR_MAX(MaxFieldHeightRow, ComponentResult.Extent.Y);
-            Cursor.X += SingleFieldWidth + gUIContext->ComponentMargin;
+            Cursor.X += SingleFieldWidth + gUI->ComponentMargin;
         }
         MaxFieldHeight = RR_MAX(MaxFieldHeight, MaxFieldHeightRow);
         Cursor.X = CursorXStart;
-        Cursor.Y += MaxFieldHeightRow + gUIContext->ComponentMargin;
+        Cursor.Y += MaxFieldHeightRow + gUI->ComponentMargin;
     }
 
     Result.Extent.X = SingleFieldWidth * (float)Cols +
-                      gUIContext->ComponentMargin * (float)(Cols - 1);
-    Result.Extent.Y = MaxFieldHeight * (float)Rows +
-                      gUIContext->ComponentMargin * (float)(Rows - 1);
+                      gUI->ComponentMargin * (float)(Cols - 1);
+    Result.Extent.Y =
+        MaxFieldHeight * (float)Rows + gUI->ComponentMargin * (float)(Rows - 1);
 
     return Result;
 }
@@ -7165,18 +7039,18 @@ static inline bool Rr_UIInputScalarMulti(
         true);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += InputResult.Extent.X + gUIContext->FlexibleTitleMargin;
-    TitleOffset.Y += gUIContext->InputFieldPadding.Y;
+    TitleOffset.X += InputResult.Extent.X + gUI->FlexibleTitleMargin;
+    TitleOffset.Y += gUI->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
         TitleOffset,
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_Vec2 Extent = {
-        FlexibleWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        FlexibleWidth + gUI->FlexibleTitleMargin + TitleExtent.X,
         InputResult.Extent.Y,
     };
 
@@ -7230,18 +7104,18 @@ bool Rr_UIInputField(
         FlexibleWidth);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += Result.Extent.X + gUIContext->FlexibleTitleMargin;
-    TitleOffset.Y += gUIContext->InputFieldPadding.Height;
+    TitleOffset.X += Result.Extent.X + gUI->FlexibleTitleMargin;
+    TitleOffset.Y += gUI->InputFieldPadding.Height;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
         TitleOffset,
         TitleLength,
         Title,
         0,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_Vec2 Extent = {
-        FlexibleWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        FlexibleWidth + gUI->FlexibleTitleMargin + TitleExtent.X,
         Result.Extent.Y,
     };
 
@@ -7728,7 +7602,7 @@ static inline void Rr_UIColorPickerPopup(
 
     float SVSelectorSize = Rr_UICurrentLineHeight() * 15.0f;
     float SVSelectorActiveSize =
-        SVSelectorSize - gUIContext->DoubleBevelThickness * 2.0f;
+        SVSelectorSize - gUI->DoubleBevelThickness * 2.0f;
 
     Rr_Vec2 WindowPadding = Rr_UICurrentWindowPadding();
 
@@ -7738,7 +7612,7 @@ static inline void Rr_UIColorPickerPopup(
     Rr_UISetNextWindowOpenOffset(Position);
     Rr_UIBeginPopupWindow(Hash, POPUP_WINDOW_FLAGS);
 
-    Rr_UIWindow *Window = &gUIContext->PopupWindow;
+    Rr_UIWindow *Window = &gUI->PopupWindow;
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
 
@@ -7749,7 +7623,7 @@ static inline void Rr_UIColorPickerPopup(
     /* Draw saturation and value selector. */
 
     Rr_Vec2 SVCursor =
-        Rr_AddV2(Layout->Cursor, Rr_V2F(gUIContext->DoubleBevelThickness));
+        Rr_AddV2(Layout->Cursor, Rr_V2F(gUI->DoubleBevelThickness));
 
     static Rr_Vec3 StaticHSV;
     if (Window->OpenedThisFrame)
@@ -7804,8 +7678,8 @@ static inline void Rr_UIColorPickerPopup(
 
     Rr_UIDrawDoubleBevel(
         &(Rr_Rect){ Layout->Cursor, Rr_V2F(SVSelectorSize) },
-        &gUIContext->Colors.SelectedOutline,
-        gUIContext->DoubleBevelThickness);
+        &gUI->Colors.SelectedOutline,
+        gUI->DoubleBevelThickness);
 
     float SVSelectorCircleSize = SVSelectorSize * 0.035f;
 
@@ -7822,7 +7696,7 @@ static inline void Rr_UIColorPickerPopup(
 
     if (ClickResult.ClickCount || ClickResult.Held)
     {
-        Rr_Vec2 Delta = Rr_SubV2(gUIContext->MousePosition, SVCursor);
+        Rr_Vec2 Delta = Rr_SubV2(gUI->MousePosition, SVCursor);
         Delta = Rr_DivV2F(Delta, SVSelectorActiveSize);
         Delta.X = RR_CLAMP(0.0f, Delta.X, 1.0f);
         Delta.Y = RR_CLAMP(0.0f, Delta.Y, 1.0f);
@@ -7858,10 +7732,10 @@ static inline void Rr_UIColorPickerPopup(
     float HSelectorWidth = SVSelectorSize * 0.15f;
 
     Rr_Rect HSelectorRect = {
-        .Offset = Rr_AddV2F(Layout->Cursor, gUIContext->DoubleBevelThickness),
+        .Offset = Rr_AddV2F(Layout->Cursor, gUI->DoubleBevelThickness),
         .Extent = Rr_SubV2F(
             Rr_V2(HSelectorWidth, SVSelectorSize),
-            gUIContext->DoubleBevelThickness * 2.0f),
+            gUI->DoubleBevelThickness * 2.0f),
     };
 
     Rr_UIPushSubClipRect(Layout, &Layout->CurrentClipRect->Rect);
@@ -7884,11 +7758,11 @@ static inline void Rr_UIColorPickerPopup(
     Rr_UIPopSubClipRect(Layout);
 
     Rr_Rect HBevelRect =
-        Rr_ResizeRect(&HSelectorRect, gUIContext->DoubleBevelThickness);
+        Rr_ResizeRect(&HSelectorRect, gUI->DoubleBevelThickness);
     Rr_UIDrawDoubleBevel(
         &HBevelRect,
-        &gUIContext->Colors.SelectedOutline,
-        gUIContext->DoubleBevelThickness);
+        &gUI->Colors.SelectedOutline,
+        gUI->DoubleBevelThickness);
 
     /* Draw hue handles. */
 
@@ -7896,7 +7770,7 @@ static inline void Rr_UIColorPickerPopup(
     float TriangleSize = SVSelectorSize * 0.035f;
     Rr_Vec2 LeftTriangleOffset = Rr_V2(
         HSelectorRect.Offset.X + TriangleSize * 0.5f -
-            gUIContext->DoubleBevelThickness,
+            gUI->DoubleBevelThickness,
         HSelectorRect.Offset.Y + StaticHSV.X * SVSelectorActiveSize);
     Rr_UIDrawFitTriangleFilled(
         LeftTriangleOffset,
@@ -7907,10 +7781,10 @@ static inline void Rr_UIColorPickerPopup(
         LeftTriangleOffset,
         TriangleSize,
         RR_ANGLE_DEG(0.0f),
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
     Rr_Vec2 RightTriangleOffset = Rr_V2(
         HSelectorRect.Offset.X + HSelectorWidth - TriangleSize * 0.5f -
-            gUIContext->DoubleBevelThickness,
+            gUI->DoubleBevelThickness,
         HSelectorRect.Offset.Y + StaticHSV.X * SVSelectorActiveSize);
     Rr_UIDrawFitTriangleFilled(
         RightTriangleOffset,
@@ -7921,14 +7795,14 @@ static inline void Rr_UIColorPickerPopup(
         RightTriangleOffset,
         TriangleSize,
         RR_ANGLE_DEG(180.0f),
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     ClickResult =
         Rr_UIClickDrag(Layout, &HSelectorRect, HSelectorHash, (Rr_Rect){ 0 });
 
     if (ClickResult.ClickCount || ClickResult.Held)
     {
-        float Delta = gUIContext->MousePosition.Y - Layout->Cursor.Y;
+        float Delta = gUI->MousePosition.Y - Layout->Cursor.Y;
         Delta /= SVSelectorActiveSize;
         Delta = RR_CLAMP(0.0f, Delta, 1.0f);
 
@@ -7939,9 +7813,8 @@ static inline void Rr_UIColorPickerPopup(
         HSVChanged = true;
     }
 
-    Rr_UIAdvance(Rr_AddV2F(
-        HSelectorRect.Extent,
-        gUIContext->DoubleBevelThickness * 2.0f));
+    Rr_UIAdvance(
+        Rr_AddV2F(HSelectorRect.Extent, gUI->DoubleBevelThickness * 2.0f));
 
     Rr_UIEndHorizontal();
 
@@ -8037,7 +7910,7 @@ static inline void Rr_UIColorPickerPopup(
         SVSelectorCircleOffset,
         SVSelectorCircleSize,
         CircleOutlineThickness / 2.0f,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_UIEndWindow();
 }
@@ -8061,12 +7934,12 @@ static inline bool Rr_UIInputColorEx(
     Rr_UIFont *Font = Rr_UICurrentFont();
 
     Rr_Vec2 ColorBoxExtent =
-        Rr_V2F(Font->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f);
+        Rr_V2F(Font->LineHeight + gUI->InputFieldPadding.Y * 2.0f);
 
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
-    float ColorBoxWithMargin = gUIContext->ComponentMargin + ColorBoxExtent.X;
+    float ColorBoxWithMargin = gUI->ComponentMargin + ColorBoxExtent.X;
 
     float FlexibleWidth =
         Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, 0.0f);
@@ -8088,7 +7961,7 @@ static inline bool Rr_UIInputColorEx(
         true);
 
     Rr_Vec2 ColorBoxOffset = Layout->Cursor;
-    ColorBoxOffset.X += InputResult.Extent.X + gUIContext->ComponentMargin;
+    ColorBoxOffset.X += InputResult.Extent.X + gUI->ComponentMargin;
 
     Rr_UIClickResult ClickResult = Rr_UIClickSimple(
         Layout,
@@ -8119,7 +7992,7 @@ static inline bool Rr_UIInputColorEx(
     Rr_Vec4 OpaqueColor;
     memcpy(&OpaqueColor, Channels, sizeof(float) * (size_t)ChannelCount);
     OpaqueColor.A = 1.0f;
-    if (gUIContext->SRGBSwapchain)
+    if (gUI->SRGBSwapchain)
     {
         Rr_UIToLinearColor(&OpaqueColor);
     }
@@ -8129,8 +8002,7 @@ static inline bool Rr_UIInputColorEx(
         ClickResult.Held && ClickResult.Hovered);
     if (ChannelCount == 4)
     {
-        Rr_Rect InnerRect =
-            Rr_ResizeRect(&ColorBoxRect, -gUIContext->BevelThickness);
+        Rr_Rect InnerRect = Rr_ResizeRect(&ColorBoxRect, -gUI->BevelThickness);
         Rr_UIDrawCheckerQuad(&InnerRect, Font->LineHeight * 0.5f);
 
         Rr_Vec4 TransparentColor;
@@ -8138,7 +8010,7 @@ static inline bool Rr_UIInputColorEx(
             &TransparentColor,
             Channels,
             sizeof(float) * (size_t)ChannelCount);
-        if (gUIContext->SRGBSwapchain)
+        if (gUI->SRGBSwapchain)
         {
             Rr_UIToLinearColor(&TransparentColor);
         }
@@ -8150,19 +8022,19 @@ static inline bool Rr_UIInputColorEx(
     }
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += InputResult.Extent.X + gUIContext->ComponentMargin +
-                     ColorBoxExtent.X + gUIContext->FlexibleTitleMargin;
-    TitleOffset.Y += gUIContext->InputFieldPadding.Y;
+    TitleOffset.X += InputResult.Extent.X + gUI->ComponentMargin +
+                     ColorBoxExtent.X + gUI->FlexibleTitleMargin;
+    TitleOffset.Y += gUI->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
         TitleOffset,
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_Vec2 Extent = {
-        FlexibleWidth + ColorBoxWithMargin + gUIContext->FlexibleTitleMargin +
+        FlexibleWidth + ColorBoxWithMargin + gUI->FlexibleTitleMargin +
             TitleExtent.X,
         InputResult.Extent.Y,
     };
@@ -8213,20 +8085,20 @@ bool Rr_UICombobox(
     Rr_Vec2 ButtonPosition = Layout->Cursor;
 
     Rr_Vec2 SelectedTextPosition =
-        Rr_AddV2(ButtonPosition, gUIContext->InputFieldPadding);
+        Rr_AddV2(ButtonPosition, gUI->InputFieldPadding);
     Rr_Vec2 SelectedTextSize = Rr_UIDrawText(
         false,
         SelectedTextPosition,
         SIZE_MAX,
         Options[*SelectedIndex],
         0.0f,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     float FlexibleWidth =
         Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, 0.0f);
 
     float ButtonHeight =
-        SelectedTextSize.Height + gUIContext->InputFieldPadding.Y * 2.0f;
+        SelectedTextSize.Height + gUI->InputFieldPadding.Y * 2.0f;
 
     Rr_Vec2 ButtonExtent = {
         FlexibleWidth,
@@ -8260,10 +8132,9 @@ bool Rr_UICombobox(
             RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT;
 
         Rr_Vec2 PopupPosition = ButtonPosition;
-        PopupPosition.Y += ButtonExtent.Height + gUIContext->FrameThickness;
-        Rr_UIPushWindowPadding(Rr_V2(
-            gUIContext->InputFieldPadding.X - gUIContext->DoubleBevelThickness,
-            0.0f));
+        PopupPosition.Y += ButtonExtent.Height + gUI->FrameThickness;
+        Rr_UIPushWindowPadding(
+            Rr_V2(gUI->InputFieldPadding.X - gUI->DoubleBevelThickness, 0.0f));
         Rr_UIPushContentsMargin(Rr_V2F(0.0f));
         Rr_UISetNextWindowOffset(PopupPosition);
         Rr_UIBeginPopupWindow(TitleHash, POPUP_WINDOW_FLAGS);
@@ -8280,13 +8151,12 @@ bool Rr_UICombobox(
                 OptionLength,
                 Options[Index],
                 0,
-                &gUIContext->Colors.Foreground);
+                &gUI->Colors.Foreground);
             Rr_Rect OptionButtonRect;
             OptionButtonRect.Offset.Y = PopupLayout->Cursor.Y;
             OptionButtonRect.Offset.X =
-                PopupLayout->Cursor.X - gUIContext->InputFieldPadding.Width;
-            OptionButtonRect.Extent.Width =
-                gUIContext->PopupWindow.Rect.Extent.Width;
+                PopupLayout->Cursor.X - gUI->InputFieldPadding.Width;
+            OptionButtonRect.Extent.Width = gUI->PopupWindow.Rect.Extent.Width;
             OptionButtonRect.Extent.Height = Font->LineHeight;
             Rr_UIClickResult OptionClickResult =
                 Rr_UIClickSimple(PopupLayout, &OptionButtonRect, OptionHash);
@@ -8299,13 +8169,13 @@ bool Rr_UICombobox(
             Rr_Vec4 OptionButtonColor;
             if (OptionClickResult.Hovered)
             {
-                OptionButtonColor = gUIContext->Colors.ListEntryHovered;
+                OptionButtonColor = gUI->Colors.ListEntryHovered;
             }
             else
             {
-                OptionButtonColor =
-                    Index % 2 == 0 ? gUIContext->Colors.ListEntryBackgroundA
-                                   : gUIContext->Colors.ListEntryBackgroundB;
+                OptionButtonColor = Index % 2 == 0
+                                        ? gUI->Colors.ListEntryBackgroundA
+                                        : gUI->Colors.ListEntryBackgroundB;
             }
             Rr_UISolidQuad(
                 OptionButtonQuad.Vertices,
@@ -8326,13 +8196,13 @@ bool Rr_UICombobox(
     Rr_Vec4 *SelectedOptionBackground;
     if (ShouldShowPopupWindow)
     {
-        SelectedOptionBackground = &gUIContext->Colors.ComboboxButtonActive;
+        SelectedOptionBackground = &gUI->Colors.ComboboxButtonActive;
     }
     else
     {
-        SelectedOptionBackground =
-            ClickResult.Held ? &gUIContext->Colors.ComboboxButtonHeld
-                             : &gUIContext->Colors.ComboboxButtonNormal;
+        SelectedOptionBackground = ClickResult.Held
+                                       ? &gUI->Colors.ComboboxButtonHeld
+                                       : &gUI->Colors.ComboboxButtonNormal;
     }
 
     Rr_UIBevel(
@@ -8349,33 +8219,33 @@ bool Rr_UICombobox(
 
         Rr_UIDrawBevel(
             &HandleRect,
-            ClickResult.Held ? &gUIContext->Colors.ButtonHeld
-                             : &gUIContext->Colors.ButtonNormal,
+            ClickResult.Held ? &gUI->Colors.ButtonHeld
+                             : &gUI->Colors.ButtonNormal,
             ClickResult.Held);
 
         Rr_Vec2 TriangleCenter = Rr_RectCenter(&HandleRect);
-        float TriangleSize = gUIContext->TitleBarHeight * 0.3f;
+        float TriangleSize = gUI->TitleBarHeight * 0.3f;
         Rr_UIDrawFitTriangleFilled(
             TriangleCenter,
             TriangleSize,
             !Layout->WasCollapsed ? RR_ANGLE_DEG(90.0f) : 0.0f,
-            &gUIContext->Colors.Foreground);
+            &gUI->Colors.Foreground);
     }
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
-    TitlePosition.X += FlexibleWidth + gUIContext->FlexibleTitleMargin;
-    TitlePosition.Y += gUIContext->InputFieldPadding.Y;
+    TitlePosition.X += FlexibleWidth + gUI->FlexibleTitleMargin;
+    TitlePosition.Y += gUI->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
         TitlePosition,
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_Vec2 Extent = {
-        FlexibleWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
-        Font->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f,
+        FlexibleWidth + gUI->FlexibleTitleMargin + TitleExtent.X,
+        Font->LineHeight + gUI->InputFieldPadding.Y * 2.0f,
     };
 
     Rr_UIAdvance(Extent);
@@ -8406,7 +8276,7 @@ static inline float Rr_UISlider(
         Layout->Cursor,
         {
             FlexibleWidth,
-            Font->LineHeight + gUIContext->InputFieldPadding.Y * 2.0f,
+            Font->LineHeight + gUI->InputFieldPadding.Y * 2.0f,
         },
     };
 
@@ -8422,8 +8292,8 @@ static inline float Rr_UISlider(
                            Rr_V2(HandleWidth, SliderRect.Extent.Y) };
     HandleRect.Offset.X += Normalized * (FlexibleWidth - HandleWidth);
     HandleRect.Offset.X = roundf(HandleRect.Offset.X);
-    HandleRect = Rr_ResizeRect(&HandleRect, -gUIContext->BevelThickness);
-    Rr_UIDrawBevel(&HandleRect, &gUIContext->Colors.ButtonNormal, false);
+    HandleRect = Rr_ResizeRect(&HandleRect, -gUI->BevelThickness);
+    Rr_UIDrawBevel(&HandleRect, &gUI->Colors.ButtonNormal, false);
 
     if (ValueCString != NULL)
     {
@@ -8434,13 +8304,13 @@ static inline float Rr_UISlider(
         Rr_Vec2 ValuePosition = Layout->Cursor;
         ValuePosition.X = HandleRect.Offset.X - ValueSize.Width - ValueMargin;
         bool ShowValue = true;
-        if (ValuePosition.X < SliderRect.Offset.X + gUIContext->BevelThickness)
+        if (ValuePosition.X < SliderRect.Offset.X + gUI->BevelThickness)
         {
             ValuePosition.X =
                 HandleRect.Offset.X + HandleRect.Extent.X + ValueMargin;
             if (ValuePosition.X + ValueSize.Width >
                 SliderRect.Offset.X + SliderRect.Extent.Width -
-                    gUIContext->BevelThickness)
+                    gUI->BevelThickness)
             {
                 ShowValue = false;
             }
@@ -8454,12 +8324,12 @@ static inline float Rr_UISlider(
                 SIZE_MAX,
                 ValueCString,
                 0.0f,
-                &gUIContext->Colors.Foreground);
+                &gUI->Colors.Foreground);
         }
     }
 
-    float HandleDragOffset = gUIContext->MousePosition.X -
-                             (HandleRect.Offset.X + HandleWidth / 2.0f);
+    float HandleDragOffset =
+        gUI->MousePosition.X - (HandleRect.Offset.X + HandleWidth / 2.0f);
 
     Rr_UIClickResult ClickResult = Rr_UIClickDrag(
         Layout,
@@ -8470,8 +8340,8 @@ static inline float Rr_UISlider(
     Rr_UIBevel(
         BackgroundBevel,
         &SliderRect,
-        ClickResult.Held ? &gUIContext->Colors.InputFieldActive
-                         : &gUIContext->Colors.InputFieldNormal,
+        ClickResult.Held ? &gUI->Colors.InputFieldActive
+                         : &gUI->Colors.InputFieldNormal,
         true);
 
     if (ClickResult.ClickCount || ClickResult.Moved)
@@ -8480,32 +8350,31 @@ static inline float Rr_UISlider(
         float SliderMax = SliderMin + FlexibleWidth - HandleWidth;
 
         Normalized =
-            (gUIContext->MousePosition.X - SliderMin) / (SliderMax - SliderMin);
+            (gUI->MousePosition.X - SliderMin) / (SliderMax - SliderMin);
     }
     else if (ClickResult.Hovered)
     {
-        if (gUIContext->MouseWheelDelta.X != 0.0f &&
-            gUIContext->MouseWheelDelta.Y == 0.0f)
+        if (gUI->MouseWheelDelta.X != 0.0f && gUI->MouseWheelDelta.Y == 0.0f)
         {
             /* NOTE: Probably shouldn't be hardcoded to 30.0f. */
-            Normalized += gUIContext->MouseWheelDelta.X / 30.0f;
+            Normalized += gUI->MouseWheelDelta.X / 30.0f;
         }
     }
     Normalized = RR_CLAMP(0.0f, Normalized, 1.0f);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += SliderRect.Extent.X + gUIContext->FlexibleTitleMargin;
-    TitleOffset.Y += gUIContext->InputFieldPadding.Y;
+    TitleOffset.X += SliderRect.Extent.X + gUI->FlexibleTitleMargin;
+    TitleOffset.Y += gUI->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
         TitleOffset,
         TitleLength,
         Title,
         0.0f,
-        &gUIContext->Colors.Foreground);
+        &gUI->Colors.Foreground);
 
     Rr_Vec2 Extent = {
-        FlexibleWidth + gUIContext->FlexibleTitleMargin + TitleExtent.X,
+        FlexibleWidth + gUI->FlexibleTitleMargin + TitleExtent.X,
         SliderRect.Extent.Y,
     };
 
@@ -8607,8 +8476,7 @@ bool Rr_UISliderFloat(char const *Title, float *Value, float Min, float Max)
 
 bool Rr_UIWantMouseCapture(void)
 {
-    return gUIContext && (gUIContext->LeftMouseButton.DownOverWindow ||
-                          gUIContext->HoveredWindow);
+    return gUI && (gUI->LeftMouseButton.DownOverWindow || gUI->HoveredWindow);
 }
 
 bool Rr_UIWantKeyboardCapture(void)
@@ -8619,7 +8487,7 @@ bool Rr_UIWantKeyboardCapture(void)
 static inline void Rr_UIConvertColorsToSRGB(void)
 {
     size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
-    Rr_Vec4 *Colors = (Rr_Vec4 *)&gUIContext->Colors;
+    Rr_Vec4 *Colors = (Rr_Vec4 *)&gUI->Colors;
     for (size_t Index = 0; Index < ColorCount; ++Index)
     {
         Rr_UIToSRGBColor(&Colors[Index]);
@@ -8629,7 +8497,7 @@ static inline void Rr_UIConvertColorsToSRGB(void)
 static inline void Rr_UIConvertColorsToLinear(void)
 {
     size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
-    Rr_Vec4 *Colors = (Rr_Vec4 *)&gUIContext->Colors;
+    Rr_Vec4 *Colors = (Rr_Vec4 *)&gUI->Colors;
     for (size_t Index = 0; Index < ColorCount; ++Index)
     {
         Rr_UIToLinearColor(&Colors[Index]);
@@ -8722,49 +8590,26 @@ void Rr_UISetDefaultTheme(void)
 
 void Rr_InitUI(void)
 {
-    assert(gUIContext == NULL);
+    assert(gUI == NULL);
 
     Rr_Arena *Arena = Rr_CreateDefaultArena();
 
-    gUIContext = Rr_Alloc(sizeof(Rr_UIContext), Arena);
-    gUIContext->Arena = Arena;
+    gUI = Rr_Alloc(sizeof(Rr_UI), Arena);
+    gUI->Arena = Arena;
 
-    gUIContext->NextWindowExtent = Rr_V2F(INFINITY);
-    gUIContext->NextWindowMinExtent = Rr_V2F(INFINITY);
-    gUIContext->NextWindowMaxExtent = Rr_V2F(INFINITY);
-    gUIContext->NextWindowOffset = Rr_V2F(INFINITY);
-    gUIContext->NextWindowOpenOffset = Rr_V2F(INFINITY);
-    gUIContext->NextWindowPadding = Rr_V2F(INFINITY);
+    gUI->NextWindowExtent = Rr_V2F(INFINITY);
+    gUI->NextWindowMinExtent = Rr_V2F(INFINITY);
+    gUI->NextWindowMaxExtent = Rr_V2F(INFINITY);
+    gUI->NextWindowOffset = Rr_V2F(INFINITY);
+    gUI->NextWindowOpenOffset = Rr_V2F(INFINITY);
+    gUI->NextWindowPadding = Rr_V2F(INFINITY);
 
     float DefaultFontSize = 10.0f * Rr_GetDisplayScale();
     Rr_Asset FontAsset = Rr_LoadAsset(RR_BUILTIN_SOURCESERIF4_TTF);
-    gUIContext->DefaultFont =
+    gUI->DefaultFont =
         Rr_UICreateFont(FontAsset.Size, FontAsset.Data, DefaultFontSize);
 
     Rr_UISetDefaultTheme();
-
-    /* Rr_Binding Bindings[] = { */
-    /*     { */
-    /*         .Index = 0, */
-    /*         .Type = RR_BINDING_TYPE_UNIFORM_BUFFER, */
-    /*         .Stages = RR_SHADER_STAGE_VERTEX_BIT |
-     * RR_SHADER_STAGE_FRAGMENT_BIT, */
-    /*     }, */
-    /*     { */
-    /*         .Index = 1, */
-    /*         .Type = RR_BINDING_TYPE_COMBINED_IMAGE_SAMPLER, */
-    /*         .Stages = RR_SHADER_STAGE_VERTEX_BIT |
-     * RR_SHADER_STAGE_FRAGMENT_BIT, */
-    /*     }, */
-    /* }; */
-    /* Rr_BindingSet BindingSets[] = { */
-    /*     { */
-    /*         RR_ARRAY_COUNT(Bindings), */
-    /*         Bindings, */
-    /*     }, */
-    /* }; */
-    /* gUIContext->PipelineLayout = */
-    /*     Rr_CreatePipelineLayout(RR_ARRAY_COUNT(BindingSets), BindingSets); */
 
     Rr_ColorTargetInfo ColorTargets[] = {
         {
@@ -8828,33 +8673,33 @@ void Rr_InitUI(void)
     uint32_t const DONT_CONVERT_TO_SRGB = 0;
     Specializations[0].Data = &DONT_CONVERT_TO_SRGB;
     Rr_SetNextObjectName("Rr.UI.LinearPipeline");
-    gUIContext->LinearPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+    gUI->LinearPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
     uint32_t const CONVERT_TO_SRGB = 1;
     Specializations[0].Data = &CONVERT_TO_SRGB;
     Rr_SetNextObjectName("Rr.UI.SRGBPipeline");
-    gUIContext->SRGBPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
+    gUI->SRGBPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 
     Rr_SetNextObjectName("Rr.UI.VertexBuffer");
-    gUIContext->VertexBuffer = Rr_CreateBuffer(
+    gUI->VertexBuffer = Rr_CreateBuffer(
         RR_MEBIBYTES(8),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_VERTEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
     Rr_SetNextObjectName("Rr.UI.IndexBuffer");
-    gUIContext->IndexBuffer = Rr_CreateBuffer(
+    gUI->IndexBuffer = Rr_CreateBuffer(
         RR_MEBIBYTES(8),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_INDEX_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
     Rr_SetNextObjectName("Rr.UI.UniformBuffer");
-    gUIContext->UniformBuffer = Rr_CreateBuffer(
+    gUI->UniformBuffer = Rr_CreateBuffer(
         sizeof(Rr_UIUniformData),
         RR_BUFFER_FLAGS_MAPPED_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
             RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_STAGING_BIT);
 
     Rr_SetNextObjectName("Rr.UI.Sampler");
-    gUIContext->Sampler = Rr_CreateSampler(&(Rr_SamplerInfo){
+    gUI->Sampler = Rr_CreateSampler(&(Rr_SamplerInfo){
         .MinFilter = RR_FILTER_LINEAR,
         .MagFilter = RR_FILTER_LINEAR,
         .AddressModeU = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -8862,31 +8707,30 @@ void Rr_InitUI(void)
     });
 
     Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-    gUIContext->SRGBSwapchain =
-        Rr_IsSRGBFormat(Rr_GetImageFormat(SwapchainImage));
+    gUI->SRGBSwapchain = Rr_IsSRGBFormat(Rr_GetImageFormat(SwapchainImage));
 }
 
 void Rr_CleanupUI(void)
 {
-    assert(gUIContext != NULL);
+    assert(gUI != NULL);
 
-    Rr_ReleaseBuffer(gUIContext->VertexBuffer);
-    Rr_ReleaseBuffer(gUIContext->IndexBuffer);
-    Rr_ReleaseBuffer(gUIContext->UniformBuffer);
-    Rr_ReleaseSampler(gUIContext->Sampler);
-    Rr_ReleaseGraphicsPipeline(gUIContext->LinearPipeline);
-    Rr_ReleaseGraphicsPipeline(gUIContext->SRGBPipeline);
+    Rr_ReleaseBuffer(gUI->VertexBuffer);
+    Rr_ReleaseBuffer(gUI->IndexBuffer);
+    Rr_ReleaseBuffer(gUI->UniformBuffer);
+    Rr_ReleaseSampler(gUI->Sampler);
+    Rr_ReleaseGraphicsPipeline(gUI->LinearPipeline);
+    Rr_ReleaseGraphicsPipeline(gUI->SRGBPipeline);
 
-    Rr_UIReleaseFont(gUIContext->DefaultFont);
+    Rr_UIReleaseFont(gUI->DefaultFont);
 
-    Rr_DestroyArena(gUIContext->Arena);
+    Rr_DestroyArena(gUI->Arena);
 
-    gUIContext = NULL;
+    gUI = NULL;
 }
 
 void Rr_ProcessUIEvent(Rr_Event const *Event)
 {
-    if (gUIContext == NULL)
+    if (gUI == NULL)
     {
         return;
     }
@@ -8904,36 +8748,33 @@ void Rr_ProcessUIEvent(Rr_Event const *Event)
         case RR_EVENT_TYPE_SWAPCHAIN_CREATED:
         {
             Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
-            gUIContext->SRGBSwapchain =
+            gUI->SRGBSwapchain =
                 Rr_IsSRGBFormat(Rr_GetImageFormat(SwapchainImage));
         }
         break;
         case RR_EVENT_TYPE_TEXT_INPUT:
         {
             size_t Length = Event->Text.Length;
-            char *Text = Rr_AllocNoZero(Length + 1, gUIContext->FrameArena);
+            char *Text = Rr_AllocNoZero(Length + 1, gUI->FrameArena);
             memcpy(Text, Event->Text.CString, Length + 1);
-            *RR_PUSH_INTO_ARRAY(
-                &gUIContext->TextInputEvents,
-                gUIContext->FrameArena) = Text;
+            *RR_PUSH_INTO_ARRAY(&gUI->TextInputEvents, gUI->FrameArena) = Text;
         }
         break;
         case RR_EVENT_TYPE_KEY_DOWN:
         case RR_EVENT_TYPE_KEY_REPEAT:
         case RR_EVENT_TYPE_KEY_UP:
         {
-            *RR_PUSH_INTO_ARRAY(
-                &gUIContext->KeyboardInputEvents,
-                gUIContext->FrameArena) = Event->Key;
+            *RR_PUSH_INTO_ARRAY(&gUI->KeyboardInputEvents, gUI->FrameArena) =
+                Event->Key;
         }
         break;
         case RR_EVENT_TYPE_MOUSE_BUTTON_DOWN:
         {
             if (Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
-                gUIContext->LeftMouseButton.Clicks = Event->MouseButton.Clicks;
-                gUIContext->LeftMouseButton.Down = true;
-                gUIContext->LeftMouseButton.Held = true;
+                gUI->LeftMouseButton.Clicks = Event->MouseButton.Clicks;
+                gUI->LeftMouseButton.Down = true;
+                gUI->LeftMouseButton.Held = true;
             }
         }
         break;
@@ -8941,22 +8782,22 @@ void Rr_ProcessUIEvent(Rr_Event const *Event)
         {
             if (Event->MouseButton.Button == RR_MOUSE_BUTTON_LEFT)
             {
-                gUIContext->LeftMouseButton.Up = true;
-                gUIContext->LeftMouseButton.Held = false;
-                gUIContext->LeftMouseButton.ClickID++;
+                gUI->LeftMouseButton.Up = true;
+                gUI->LeftMouseButton.Held = false;
+                gUI->LeftMouseButton.ClickID++;
             }
         }
         break;
         case RR_EVENT_TYPE_MOUSE_MOTION:
         {
-            gUIContext->MouseMoved = true;
-            gUIContext->MousePosition = Event->MouseMotion.Position;
+            gUI->MouseMoved = true;
+            gUI->MousePosition = Event->MouseMotion.Position;
         }
         break;
         case RR_EVENT_TYPE_MOUSE_WHEEL:
         {
-            gUIContext->MouseWheelDelta =
-                Rr_SubV2(gUIContext->MouseWheelDelta, Event->Wheel.Amount);
+            gUI->MouseWheelDelta =
+                Rr_SubV2(gUI->MouseWheelDelta, Event->Wheel.Amount);
         }
         break;
         default:
@@ -8967,61 +8808,57 @@ void Rr_ProcessUIEvent(Rr_Event const *Event)
 void Rr_NewUIFrame(void)
 {
     Rr_Arena *FrameArena = gRHI->Frames[gRHI->FrameIndex].Arena;
-    gUIContext->FrameArena = FrameArena;
+    gUI->FrameArena = FrameArena;
 
-    RR_RESET_ARRAY(&gUIContext->LayoutStack, FrameArena);
-    RR_RESET_ARRAY(&gUIContext->HashStack, FrameArena);
-    RR_RESET_ARRAY(&gUIContext->FontStack, FrameArena);
-    RR_RESET_ARRAY(&gUIContext->WindowPaddingStack, FrameArena);
-    RR_RESET_ARRAY(&gUIContext->ContentsMarginStack, FrameArena);
-    RR_RESET_ARRAY(&gUIContext->WidgetExtentStack, FrameArena);
-    RR_RESET_ARRAY(&gUIContext->FormatFloatDecimalPlacesStack, FrameArena);
-    RR_RESET_ARRAY(&gUIContext->Vertices, FrameArena);
-    RR_RESET_ARRAY(&gUIContext->Indices, FrameArena);
+    RR_RESET_ARRAY(&gUI->LayoutStack, FrameArena);
+    RR_RESET_ARRAY(&gUI->HashStack, FrameArena);
+    RR_RESET_ARRAY(&gUI->FontStack, FrameArena);
+    RR_RESET_ARRAY(&gUI->WindowPaddingStack, FrameArena);
+    RR_RESET_ARRAY(&gUI->ContentsMarginStack, FrameArena);
+    RR_RESET_ARRAY(&gUI->WidgetExtentStack, FrameArena);
+    RR_RESET_ARRAY(&gUI->FormatFloatDecimalPlacesStack, FrameArena);
+    RR_RESET_ARRAY(&gUI->Vertices, FrameArena);
+    RR_RESET_ARRAY(&gUI->Indices, FrameArena);
 
     Rr_IntVec2 SwapchainSize = Rr_GetImage2DExtent(Rr_GetSwapchainImage());
-    gUIContext->ScreenSize = Rr_CastV2(SwapchainSize);
+    gUI->ScreenSize = Rr_CastV2(SwapchainSize);
 }
 
 void Rr_BeginUI(void)
 {
-    gUIContext->HoveredWindow = NULL;
+    gUI->HoveredWindow = NULL;
     if (Rr_UIPopupWindowActive())
     {
-        if (Rr_RectContains(
-                &gUIContext->PopupWindow.Rect,
-                gUIContext->MousePosition))
+        if (Rr_RectContains(&gUI->PopupWindow.Rect, gUI->MousePosition))
         {
-            gUIContext->HoveredWindow = &gUIContext->PopupWindow;
+            gUI->HoveredWindow = &gUI->PopupWindow;
 
-            if (gUIContext->LeftMouseButton.Down)
+            if (gUI->LeftMouseButton.Down)
             {
-                gUIContext->LeftMouseButton.DownOverWindow = true;
+                gUI->LeftMouseButton.DownOverWindow = true;
             }
         }
-        else if (gUIContext->LeftMouseButton.Down)
+        else if (gUI->LeftMouseButton.Down)
         {
             Rr_UIClosePopupWindow();
         }
     }
     else
     {
-        int LastIndex = (int)gUIContext->ActiveLayouts.Count - 1;
+        int LastIndex = (int)gUI->ActiveLayouts.Count - 1;
         for (int Index = LastIndex; Index >= 0; --Index)
         {
-            Rr_UILayout *Layout = gUIContext->ActiveLayouts.Data[Index];
+            Rr_UILayout *Layout = gUI->ActiveLayouts.Data[Index];
             Rr_UIWindow *Window = Layout->Window;
-            if (Rr_RectContains(
-                    &Layout->VisibleRect,
-                    gUIContext->MousePosition))
+            if (Rr_RectContains(&Layout->VisibleRect, gUI->MousePosition))
             {
-                gUIContext->HoveredWindow = Window;
+                gUI->HoveredWindow = Window;
 
-                if (gUIContext->LeftMouseButton.Down)
+                if (gUI->LeftMouseButton.Down)
                 {
                     Rr_UIPutWindowOnTop(Window->TopLevelParent);
 
-                    gUIContext->LeftMouseButton.DownOverWindow = true;
+                    gUI->LeftMouseButton.DownOverWindow = true;
                 }
 
                 break;
@@ -9029,13 +8866,12 @@ void Rr_BeginUI(void)
         }
     }
 
-    if (!gUIContext->LeftMouseButton.DownOverWindow &&
-        gUIContext->LeftMouseButton.Down)
+    if (!gUI->LeftMouseButton.DownOverWindow && gUI->LeftMouseButton.Down)
     {
         Rr_UIResetClickAndDrag();
     }
 
-    RR_CLEAR_ARRAY(&gUIContext->ActiveLayouts);
+    RR_CLEAR_ARRAY(&gUI->ActiveLayouts);
 
     Rr_UIRecalculateStyle();
 }
@@ -9089,7 +8925,7 @@ static inline void Rr_UIDrawWindow(
 
         if (ClipRect->ForceLinearPipeline)
         {
-            Rr_BindGraphicsPipeline(GraphicsNode, gUIContext->LinearPipeline);
+            Rr_BindGraphicsPipeline(GraphicsNode, gUI->LinearPipeline);
         }
 
         if (ClipRect->Image != *BoundImage)
@@ -9097,7 +8933,7 @@ static inline void Rr_UIDrawWindow(
             Rr_BindCombinedImage2DSampler(
                 GraphicsNode,
                 ClipRect->Image,
-                gUIContext->Sampler,
+                gUI->Sampler,
                 0,
                 1);
             *BoundImage = ClipRect->Image;
@@ -9117,8 +8953,7 @@ static inline void Rr_UIDrawWindow(
         {
             Rr_BindGraphicsPipeline(
                 GraphicsNode,
-                gUIContext->SRGBSwapchain ? gUIContext->SRGBPipeline
-                                          : gUIContext->LinearPipeline);
+                gUI->SRGBSwapchain ? gUI->SRGBPipeline : gUI->LinearPipeline);
         }
     }
 }
@@ -9126,37 +8961,35 @@ static inline void Rr_UIDrawWindow(
 void Rr_EndUI(void)
 {
     assert(
-        gUIContext->HashStack.Count == 0 &&
+        gUI->HashStack.Count == 0 &&
         "ID/Hash stack is not empty; did you forget to call Rr_UIPopID()?");
 
     Rr_UIAssertNoWindow();
 
-    if (gUIContext->ActiveLayouts.Count > 0)
+    if (gUI->ActiveLayouts.Count > 0)
     {
         Rr_BeginFrameSection("Rr.UI.DrawWindows");
 
         Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
 
         Rr_UIUniformData UniformData = {
-            .ScreenSize = gUIContext->ScreenSize,
+            .ScreenSize = gUI->ScreenSize,
         };
-        char *MappedUniformData =
-            Rr_GetMappedBufferData(gUIContext->UniformBuffer);
+        char *MappedUniformData = Rr_GetMappedBufferData(gUI->UniformBuffer);
         memcpy(MappedUniformData, &UniformData, sizeof(UniformData));
 
         Rr_UIVertex *VertexBufferData =
-            Rr_GetMappedBufferData(gUIContext->VertexBuffer);
+            Rr_GetMappedBufferData(gUI->VertexBuffer);
         memcpy(
             VertexBufferData,
-            gUIContext->Vertices.Data,
-            sizeof(Rr_UIVertex) * gUIContext->Vertices.Count);
+            gUI->Vertices.Data,
+            sizeof(Rr_UIVertex) * gUI->Vertices.Count);
 
-        Rr_UIIndex *IndexBufferData =
-            Rr_GetMappedBufferData(gUIContext->IndexBuffer);
+        Rr_UIIndex *IndexBufferData = Rr_GetMappedBufferData(gUI->IndexBuffer);
         memcpy(
             IndexBufferData,
-            gUIContext->Indices.Data,
-            sizeof(Rr_UIIndex) * gUIContext->Indices.Count);
+            gUI->Indices.Data,
+            sizeof(Rr_UIIndex) * gUI->Indices.Count);
 
         Rr_BeginGraphLabel(Rr_GetGraph(), "Rr.UI");
 
@@ -9169,37 +9002,35 @@ void Rr_EndUI(void)
             Rr_AddGraphicsNode(Rr_GetGraph(), 1, &ColorTarget, NULL);
         Rr_BindGraphicsPipeline(
             GraphicsNode,
-            gUIContext->SRGBSwapchain ? gUIContext->SRGBPipeline
-                                      : gUIContext->LinearPipeline);
-        Rr_BindVertexBuffer(GraphicsNode, gUIContext->VertexBuffer, 0, 0);
+            gUI->SRGBSwapchain ? gUI->SRGBPipeline : gUI->LinearPipeline);
+        Rr_BindVertexBuffer(GraphicsNode, gUI->VertexBuffer, 0, 0);
         Rr_BindIndexBuffer(
             GraphicsNode,
-            gUIContext->IndexBuffer,
+            gUI->IndexBuffer,
             0,
             0,
             RR_INDEX_TYPE_UINT16);
         Rr_BindUniformBuffer(
             GraphicsNode,
-            gUIContext->UniformBuffer,
+            gUI->UniformBuffer,
             0,
             0,
             0,
             sizeof(Rr_UIUniformData));
 
         qsort(
-            gUIContext->ActiveLayouts.Data,
-            gUIContext->ActiveLayouts.Count,
+            gUI->ActiveLayouts.Data,
+            gUI->ActiveLayouts.Count,
             sizeof(Rr_UILayout *),
             Rr_UIWindowSort);
 
-        gUIContext->HighestWindow =
-            RR_LAST_ARRAY_ELEMENT(&gUIContext->ActiveLayouts)->Window;
+        gUI->HighestWindow = RR_LAST_ARRAY_ELEMENT(&gUI->ActiveLayouts)->Window;
 
         Rr_Image2D *BoundImage = NULL;
 
-        for (size_t Index = 0; Index < gUIContext->ActiveLayouts.Count; ++Index)
+        for (size_t Index = 0; Index < gUI->ActiveLayouts.Count; ++Index)
         {
-            Rr_UILayout *Layout = gUIContext->ActiveLayouts.Data[Index];
+            Rr_UILayout *Layout = gUI->ActiveLayouts.Data[Index];
             Rr_UIWindow *Window = Layout->Window;
             Window->Z = (int32_t)Index;
             Window->Added = false;
@@ -9223,22 +9054,22 @@ void Rr_EndUI(void)
         Rr_EndFrameSection("Rr.UI.DrawWindows");
     }
 
-    gUIContext->ClickConsumed = false;
-    gUIContext->DragConsumed = false;
-    if (gUIContext->LeftMouseButton.Up)
+    gUI->ClickConsumed = false;
+    gUI->DragConsumed = false;
+    if (gUI->LeftMouseButton.Up)
     {
-        gUIContext->LeftMouseButton.Held = false;
-        gUIContext->LeftMouseButton.DownOverWindow = false;
+        gUI->LeftMouseButton.Held = false;
+        gUI->LeftMouseButton.DownOverWindow = false;
     }
-    gUIContext->LeftMouseButton.Clicks = 0;
-    gUIContext->LeftMouseButton.Down = false;
-    gUIContext->LeftMouseButton.Up = false;
-    gUIContext->MouseMoved = false;
-    gUIContext->MouseWheelDelta = Rr_V2F(0.0f);
-    Rr_SetCursor(gUIContext->CursorType);
-    gUIContext->CursorType = RR_CURSOR_TYPE_NORMAL;
-    RR_ZERO(gUIContext->TextInputEvents);
-    RR_ZERO(gUIContext->KeyboardInputEvents);
+    gUI->LeftMouseButton.Clicks = 0;
+    gUI->LeftMouseButton.Down = false;
+    gUI->LeftMouseButton.Up = false;
+    gUI->MouseMoved = false;
+    gUI->MouseWheelDelta = Rr_V2F(0.0f);
+    Rr_SetCursor(gUI->CursorType);
+    gUI->CursorType = RR_CURSOR_TYPE_NORMAL;
+    RR_ZERO(gUI->TextInputEvents);
+    RR_ZERO(gUI->KeyboardInputEvents);
 }
 
 float Rr_UICurrentFontSize(void)
@@ -9473,8 +9304,8 @@ static inline void Rr_UIDebugOverlayTabs(void)
         Rr_UITextF(
             "Vertices Capacity: %zu\n"
             "Indices Capacity: %zu",
-            gUIContext->Vertices.Capacity,
-            gUIContext->Indices.Capacity);
+            gUI->Vertices.Capacity,
+            gUI->Indices.Capacity);
 
         Rr_UITextF(
             "DrawWindows: %.3fms\n"
@@ -9488,32 +9319,32 @@ static inline void Rr_UIDebugOverlayTabs(void)
             "TextInputCursorBegin: %zu\n"
             "TextInputCursorEnd: %zu\n"
             "TextInputCodepointMaxCol: %zu",
-            gUIContext->TextInputCursorBegin,
-            gUIContext->TextInputCursorEnd,
-            gUIContext->TextInputCursorCodepointMaxCol);
+            gUI->TextInputCursorBegin,
+            gUI->TextInputCursorEnd,
+            gUI->TextInputCursorCodepointMaxCol);
 
         Rr_UITextF(
             "Hovered Window: %s\n"
             "Click Parent: %s\n"
             "Active Windows: %zu\n"
             "Popup Window Open: %b",
-            gUIContext->HoveredWindow ? gUIContext->HoveredWindow->Title : NULL,
-            gUIContext->ClickParent ? gUIContext->ClickParent->Title : NULL,
-            gUIContext->ActiveLayouts.Count,
-            gUIContext->PopupWindow.Open);
+            gUI->HoveredWindow ? gUI->HoveredWindow->Title : NULL,
+            gUI->ClickParent ? gUI->ClickParent->Title : NULL,
+            gUI->ActiveLayouts.Count,
+            gUI->PopupWindow.Open);
 
         Rr_UITextF(
             "Drag Parent: %s\n"
             "Drag Hash: %zu\n"
             "Drag Value Start: %.2f %.2f %.2f %.2f",
-            gUIContext->DragParent ? gUIContext->DragParent->Title : NULL,
-            gUIContext->DragParent ? gUIContext->DragHash : 0,
-            gUIContext->DragParent ? gUIContext->DragValueStart.Offset.X : 0,
-            gUIContext->DragParent ? gUIContext->DragValueStart.Offset.Y : 0,
-            gUIContext->DragParent ? gUIContext->DragValueStart.Extent.X : 0,
-            gUIContext->DragParent ? gUIContext->DragValueStart.Extent.Y : 0);
+            gUI->DragParent ? gUI->DragParent->Title : NULL,
+            gUI->DragParent ? gUI->DragHash : 0,
+            gUI->DragParent ? gUI->DragValueStart.Offset.X : 0,
+            gUI->DragParent ? gUI->DragValueStart.Offset.Y : 0,
+            gUI->DragParent ? gUI->DragValueStart.Extent.X : 0,
+            gUI->DragParent ? gUI->DragValueStart.Extent.Y : 0);
 
-        Rr_UICheckbox("Visualize Advances", &gUIContext->VisualizeAdvances);
+        Rr_UICheckbox("Visualize Advances", &gUI->VisualizeAdvances);
     }
     Rr_UIEndWindow();
 
@@ -9536,7 +9367,7 @@ static inline void Rr_UIDebugOverlayTabs(void)
             sprintf(FrameString, "Frame#%d", Index);
             Rr_UIDebugOverlayArena(Frame->Arena, FrameString);
         }
-        Rr_UIDebugOverlayArena(gUIContext->Arena, "UI");
+        Rr_UIDebugOverlayArena(gUI->Arena, "UI");
     }
     Rr_UIEndWindow();
 

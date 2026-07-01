@@ -35,7 +35,6 @@ struct Rr_Image;
 typedef uint64_t Rr_UIHash;
 typedef uint16_t Rr_UIIndex;
 
-typedef struct Rr_UIContext Rr_UIContext;
 typedef struct Rr_UIFont Rr_UIFont;
 
 typedef struct Rr_UIRange Rr_UIRange;
@@ -238,9 +237,9 @@ extern void RR_CC Rr_UIPushFormatFloatDecimalPlaces(uint32_t Places);
 
 extern void RR_CC Rr_UIPopFormatFloatDecimalPlaces(void);
 
-extern void RR_CC Rr_UISetNextWindowOffset(Rr_Vec2 Offset);
-
 extern void RR_CC Rr_UISetNextWindowOpenOffset(Rr_Vec2 Offset);
+
+extern void RR_CC Rr_UISetNextWindowOffset(Rr_Vec2 Offset);
 
 extern void RR_CC Rr_UISetNextWindowExtent(Rr_Vec2 Extent);
 
