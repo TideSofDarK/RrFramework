@@ -414,58 +414,9 @@ static void Init(void)
     MozillaHeadlineFont = Rr_UICreateFont(MozillaHeadlineCleanAsset.Size, MozillaHeadlineCleanAsset.Data, 14.0f);
 }
 
-static void Iterate(void)
+static void GeneralWindow(void)
 {
-    Rr_UIDebugOverlay();
-
-    Rr_Graph *Graph = Rr_GetGraph();
-
-    Rr_ClearColorImage2D(Graph, (Rr_ColorClear){ 0.01f, 0.01f, 0.02f, 1.0f }, Rr_GetSwapchainImage());
-
     static bool GeneralWindowOpen = true;
-    static bool WidgetsWindowOpen = true;
-    static bool NoClose = false;
-    static bool NoResize = false;
-    static bool NoScrollbar = false;
-    static bool NoTitleBar = false;
-    static bool NoBorders = false;
-    static bool AutoResize = true;
-    static bool NoBackground = false;
-
-    Rr_UIWindowFlags Flags = 0;
-    if (NoClose)
-    {
-        Flags |= RR_UI_WINDOW_FLAGS_NO_CLOSE_BIT;
-    }
-    if (NoResize)
-    {
-        Flags |= RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT;
-    }
-    if (NoScrollbar)
-    {
-        Flags |= RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
-    }
-    if (NoTitleBar)
-    {
-        Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
-    }
-    if (NoBorders)
-    {
-        Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
-    }
-    if (AutoResize)
-    {
-        Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
-    }
-    if (NoBackground)
-    {
-        Flags |= RR_UI_WINDOW_FLAGS_NO_BACKGROUND_BIT;
-    }
-
-    FixedSizeWindow();
-    ThemeEditorWindow();
-    TextInputWindow();
-
     Rr_UIBeginWindowEx("Rr_UI.h - General", &GeneralWindowOpen, 0);
     {
         Rr_UISetNextWindowCreateCollapsed(false);
@@ -504,7 +455,7 @@ static void Iterate(void)
                 "could be overriden with absolute values.",
                 350.0f);
 
-            Rr_UIAdvance((Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f }, Rr_V2F(0.0f));
+            Rr_UIAdvance((Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f });
 
             Rr_UIPushFont(MozillaHeadlineFont);
 
@@ -517,7 +468,7 @@ static void Iterate(void)
 
             Rr_UIPopFont();
 
-            Rr_UIAdvance((Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f }, Rr_V2F(0.0f));
+            Rr_UIAdvance((Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f });
 
             Rr_UIPushFont(StoneTombFont);
 
@@ -695,12 +646,54 @@ static void Iterate(void)
             };
             Rr_UIDrawQuadVertices(QuadVertices);
 
-            Rr_UIAdvance(AREA, Rr_V2F(0.0f));
+            Rr_UIAdvance(AREA);
         }
         Rr_UIEndWindow();
     }
     Rr_UIEndWindow();
+}
 
+static void WidgetsWindow(void)
+{
+    static bool NoClose = false;
+    static bool NoResize = false;
+    static bool NoScrollbar = false;
+    static bool NoTitleBar = false;
+    static bool NoBorders = false;
+    static bool AutoResize = true;
+    static bool NoBackground = false;
+
+    Rr_UIWindowFlags Flags = 0;
+    if (NoClose)
+    {
+        Flags |= RR_UI_WINDOW_FLAGS_NO_CLOSE_BIT;
+    }
+    if (NoResize)
+    {
+        Flags |= RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT;
+    }
+    if (NoScrollbar)
+    {
+        Flags |= RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
+    }
+    if (NoTitleBar)
+    {
+        Flags |= RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT;
+    }
+    if (NoBorders)
+    {
+        Flags |= RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
+    }
+    if (AutoResize)
+    {
+        Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT;
+    }
+    if (NoBackground)
+    {
+        Flags |= RR_UI_WINDOW_FLAGS_NO_BACKGROUND_BIT;
+    }
+
+    static bool WidgetsWindowOpen = true;
     Rr_UIBeginWindowEx("Rr_UI.h - Widgets", &WidgetsWindowOpen, Flags);
     {
         Rr_UISetNextWindowCreateCollapsed(false);
@@ -867,6 +860,67 @@ static void Iterate(void)
     Rr_UIEndWindow();
 }
 
+static void TestWindow(void)
+{
+    Rr_UIWindowFlags Flags = 0;
+    /* Flags |= RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT; */
+    /* Flags |= RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT; */
+    if (Rr_UIBeginWindowEx("Teddd", NULL, Flags))
+    {
+        static bool Bools[4] = { 0 };
+        Rr_UICheckbox("Checkbox", &Bools[0]);
+        /* if (Bools[0]) */
+        {
+            Rr_UICheckbox("Checkbox ==", &Bools[1]);
+        }
+        /* if (Bools[1]) */
+        {
+            Rr_UICheckbox("Checkbox ======", &Bools[2]);
+        }
+        Rr_UITextWrapped(
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed "
+            "do eiusmod tempor incididunt ut labore et dolore magna "
+            "aliqua. "
+            "Ut enim ad minim veniam, quis nostrud exercitation ullamco "
+            "laboris nisi ut aliquip ex ea commodo consequat.",
+            350.0f);
+        /* if (Bools[2]) */
+        {
+            Rr_UICheckbox("Checkbox =========", &Bools[3]);
+        }
+    }
+    Rr_UIEndWindow();
+}
+
+static void Iterate(void)
+{
+    Rr_UIDebugOverlay();
+
+    Rr_Graph *Graph = Rr_GetGraph();
+
+    Rr_ClearColorImage2D(Graph, (Rr_ColorClear){ 0.01f, 0.01f, 0.02f, 1.0f }, Rr_GetSwapchainImage());
+
+    FixedSizeWindow();
+    ThemeEditorWindow();
+    TextInputWindow();
+    GeneralWindow();
+    WidgetsWindow();
+    /* TestWindow(); */
+}
+
+static void Event(Rr_Event const *Event)
+{
+    if (Event->Type == RR_EVENT_TYPE_KEY_DOWN)
+    {
+        static bool SlowMo = false;
+        if (Event->Key.Scancode == RR_SCANCODE_F5)
+        {
+            SlowMo = !SlowMo;
+            Rr_SetTargetFrameRate(SlowMo ? 2 : 180);
+        }
+    }
+}
+
 static void Cleanup(void)
 {
     Rr_ReleaseImage(VulkanImage);
@@ -879,6 +933,7 @@ int main(int ArgC, char **ArgV)
     Rr_Config Config = {
         .WindowTitle = "UIDemo",
         .InitFunc = Init,
+        .EventFunc = Event,
         .IterateFunc = Iterate,
         .CleanupFunc = Cleanup,
         .WindowFlags = RR_WINDOW_FLAGS_RESIZE_BIT,
