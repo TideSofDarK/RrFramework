@@ -1985,14 +1985,48 @@ static inline Rr_Vec4 Rr_RoundV4(Rr_Vec4 A)
  * Ternary Vector Operations
  */
 
+static inline Rr_Vec2 Rr_ClampV2(Rr_Vec2 A, Rr_Vec2 X, Rr_Vec2 B)
+{
+    Rr_Vec2 Result;
+
+    Result.X = RR_CLAMP(A.X, X.X, B.X);
+    Result.Y = RR_CLAMP(A.Y, X.Y, B.Y);
+
+    return Result;
+}
+
+static inline Rr_Vec3 Rr_ClampV3(Rr_Vec3 A, Rr_Vec3 X, Rr_Vec3 B)
+{
+    Rr_Vec3 Result;
+
+    Result.X = RR_CLAMP(A.X, X.X, B.X);
+    Result.Y = RR_CLAMP(A.Y, X.Y, B.Y);
+    Result.Z = RR_CLAMP(A.Z, X.Z, B.Z);
+
+    return Result;
+}
+
+static inline Rr_Vec4 Rr_ClampV4(Rr_Vec4 A, Rr_Vec4 X, Rr_Vec4 B)
+{
+    Rr_Vec4 Result;
+
+#if defined(RR_MATH_SSE)
+    Result.SSE = _mm_min_ps(B.SSE, _mm_max_ps(A.SSE, X.SSE));
+#elif defined(RR_MATH_NEON)
+    Result.NEON = vminq_f32(B.NEON, vmaxq_f32(A.NEON, X.NEON));
+#else
+    Result.X = RR_CLAMP(A.X, X.X, B.X);
+    Result.Y = RR_CLAMP(A.Y, X.Y, B.Y);
+    Result.Z = RR_CLAMP(A.Z, X.Z, B.Z);
+    Result.W = RR_CLAMP(A.W, X.W, B.W);
+#endif
+
+    return Result;
+}
+
 static inline Rr_Vec2 Rr_LerpV2(Rr_Vec2 A, float Time, Rr_Vec2 B)
 {
     return Rr_AddV2(Rr_MulV2F(A, 1.0f - Time), Rr_MulV2F(B, Time));
-}
-
-static inline Rr_Vec2 Rr_DampV2(Rr_Vec2 A, float Time, Rr_Vec2 B)
-{
-    return Rr_LerpV2(A, 1.0f - expf(-Time), B);
 }
 
 static inline Rr_Vec3 Rr_LerpV3(Rr_Vec3 A, float Time, Rr_Vec3 B)
@@ -2000,19 +2034,67 @@ static inline Rr_Vec3 Rr_LerpV3(Rr_Vec3 A, float Time, Rr_Vec3 B)
     return Rr_AddV3(Rr_MulV3F(A, 1.0f - Time), Rr_MulV3F(B, Time));
 }
 
-static inline Rr_Vec3 Rr_DampV3(Rr_Vec3 A, float Time, Rr_Vec3 B)
-{
-    return Rr_LerpV3(A, 1.0f - expf(-Time), B);
-}
-
 static inline Rr_Vec4 Rr_LerpV4(Rr_Vec4 A, float Time, Rr_Vec4 B)
 {
     return Rr_AddV4(Rr_MulV4F(A, 1.0f - Time), Rr_MulV4F(B, Time));
 }
 
+static inline Rr_Vec2 Rr_DampV2(Rr_Vec2 A, float Time, Rr_Vec2 B)
+{
+    return Rr_LerpV2(A, 1.0f - expf(-Time), B);
+}
+
+static inline Rr_Vec3 Rr_DampV3(Rr_Vec3 A, float Time, Rr_Vec3 B)
+{
+    return Rr_LerpV3(A, 1.0f - expf(-Time), B);
+}
+
 static inline Rr_Vec4 Rr_DampV4(Rr_Vec4 A, float Time, Rr_Vec4 B)
 {
     return Rr_LerpV4(A, 1.0f - expf(-Time), B);
+}
+
+/*
+ * Ternary Integer Vector Operations
+ */
+
+static inline Rr_IntVec2 Rr_ClampIntV2(Rr_IntVec2 A, Rr_IntVec2 X, Rr_IntVec2 B)
+{
+    Rr_IntVec2 Result;
+
+    Result.X = RR_CLAMP(A.X, X.X, B.X);
+    Result.Y = RR_CLAMP(A.Y, X.Y, B.Y);
+
+    return Result;
+}
+
+static inline Rr_IntVec3 Rr_ClampIntV3(Rr_IntVec3 A, Rr_IntVec3 X, Rr_IntVec3 B)
+{
+    Rr_IntVec3 Result;
+
+    Result.X = RR_CLAMP(A.X, X.X, B.X);
+    Result.Y = RR_CLAMP(A.Y, X.Y, B.Y);
+    Result.Z = RR_CLAMP(A.Z, X.Z, B.Z);
+
+    return Result;
+}
+
+static inline Rr_IntVec4 Rr_ClampIntV4(Rr_IntVec4 A, Rr_IntVec4 X, Rr_IntVec4 B)
+{
+    Rr_IntVec4 Result;
+
+#if defined(RR_MATH_SSE4_1)
+    Result.SSE = _mm_min_epi32(B.SSE, _mm_max_epi32(A.SSE, X.SSE));
+#elif defined(RR_MATH_NEON)
+    Result.NEON = vminq_s32(B.NEON, vmaxq_s32(A.NEON, X.NEON));
+#else
+    Result.X = RR_CLAMP(A.X, X.X, B.X);
+    Result.Y = RR_CLAMP(A.Y, X.Y, B.Y);
+    Result.Z = RR_CLAMP(A.Z, X.Z, B.Z);
+    Result.W = RR_CLAMP(A.W, X.W, B.W);
+#endif
+
+    return Result;
 }
 
 /*
@@ -3712,14 +3794,24 @@ static inline Rr_Vec4 Rr_Max(Rr_Vec4 Left, Rr_Vec4 Right)
     return Rr_MaxV4(Left, Right);
 }
 
+static inline Rr_Vec2 Rr_Clamp(Rr_Vec2 A, Rr_Vec2 X, Rr_Vec2 B)
+{
+    return Rr_ClampV2(A, X, B);
+}
+
+static inline Rr_Vec3 Rr_Clamp(Rr_Vec3 A, Rr_Vec3 X, Rr_Vec3 B)
+{
+    return Rr_ClampV3(A, X, B);
+}
+
+static inline Rr_Vec4 Rr_Clamp(Rr_Vec4 A, Rr_Vec4 X, Rr_Vec4 B)
+{
+    return Rr_ClampV4(A, X, B);
+}
+
 static inline Rr_Vec2 Rr_Lerp(Rr_Vec2 Left, float Time, Rr_Vec2 Right)
 {
     return Rr_LerpV2(Left, Time, Right);
-}
-
-static inline Rr_Vec2 Rr_Damp(Rr_Vec2 Left, float Time, Rr_Vec2 Right)
-{
-    return Rr_DampV2(Left, Time, Right);
 }
 
 static inline Rr_Vec3 Rr_Lerp(Rr_Vec3 Left, float Time, Rr_Vec3 Right)
@@ -3727,14 +3819,19 @@ static inline Rr_Vec3 Rr_Lerp(Rr_Vec3 Left, float Time, Rr_Vec3 Right)
     return Rr_LerpV3(Left, Time, Right);
 }
 
-static inline Rr_Vec3 Rr_Damp(Rr_Vec3 Left, float Time, Rr_Vec3 Right)
-{
-    return Rr_DampV3(Left, Time, Right);
-}
-
 static inline Rr_Vec4 Rr_Lerp(Rr_Vec4 Left, float Time, Rr_Vec4 Right)
 {
     return Rr_LerpV4(Left, Time, Right);
+}
+
+static inline Rr_Vec2 Rr_Damp(Rr_Vec2 Left, float Time, Rr_Vec2 Right)
+{
+    return Rr_DampV2(Left, Time, Right);
+}
+
+static inline Rr_Vec3 Rr_Damp(Rr_Vec3 Left, float Time, Rr_Vec3 Right)
+{
+    return Rr_DampV3(Left, Time, Right);
 }
 
 static inline Rr_Vec4 Rr_Damp(Rr_Vec4 Left, float Time, Rr_Vec4 Right)
@@ -4509,6 +4606,21 @@ static inline Rr_IntVec3 Rr_Max(Rr_IntVec3 Left, Rr_IntVec3 Right)
 static inline Rr_IntVec4 Rr_Max(Rr_IntVec4 Left, Rr_IntVec4 Right)
 {
     return Rr_MaxIntV4(Left, Right);
+}
+
+static inline Rr_IntVec2 Rr_Clamp(Rr_IntVec2 A, Rr_IntVec2 X, Rr_IntVec2 B)
+{
+    return Rr_ClampIntV2(A, X, B);
+}
+
+static inline Rr_IntVec3 Rr_Clamp(Rr_IntVec3 A, Rr_IntVec3 X, Rr_IntVec3 B)
+{
+    return Rr_ClampIntV3(A, X, B);
+}
+
+static inline Rr_IntVec4 Rr_Clamp(Rr_IntVec4 A, Rr_IntVec4 X, Rr_IntVec4 B)
+{
+    return Rr_ClampIntV4(A, X, B);
 }
 
 static inline Rr_IntVec2 operator+(Rr_IntVec2 Left, Rr_IntVec2 Right)

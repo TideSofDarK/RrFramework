@@ -1,30 +1,30 @@
 * Critical
 
 - [X] Synchronization (?) bug with host written buffers.
-  + Turned out to be an issue of writing to host visible buffers before waiting on the fence associated with current frame.
-  + Solution: call Iterate() after waiting on the fence.
+  - Turned out to be an issue of writing to host visible buffers before waiting on the fence associated with current frame.
+  - Solution: call Iterate() after waiting on the fence.
 - [X] Add deletion queues for Vulkan objects.
 - [X] Things such as rendering to cubemap requires more advanced image view handling.
-  + A hive of wrapped image views + hash?
-  + Solution: implemented custom storage for views that combines a hive and a map.
-  + Any image view gets created on demand unless it's already cached in storage.
+  - A hive of wrapped image views + hash?
+  - Solution: implemented custom storage for views that combines a hive and a map.
+  - Any image view gets created on demand unless it's already cached in storage.
 - [X] Hash collision handling across all usages of Rr_Map.
 - [X] Hashing objects such as VkFramebuffer looks very bad.
 - [X] Simplify pipeline layout creation.
-  + In the end it had to be more complex though.
+  - In the end it had to be more complex though.
 - [X] Inter-node sync, e.g., sequential compute dispatches writing to the same resource.
-  + Added RW versions of Rr_BindStorageXXX commands for better synchronization opportunities.
-  + Added Rr_ComputeBarrier() for compute nodes.
-  + Since you can't put barriers amidst render passes, it's user responsibility to avoid undefined behavior.
+  - Added RW versions of Rr_BindStorageXXX commands for better synchronization opportunities.
+  - Added Rr_ComputeBarrier() for compute nodes.
+  - Since you can't put barriers amidst render passes, it's user responsibility to avoid undefined behavior.
 - [X] Remove Rr_LoadingThread.
-  + Remove Rr_UploadImageXXX stuff which is going to be replaced by graph nodes.
-  + Current plan is to decouple Rr_Graph from Rr_Frame and make it possible to create subgraphs (possibly from other threads).
-  + For now, make transfer-only graphs that can be submitted from secondary threads.
+  - Remove Rr_UploadImageXXX stuff which is going to be replaced by graph nodes.
+  - Current plan is to decouple Rr_Graph from Rr_Frame and make it possible to create subgraphs (possibly from other threads).
+  - For now, make transfer-only graphs that can be submitted from secondary threads.
 - [X] Finalize said decoupling:
-  + Track graph capabilities.
-  + Move arena and command pools to thread context.
+  - Track graph capabilities.
+  - Move arena and command pools to thread context.
 - [X] Should referenced pipelines and samplers be hashed to optimize decrement references pass? 
-  + Solution: put handles to hash set.
+  - Solution: put handles to hash set.
 - [X] Binding arrays support.
 - [X] 3D image support.
 - [X] Image array support.
@@ -42,7 +42,7 @@
 - [X] Releasing same resource (buffer, image, etc) twice leads to annoying bugs.
 - [X] Replace VMA with custom allocator.
 - [X] Support linear tiling (?) formats such as R8G8B8.
-  + Linear tiling appears useless. Added more common format support instead.
+  - Linear tiling appears useless. Added more common format support instead.
 - [X] Public API should use const where applicable.
 - [X] Vulkan: flexible image subresource layouts inside compute nodes.
 - [X] Error handling: RHI resource creation.
@@ -73,13 +73,13 @@
 - [X] Input fields with custom clip rects happen to ignore parent bounds.
 - [X] Better tabs.
 - [X] Upgrade click system to allow double clicking titles.
-  + Also fix input field flicker.
+  - Also fix input field flicker.
 - [X] Add separate ID/Hash stack.
 - [X] Fix broken clip rects.
 - [X] Apply scalar changes immediately if possible.
 - [X] Make drag behavior properly handle buttons and support double clicks.
 - [X] Support for linear color space swapchains.
-  + Put colors into an array for easier conversion. 
+  - Put colors into an array for easier conversion. 
 - [X] Draggable scalars.
 - [X] Clamps/ratios for draggable scalars.
 - [X] Combobox.
@@ -90,20 +90,23 @@
 - [X] Radio buttons.
 - [X] Nested windows.
 - [X] Swap font rendering with stb_truetype.
-- [ ] Hide flexible widgets properly when layout lacks available width.
+- [X] Horizontal scrollbar.
+- [ ] Make sure widgets don't look broken with extremely small window sizes.
 - [ ] Input field doesn't lose focus when clicking elsewhere.
 - [ ] Child window borders ignore mouse wheel events.
 - [ ] Proper stack data structure.
-- [ ] Horizontal scrollbar.
 - [ ] Some options for horizontal child layouts + asserts.
 - [ ] More animations.
 - [ ] Flickering:
   - [ ] Uncollapsing a child window. Parent fails to adjust its size immediately.
   - [ ] Uncollapsing something for the first time. Flexible widgets have no idea how much width is available.
-    + Seems unfixable without deferring?
+    - Seems unfixable without deferring?
   - [ ] Scrollbar hide/show lags one frame behind.
   - [ ] Tabs flicker 2 or 3 times depending on the order.
-    + Probably tackle this after fixing the rest of the flickering.
+    - Probably tackle this after fixing the rest of the flickering.
+  - In IMGUI a widgets layout can't depend on any subsequent widgets layout. 
+  - Unfortunately, the way to go is to scrap flexible widget stuff and rely on manually provided widths for alignment.
+  - Wrapped text already does that.
 
 ** Debug
 
@@ -133,8 +136,8 @@
 - [X] Move back to C99!
 - [X] Remove InputMap.
 - [X] Decide where it makes sense to use size_t instead of uint32_t. Also VK_DEVICE_SIZE etc.
-  + Solution: use size_t for user-provided counts (i.e. number of color targets).
-  + Otherwise stick to types that correspond to underlying Vulkan structs.
+  - Solution: use size_t for user-provided counts (i.e. number of color targets).
+  - Otherwise stick to types that correspond to underlying Vulkan structs.
 - [X] With GLFW swapchain gets recreated immediately after launch.
 - [X] Own implementation of Windows/Linux platform layers.
 - [X] Make Rr_HashMap and Rr_Hive follow somewhat similar conventions.
@@ -145,8 +148,8 @@
 - [ ] Convert Rr_HashTrie into inline header-based collection.
 - [ ] Convert RR_ARRAY into inline header-based collection.
 - [ ] Header-based stuff should probably be internal.
-  + The goal is API that's 100% accessible from other languages.
-  + Nothing can be done about Rr_Math.h though?
+  - The goal is API that's 100% accessible from other languages.
+  - Nothing can be done about Rr_Math.h though?
 - [ ] Further RHI decoupling.
 - [ ] Support for immutable buffers/images that don't require synchronization.
 - [ ] Controller support.

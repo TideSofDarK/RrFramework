@@ -94,10 +94,9 @@ struct Rr_UIWindow
     char const *Title;
     Rr_UIWindowFlags Flags;
     Rr_Rect Rect;
-    Rr_Rect ContentsRect;
-    float VScroll;
-    float VScrollTarget;
-    float HScroll;
+    Rr_Rect ContentsRect; /* Includes padding. */
+    Rr_Vec2 Scroll;
+    Rr_Vec2 ScrollTarget;
     int32_t Z;
 
     bool Collapsed;
@@ -142,19 +141,25 @@ typedef struct Rr_UILayout Rr_UILayout;
 struct Rr_UILayout
 {
     Rr_UIWindow *Window;
+    bool *Open;
     bool WasCollapsed;
     bool SkipItems;
     bool SkipCompletely;
-    bool *Open;
 
+    bool HorizontalScrollbarAdded;
     bool VerticalScrollbarAdded;
 
     Rr_Vec2 WindowPadding;
 
-    Rr_Rect Rect;
+    Rr_Rect Rect; /* Total window area for this frame (excluding borders). Might
+                   * differ from Window->Rect because collapsed windows should
+                   * remember their uncollapsed extents. */
+    Rr_Rect ContentsRect; /* This rect excludes any decorations such as title
+                           * bar, borders and scrollbars. Includes padding. */
+    Rr_Vec2 FillRatio;
 
     Rr_Vec2 Cursor;
-    float TotalAvailableContentsWidth;
+    // float TotalAvailableContentsWidth;
     float HorizontalX;
     Rr_Vec2 HorizontalMaxExtent;
 
@@ -165,9 +170,7 @@ struct Rr_UILayout
     Rr_Vec2 TabsCursorStart;
     Rr_Vec2 TabsCursor;
 
-    bool MouseInsideClipRect;
-
-    Rr_Rect DeferredContentsRect;
+    Rr_Rect DeferredContentsRect; /* Excludes padding. */
     Rr_Vec4 const *DeferredResizeHandleColor;
     bool DeferredAutoResize;
     bool DeferredClampOffsetToScreen;
@@ -186,8 +189,9 @@ struct Rr_UILayout
     Rr_Rect VisibleRect;
 
     Rr_UIClipRect *ParentClipRect;
-    Rr_UIClipRect *CurrentClipRect;
     Rr_UIClipRectArray *ClipRects;
+    Rr_UIClipRect *CurrentClipRect;
+    bool MouseInsideClipRect;
 
     Rr_UILayout *TopLevelParent;
 
@@ -217,18 +221,18 @@ typedef enum
 typedef struct Rr_UINextWindowFlags Rr_UINextWindowFlags;
 struct Rr_UINextWindowFlags
 {
-    int8_t OpenOffsetX : 1;
-    int8_t OpenOffsetY : 1;
-    int8_t OffsetX : 1;
-    int8_t OffsetY : 1;
-    int8_t ExtentX : 1;
-    int8_t ExtentY : 1;
-    int8_t MinExtentX : 1;
-    int8_t MinExtentY : 1;
-    int8_t MaxExtentX : 1;
-    int8_t MaxExtentY : 1;
-    int8_t PaddingX : 1;
-    int8_t PaddingY : 1;
+    bool OpenOffsetX : 1;
+    bool OpenOffsetY : 1;
+    bool OffsetX : 1;
+    bool OffsetY : 1;
+    bool ExtentX : 1;
+    bool ExtentY : 1;
+    bool MinExtentX : 1;
+    bool MinExtentY : 1;
+    bool MaxExtentX : 1;
+    bool MaxExtentY : 1;
+    bool PaddingX : 1;
+    bool PaddingY : 1;
     int8_t CreateCollapsed : 2; /* -1 is false and 1 is true! */
 };
 
@@ -789,6 +793,11 @@ static inline bool Rr_UIWindowNoBorders(Rr_UIWindow *Window)
     return Window->Flags & RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT;
 }
 
+static inline bool Rr_UIWindowNoHorizontalScrollbar(Rr_UIWindow *Window)
+{
+    return Window->Flags & RR_UI_WINDOW_FLAGS_NO_HORIZONTAL_SCROLLBAR_BIT;
+}
+
 static inline bool Rr_UIWindowNoVerticalScrollbar(Rr_UIWindow *Window)
 {
     return Window->Flags & RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
@@ -985,8 +994,8 @@ static inline Rr_UIWindow *Rr_UICurrentWindow(void)
 
 static inline float Rr_UIGetAvailableContentsWidth(Rr_UILayout *Layout)
 {
-    return Layout->TotalAvailableContentsWidth -
-           (Layout->Cursor.X - Layout->DeferredContentsRect.Offset.X);
+    return Layout->ContentsRect.Offset.X + Layout->ContentsRect.Extent.X -
+           Layout->Cursor.X - Layout->WindowPadding.X;
 }
 
 static inline bool Rr_UIIsHorizontal(void)
@@ -2672,16 +2681,17 @@ static inline Rr_UIClickResult Rr_UIClickMulti(
 static inline bool Rr_UIScrollBehavior(
     Rr_UIWindow *Window,
     Rr_Rect *Rect,
-    float *YScroll)
+    Rr_Vec2 *Scroll)
 {
     if (Window == gUI->HoveredWindow && gUI->ClickConsumed == false &&
         Rr_RectContains(Rect, gUI->MousePosition))
     {
-        if (gUI->MouseWheelDelta.Y != 0.0f)
+        if (gUI->MouseWheelDelta.X != 0.0f || gUI->MouseWheelDelta.Y != 0.0f)
         {
             Rr_UIResetDrag();
-            *YScroll = *YScroll +
-                       gUI->MouseWheelDelta.Y * gUI->DefaultFont->LineHeight;
+            *Scroll = Rr_AddV2(
+                *Scroll,
+                Rr_MulV2F(gUI->MouseWheelDelta, gUI->DefaultFont->LineHeight));
 
             return true;
         }
@@ -3421,14 +3431,14 @@ static inline void Rr_UIAddResizeHandles(Rr_UILayout *Layout)
         (gUI->HoveredWindow == Window ||
          gUI->DragParent == Window)) /* Don't test every window out there. */
     {
-        Rr_UIAddResizeHandle(Layout, "Rr.ResizeN", RR_UI_RESIZE_TYPE_N);
-        Rr_UIAddResizeHandle(Layout, "Rr.ResizeS", RR_UI_RESIZE_TYPE_S);
-        Rr_UIAddResizeHandle(Layout, "Rr.ResizeE", RR_UI_RESIZE_TYPE_E);
-        Rr_UIAddResizeHandle(Layout, "Rr.ResizeW", RR_UI_RESIZE_TYPE_W);
+        Rr_UIAddResizeHandle(Layout, "Rr.UI.ResizeN", RR_UI_RESIZE_TYPE_N);
+        Rr_UIAddResizeHandle(Layout, "Rr.UI.ResizeS", RR_UI_RESIZE_TYPE_S);
+        Rr_UIAddResizeHandle(Layout, "Rr.UI.ResizeE", RR_UI_RESIZE_TYPE_E);
+        Rr_UIAddResizeHandle(Layout, "Rr.UI.ResizeW", RR_UI_RESIZE_TYPE_W);
     }
 
     Rr_UIClickResult ClickResult =
-        Rr_UIAddResizeHandle(Layout, "Rr.ResizeSE", RR_UI_RESIZE_TYPE_SE);
+        Rr_UIAddResizeHandle(Layout, "Rr.UI.ResizeSE", RR_UI_RESIZE_TYPE_SE);
 
     if (ClickResult.Held)
     {
@@ -3444,13 +3454,16 @@ static inline void Rr_UIAddResizeHandles(Rr_UILayout *Layout)
     }
 }
 
-static inline Rr_Rect Rr_UIGetWindowContentsArea(
+/* Takes current layout rect and returns contents subset of it. Returned rect
+ * includes padding. */
+static inline Rr_Rect Rr_UIGetWindowContentsRect(
     Rr_UILayout *Layout,
-    float *OutFillRatio)
+    Rr_Vec2 *OutFillRatio)
 {
     Rr_UIWindow *Window = Layout->Window;
 
     Rr_Rect Rect = Layout->Rect;
+    Rr_Vec2 ContentsExtent = Window->ContentsRect.Extent;
 
     if (!Rr_UIWindowNoTitleBar(Window))
     {
@@ -3458,151 +3471,241 @@ static inline Rr_Rect Rr_UIGetWindowContentsArea(
         Rect.Extent.Y -= gUI->TitleBarHeight;
     }
 
-    float ContentsHeight = Window->ContentsRect.Extent.Y;
-    ContentsHeight += Layout->WindowPadding.Y;
-    if (ContentsHeight == 0.0f)
+    if (ContentsExtent.X == 0.0f || ContentsExtent.Y == 0.0f)
     {
+        if (OutFillRatio)
+        {
+            *OutFillRatio = Rr_V2F(1.0f);
+        }
+
         return Rect;
     }
-    float FillRatio = ContentsHeight / Rect.Extent.Y;
+
+    /* Scrolling stuff. */
+
+    bool AllowHorizontal = !Rr_UIWindowNoHorizontalScrollbar(Window);
+    bool AllowVertical = !Rr_UIWindowNoVerticalScrollbar(Window);
+    bool Horizontal = false;
+    bool Vertical = false;
+
+    Rr_Vec2 FillRatio = Rr_DivV2(Rect.Extent, ContentsExtent);
+
+    if (AllowHorizontal && FillRatio.X < 1.0f)
+    {
+        Rect.Extent.Y -= gUI->ScrollbarWidth;
+        Horizontal = true;
+    }
+    if (AllowVertical && FillRatio.Y < 1.0f)
+    {
+        Rect.Extent.X -= gUI->ScrollbarWidth;
+        Vertical = true;
+    }
+
+    /* Recalculate if either is desired. */
+
+    if (Horizontal || Vertical)
+    {
+        FillRatio = Rr_DivV2(Rect.Extent, ContentsExtent);
+
+        if (AllowHorizontal && FillRatio.X < 1.0f && !Horizontal)
+        {
+            Rect.Extent.Y -= gUI->ScrollbarWidth;
+        }
+        if (AllowVertical && FillRatio.Y < 1.0f && !Vertical)
+        {
+            Rect.Extent.X -= gUI->ScrollbarWidth;
+        }
+
+        FillRatio = Rr_DivV2(Rect.Extent, ContentsExtent);
+    }
+
     if (OutFillRatio)
     {
         *OutFillRatio = FillRatio;
-    }
-    if (!Rr_UIWindowNoVerticalScrollbar(Window) && FillRatio > 1.0f)
-    {
-        Rect.Extent.X -= gUI->ScrollbarWidth;
     }
 
     return Rect;
 }
 
-static inline bool Rr_UIAddVerticalScrollbar(Rr_UILayout *Layout)
+static inline void Rr_UIAddScrollbar(
+    Rr_UILayout *Layout,
+    Rr_UIHash Hash,
+    Rr_Vec2 Position,
+    Rr_Vec2 Extent,
+    Rr_Vec2 HandleOffset,
+    Rr_Vec2 HandleExtent,
+    float HandleMargin,
+    float ContentsExtent,
+    float FillRatio,
+    bool OnlyScrollbar,
+    int Component)
 {
     Rr_UIWindow *Window = Layout->Window;
 
-    bool HasResize = !Rr_UIWindowNoResize(Window);
+    float PrimaryOffset = Position.Elements[Component];
+    float PrimaryExtent = Extent.Elements[Component];
+    float PrimaryHandleOffset = HandleOffset.Elements[Component];
+    float PrimaryHandleExtent = HandleExtent.Elements[Component];
+    float Mouse = gUI->MousePosition.Elements[Component];
+    float MouseDelta = gUI->MousePosition.Elements[Component] -
+                       gUI->DragMouseStart.Elements[Component];
+    float *OutScroll = &Window->Scroll.Elements[Component];
+    float *OutScrollTarget = &Window->ScrollTarget.Elements[Component];
 
-    Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Layout, NULL);
-    float ContentsHeight = Window->ContentsRect.Extent.Y;
-    if (ContentsHeight == 0.0f)
+    Rr_UIDrawSolidQuad(
+        &(Rr_Rect){
+            Position,
+            Extent,
+        },
+        &gUI->Colors.ScrollbarBackground);
+
+    Rr_Rect HitboxRect = { Position, Extent };
+
+    /* Fix click conflict with resize handle.
+     * Mustn't do it if both scrollbars are present. */
+
+    if (!Rr_UIWindowNoResize(Window) && OnlyScrollbar)
     {
-        return false;
+        HitboxRect.Extent.Elements[Component] -= gUI->ResizeHandleSize;
     }
-    ContentsHeight += Layout->WindowPadding.Y;
-    float FillRatio = ContentsAreaRect.Extent.Y / ContentsHeight;
-    float MaxYScroll = RR_MAX(0.0f, ContentsHeight - ContentsAreaRect.Extent.Y);
 
-    if (FillRatio < 1.0f)
+    /* NOTE: Only single value is being changed at a time so just use X
+     * component. */
+
+    Rr_UIClickResult ClickResult = Rr_UIClickDrag(
+        Layout,
+        &HitboxRect,
+        Hash,
+        (Rr_Rect){ .Offset = Rr_V2(*OutScroll, 0.0f) });
+
+    if (ClickResult.ClickCount)
     {
-        if (!Rr_UIWindowNoVerticalScrollbar(Window))
+        /* Handle clicking outside the handle. */
+
+        if (Mouse > PrimaryHandleOffset + PrimaryHandleExtent)
         {
-            Rr_Vec2 ScrollbarPosition = ContentsAreaRect.Offset;
-            ScrollbarPosition.X += ContentsAreaRect.Extent.X;
-            Rr_Vec2 ScrollbarSize = { gUI->ScrollbarWidth,
-                                      ContentsAreaRect.Extent.Y };
-            Rr_UIDrawSolidQuad(
-                &(Rr_Rect){
-                    ScrollbarPosition,
-                    ScrollbarSize,
-                },
-                &gUI->Colors.ScrollbarBackground);
-
-            float ScrollbarHandleOffset =
-                (gUI->ScrollbarWidth - gUI->ScrollbarHandleWidth) / 2.0f;
-
-            Rr_Vec2 ScrollbarHandlePosition = ScrollbarPosition;
-            Rr_Vec2 ScrollbarHandleSize = ScrollbarSize;
-            ScrollbarHandlePosition.X += ScrollbarHandleOffset;
-            ScrollbarHandleSize.X = gUI->ScrollbarHandleWidth;
-            ScrollbarHandleSize.Y *= FillRatio;
-
-            ScrollbarHandlePosition.Y += roundf(Window->VScroll * FillRatio);
-
-            /* Vertical margins. */
-
-            ScrollbarHandlePosition.Y += ScrollbarHandleOffset;
-            ScrollbarHandleSize.Y -= ScrollbarHandleOffset * 2.0f;
-            ScrollbarHandleSize.Y =
-                RR_MAX(ScrollbarHandleSize.Y, gUI->BevelThickness * 3.0f);
-
-            /* This cuts a bit of height from the scrollbar hitbox so the resize
-             * handle is always on top. */
-
-            Rr_Rect ClickableRect = {
-                ScrollbarPosition,
-                ScrollbarSize,
-            };
-            if (HasResize)
-            {
-                float ResizeHandleY = ScrollbarPosition.Y + ScrollbarSize.Y -
-                                      gUI->ResizeHandleSize;
-                if (gUI->MousePosition.Y >= ResizeHandleY)
-                {
-                    ClickableRect.Extent = Rr_V2F(-1.0f);
-                }
-            }
-
-            Rr_UIClickResult ClickResult = Rr_UIClickDrag(
-                Layout,
-                &ClickableRect,
-                0,
-                (Rr_Rect){ .Offset = { 0.0f, Window->VScroll } });
-
-            if (ClickResult.ClickCount)
-            {
-                /* Handle clicking outside the handle. */
-
-                if (gUI->MousePosition.Y >
-                    ScrollbarHandlePosition.Y + ScrollbarHandleSize.Y)
-                {
-                    Window->VScroll = Window->VScrollTarget =
-                        (gUI->MousePosition.Y - ScrollbarPosition.Y -
-                         ScrollbarHandleOffset * 2.0f) /
-                            (ScrollbarSize.Y / ContentsHeight) -
-                        (ScrollbarHandleSize.Height / FillRatio);
-                    gUI->DragValueStart.Offset.Y = Window->VScroll;
-                }
-                else if (gUI->MousePosition.Y < ScrollbarHandlePosition.Y)
-                {
-                    Window->VScroll = Window->VScrollTarget =
-                        (gUI->MousePosition.Y - ScrollbarPosition.Y -
-                         ScrollbarHandleOffset * 2.0f) /
-                        ((ScrollbarSize.Y) / ContentsHeight);
-                    gUI->DragValueStart.Offset.Y = Window->VScroll;
-                }
-            }
-
-            if (ClickResult.Moved)
-            {
-                float Delta = gUI->MousePosition.Y - gUI->DragMouseStart.Y;
-                Window->VScroll = Window->VScrollTarget =
-                    gUI->DragValueStart.Offset.Y + (Delta * 1.0f / FillRatio);
-            }
-
-            Rr_UIDrawBevel(
-                &(Rr_Rect){
-                    ScrollbarHandlePosition,
-                    ScrollbarHandleSize,
-                },
-                ClickResult.Held ? &gUI->Colors.ScrollbarHeld
-                                 : &gUI->Colors.ScrollbarNormal,
-                false);
-
-            Layout->VerticalScrollbarAdded = true;
+            *OutScroll = *OutScrollTarget =
+                (Mouse - PrimaryOffset - HandleMargin * 2.0f) /
+                    (PrimaryExtent / ContentsExtent) -
+                (PrimaryHandleExtent / FillRatio);
+            gUI->DragValueStart.Offset.X = *OutScroll;
         }
+        else if (Mouse < PrimaryHandleOffset)
+        {
+            *OutScroll = *OutScrollTarget =
+                (Mouse - PrimaryOffset - HandleMargin * 2.0f) /
+                (PrimaryExtent / ContentsExtent);
+            gUI->DragValueStart.Offset.X = *OutScroll;
+        }
+    }
+
+    if (ClickResult.Moved)
+    {
+        *OutScroll = *OutScrollTarget =
+            gUI->DragValueStart.Offset.X + (MouseDelta * 1.0f / FillRatio);
+    }
+
+    Rr_Rect HandleRect = { HandleOffset, HandleExtent };
+    Rr_UIDrawBevel(
+        &HandleRect,
+        ClickResult.Held ? &gUI->Colors.ScrollbarHeld
+                         : &gUI->Colors.ScrollbarNormal,
+        false);
+}
+
+static inline void Rr_UIAddScrollbars(Rr_UILayout *Layout)
+{
+    Rr_UIWindow *Window = Layout->Window;
+
+    // bool HasResize = !Rr_UIWindowNoResize(Window);
+
+    Rr_Rect ContentsRect = Layout->ContentsRect;
+    Rr_Vec2 PaddedContents = Window->ContentsRect.Extent;
+    Rr_Vec2 FillRatio = Layout->FillRatio;
+
+    Rr_Vec2 MaxScroll = Rr_SubV2(PaddedContents, ContentsRect.Extent);
+    MaxScroll = Rr_MaxV2(Rr_V2F(0.0f), MaxScroll);
+
+    bool WantHorizontalScrollbar =
+        FillRatio.X < 1.0f && !Rr_UIWindowNoHorizontalScrollbar(Window);
+    bool WantVerticalScrollbar =
+        FillRatio.Y < 1.0f && !Rr_UIWindowNoVerticalScrollbar(Window);
+
+    float MinHandleWidth = gUI->BevelThickness * 3.0f;
+    float HandleMargin = gUI->ScrollbarWidth - gUI->ScrollbarHandleWidth;
+    HandleMargin *= 0.5f;
+    Rr_Vec2 Offset, Extent;
+    Rr_Vec2 HandleOffset, HandleExtent;
+    if (WantHorizontalScrollbar)
+    {
+        Offset = ContentsRect.Offset;
+        Offset.Y += ContentsRect.Extent.Y;
+        Extent = Rr_V2(ContentsRect.Extent.X, gUI->ScrollbarWidth);
+
+        HandleOffset = Offset;
+        HandleOffset = Rr_AddV2F(HandleOffset, HandleMargin);
+        HandleOffset.X += roundf(Window->Scroll.X * FillRatio.X);
+        HandleExtent.X = Extent.X * FillRatio.X;
+        HandleExtent.X -= HandleMargin * 2.0f;
+        HandleExtent.X = RR_MAX(HandleExtent.X, MinHandleWidth);
+        HandleExtent.Y = gUI->ScrollbarHandleWidth;
+
+        Rr_UIAddScrollbar(
+            Layout,
+            Rr_UIGetTitleHash("Rr.UI.HorizontalScrollbar", NULL),
+            Offset,
+            Extent,
+            HandleOffset,
+            HandleExtent,
+            HandleMargin,
+            PaddedContents.X,
+            FillRatio.X,
+            WantHorizontalScrollbar != WantVerticalScrollbar,
+            0 /* X */);
+
+        Layout->HorizontalScrollbarAdded = true;
     }
     else
     {
-        /* Window->VScroll = 0.0f; */
-        Window->VScrollTarget = 0.0f;
+        Window->ScrollTarget.X = 0.0f;
+    }
+    if (WantVerticalScrollbar)
+    {
+        Offset = ContentsRect.Offset;
+        Offset.X += ContentsRect.Extent.X;
+        Extent = Rr_V2(gUI->ScrollbarWidth, ContentsRect.Extent.Y);
+
+        HandleOffset = Offset;
+        HandleOffset = Rr_AddV2F(HandleOffset, HandleMargin);
+        HandleOffset.Y += roundf(Window->Scroll.Y * FillRatio.Y);
+        HandleExtent.X = gUI->ScrollbarHandleWidth;
+        HandleExtent.Y = Extent.Y * FillRatio.Y;
+        HandleExtent.Y -= HandleMargin * 2.0f;
+        HandleExtent.Y = RR_MAX(HandleExtent.Y, MinHandleWidth);
+
+        Rr_UIAddScrollbar(
+            Layout,
+            Rr_UIGetTitleHash("Rr.UI.VerticalScrollbar", NULL),
+            Offset,
+            Extent,
+            HandleOffset,
+            HandleExtent,
+            HandleMargin,
+            PaddedContents.Y,
+            FillRatio.Y,
+            WantHorizontalScrollbar != WantVerticalScrollbar,
+            1 /* Y */);
+
+        Layout->VerticalScrollbarAdded = true;
+    }
+    else
+    {
+        Window->ScrollTarget.Y = 0.0f;
     }
 
-    Window->VScroll = RR_CLAMP(0.0f, Window->VScroll, MaxYScroll);
-    Window->VScrollTarget =
-        RR_CLAMP(0.0f, roundf(Window->VScrollTarget), MaxYScroll);
-
-    return Layout->VerticalScrollbarAdded;
+    Window->Scroll = Rr_ClampV2(Rr_V2F(0.0f), Window->Scroll, MaxScroll);
+    Window->ScrollTarget =
+        Rr_ClampV2(Rr_V2F(0.0f), Rr_RoundV2(Window->ScrollTarget), MaxScroll);
 }
 
 Rr_UIStyle *Rr_UIGetStyle(void)
@@ -3807,8 +3910,6 @@ static inline bool Rr_UIPushWindowLayout(
     Rr_UILayout *Layout = Rr_UIPushLayout(Hash);
     Layout->Window = Window;
     Layout->Rect = Window->Rect;
-    Layout->Cursor = Window->Rect.Offset;
-    Layout->TotalAvailableContentsWidth = Window->Rect.Extent.X;
     Layout->WasCollapsed = Window->Collapsed;
     Layout->HorizontalX = INFINITY;
     Layout->DeferredAutoResize = Rr_UIWindowAutoResize(Window);
@@ -3830,6 +3931,8 @@ static inline bool Rr_UIPushWindowLayout(
         gUI->NextWindowFlags.MaxExtentY,
         gUI->NextWindowMaxExtent);
 
+    /* Assign clip rect arrays. */
+
     if (Window->Child)
     {
         Layout->ParentClipRect = ParentLayout->CurrentClipRect;
@@ -3843,6 +3946,8 @@ static inline bool Rr_UIPushWindowLayout(
         Layout->TopLevelParent = Layout;
     }
 
+    /* Apply padding. */
+
     if (Rr_UIWindowTabs(Window))
     {
         Layout->WindowPadding = Rr_V2F(0.0f);
@@ -3853,19 +3958,15 @@ static inline bool Rr_UIPushWindowLayout(
         Layout->WindowPadding = Rr_UICurrentWindowPadding();
     }
 
-    if (!(gUI->NextWindowFlags.ExtentX || gUI->NextWindowFlags.ExtentY))
+    if (Window->Child && !Layout->LockExtentX)
     {
-        if (Window->Child)
+        Layout->Rect.Extent.X = Rr_UIGetAvailableContentsWidth(ParentLayout);
+    }
+    else if (!Layout->LockExtentX || !Layout->LockExtentY)
+    {
+        if (!Window->ShownAtLeastOnce && Window->OpenedThisFrame)
         {
-            Layout->Rect.Extent.X =
-                Rr_UIGetAvailableContentsWidth(ParentLayout);
-        }
-        else
-        {
-            if (!Window->ShownAtLeastOnce && Window->OpenedThisFrame)
-            {
-                Layout->DeferredAutoResize = true;
-            }
+            Layout->DeferredAutoResize = true;
         }
     }
 
@@ -3888,8 +3989,11 @@ static inline bool Rr_UIPushWindowLayout(
     if (!Rr_UIWindowNoBorders(Window))
     {
         Layout->Rect = Rr_ResizeRect(&Layout->Rect, -gUI->DoubleBevelThickness);
-        Layout->Cursor = Rr_AddV2F(Layout->Cursor, gUI->DoubleBevelThickness);
     }
+
+    /* Set initial cursor offset. */
+
+    Layout->Cursor = Layout->Rect.Offset;
 
     /* Add title bar or tab bar if necessary. */
 
@@ -3931,23 +4035,24 @@ static inline bool Rr_UIPushWindowLayout(
                           : &gUI->Colors.Background);
     }
 
-    Layout->TotalAvailableContentsWidth = Layout->Rect.Extent.X;
+    /* Calculate contents area and fill ratio. */
 
-    /* Add vertical scrollbar if necessary. */
+    Rr_Vec2 FillRatio;
+    Layout->ContentsRect = Rr_UIGetWindowContentsRect(Layout, &FillRatio);
+    Layout->FillRatio = FillRatio;
 
-    if (!Layout->WasCollapsed)
+    /* Add scrollbars if necessary. */
+
+    if (!Layout->WasCollapsed && (FillRatio.X != 1.0f || FillRatio.Y != 1.0f))
     {
-        if (Rr_UIAddVerticalScrollbar(Layout))
-        {
-            Layout->TotalAvailableContentsWidth -= gUI->ScrollbarWidth;
-        }
-
-        Window->VScroll = Rr_Damp(
-            Window->VScroll,
-            15.0f * (float)Rr_GetDeltaSeconds(),
-            Window->VScrollTarget);
-        Layout->Cursor.Y -= roundf(Window->VScroll);
+        Rr_UIAddScrollbars(Layout);
     }
+
+    Window->Scroll = Rr_DampV2(
+        Window->Scroll,
+        15.0f * (float)Rr_GetDeltaSeconds(),
+        Window->ScrollTarget);
+    Layout->Cursor = Rr_RoundV2(Rr_SubV2(Layout->Cursor, Window->Scroll));
 
     /* NOTE: Defer drawing the handle to Rr_UIEndWindow()! */
 
@@ -3958,16 +4063,13 @@ static inline bool Rr_UIPushWindowLayout(
         Rr_UIAddResizeHandles(Layout);
     }
 
-    Layout->TotalAvailableContentsWidth -= Layout->WindowPadding.X * 2.0f;
     Layout->Cursor = Rr_AddV2(Layout->Cursor, Layout->WindowPadding);
+    Layout->DeferredContentsRect.Offset = Layout->Cursor;
 
     /* Clip to contents. */
 
     Rr_UIEndClipRect(Layout);
-    Rr_Rect ContentsAreaRect = Rr_UIGetWindowContentsArea(Layout, NULL);
-    Rr_UIBeginClipRect(Layout, &ContentsAreaRect);
-
-    Layout->DeferredContentsRect.Offset = Layout->Cursor;
+    Rr_UIBeginClipRect(Layout, &Layout->ContentsRect);
 
     return true;
 }
@@ -4163,6 +4265,7 @@ static bool Rr_UIBeginDockedChildWindow(
 
     Rr_UIWindowFlags const CHILD_FLAGS =
         RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT | RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
+        RR_UI_WINDOW_FLAGS_NO_HORIZONTAL_SCROLLBAR_BIT |
         RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
 
     Window->Flags |= CHILD_FLAGS;
@@ -4313,6 +4416,59 @@ static inline void Rr_UIClampWindowToScreen(Rr_UIWindow *Window)
     }
 }
 
+static inline void Rr_UIDrawDarkeners(Rr_UILayout *Layout, int Component)
+{
+    Rr_UIWindow *Window = Layout->Window;
+    Rr_UIFont *Font = Rr_UICurrentFont();
+    Rr_Vec4 *ScrolloffBackground = &gUI->Colors.ScrolloffBackground;
+
+    Rr_Rect ContentsRect = Layout->ContentsRect;
+    Rr_Vec2 Scroll = Window->Scroll;
+
+    float ContentsExtent = Window->ContentsRect.Extent.Elements[Component];
+    float DarkenSize = RR_MIN(Font->LineHeight, ContentsExtent);
+
+    Rr_Rect DarkenRect = ContentsRect;
+    DarkenRect.Extent.Elements[Component] =
+        RR_MIN(DarkenRect.Extent.Elements[Component], DarkenSize);
+
+    Rr_Vec4 ColorA = Rr_V4V(ScrolloffBackground->XYZ, 0.0f);
+    Rr_Vec4 ColorB = Rr_V4V(ScrolloffBackground->XYZ, 0.0f);
+
+    typedef void (*DrawFunc)(Rr_Rect *, Rr_Vec4 *, Rr_Vec4 *);
+    static const DrawFunc DRAW_FUNCS[] = {
+        Rr_UIDrawHorizontalGradientQuad,
+        Rr_UIDrawVerticalGradientQuad,
+    };
+
+    float BeginAlpha =
+        RR_CLAMP(0.0f, Scroll.Elements[Component] / DarkenSize, 1.0f);
+    if (BeginAlpha > 0.0f)
+    {
+        ColorA.W = BeginAlpha;
+        ColorB.W = 0.0f;
+        DRAW_FUNCS[Component](&DarkenRect, &ColorA, &ColorB);
+    }
+
+    float EndAlpha = RR_CLAMP(
+        0.0f,
+        (ContentsExtent - ContentsRect.Extent.Elements[Component] -
+         Scroll.Elements[Component] +
+         Layout->WindowPadding.Elements[Component]) /
+            DarkenSize,
+        1.0f);
+    if (EndAlpha > 0.0f)
+    {
+        DarkenRect.Offset.Elements[Component] =
+            ContentsRect.Offset.Elements[Component] +
+            ContentsRect.Extent.Elements[Component] - DarkenSize;
+
+        ColorA.W = 0.0f;
+        ColorB.W = EndAlpha;
+        DRAW_FUNCS[Component](&DarkenRect, &ColorA, &ColorB);
+    }
+}
+
 void Rr_UIEndWindow(void)
 {
     Rr_UIAssertWindow();
@@ -4326,7 +4482,6 @@ void Rr_UIEndWindow(void)
     }
 
     Rr_UIWindow *Window = Layout->Window;
-    Rr_UIFont *Font = Rr_UICurrentFont();
 
     bool Resize = !(Window->Flags & RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
     bool TitleBar = !(Window->Flags & RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT);
@@ -4340,7 +4495,21 @@ void Rr_UIEndWindow(void)
     if (!Layout->WasCollapsed)
     {
         Window->ContentsRect = Layout->DeferredContentsRect;
-        Window->ContentsRect.Extent.Y += Layout->WindowPadding.Y;
+        Window->ContentsRect.Offset =
+            Rr_SubV2(Window->ContentsRect.Offset, Layout->WindowPadding);
+        Window->ContentsRect.Extent =
+            Rr_AddV2(Window->ContentsRect.Extent, Layout->WindowPadding);
+        Window->ContentsRect.Extent =
+            Rr_AddV2(Window->ContentsRect.Extent, Layout->WindowPadding);
+        // Window->ContentsRect.Extent.X += Layout->WindowPadding.X;
+        // Window->ContentsRect.Extent.Y += Layout->WindowPadding.Y;
+
+        /* NOTE: Flooring these fixed imprecise FillRatio calculation.
+         * If the bug ever returns it probably means the fix should be applied
+         * somewhere else. */
+
+        Window->ContentsRect.Offset = Rr_FloorV2(Window->ContentsRect.Offset);
+        Window->ContentsRect.Extent = Rr_FloorV2(Window->ContentsRect.Extent);
     }
     Window->SelectedTab = Layout->DeferredSelectedTab;
 
@@ -4359,65 +4528,13 @@ void Rr_UIEndWindow(void)
 
     if (!Layout->WasCollapsed)
     {
-        /* NOTE: Flooring these fixed imprecise FillRatio calculation.
-         * If the bug ever returns it probably means the fix should be applied
-         * somewhere else. */
-
-        Window->ContentsRect.Offset = Rr_FloorV2(Window->ContentsRect.Offset);
-        Window->ContentsRect.Extent = Rr_FloorV2(Window->ContentsRect.Extent);
-
-        float ContentsHeight = Window->ContentsRect.Extent.Y;
-
-        float FillRatio = 0.0f;
-        Rr_Rect CurrentRect = Rr_UIGetWindowContentsArea(Layout, &FillRatio);
-
-        if (FillRatio > 1.0f)
+        if (Layout->FillRatio.X < 1.0f)
         {
-            Rr_Vec4 *ScrolloffBackground = &gUI->Colors.ScrolloffBackground;
-
-            float DarkenSize = RR_MIN(Font->LineHeight, ContentsHeight);
-
-            Rr_Rect DarkenRect = CurrentRect;
-            DarkenRect.Extent.Y = RR_MIN(CurrentRect.Extent.Y, DarkenSize);
-
-            float TopDarkenAlpha =
-                RR_CLAMP(0.0f, Window->VScroll / DarkenSize, 1.0f);
-            if (TopDarkenAlpha > 0.0f)
-            {
-                Rr_UIDrawVerticalGradientQuad(
-                    &DarkenRect,
-                    &(Rr_Vec4){ ScrolloffBackground->X,
-                                ScrolloffBackground->Y,
-                                ScrolloffBackground->Z,
-                                TopDarkenAlpha },
-                    &(Rr_Vec4){ ScrolloffBackground->X,
-                                ScrolloffBackground->Y,
-                                ScrolloffBackground->Z,
-                                0.0f });
-            }
-
-            float BottomDarkenAlpha = RR_CLAMP(
-                0.0f,
-                (ContentsHeight - CurrentRect.Extent.Y - Window->VScroll +
-                 Layout->WindowPadding.Y) /
-                    DarkenSize,
-                1.0f);
-            if (BottomDarkenAlpha > 0.0f)
-            {
-                DarkenRect.Offset.Y =
-                    CurrentRect.Offset.Y + CurrentRect.Extent.Y - DarkenSize;
-
-                Rr_UIDrawVerticalGradientQuad(
-                    &DarkenRect,
-                    &(Rr_Vec4){ ScrolloffBackground->X,
-                                ScrolloffBackground->Y,
-                                ScrolloffBackground->Z,
-                                0.0f },
-                    &(Rr_Vec4){ ScrolloffBackground->X,
-                                ScrolloffBackground->Y,
-                                ScrolloffBackground->Z,
-                                BottomDarkenAlpha });
-            }
+            Rr_UIDrawDarkeners(Layout, 0);
+        }
+        if (Layout->FillRatio.Y < 1.0f)
+        {
+            Rr_UIDrawDarkeners(Layout, 1);
         }
 
         /* Add resize handle if necessary. */
@@ -4456,17 +4573,14 @@ void Rr_UIEndWindow(void)
         Rr_UIScrollBehavior(
             Window,
             &Layout->Rect,
-            &Window->TopLevelParent->VScrollTarget);
+            &Window->TopLevelParent->ScrollTarget);
     }
 
     /* Apply window extent. */
 
     if (Window->Child || Layout->DeferredAutoResize)
     {
-        Rr_Vec2 Extent = {
-            Window->ContentsRect.Extent.X + Layout->WindowPadding.X * 2.0f,
-            Window->ContentsRect.Extent.Y + Layout->WindowPadding.Y,
-        };
+        Rr_Vec2 Extent = Window->ContentsRect.Extent;
 
         if (Layout->WasCollapsed && !Window->Child)
         {
@@ -4771,7 +4885,7 @@ bool Rr_UIBeginTree(char const *Title)
 
     if (TopLevel)
     {
-        ButtonRect.Extent.X = Layout->TotalAvailableContentsWidth;
+        ButtonRect.Extent.X = Rr_UIGetAvailableContentsWidth(Layout);
     }
 
     Rr_UIClickResult ClickResult =
@@ -4784,7 +4898,7 @@ bool Rr_UIBeginTree(char const *Title)
 
     if (TopLevel)
     {
-        ButtonRect.Extent.X = Layout->TotalAvailableContentsWidth;
+        ButtonRect.Extent.X = Rr_UIGetAvailableContentsWidth(Layout);
         Rr_UIBevel(
             BevelPrimitive,
             &ButtonRect,
@@ -7600,9 +7714,7 @@ static inline Rr_Vec3 Rr_UIHSVToRGB(Rr_Vec3 *HSV)
     A.Y = fabsf(A.Y);
     A.Z = fabsf(A.Z);
     Rr_Vec3 B = Rr_SubV3(A, Rr_V3(K.X, K.X, K.X));
-    B.X = RR_CLAMP(0.0f, B.X, 1.0f);
-    B.Y = RR_CLAMP(0.0f, B.Y, 1.0f);
-    B.Z = RR_CLAMP(0.0f, B.Z, 1.0f);
+    B = Rr_ClampV3(Rr_V3F(0.0f), B, Rr_V3F(1.0f));
 
     return Rr_MulV3F(Rr_LerpV3(Rr_V3(K.X, K.X, K.X), HSV->Y, B), HSV->Z);
 }
@@ -7615,6 +7727,7 @@ static inline void Rr_UIColorPickerPopup(
 {
     const Rr_UIWindowFlags POPUP_WINDOW_FLAGS =
         RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
+        RR_UI_WINDOW_FLAGS_NO_HORIZONTAL_SCROLLBAR_BIT |
         RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT |
         RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
         RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT |
@@ -7719,8 +7832,7 @@ static inline void Rr_UIColorPickerPopup(
     {
         Rr_Vec2 Delta = Rr_SubV2(gUI->MousePosition, SVCursor);
         Delta = Rr_DivV2F(Delta, SVSelectorActiveSize);
-        Delta.X = RR_CLAMP(0.0f, Delta.X, 1.0f);
-        Delta.Y = RR_CLAMP(0.0f, Delta.Y, 1.0f);
+        Delta = Rr_ClampV2(Rr_V2F(0.0f), Delta, Rr_V2F(1.0f));
 
         StaticHSV.Y = Delta.X;
         StaticHSV.Z = 1.0f - Delta.Y;
@@ -8147,6 +8259,7 @@ bool Rr_UICombobox(
         Rr_UIWindowFlags const POPUP_WINDOW_FLAGS =
             RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT |
             RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
+            RR_UI_WINDOW_FLAGS_NO_HORIZONTAL_SCROLLBAR_BIT |
             RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT |
             RR_UI_WINDOW_FLAGS_NO_MOVE_BIT |
             RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT |
@@ -8535,7 +8648,7 @@ void Rr_UISetDefaultTheme(void)
     Style->WindowPadding = Rr_V2(0.300000f, 0.300000f);
     Style->ContentsMargin = Rr_V2(0.250000f, 0.250000f);
     Style->ComponentMargin = 0.200000f;
-    Style->ScrollbarAreaWidth = 0.750000f;
+    Style->ScrollbarAreaWidth = 0.600000f;
     Style->BevelThickness = 0.050000f;
     Style->DoubleBevelThickness = 0.100000f;
     Style->BevelIntensityLight = 0.300000f;
