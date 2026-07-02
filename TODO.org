@@ -91,12 +91,14 @@
 - [X] Nested windows.
 - [X] Swap font rendering with stb_truetype.
 - [X] Horizontal scrollbar.
+- [X] Child window borders ignore mouse wheel events.
+- [X] Auto resize should reset scroll.
+  - For now, resetting scroll value when FillRatio >= 1.0f.
+- [ ] More animations.
 - [ ] Make sure widgets don't look broken with extremely small window sizes.
 - [ ] Input field doesn't lose focus when clicking elsewhere.
-- [ ] Child window borders ignore mouse wheel events.
 - [ ] Proper stack data structure.
 - [ ] Some options for horizontal child layouts + asserts.
-- [ ] More animations.
 - [ ] Flickering:
   - [ ] Uncollapsing a child window. Parent fails to adjust its size immediately.
   - [ ] Uncollapsing something for the first time. Flexible widgets have no idea how much width is available.
