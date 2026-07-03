@@ -143,7 +143,7 @@ struct Rr_UILayout
     Rr_UIWindow *Window;
     bool *Open;
     bool WasCollapsed;
-    bool SkipItems;
+    bool SkipWidgets;
     bool SkipCompletely;
 
     bool HorizontalScrollbarAdded;
@@ -957,7 +957,7 @@ static inline void Rr_UIPushEmptyLayout(Rr_UIHash Hash, Rr_UIWindow *Window)
     Rr_UILayout *Layout = Rr_AllocNoZero(sizeof(Rr_UILayout), gUI->FrameArena);
     Layout->Window = Window;
     Layout->SkipCompletely = true;
-    Layout->SkipItems = true;
+    Layout->SkipWidgets = true;
 
     Rr_UIPushIDHash(Hash);
 
@@ -983,9 +983,9 @@ static inline void Rr_UIPopLayout(void)
     RR_UNUSED(RR_POP_FROM_ARRAY(&gUI->LayoutStack));
 }
 
-static inline bool Rr_UISkipItems(void)
+static inline bool Rr_UISkipWidgets(void)
 {
-    return Rr_UICurrentLayout()->SkipItems;
+    return Rr_UICurrentLayout()->SkipWidgets;
 }
 
 static inline Rr_UIWindow *Rr_UICurrentWindow(void)
@@ -4023,7 +4023,7 @@ static inline bool Rr_UIPushWindowLayout(
 
     if (Layout->WasCollapsed)
     {
-        Layout->SkipItems = true;
+        Layout->SkipWidgets = true;
 
         return false;
     }
@@ -4102,6 +4102,8 @@ static inline void Rr_UIShowPopupWindow(
     gUI->PopupWindowParent = ParentWindow;
     gUI->PopupWindowHash = Hash;
     gUI->PopupWindowOpen = true;
+    gUI->ClickParent = &gUI->PopupWindow;
+    gUI->ClickHash = 0;
     /* gUIContext->PopupWindow.SkipThisFrame = true; */
 }
 
@@ -4124,15 +4126,11 @@ static inline void Rr_UIBeginPopupWindow(Rr_UIHash Hash, Rr_UIWindowFlags Flags)
 
 static inline void Rr_UIClosePopupWindow(void)
 {
+    gUI->ClickParent = gUI->PopupWindowParent;
     gUI->PopupWindowParent = NULL;
     gUI->PopupWindowHash = 0;
     gUI->PopupWindowOpen = false;
     gUI->PopupWindow.Open = false;
-}
-
-static bool Rr_UIPopupWindowActive(void)
-{
-    return gUI->PopupWindowParent && gUI->PopupWindowOpen;
 }
 
 static inline Rr_UIWindow *Rr_UICreateWindow(
@@ -4295,7 +4293,7 @@ static bool Rr_UIBeginDockedChildWindow(
     Window->Z = ParentWindow->Z + 1;
     Window->TopLevelParent = ParentWindow->TopLevelParent;
 
-    if (ParentLayout->SkipItems)
+    if (ParentLayout->SkipWidgets)
     {
         Rr_UIPushEmptyLayout(TitleHash, Window);
 
@@ -4396,15 +4394,13 @@ bool Rr_UIBeginWindow(char const *Title)
 
 static inline bool Rr_UIShouldHightlightWindow(Rr_UIWindow *Window)
 {
-    bool ClickParent = gUI->ClickParent;
-    if (ClickParent)
-    {
-        ClickParent = gUI->ClickParent->TopLevelParent == Window;
-        /* || gUIContext->ClickParent == Window || */
-        /*    gUIContext->ClickParent == Window->TabsParent || */
-        /*    gUIContext->ClickParent == Window->SelectedTab; */
-    }
-    return ClickParent;
+    bool TopLevelClickParent = gUI->ClickParent && /* */
+                               gUI->ClickParent->TopLevelParent == Window;
+    bool TopLevelPopupParent = gUI->PopupWindowOpen &&
+                               gUI->PopupWindowParent->TopLevelParent == Window;
+    bool Popup = gUI->PopupWindowOpen && &gUI->PopupWindow == Window;
+
+    return TopLevelClickParent || TopLevelPopupParent || Popup;
 }
 
 static inline void Rr_UIClampWindowToScreen(Rr_UIWindow *Window)
@@ -4505,10 +4501,8 @@ void Rr_UIEndWindow(void)
     Rr_UIWindow *Window = Layout->Window;
     Rr_UIWindow *TopLevelWindow = Window->TopLevelParent;
 
-    bool Resize = !(Window->Flags & RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT);
     bool TitleBar = !(Window->Flags & RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT);
     bool Borders = !(Window->Flags & RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT);
-    bool Background = !(Window->Flags & RR_UI_WINDOW_FLAGS_NO_BACKGROUND_BIT);
 
     Rr_UIAssertNoHorizontal(Layout);
 
@@ -4516,15 +4510,12 @@ void Rr_UIEndWindow(void)
 
     if (!Layout->WasCollapsed)
     {
-        Window->ContentsRect = Layout->DeferredContentsRect;
-        Window->ContentsRect.Offset =
-            Rr_SubV2(Window->ContentsRect.Offset, Layout->WindowPadding);
-        Window->ContentsRect.Extent =
-            Rr_AddV2(Window->ContentsRect.Extent, Layout->WindowPadding);
-        Window->ContentsRect.Extent =
-            Rr_AddV2(Window->ContentsRect.Extent, Layout->WindowPadding);
-        // Window->ContentsRect.Extent.X += Layout->WindowPadding.X;
-        // Window->ContentsRect.Extent.Y += Layout->WindowPadding.Y;
+        Rr_Rect ContentsRect = Layout->DeferredContentsRect;
+        Rr_Vec2 WindowPadding = Layout->WindowPadding;
+        ContentsRect.Offset = Rr_SubV2(ContentsRect.Offset, WindowPadding);
+        ContentsRect.Extent = Rr_AddV2(ContentsRect.Extent, WindowPadding);
+        ContentsRect.Extent = Rr_AddV2(ContentsRect.Extent, WindowPadding);
+        Window->ContentsRect = ContentsRect;
 
         /* NOTE: Flooring these fixed imprecise FillRatio calculation.
          * If the bug ever returns it probably means the fix should be applied
@@ -4561,7 +4552,7 @@ void Rr_UIEndWindow(void)
 
         /* Add resize handle if necessary. */
 
-        if (!Rr_UIWindowNoResize(Window))
+        if (Layout->DeferredResizeHandleColor)
         {
             Rr_Vec2 BottomRight =
                 Rr_AddV2(Layout->Rect.Offset, Layout->Rect.Extent);
@@ -4570,12 +4561,9 @@ void Rr_UIEndWindow(void)
                 { BottomRight.X, BottomRight.Y - gUI->ResizeHandleSize },
                 { BottomRight.X, BottomRight.Y },
             };
-            if (Layout->DeferredResizeHandleColor)
-            {
-                Rr_UIDrawTriangleFilled(
-                    Positions,
-                    Layout->DeferredResizeHandleColor);
-            }
+            Rr_UIDrawTriangleFilled(
+                Positions,
+                Layout->DeferredResizeHandleColor);
         }
     }
 
@@ -4721,7 +4709,7 @@ void Rr_UIEndWindow(void)
 
 void Rr_UIBeginHorizontal(void)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return;
     }
@@ -4735,7 +4723,7 @@ void Rr_UIBeginHorizontal(void)
 
 void Rr_UIEndHorizontal(void)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return;
     }
@@ -4767,7 +4755,7 @@ void Rr_UISetNextTreeCollapsed(void)
 
 bool Rr_UIBeginTree(char const *Title)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return false;
     }
@@ -5019,7 +5007,7 @@ static inline float Rr_UIGetAlignedWidgetWidth(void)
 
 void Rr_UISeparator(void)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return;
     }
@@ -5060,7 +5048,7 @@ void Rr_UISeparator(void)
 
 void Rr_UIImageEx(Rr_Image *Image, Rr_Vec2 Extent, Rr_Vec2 UVMin, Rr_Vec2 UVMax)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return;
     }
@@ -5107,7 +5095,7 @@ void Rr_UIImageEx(Rr_Image *Image, Rr_Vec2 Extent, Rr_Vec2 UVMin, Rr_Vec2 UVMax)
 
 void Rr_UIText(char const *Text)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return;
     }
@@ -5129,7 +5117,7 @@ void Rr_UIText(char const *Text)
 
 void Rr_UITextF(char const *Format, ...)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return;
     }
@@ -5156,7 +5144,7 @@ void Rr_UITextF(char const *Format, ...)
 
 void Rr_UITextWrapped(char const *Text)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return;
     }
@@ -5178,7 +5166,7 @@ void Rr_UITextWrapped(char const *Text)
 
 void Rr_UILabelText(char const *Title, char const *Text)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return;
     }
@@ -5217,7 +5205,7 @@ void Rr_UILabelText(char const *Title, char const *Text)
 
 bool Rr_UIButton(char const *Text)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return false;
     }
@@ -5280,7 +5268,7 @@ bool Rr_UIRadioButton(
     int32_t *SelectedOption,
     int32_t ThisOption)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return false;
     }
@@ -5357,7 +5345,7 @@ bool Rr_UIRadioButton(
 
 bool Rr_UICheckbox(char const *Title, bool *Checked)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return false;
     }
@@ -7240,7 +7228,7 @@ static inline bool Rr_UIInputScalarMulti(
     int Rows,
     Rr_UIScalarType ScalarType)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return false;
     }
@@ -7303,7 +7291,7 @@ bool Rr_UIInputField(
     Rr_UIInputFieldFilterFunc FilterFunc,
     Rr_UIInputFieldFlags Flags)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return false;
     }
@@ -7837,7 +7825,7 @@ static inline void Rr_UIColorPickerPopup(
     int ChannelCount,
     float *Channels)
 {
-    const Rr_UIWindowFlags POPUP_WINDOW_FLAGS =
+    const Rr_UIWindowFlags COLOR_PICKER_POPUP_FLAGS =
         RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT | RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
         RR_UI_WINDOW_FLAGS_NO_HORIZONTAL_SCROLLBAR_BIT |
         RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT |
@@ -7856,7 +7844,7 @@ static inline void Rr_UIColorPickerPopup(
     Position.X -= (WindowPadding.X + SVSelectorSize) / 2.0f;
     Position.Y -= (WindowPadding.Y + SVSelectorSize) / 2.0f;
     Rr_UISetNextWindowOpenOffset(Position);
-    Rr_UIBeginPopupWindow(Hash, POPUP_WINDOW_FLAGS);
+    Rr_UIBeginPopupWindow(Hash, COLOR_PICKER_POPUP_FLAGS);
 
     Rr_UIWindow *Window = &gUI->PopupWindow;
 
@@ -8165,7 +8153,7 @@ static inline bool Rr_UIInputColorEx(
     int ChannelCount,
     float *Channels)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return false;
     }
@@ -8304,7 +8292,7 @@ bool Rr_UICombobox(
     char const *const *Options,
     uint32_t *SelectedIndex)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return false;
     }
@@ -8366,7 +8354,7 @@ bool Rr_UICombobox(
 
     if (ShouldShowPopupWindow)
     {
-        Rr_UIWindowFlags const POPUP_WINDOW_FLAGS =
+        Rr_UIWindowFlags const COMBOBOX_POPUP_FLAGS =
             RR_UI_WINDOW_FLAGS_NO_TITLE_BAR_BIT |
             RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT |
             RR_UI_WINDOW_FLAGS_NO_HORIZONTAL_SCROLLBAR_BIT |
@@ -8381,7 +8369,7 @@ bool Rr_UICombobox(
             Rr_V2(gUI->InputFieldPadding.X - gUI->DoubleBevelThickness, 0.0f));
         Rr_UIPushContentsMargin(Rr_V2F(0.0f));
         Rr_UISetNextWindowOffset(PopupPosition);
-        Rr_UIBeginPopupWindow(TitleHash, POPUP_WINDOW_FLAGS);
+        Rr_UIBeginPopupWindow(TitleHash, COMBOBOX_POPUP_FLAGS);
         Rr_UILayout *PopupLayout = Rr_UICurrentLayout();
         for (uint32_t Index = 0; Index < OptionCount; ++Index)
         {
@@ -8629,7 +8617,7 @@ static inline float Rr_UISlider(
 
 bool Rr_UISliderInt(char const *Title, int32_t *Value, int32_t Min, int32_t Max)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return false;
     }
@@ -8666,7 +8654,7 @@ bool Rr_UISliderUnsignedInt(
     uint32_t Min,
     uint32_t Max)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return false;
     }
@@ -8696,7 +8684,7 @@ bool Rr_UISliderUnsignedInt(
 
 bool Rr_UISliderFloat(char const *Title, float *Value, float Min, float Max)
 {
-    if (Rr_UISkipItems())
+    if (Rr_UISkipWidgets())
     {
         return false;
     }
@@ -9070,49 +9058,39 @@ void Rr_NewUIFrame(void)
 void Rr_BeginUI(void)
 {
     gUI->HoveredWindow = NULL;
-    if (Rr_UIPopupWindowActive())
+    int LastIndex = (int)gUI->ActiveLayouts.Count - 1;
+    for (int Index = LastIndex; Index >= 0; --Index)
     {
-        if (Rr_RectContains(&gUI->PopupWindow.Rect, gUI->MousePosition))
+        Rr_UILayout *Layout = gUI->ActiveLayouts.Data[Index];
+        Rr_UIWindow *Window = Layout->Window;
+        if (Rr_RectContains(&Layout->VisibleRect, gUI->MousePosition))
         {
-            gUI->HoveredWindow = &gUI->PopupWindow;
+            gUI->HoveredWindow = Window;
 
             if (gUI->LeftMouseButton.Down)
             {
+                Rr_UIPutWindowOnTop(Window->TopLevelParent);
+
                 gUI->LeftMouseButton.DownOverWindow = true;
             }
+
+            break;
         }
-        else if (gUI->LeftMouseButton.Down)
+    }
+
+    if (gUI->LeftMouseButton.Down)
+    {
+        if (!gUI->HoveredWindow ||
+            gUI->HoveredWindow->TopLevelParent != &gUI->PopupWindow)
         {
             Rr_UIClosePopupWindow();
         }
-    }
-    else
-    {
-        int LastIndex = (int)gUI->ActiveLayouts.Count - 1;
-        for (int Index = LastIndex; Index >= 0; --Index)
+
+        if (!gUI->LeftMouseButton.DownOverWindow)
         {
-            Rr_UILayout *Layout = gUI->ActiveLayouts.Data[Index];
-            Rr_UIWindow *Window = Layout->Window;
-            if (Rr_RectContains(&Layout->VisibleRect, gUI->MousePosition))
-            {
-                gUI->HoveredWindow = Window;
-
-                if (gUI->LeftMouseButton.Down)
-                {
-                    Rr_UIPutWindowOnTop(Window->TopLevelParent);
-
-                    gUI->LeftMouseButton.DownOverWindow = true;
-                }
-
-                break;
-            }
+            Rr_UIResetClickAndDrag();
+            Rr_UIResetFocus();
         }
-    }
-
-    if (!gUI->LeftMouseButton.DownOverWindow && gUI->LeftMouseButton.Down)
-    {
-        Rr_UIResetClickAndDrag();
-        Rr_UIResetFocus();
     }
 
     RR_CLEAR_ARRAY(&gUI->ActiveLayouts);
