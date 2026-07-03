@@ -1783,8 +1783,6 @@ static inline void Rr_UIBevelFrame(
      * 4--------------------
      */
 
-    Rr_Vec4 Red = Rr_V4(1.0f, 0.0f, 0.0f, 1.0f);
-
     Vertices[0] = (Rr_UIVertex){
         .Position = Rect->Offset,
         .Color = *ColorLight,
@@ -1887,6 +1885,130 @@ static inline void Rr_UIDrawDoubleBevel(
         &ColorDark,
         &ColorLight,
         Thickness * 0.5f);
+}
+
+#define RR_UI_TRIPLE_BEVEL_VERTEX_COUNT (16)
+#define RR_UI_TRIPLE_BEVEL_INDEX_COUNT  (48)
+
+static inline void Rr_UIDrawTripleBevel(
+    Rr_Rect *Rect,
+    Rr_Vec4 *Normal,
+    float Thickness)
+{
+    Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(
+        RR_UI_TRIPLE_BEVEL_VERTEX_COUNT,
+        RR_UI_TRIPLE_BEVEL_INDEX_COUNT);
+
+    Rr_Vec4 ColorLight;
+    ColorLight.RGB =
+        Rr_LerpV3(Normal->RGB, gUI->Style.BevelIntensityLight, RR_UI_VEC3_ONE);
+    ColorLight.A = 1.0f;
+    Rr_Vec4 ColorDark;
+    ColorDark.RGB =
+        Rr_LerpV3(Normal->RGB, gUI->Style.BevelIntensityDark, RR_UI_VEC3_ZERO);
+    ColorDark.A = 1.0f;
+
+    Rr_Vec4 *Bright = &ColorLight;
+    Rr_Vec4 *Dark = &ColorDark;
+
+    Rr_UIVertex *Vertices = Primitive.Vertices;
+    Rr_UIIndex *Indices = Primitive.Indices;
+
+    float HalfThickness = Thickness * 0.5f;
+
+    Vertices[0] = (Rr_UIVertex){
+        .Position = Rect->Offset,
+        .Color = *Bright,
+    };
+    Vertices[1] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(Rect->Extent.X, 0.0f)),
+        .Color = *Bright,
+    };
+    Vertices[2] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(Rect->Extent.X, 0.0f)),
+        .Color = *Dark,
+    };
+    Vertices[3] = (Rr_UIVertex){
+        .Position = Rr_AddV2F(Rect->Offset, HalfThickness),
+        .Color = *Normal,
+    };
+    Vertices[4] = (Rr_UIVertex){
+        .Position = Rr_AddV2(
+            Rect->Offset,
+            Rr_V2(Rect->Extent.X - HalfThickness, HalfThickness)),
+        .Color = *Normal,
+    };
+    Vertices[5] = (Rr_UIVertex){
+        .Position = Rr_AddV2F(Rect->Offset, Thickness),
+        .Color = *Dark,
+    };
+    Vertices[6] = (Rr_UIVertex){
+        .Position = Rr_AddV2(
+            Rect->Offset,
+            Rr_V2(Rect->Extent.X - Thickness, Thickness)),
+        .Color = *Dark,
+    };
+    Vertices[7] = (Rr_UIVertex){
+        .Position = Rr_AddV2(
+            Rect->Offset,
+            Rr_V2(Rect->Extent.X - Thickness, Thickness)),
+        .Color = *Bright,
+    };
+    Vertices[8] = (Rr_UIVertex){
+        .Position = Rr_AddV2(
+            Rect->Offset,
+            Rr_V2(Thickness, Rect->Extent.Y - Thickness)),
+        .Color = *Dark,
+    };
+    Vertices[9] = (Rr_UIVertex){
+        .Position = Rr_AddV2(
+            Rect->Offset,
+            Rr_V2(Thickness, Rect->Extent.Y - Thickness)),
+        .Color = *Bright,
+    };
+    Vertices[10] = (Rr_UIVertex){
+        .Position = Rr_AddV2(
+            Rect->Offset,
+            Rr_V2(Rect->Extent.X - Thickness, Rect->Extent.Y - Thickness)),
+        .Color = *Bright,
+    };
+    Vertices[11] = (Rr_UIVertex){
+        .Position = Rr_AddV2(
+            Rect->Offset,
+            Rr_V2(HalfThickness, Rect->Extent.Y - HalfThickness)),
+        .Color = *Normal,
+    };
+    Vertices[12] = (Rr_UIVertex){
+        .Position = Rr_AddV2(
+            Rect->Offset,
+            Rr_V2(
+                Rect->Extent.X - HalfThickness,
+                Rect->Extent.Y - HalfThickness)),
+        .Color = *Normal,
+    };
+    Vertices[13] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(0.0f, Rect->Extent.Y)),
+        .Color = *Bright,
+    };
+    Vertices[14] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rr_V2(0.0f, Rect->Extent.Y)),
+        .Color = *Dark,
+    };
+    Vertices[15] = (Rr_UIVertex){
+        .Position = Rr_AddV2(Rect->Offset, Rect->Extent),
+        .Color = *Dark,
+    };
+
+    static Rr_UIIndex const TRIPLE_BEVEL_INDICES[] = {
+        0,  1,  4, 0,  4,  3,  3,  4,  6,  3,  6,  5,  0,  3,  11, 0,
+        11, 13, 3, 5,  11, 11, 5,  8,  7,  4,  10, 10, 4,  12, 4,  2,
+        12, 12, 2, 15, 9,  10, 11, 11, 10, 12, 14, 11, 12, 14, 12, 15
+    };
+
+    for (size_t Index = 0; Index < RR_UI_TRIPLE_BEVEL_INDEX_COUNT; ++Index)
+    {
+        Indices[Index] = Primitive.BaseVertex + TRIPLE_BEVEL_INDICES[Index];
+    }
 }
 
 static inline void Rr_UIDrawDoubleBevelFilled(
@@ -4141,7 +4263,10 @@ static inline void Rr_UIBeginPopupWindow(Rr_UIHash Hash, Rr_UIWindowFlags Flags)
 
 static inline void Rr_UIClosePopupWindow(void)
 {
-    gUI->ClickParent = gUI->PopupWindowParent;
+    if (gUI->PopupWindowParent && gUI->PopupWindowOpen)
+    {
+        gUI->ClickParent = gUI->PopupWindowParent;
+    }
     gUI->PopupWindowParent = NULL;
     gUI->PopupWindowHash = 0;
     gUI->PopupWindowOpen = false;
@@ -4584,7 +4709,7 @@ void Rr_UIEndWindow(void)
 
     if (Borders)
     {
-        Rr_UIDrawDoubleBevel(
+        Rr_UIDrawTripleBevel(
             &TotalClipRect,
             Rr_UIShouldHightlightWindow(Window) ? &gUI->Colors.SelectedOutline
                                                 : &gUI->Colors.Outline,
