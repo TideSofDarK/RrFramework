@@ -1772,6 +1772,19 @@ static inline void Rr_UIBevelFrame(
     float TempWidth = Rect->Extent.Width - Thickness;
     float TempHeight = Rect->Extent.Height - Thickness;
 
+    /*
+     * 0--------------------1
+     * |2                  3|
+     * |                    |
+     * |                    |
+     * |                    |
+     * |                    |
+     * |5                   |
+     * 4--------------------
+     */
+
+    Rr_Vec4 Red = Rr_V4(1.0f, 0.0f, 0.0f, 1.0f);
+
     Vertices[0] = (Rr_UIVertex){
         .Position = Rect->Offset,
         .Color = *ColorLight,
@@ -1796,6 +1809,17 @@ static inline void Rr_UIBevelFrame(
         .Position = Rr_AddV2(Rect->Offset, Rr_V2(Thickness, TempHeight)),
         .Color = *ColorLight,
     };
+
+    /*
+     *  --------------------7
+     * |                   6|
+     * |                    |
+     * |                    |
+     * |                    |
+     * |                    |
+     * |11                 8|
+     * 10-------------------9
+     */
 
     Vertices[6] = (Rr_UIVertex){
         .Position = Vertices[3].Position,
