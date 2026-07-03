@@ -302,7 +302,6 @@ struct Rr_UI
     } DragScalarValue;
 
     Rr_UIWindow *ClickParent;
-    Rr_UIHash ClickHash;
     bool ClickConsumed;
 
     /* NOTE: Cursors are stored as raw offsets into UTF-8 string. */
@@ -2432,7 +2431,6 @@ static inline void Rr_UIResetFocus(void)
 static inline void Rr_UIResetClickAndDrag(void)
 {
     gUI->ClickParent = NULL;
-    gUI->ClickHash = 0;
     gUI->DragParent = NULL;
     gUI->DragHash = 0;
 }
@@ -2477,7 +2475,7 @@ static inline Rr_UIClickResult Rr_UIClickEx(
         (uint8_t)RR_CLAMP(1, gUI->LeftMouseButton.Clicks, UCHAR_MAX);
 
     bool DragMatch = Window == gUI->DragParent && Hash == gUI->DragHash;
-    bool ClickMatch = Window == gUI->ClickParent && Hash == gUI->ClickHash;
+    bool ClickMatch = Window == gUI->ClickParent;
 
     if (Type == RR_UI_CLICK_TYPE_DRAG_RELAXED)
     {
@@ -2492,7 +2490,6 @@ static inline Rr_UIClickResult Rr_UIClickEx(
             if (!gUI->ClickConsumed)
             {
                 gUI->ClickParent = Window;
-                gUI->ClickHash = Hash;
             }
 
             Rr_UISetFocus(NULL, 0);
@@ -2506,7 +2503,6 @@ static inline Rr_UIClickResult Rr_UIClickEx(
             if (gUI->MouseMoved)
             {
                 gUI->ClickParent = Window;
-                gUI->ClickHash = Hash;
             }
 
             gUI->ClickConsumed = true;
@@ -2528,7 +2524,6 @@ static inline Rr_UIClickResult Rr_UIClickEx(
             if (ClickCount == 1 || (ClickCount > 1 && ClickMatch))
             {
                 gUI->ClickParent = Window;
-                gUI->ClickHash = Hash;
 
                 ClickResult.ClickCount = ClickCount;
 
@@ -2548,7 +2543,6 @@ static inline Rr_UIClickResult Rr_UIClickEx(
             gUI->DragConsumed = true;
 
             gUI->ClickParent = Window;
-            gUI->ClickHash = Hash;
             gUI->ClickConsumed = true;
 
             Rr_UISetFocus(NULL, 0);
@@ -2587,7 +2581,6 @@ static inline Rr_UIClickResult Rr_UIClickEx(
             gUI->DragMoved = false;
 
             gUI->ClickParent = Window;
-            gUI->ClickHash = Hash;
             gUI->ClickConsumed = true;
 
             ClickResult.ClickCount = ClickCount;
@@ -2627,7 +2620,6 @@ static inline Rr_UIClickResult Rr_UIClickEx(
             gUI->DragMoved = false;
 
             gUI->ClickParent = Window;
-            gUI->ClickHash = Hash;
             gUI->ClickConsumed = true;
 
             Rr_UISetFocus(NULL, 0);
@@ -4103,7 +4095,6 @@ static inline void Rr_UIShowPopupWindow(
     gUI->PopupWindowHash = Hash;
     gUI->PopupWindowOpen = true;
     gUI->ClickParent = &gUI->PopupWindow;
-    gUI->ClickHash = 0;
     /* gUIContext->PopupWindow.SkipThisFrame = true; */
 }
 
