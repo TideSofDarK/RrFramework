@@ -94,7 +94,7 @@ static void PrintTheme(void)
     PrintStyle("DoubleBevelThickness", Style->DoubleBevelThickness);
     PrintStyle("BevelIntensityLight", Style->BevelIntensityLight);
     PrintStyle("BevelIntensityDark", Style->BevelIntensityDark);
-    PrintStyle("FlexibleTitleMargin", Style->FlexibleTitleMargin);
+    PrintStyle("AlignedWidgetTitleMargin", Style->AlignedWidgetTitleMargin);
     PrintStyleVec2("ButtonPadding", &Style->ButtonPadding);
     PrintStyleVec2("InputFieldPadding", &Style->InputFieldPadding);
     PrintStyleVec2("CheckmarkRatios", &Style->CheckmarkRatios);
@@ -167,7 +167,7 @@ static void ThemeEditorWindow()
         Rr_UIInputFloatZO("Double Bevel Thickness", &Style->DoubleBevelThickness);
         Rr_UIInputFloatZO("Bevel Intensity Light", &Style->BevelIntensityLight);
         Rr_UIInputFloatZO("Bevel Intensity Dark", &Style->BevelIntensityDark);
-        Rr_UIInputFloatZO("Flexible Title Margin", &Style->FlexibleTitleMargin);
+        Rr_UIInputFloatZO("Flexible Title Margin", &Style->AlignedWidgetTitleMargin);
         Rr_UIInputFloat2ZO("Checkmark Ratios", Style->CheckmarkRatios.Elements);
         Rr_UIInputFloatZO("Checkmark Size", &Style->CheckmarkSize);
         Rr_UIInputFloatZO("Cross Width", &Style->CrossWidth);
@@ -272,7 +272,7 @@ static void SetOliveTheme()
     Style->BevelThickness = 0.015000f;
     Style->BevelIntensityLight = 0.350000f;
     Style->BevelIntensityDark = 0.200000f;
-    Style->FlexibleTitleMargin = 0.500000f;
+    Style->AlignedWidgetTitleMargin = 0.500000f;
     Style->ButtonPadding = Rr_V2(0.250000f, 0.025000f);
     Style->InputFieldPadding = Rr_V2(0.250000f, 0.025000f);
     Style->CheckmarkRatios = Rr_V2(0.35000f, 0.200000f);
@@ -332,7 +332,7 @@ static void SetPinkTheme()
     Style->DoubleBevelThickness = 0.100000f;
     Style->BevelIntensityLight = 0.300000f;
     Style->BevelIntensityDark = 0.650000f;
-    Style->FlexibleTitleMargin = 0.250000f;
+    Style->AlignedWidgetTitleMargin = 0.250000f;
     Style->ButtonPadding = Rr_V2(0.250000f, 0.025000f);
     Style->InputFieldPadding = Rr_V2(0.250000f, 0.025000f);
     Style->CheckmarkRatios = Rr_V2(0.350000f, 0.200000f);
@@ -453,8 +453,7 @@ static void GeneralWindow(void)
             Rr_UITextWrapped(
                 "Fonts can be dynamically pushed onto the stack. All paddings "
                 "and margins are dependent on current fonts line height but "
-                "could be overriden with absolute values.",
-                350.0f);
+                "could be overriden with absolute values.");
 
             Rr_UIAdvance((Rr_Vec2){ 0.0f, Rr_UICurrentLineHeight() * 0.25f });
 
@@ -658,7 +657,8 @@ static void WidgetsWindow(void)
 {
     static bool NoClose = false;
     static bool NoResize = false;
-    static bool NoScrollbar = false;
+    static bool NoHorizontalScrollbar = false;
+    static bool NoVerticalScrollbar = false;
     static bool NoTitleBar = false;
     static bool NoBorders = false;
     static bool AutoResize = true;
@@ -673,7 +673,11 @@ static void WidgetsWindow(void)
     {
         Flags |= RR_UI_WINDOW_FLAGS_NO_RESIZE_BIT;
     }
-    if (NoScrollbar)
+    if (NoHorizontalScrollbar)
+    {
+        Flags |= RR_UI_WINDOW_FLAGS_NO_HORIZONTAL_SCROLLBAR_BIT;
+    }
+    if (NoVerticalScrollbar)
     {
         Flags |= RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT;
     }
@@ -710,8 +714,7 @@ static void WidgetsWindow(void)
                 "do eiusmod tempor incididunt ut labore et dolore magna "
                 "aliqua. "
                 "Ut enim ad minim veniam, quis nostrud exercitation ullamco "
-                "laboris nisi ut aliquip ex ea commodo consequat.",
-                350.0f);
+                "laboris nisi ut aliquip ex ea commodo consequat.");
         }
         Rr_UIEndWindow();
 
@@ -770,7 +773,8 @@ static void WidgetsWindow(void)
             Rr_UICheckbox("Close Button", &NoClose);
             Rr_UICheckbox("No Resize", &NoResize);
             Rr_UICheckbox("Auto Resize", &AutoResize);
-            Rr_UICheckbox("No Scrollbar", &NoScrollbar);
+            Rr_UICheckbox("No Horizontal Scrollbar", &NoHorizontalScrollbar);
+            Rr_UICheckbox("No Vertical Scrollbar", &NoVerticalScrollbar);
             Rr_UICheckbox("No Title Bar", &NoTitleBar);
             Rr_UICheckbox("No Borders", &NoBorders);
             Rr_UICheckbox("No Background", &NoBackground);
@@ -886,8 +890,7 @@ static void TestWindow(void)
             "do eiusmod tempor incididunt ut labore et dolore magna "
             "aliqua. "
             "Ut enim ad minim veniam, quis nostrud exercitation ullamco "
-            "laboris nisi ut aliquip ex ea commodo consequat.",
-            350.0f);
+            "laboris nisi ut aliquip ex ea commodo consequat.");
         /* if (Bools[2]) */
         {
             Rr_UICheckbox("Checkbox =========", &Bools[3]);

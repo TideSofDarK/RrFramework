@@ -260,7 +260,8 @@ struct Rr_UI
     RR_ARRAY(Rr_UIFont *) FontStack;
     RR_ARRAY(Rr_Vec2) WindowPaddingStack;
     RR_ARRAY(Rr_Vec2) ContentsMarginStack;
-    RR_ARRAY(Rr_Vec2) WidgetExtentStack;
+    RR_ARRAY(float) WidgetWidthStack;
+    RR_ARRAY(float) WidgetHeightStack;
     RR_ARRAY(uint32_t) FormatFloatDecimalPlacesStack;
 
     Rr_UINextWindowFlags NextWindowFlags;
@@ -326,8 +327,8 @@ struct Rr_UI
     Rr_Vec2 WindowPadding;
     Rr_Vec2 ContentsMargin;
     float ComponentMargin;
-    float FlexibleTitleMargin;
-    float DefaultFlexibleWidth;
+    float AlignedWidgetWidth;
+    float AlignedWidgetTitleMargin;
     Rr_Vec2 MinWindowSize;
     Rr_Vec2 MinWindowSizeNoTitle;
     float TitleBarHeight;
@@ -2227,16 +2228,21 @@ static inline Rr_Vec2 Rr_UIDrawText(
             Rr_UTF8Decode(&Decoder);
 
             uint32_t Codepoint = Decoder.Codepoint;
-            bool End = (NullTerminated && Codepoint == '\0') ||
+            bool NewLine = Codepoint == '\n';
+            bool Space = Codepoint == ' ';
+            bool Terminator = Codepoint == '\0';
+            bool End = (NullTerminated && Terminator) ||
                        Decoder.CStringParserIndex >= UTF8StringLength;
 
-            if (!End)
+            if (!End && !NewLine)
             {
                 *RR_PUSH_INTO_ARRAY(&Word, Scratch.Arena) = Codepoint;
             }
 
-            if (End || Codepoint == ' ')
+            if (End || Space || NewLine)
             {
+                /* Flush a word. */
+
                 size_t WordLength = Word.Count;
                 if (WordLength > 0)
                 {
@@ -2310,11 +2316,11 @@ static inline Rr_Vec2 Rr_UIDrawText(
                 {
                     break;
                 }
-            }
-            else if (Codepoint == '\n')
-            {
-                CurrentX = 0.0f;
-                CurrentY += LineHeight;
+                else if (NewLine)
+                {
+                    CurrentX = 0.0f;
+                    CurrentY += LineHeight;
+                }
             }
             else
             {
@@ -2790,6 +2796,9 @@ static inline void Rr_UIRecalculateStyle(void)
     gUI->ContentsMargin =
         RR_UI_ROUND_V2(Rr_MulV2F(Style->ContentsMargin, LineHeight));
     gUI->ComponentMargin = RR_UI_ROUND(Style->ComponentMargin * LineHeight);
+    gUI->AlignedWidgetWidth = RR_UI_ROUND(10.0f * LineHeight);
+    gUI->AlignedWidgetTitleMargin =
+        ceilf(Style->AlignedWidgetTitleMargin * LineHeight);
 
     gUI->FrameThickness = floorf(LineHeight * Style->FrameThickness);
     gUI->ResizeHandleSize = RR_UI_ROUND(LineHeight * Style->ScrollbarAreaWidth);
@@ -2803,8 +2812,6 @@ static inline void Rr_UIRecalculateStyle(void)
         RR_UI_ROUND(LineHeight * Style->DoubleBevelThickness);
     gUI->InputFieldPadding =
         RR_UI_ROUND_V2(Rr_MulV2F(Style->InputFieldPadding, LineHeight));
-    gUI->FlexibleTitleMargin = ceilf(Style->FlexibleTitleMargin * LineHeight);
-    gUI->DefaultFlexibleWidth = RR_UI_ROUND(10.0f * LineHeight);
 
     gUI->TitleBarPadding = Rr_MulV2F(Style->TitleBarPadding, LineHeight);
     gUI->TitleBarHeight =
@@ -4746,38 +4753,6 @@ static inline float Rr_UIGetOffsetForTreeDepth(int32_t Depth)
     return gUI->TopLevelTreeOffset + (float)(Depth - 1) * gUI->TreeOffset;
 }
 
-static inline float Rr_UISetupFlexibleWidget(
-    Rr_UILayout *Layout,
-    size_t TitleLength,
-    char const *Title,
-    float DesiredWidgetWidth)
-{
-    // float TitleWidth = Rr_UICalculateTextSize(TitleLength, Title, 0.0f).X;
-    // Layout->DeferredMaxFlexibleWidgetTitleWidth =
-    //     RR_MAX(Layout->DeferredMaxFlexibleWidgetTitleWidth, TitleWidth);
-
-    // Layout->DeferredMaxFlexibleWidgetWidth =
-    //     RR_MAX(Layout->DeferredMaxFlexibleWidgetWidth, DesiredWidgetWidth);
-
-    // Rr_UIWindow *Window = Layout->Window;
-
-    // if (Layout->DeferredAutoResize && !Layout->LockExtentX)
-    // {
-    //     DesiredWidgetWidth = RR_MAX(
-    //         Window->MaxRigidWidth - Window->MaxFlexibleWidgetTitleWidth -
-    //             gUIContext->FlexibleTitleMargin,
-    //         RR_MAX(DesiredWidgetWidth, Window->MaxFlexibleWidgetWidth));
-    // }
-    // else
-    // {
-    //     DesiredWidgetWidth = Rr_UIGetAvailableContentsWidth(Layout) -
-    //                          Window->MaxFlexibleWidgetTitleWidth -
-    //                          gUIContext->FlexibleTitleMargin;
-    // }
-
-    return RR_MAX(gUI->DefaultFlexibleWidth, DesiredWidgetWidth);
-}
-
 void Rr_UISetNextTreeExpanded(void)
 {
     Rr_UILayout *Layout = Rr_UICurrentLayout();
@@ -4977,26 +4952,69 @@ void Rr_UIEndTree(void)
     Rr_UIPopID();
 }
 
-static inline bool Rr_UIApplyWidgetExtent(Rr_Vec2 *OutExtent)
-{
-    if (gUI->WidgetExtentStack.Count)
-    {
-        *OutExtent = RR_LAST_ARRAY_ELEMENT(&gUI->WidgetExtentStack);
-
-        return true;
-    }
-
-    return false;
-}
-
 void Rr_UIPushWidgetExtent(Rr_Vec2 Extent)
 {
-    *RR_PUSH_INTO_ARRAY(&gUI->WidgetExtentStack, gUI->FrameArena) = Extent;
+    Rr_UIPushWidgetWidth(Extent.X);
+    Rr_UIPushWidgetHeight(Extent.Y);
 }
 
 void Rr_UIPopWidgetExtent(void)
 {
-    RR_UNUSED(RR_POP_FROM_ARRAY(&gUI->WidgetExtentStack));
+    Rr_UIPopWidgetWidth();
+    Rr_UIPopWidgetHeight();
+}
+
+void Rr_UIPushWidgetWidth(float Width)
+{
+    *RR_PUSH_INTO_ARRAY(&gUI->WidgetWidthStack, gUI->FrameArena) = Width;
+}
+
+void Rr_UIPopWidgetWidth(void)
+{
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUI->WidgetWidthStack));
+}
+
+void Rr_UIPushWidgetHeight(float Height)
+{
+    *RR_PUSH_INTO_ARRAY(&gUI->WidgetHeightStack, gUI->FrameArena) = Height;
+}
+
+void Rr_UIPopWidgetHeight(void)
+{
+    RR_UNUSED(RR_POP_FROM_ARRAY(&gUI->WidgetHeightStack));
+}
+
+static inline bool Rr_UIApplyWidgetExtent(Rr_Vec2 *OutExtent)
+{
+    bool Changed = false;
+
+    if (gUI->WidgetWidthStack.Count)
+    {
+        OutExtent->X = RR_LAST_ARRAY_ELEMENT(&gUI->WidgetWidthStack);
+
+        Changed = true;
+    }
+
+    if (gUI->WidgetHeightStack.Count)
+    {
+        OutExtent->Y = RR_LAST_ARRAY_ELEMENT(&gUI->WidgetHeightStack);
+
+        Changed = true;
+    }
+
+    return Changed;
+}
+
+static inline float Rr_UIGetAlignedWidgetWidth(void)
+{
+    if (gUI->WidgetWidthStack.Count)
+    {
+        return RR_LAST_ARRAY_ELEMENT(&gUI->WidgetWidthStack);
+    }
+    else
+    {
+        return gUI->AlignedWidgetWidth;
+    }
 }
 
 void Rr_UISeparator(void)
@@ -5136,7 +5154,7 @@ void Rr_UITextF(char const *Format, ...)
     Rr_DestroyScratch(Scratch);
 }
 
-void Rr_UITextWrapped(char const *Text, float WrapWidth)
+void Rr_UITextWrapped(char const *Text)
 {
     if (Rr_UISkipItems())
     {
@@ -5152,7 +5170,7 @@ void Rr_UITextWrapped(char const *Text, float WrapWidth)
         Layout->Cursor,
         SIZE_MAX,
         Text,
-        WrapWidth,
+        Rr_UIGetAlignedWidgetWidth(),
         &gUI->Colors.Foreground);
 
     Rr_UIAdvance(TextSize);
@@ -5169,31 +5187,28 @@ void Rr_UILabelText(char const *Title, char const *Text)
 
     Rr_UILayout *Layout = Rr_UICurrentLayout();
 
-    size_t TitleLength = strlen(Title);
-
-    float FlexibleWidth =
-        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, 0.0f);
+    float Width = Rr_UIGetAlignedWidgetWidth();
 
     Rr_Vec2 TextSize = Rr_UIDrawText(
         false,
         Layout->Cursor,
         SIZE_MAX,
         Text,
-        0.0f,
+        Width,
         &gUI->Colors.Foreground);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += FlexibleWidth + gUI->FlexibleTitleMargin;
+    TitleOffset.X += Width + gUI->AlignedWidgetTitleMargin;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
         TitleOffset,
-        TitleLength,
+        SIZE_MAX,
         Title,
         0,
         &gUI->Colors.Foreground);
 
     Rr_Vec2 Extent = {
-        FlexibleWidth + gUI->FlexibleTitleMargin + TitleExtent.X,
+        Width + gUI->AlignedWidgetTitleMargin + TitleExtent.X,
         TextSize.Y,
     };
 
@@ -7241,8 +7256,7 @@ static inline bool Rr_UIInputScalarMulti(
     //     Data,
     //     ScalarType);
 
-    float FlexibleWidth =
-        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, 0.0f);
+    float Width = Rr_UIGetAlignedWidgetWidth();
 
     Rr_UIInputFieldResult InputResult = Rr_UIGenericInputScalarMulti(
         TitleHash,
@@ -7257,11 +7271,11 @@ static inline bool Rr_UIInputScalarMulti(
             RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT |
             RR_UI_INPUT_FIELD_FLAGS_DRAG_BIT,
-        FlexibleWidth,
+        Width,
         true);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += InputResult.Extent.X + gUI->FlexibleTitleMargin;
+    TitleOffset.X += InputResult.Extent.X + gUI->AlignedWidgetTitleMargin;
     TitleOffset.Y += gUI->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
@@ -7272,7 +7286,7 @@ static inline bool Rr_UIInputScalarMulti(
         &gUI->Colors.Foreground);
 
     Rr_Vec2 Extent = {
-        FlexibleWidth + gUI->FlexibleTitleMargin + TitleExtent.X,
+        Width + gUI->AlignedWidgetTitleMargin + TitleExtent.X,
         InputResult.Extent.Y,
     };
 
@@ -7312,8 +7326,7 @@ bool Rr_UIInputField(
             Rr_UICalculateTextSize(SIZE_MAX, Placeholder, 0.0f).X);
     }
 
-    float FlexibleWidth =
-        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, 0.0f);
+    float Width = Rr_UIGetAlignedWidgetWidth();
 
     Rr_UIInputFieldResult Result = Rr_UIGenericInputField(
         TitleHash,
@@ -7323,10 +7336,10 @@ bool Rr_UIInputField(
         Placeholder,
         FilterFunc,
         Flags,
-        FlexibleWidth);
+        Width);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += Result.Extent.X + gUI->FlexibleTitleMargin;
+    TitleOffset.X += Result.Extent.X + gUI->AlignedWidgetTitleMargin;
     TitleOffset.Y += gUI->InputFieldPadding.Height;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
@@ -7337,7 +7350,7 @@ bool Rr_UIInputField(
         &gUI->Colors.Foreground);
 
     Rr_Vec2 Extent = {
-        FlexibleWidth + gUI->FlexibleTitleMargin + TitleExtent.X,
+        Width + gUI->AlignedWidgetTitleMargin + TitleExtent.X,
         Result.Extent.Y,
     };
 
@@ -8173,8 +8186,7 @@ static inline bool Rr_UIInputColorEx(
 
     float ColorBoxWithMargin = gUI->ComponentMargin + ColorBoxExtent.X;
 
-    float FlexibleWidth =
-        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, 0.0f);
+    float Width = Rr_UIGetAlignedWidgetWidth();
 
     Rr_UIInputFieldResult InputResult = Rr_UIGenericInputScalarMulti(
         TitleHash,
@@ -8189,7 +8201,7 @@ static inline bool Rr_UIInputColorEx(
             RR_UI_INPUT_FIELD_FLAGS_AUTO_SELECT_BIT |
             RR_UI_INPUT_FIELD_FLAGS_AUTO_CENTER_BIT |
             RR_UI_INPUT_FIELD_FLAGS_DRAG_BIT,
-        FlexibleWidth - ColorBoxWithMargin,
+        Width - ColorBoxWithMargin,
         true);
 
     Rr_Vec2 ColorBoxOffset = Layout->Cursor;
@@ -8255,7 +8267,7 @@ static inline bool Rr_UIInputColorEx(
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
     TitleOffset.X += InputResult.Extent.X + gUI->ComponentMargin +
-                     ColorBoxExtent.X + gUI->FlexibleTitleMargin;
+                     ColorBoxExtent.X + gUI->AlignedWidgetTitleMargin;
     TitleOffset.Y += gUI->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
@@ -8266,7 +8278,7 @@ static inline bool Rr_UIInputColorEx(
         &gUI->Colors.Foreground);
 
     Rr_Vec2 Extent = {
-        FlexibleWidth + ColorBoxWithMargin + gUI->FlexibleTitleMargin +
+        Width + ColorBoxWithMargin + gUI->AlignedWidgetTitleMargin +
             TitleExtent.X,
         InputResult.Extent.Y,
     };
@@ -8326,14 +8338,13 @@ bool Rr_UICombobox(
         0.0f,
         &gUI->Colors.Foreground);
 
-    float FlexibleWidth =
-        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, 0.0f);
+    float Width = Rr_UIGetAlignedWidgetWidth();
 
     float ButtonHeight =
         SelectedTextSize.Height + gUI->InputFieldPadding.Y * 2.0f;
 
     Rr_Vec2 ButtonExtent = {
-        FlexibleWidth,
+        Width,
         ButtonHeight,
     };
 
@@ -8466,7 +8477,7 @@ bool Rr_UICombobox(
     }
 
     Rr_Vec2 TitlePosition = Layout->Cursor;
-    TitlePosition.X += FlexibleWidth + gUI->FlexibleTitleMargin;
+    TitlePosition.X += Width + gUI->AlignedWidgetTitleMargin;
     TitlePosition.Y += gUI->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
@@ -8477,7 +8488,7 @@ bool Rr_UICombobox(
         &gUI->Colors.Foreground);
 
     Rr_Vec2 Extent = {
-        FlexibleWidth + gUI->FlexibleTitleMargin + TitleExtent.X,
+        Width + gUI->AlignedWidgetTitleMargin + TitleExtent.X,
         Font->LineHeight + gUI->InputFieldPadding.Y * 2.0f,
     };
 
@@ -8502,13 +8513,12 @@ static inline float Rr_UISlider(
     size_t TitleLength;
     Rr_UIHash TitleHash = Rr_UIGetTitleHash(Title, &TitleLength);
 
-    float FlexibleWidth =
-        Rr_UISetupFlexibleWidget(Layout, TitleLength, Title, 0.0f);
+    float Width = Rr_UIGetAlignedWidgetWidth();
 
     Rr_Rect SliderRect = {
         Layout->Cursor,
         {
-            FlexibleWidth,
+            Width,
             Font->LineHeight + gUI->InputFieldPadding.Y * 2.0f,
         },
     };
@@ -8518,12 +8528,12 @@ static inline float Rr_UISlider(
     float HandleWidth = Font->LineHeight * 0.75f;
     if (HandleSizeRatio != 0.0f)
     {
-        HandleWidth = RR_MAX(HandleWidth, FlexibleWidth * HandleSizeRatio);
+        HandleWidth = RR_MAX(HandleWidth, Width * HandleSizeRatio);
     }
     HandleWidth = RR_UI_ROUND(HandleWidth);
     Rr_Rect HandleRect = { Layout->Cursor,
                            Rr_V2(HandleWidth, SliderRect.Extent.Y) };
-    HandleRect.Offset.X += Normalized * (FlexibleWidth - HandleWidth);
+    HandleRect.Offset.X += Normalized * (Width - HandleWidth);
     HandleRect.Offset.X = roundf(HandleRect.Offset.X);
     HandleRect = Rr_ResizeRect(&HandleRect, -gUI->BevelThickness);
     Rr_UIDrawBevel(&HandleRect, &gUI->Colors.ButtonNormal, false);
@@ -8581,7 +8591,7 @@ static inline float Rr_UISlider(
     if (ClickResult.ClickCount || ClickResult.Moved)
     {
         float SliderMin = Layout->Cursor.X + HandleWidth / 2.0f;
-        float SliderMax = SliderMin + FlexibleWidth - HandleWidth;
+        float SliderMax = SliderMin + Width - HandleWidth;
 
         Normalized =
             (gUI->MousePosition.X - SliderMin) / (SliderMax - SliderMin);
@@ -8597,7 +8607,7 @@ static inline float Rr_UISlider(
     Normalized = RR_CLAMP(0.0f, Normalized, 1.0f);
 
     Rr_Vec2 TitleOffset = Layout->Cursor;
-    TitleOffset.X += SliderRect.Extent.X + gUI->FlexibleTitleMargin;
+    TitleOffset.X += SliderRect.Extent.X + gUI->AlignedWidgetTitleMargin;
     TitleOffset.Y += gUI->InputFieldPadding.Y;
     Rr_Vec2 TitleExtent = Rr_UIDrawText(
         false,
@@ -8608,7 +8618,7 @@ static inline float Rr_UISlider(
         &gUI->Colors.Foreground);
 
     Rr_Vec2 Extent = {
-        FlexibleWidth + gUI->FlexibleTitleMargin + TitleExtent.X,
+        Width + gUI->AlignedWidgetTitleMargin + TitleExtent.X,
         SliderRect.Extent.Y,
     };
 
@@ -8758,7 +8768,7 @@ void Rr_UISetDefaultTheme(void)
     Style->DoubleBevelThickness = 0.100000f;
     Style->BevelIntensityLight = 0.300000f;
     Style->BevelIntensityDark = 0.650000f;
-    Style->FlexibleTitleMargin = 0.250000f;
+    Style->AlignedWidgetTitleMargin = 0.250000f;
     Style->ButtonPadding = Rr_V2(0.250000f, 0.025000f);
     Style->InputFieldPadding = Rr_V2(0.250000f, 0.025000f);
     Style->CheckmarkRatios = Rr_V2(0.350000f, 0.200000f);
@@ -9047,7 +9057,8 @@ void Rr_NewUIFrame(void)
     RR_RESET_ARRAY(&gUI->FontStack, FrameArena);
     RR_RESET_ARRAY(&gUI->WindowPaddingStack, FrameArena);
     RR_RESET_ARRAY(&gUI->ContentsMarginStack, FrameArena);
-    RR_RESET_ARRAY(&gUI->WidgetExtentStack, FrameArena);
+    RR_RESET_ARRAY(&gUI->WidgetWidthStack, FrameArena);
+    RR_RESET_ARRAY(&gUI->WidgetHeightStack, FrameArena);
     RR_RESET_ARRAY(&gUI->FormatFloatDecimalPlacesStack, FrameArena);
     RR_RESET_ARRAY(&gUI->Vertices, FrameArena);
     RR_RESET_ARRAY(&gUI->Indices, FrameArena);

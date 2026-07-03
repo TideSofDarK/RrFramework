@@ -73,7 +73,7 @@ struct Rr_UIStyle
     float DoubleBevelThickness;
     float BevelIntensityLight;
     float BevelIntensityDark;
-    float FlexibleTitleMargin;
+    float AlignedWidgetTitleMargin;
     Rr_Vec2 ButtonPadding;
     Rr_Vec2 InputFieldPadding;
     Rr_Vec2 CheckmarkRatios;
@@ -269,6 +269,14 @@ extern void RR_CC Rr_UIPushWidgetExtent(Rr_Vec2 Extent);
 
 extern void RR_CC Rr_UIPopWidgetExtent(void);
 
+extern void RR_CC Rr_UIPushWidgetWidth(float Width);
+
+extern void RR_CC Rr_UIPopWidgetWidth(void);
+
+extern void RR_CC Rr_UIPushWidgetHeight(float Height);
+
+extern void RR_CC Rr_UIPopWidgetHeight(void);
+
 extern void RR_CC Rr_UISeparator(void);
 
 extern void RR_CC Rr_UIImageEx(
@@ -281,7 +289,7 @@ extern void RR_CC Rr_UIText(char const *Text);
 
 extern void RR_CC Rr_UITextF(char const *Format, ...);
 
-extern void RR_CC Rr_UITextWrapped(char const *Text, float WrapWidth);
+extern void RR_CC Rr_UITextWrapped(char const *Text);
 
 extern void RR_CC Rr_UILabelText(char const *Title, char const *Text);
 
