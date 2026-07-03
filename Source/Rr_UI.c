@@ -8534,8 +8534,9 @@ static inline float Rr_UISlider(
             Rr_UICalculateTextSize(ValueCStringLength, ValueCString, 0.0f);
 
         float ValueMargin = RR_UI_ROUND(Font->LineHeight * 0.2f);
-        Rr_Vec2 ValuePosition = Layout->Cursor;
-        ValuePosition.X = HandleRect.Offset.X - ValueSize.Width - ValueMargin;
+        Rr_Vec2 ValuePosition = HandleRect.Offset;
+        ValuePosition.X -= ValueSize.Width + ValueMargin;
+        ValuePosition.Y += (HandleRect.Extent.Y - ValueSize.Y) * 0.5f;
         bool ShowValue = true;
         if (ValuePosition.X < SliderRect.Offset.X + gUI->BevelThickness)
         {
