@@ -5927,44 +5927,56 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
             ResetCol = true;
         }
 
-        if (Event->Keymod == 0)
+        if (Event->Scancode == RR_SCANCODE_BACKSPACE && BufferLength > 0)
         {
-            if (Event->Scancode == RR_SCANCODE_BACKSPACE && BufferLength > 0)
+            if (CursorMin == 0 && CursorMax == 0)
             {
-                if (CursorMin == 0 && CursorMax == 0)
+                /* Cursor is at the beginning. */
+            }
+            else if (CursorMin == 0 && CursorMax == BufferLength)
+            {
+                /* Whole buffer is selected. */
+
+                Buffer[0] = '\0';
+                NewCursorEnd = NewCursorBegin = 0;
+                BufferLength = 0;
+            }
+            else if (CursorMin != CursorMax)
+            {
+                /* A range is selected. */
+
+                memmove(
+                    Buffer + CursorMin,
+                    Buffer + CursorMax,
+                    BufferLength - CursorMax);
+                BufferLength -= CursorMax - CursorMin;
+                Buffer[BufferLength] = '\0';
+                NewCursorEnd = NewCursorBegin = CursorMin;
+            }
+            else
+            {
+                /* No range is selected. */
+
+                if (Event->Keymod & RR_KEYMOD_CTRL)
                 {
-                }
-                else if (CursorMin == 0 && CursorMax == BufferLength)
-                {
-                    Buffer[0] = '\0';
-                    NewCursorEnd = NewCursorBegin = 0;
-                    BufferLength = 0;
-                }
-                else if (CursorMin != CursorMax)
-                {
-                    memmove(
-                        Buffer + CursorMin,
-                        Buffer + CursorMax,
-                        BufferLength - CursorMax);
-                    BufferLength -= CursorMax - CursorMin;
-                    Buffer[BufferLength] = '\0';
-                    NewCursorEnd = NewCursorBegin = CursorMin;
+                    CursorMin = Rr_PreviousUTF8WordOffset(Buffer, CursorMin);
                 }
                 else
                 {
                     CursorMin =
                         Rr_PreviousUTF8CodepointOffset(Buffer, CursorMin);
-                    memmove(
-                        Buffer + CursorMin,
-                        Buffer + CursorMax,
-                        BufferLength - CursorMax);
-                    BufferLength -= CursorMax - CursorMin;
-                    Buffer[BufferLength] = '\0';
-                    NewCursorEnd = NewCursorBegin = CursorMin;
                 }
-                Edited = true;
-                ResetCol = true;
+
+                memmove(
+                    Buffer + CursorMin,
+                    Buffer + CursorMax,
+                    BufferLength - CursorMax);
+                BufferLength -= CursorMax - CursorMin;
+                Buffer[BufferLength] = '\0';
+                NewCursorEnd = NewCursorBegin = CursorMin;
             }
+            Edited = true;
+            ResetCol = true;
         }
 
         if (Edited)
