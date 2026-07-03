@@ -5,6 +5,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../Vendor/stb/stb_image.h"
 
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -818,11 +819,14 @@ static void WidgetsWindow(void)
             static uint32_t TestUnsignedIntRange = 6;
             Rr_UIInputUnsignedIntRange("Unsigned Input (3-9)", &TestUnsignedIntRange, 3, 9);
 
-            static float TestFloat = 123.456f;
+            static float TestFloat = 1234.567f;
             Rr_UIInputFloat("Float Input", &TestFloat);
 
             static float TestFloatRange = 0.25f;
             Rr_UIInputFloatRange("Float Input (0-1)", &TestFloatRange, 0.0f, 1.0f);
+
+            static double TestDouble = -3233463426234234.125125;
+            Rr_UIInputDouble("Double Input", &TestDouble);
 
             Rr_UIBeginWindow("Vectors and Matrices");
             {

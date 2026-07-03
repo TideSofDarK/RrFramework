@@ -56,14 +56,14 @@ static inline float Rr_ToSRGBChannel(float Value)
                              : powf((Value + 0.055f) / 1.055f, 2.4f);
 }
 
-static inline void Rr_UIToLinearColor(Rr_Vec4 *Color)
+static inline void Rr_ToLinearColor(Rr_Vec4 *Color)
 {
     Color->R = Rr_ToLinearChannel(Color->R);
     Color->G = Rr_ToLinearChannel(Color->G);
     Color->B = Rr_ToLinearChannel(Color->B);
 }
 
-static inline void Rr_UIToSRGBColor(Rr_Vec4 *Color)
+static inline void Rr_ToSRGBColor(Rr_Vec4 *Color)
 {
     Color->R = Rr_ToSRGBChannel(Color->R);
     Color->G = Rr_ToSRGBChannel(Color->G);

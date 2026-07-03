@@ -277,6 +277,8 @@ struct Rr_UI
     Rr_Vec2 MouseWheelDelta;
     Rr_CursorType CursorType;
 
+    /* TODO: Apparently these are used exclusively with input fields. */
+
     Rr_UIWindow *FocusedWidgetParent;
     Rr_UIHash FocusedWidgetHash;
     Rr_UIWindow *PrevFocusedWidgetParent;
@@ -2338,12 +2340,14 @@ static inline Rr_Vec2 Rr_UIDrawText(
             {
                 CurrentX = 0.0f;
                 CurrentY += LineHeight;
+
                 continue;
             }
 
             if (Codepoint == ' ')
             {
                 CurrentX += Glyph->XAdvance;
+
                 continue;
             }
 
@@ -2384,7 +2388,7 @@ static inline bool Rr_UIIsFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
     return gUI->FocusedWidgetParent == Window && gUI->FocusedWidgetHash == Hash;
 }
 
-static inline bool Rr_UIWasFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
+static inline bool Rr_UIConsumeWasFocused(Rr_UIWindow *Window, Rr_UIHash Hash)
 {
     bool Result = gUI->PrevFocusedWidgetParent == Window &&
                   gUI->PrevFocusedWidgetHash == Hash;
@@ -2409,6 +2413,14 @@ static inline void Rr_UISetFocus(Rr_UIWindow *Window, Rr_UIHash Hash)
     }
     gUI->FocusedWidgetParent = Window;
     gUI->FocusedWidgetHash = Hash;
+}
+
+static inline void Rr_UIResetFocus(void)
+{
+    gUI->PrevFocusedWidgetParent = NULL;
+    gUI->PrevFocusedWidgetHash = 0;
+    gUI->FocusedWidgetParent = NULL;
+    gUI->FocusedWidgetHash = 0;
 }
 
 static inline void Rr_UIResetClickAndDrag(void)
@@ -6096,7 +6108,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         Flags & RR_UI_INPUT_FIELD_FLAGS_USE_PERSISTENT_BUFFER_BIT;
 
     bool Focused = Rr_UIIsFocused(Window, Hash);
-    bool WasFocused = !Focused && Rr_UIWasFocused(Window, Hash);
+    bool WasFocused = !Focused && Rr_UIConsumeWasFocused(Window, Hash);
 
     bool BeganDragging = false;
     float Dragged = 0.0f;
@@ -6730,12 +6742,16 @@ static inline void Rr_UIModifyDragScalar(
         break;
         case RR_UI_SCALAR_TYPE_FLOAT:
         {
-            *(float *)Data = gUI->DragScalarValue.Float + Amount;
+            float ExpAmount = Amount >= 0.0f ? 1.0f : -1.0f;
+            ExpAmount *= expf(fabsf(Amount) * 0.01f) - 1.0f;
+            *(float *)Data = gUI->DragScalarValue.Float + ExpAmount;
         }
         break;
         case RR_UI_SCALAR_TYPE_DOUBLE:
         {
-            *(double *)Data = gUI->DragScalarValue.Double + Amount;
+            double ExpAmount = Amount >= 0.0 ? 1.0 : -1.0;
+            ExpAmount *= exp(fabs((double)Amount) * 0.01) - 1.0;
+            *(double *)Data = gUI->DragScalarValue.Double + ExpAmount;
         }
         break;
         default:
@@ -7516,6 +7532,18 @@ bool Rr_UIInputFloat4x4(char const *Title, float *Values)
         RR_UI_SCALAR_TYPE_FLOAT);
 }
 
+bool Rr_UIInputDouble(char const *Title, double *Value)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Value,
+        NULL,
+        NULL,
+        1,
+        1,
+        RR_UI_SCALAR_TYPE_DOUBLE);
+}
+
 bool Rr_UIInputInt(char const *Title, int32_t *Value)
 {
     return Rr_UIInputScalarMulti(
@@ -8133,7 +8161,7 @@ static inline bool Rr_UIInputColorEx(
     OpaqueColor.A = 1.0f;
     if (gUI->SRGBSwapchain)
     {
-        Rr_UIToLinearColor(&OpaqueColor);
+        Rr_ToLinearColor(&OpaqueColor);
     }
     Rr_UIDrawBevel(
         &ColorBoxRect,
@@ -8151,7 +8179,7 @@ static inline bool Rr_UIInputColorEx(
             sizeof(float) * (size_t)ChannelCount);
         if (gUI->SRGBSwapchain)
         {
-            Rr_UIToLinearColor(&TransparentColor);
+            Rr_ToLinearColor(&TransparentColor);
         }
 
         Rr_UIDrawVerticalGradientQuad(
@@ -8616,33 +8644,38 @@ bool Rr_UISliderFloat(char const *Title, float *Value, float Min, float Max)
 
 bool Rr_UIWantMouseCapture(void)
 {
-    return gUI && (gUI->LeftMouseButton.DownOverWindow || gUI->HoveredWindow);
+    return gUI->ClickParent || /* Window is focused. */
+           gUI->DragParent ||  /* Widget is active. */
+           gUI->LeftMouseButton.DownOverWindow;
 }
 
 bool Rr_UIWantKeyboardCapture(void)
 {
-    return false;
+    return gUI->ClickParent ||       /* Window is focused. */
+           gUI->FocusedWidgetParent; /* Input field is active. */
 }
 
-static inline void Rr_UIConvertColorsToSRGB(void)
-{
-    size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
-    Rr_Vec4 *Colors = (Rr_Vec4 *)&gUI->Colors;
-    for (size_t Index = 0; Index < ColorCount; ++Index)
-    {
-        Rr_UIToSRGBColor(&Colors[Index]);
-    }
-}
-
-static inline void Rr_UIConvertColorsToLinear(void)
-{
-    size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
-    Rr_Vec4 *Colors = (Rr_Vec4 *)&gUI->Colors;
-    for (size_t Index = 0; Index < ColorCount; ++Index)
-    {
-        Rr_UIToLinearColor(&Colors[Index]);
-    }
-}
+/*
+ * static inline void Rr_UIConvertColorsToSRGB(void)
+ * {
+ *     size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
+ *     Rr_Vec4 *Colors = (Rr_Vec4 *)&gUI->Colors;
+ *     for (size_t Index = 0; Index < ColorCount; ++Index)
+ *     {
+ *         Rr_ToSRGBColor(&Colors[Index]);
+ *     }
+ * }
+ *
+ * static inline void Rr_UIConvertColorsToLinear(void)
+ * {
+ *     size_t ColorCount = sizeof(Rr_UIColors) / sizeof(Rr_Vec4);
+ *     Rr_Vec4 *Colors = (Rr_Vec4 *)&gUI->Colors;
+ *     for (size_t Index = 0; Index < ColorCount; ++Index)
+ *     {
+ *         Rr_ToLinearColor(&Colors[Index]);
+ *     }
+ * }
+ */
 
 void Rr_UISetDefaultTheme(void)
 {
@@ -9002,6 +9035,7 @@ void Rr_BeginUI(void)
     if (!gUI->LeftMouseButton.DownOverWindow && gUI->LeftMouseButton.Down)
     {
         Rr_UIResetClickAndDrag();
+        Rr_UIResetFocus();
     }
 
     RR_CLEAR_ARRAY(&gUI->ActiveLayouts);
@@ -9098,6 +9132,8 @@ void Rr_EndUI(void)
         "ID/Hash stack is not empty; did you forget to call Rr_UIPopID()?");
 
     Rr_UIAssertNoWindow();
+
+    Rr_SetCursor(gUI->CursorType);
 
     if (gUI->ActiveLayouts.Count > 0)
     {
@@ -9199,7 +9235,6 @@ void Rr_EndUI(void)
     gUI->LeftMouseButton.Up = false;
     gUI->MouseMoved = false;
     gUI->MouseWheelDelta = Rr_V2F(0.0f);
-    Rr_SetCursor(gUI->CursorType);
     gUI->CursorType = RR_CURSOR_TYPE_NORMAL;
     RR_ZERO(gUI->TextInputEvents);
     RR_ZERO(gUI->KeyboardInputEvents);

@@ -344,6 +344,8 @@ extern bool RR_CC Rr_UIInputFloat3x3(char const *Title, float *Values);
 
 extern bool RR_CC Rr_UIInputFloat4x4(char const *Title, float *Values);
 
+extern bool RR_CC Rr_UIInputDouble(char const *Title, double *Value);
+
 extern bool RR_CC Rr_UIInputInt(char const *Title, int32_t *Value);
 
 extern bool RR_CC

@@ -94,9 +94,12 @@
 - [X] Child window borders ignore mouse wheel events.
 - [X] Auto resize should reset scroll.
   - For now, resetting scroll value when FillRatio >= 1.0f.
-- [ ] More animations.
+- [X] Input float/double: dragging only changes the integer part.
+- [X] Input field: reset focus when clicking elsewhere.
+- [ ] Input field: CTRL+DEL to remove words.
+- [ ] Tables.
+- [ ] Closing popups doesn't restore window focus.
 - [ ] Make sure widgets don't look broken with extremely small window sizes.
-- [ ] Input field doesn't lose focus when clicking elsewhere.
 - [ ] Proper stack data structure.
 - [ ] Some options for horizontal child layouts + asserts.
 - [ ] Flickering:
