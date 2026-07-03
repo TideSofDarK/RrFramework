@@ -97,7 +97,7 @@
 - [X] Input float/double: dragging only changes the integer part.
 - [X] Input field: reset focus when clicking elsewhere.
 - [X] Input field: CTRL+BACKSCAPE to remove words.
-- [ ] Input field: DELETE key behavior.
+- [X] Input field: DELETE key behavior.
 - [ ] Tables.
 - [ ] Closing popups doesn't restore window focus.
 - [ ] Make sure widgets don't look broken with extremely small window sizes.

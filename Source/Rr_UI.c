@@ -5979,6 +5979,59 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
             ResetCol = true;
         }
 
+        if (Event->Scancode == RR_SCANCODE_DELETE && BufferLength > 0)
+        {
+            if (CursorMin == BufferLength && CursorMax == BufferLength)
+            {
+                /* Cursor is at the end. */
+            }
+            else if (CursorMin == 0 && CursorMax == BufferLength)
+            {
+                /* Whole buffer is selected.
+                 * NOTE: Same behavior as BACKSPACE. */
+
+                Buffer[0] = '\0';
+                NewCursorEnd = NewCursorBegin = 0;
+                BufferLength = 0;
+            }
+            else if (CursorMin != CursorMax)
+            {
+                /* A range is selected.
+                 * NOTE: Same behavior as BACKSPACE. */
+
+                memmove(
+                    Buffer + CursorMin,
+                    Buffer + CursorMax,
+                    BufferLength - CursorMax);
+                BufferLength -= CursorMax - CursorMin;
+                Buffer[BufferLength] = '\0';
+                NewCursorEnd = NewCursorBegin = CursorMin;
+            }
+            else
+            {
+                /* No range is selected. */
+
+                if (Event->Keymod & RR_KEYMOD_CTRL)
+                {
+                    CursorMax = Rr_NextUTF8WordOffset(Buffer, CursorMin);
+                }
+                else
+                {
+                    CursorMax = Rr_NextUTF8CodepointOffset(Buffer, CursorMin);
+                }
+
+                memmove(
+                    Buffer + CursorMin,
+                    Buffer + CursorMax,
+                    BufferLength - CursorMax);
+                BufferLength -= CursorMax - CursorMin;
+                Buffer[BufferLength] = '\0';
+                NewCursorEnd = NewCursorBegin = CursorMin;
+            }
+            Edited = true;
+            ResetCol = true;
+        }
+
         if (Edited)
         {
             *CursorBegin = NewCursorBegin;
