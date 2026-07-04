@@ -339,7 +339,7 @@ struct Rr_UI
     float ScrollbarHandleWidth;
     Rr_Vec2 ButtonPadding;
     float BevelThickness;
-    float DoubleBevelThickness;
+    float TripleBevelThickness;
     Rr_Vec2 InputFieldPadding;
     float TopLevelTreeOffset;
     float TreeOffset;
@@ -1855,78 +1855,45 @@ static inline void Rr_UIBevelFrame(
     }
 }
 
-static inline void Rr_UIDrawDoubleBevel(
-    Rr_Rect *Rect,
-    Rr_Vec4 *Color,
-    float Thickness)
+#define RR_UI_TRIPLE_BEVEL_FRAME_VERTEX_COUNT (16)
+#define RR_UI_TRIPLE_BEVEL_FRAME_INDEX_COUNT  (48)
+
+static inline Rr_UIPrimitive Rr_UIReserveTripleBevelFrame(void)
 {
-    Rr_Vec4 ColorLight;
-    ColorLight.RGB =
-        Rr_LerpV3(Color->RGB, gUI->Style.BevelIntensityLight, RR_UI_VEC3_ONE);
-    ColorLight.A = 1.0f;
-    Rr_Vec4 ColorDark;
-    ColorDark.RGB =
-        Rr_LerpV3(Color->RGB, gUI->Style.BevelIntensityDark, RR_UI_VEC3_ZERO);
-    ColorDark.A = 1.0f;
-
-    Rr_UIPrimitive BevelFramePrimitive = Rr_UIReserveBevelFrame();
-    Rr_UIBevelFrame(
-        Rect,
-        &BevelFramePrimitive,
-        &ColorLight,
-        &ColorDark,
-        Thickness * 0.5f);
-
-    BevelFramePrimitive = Rr_UIReserveBevelFrame();
-    Rr_Rect InnerRect = Rr_ResizeRect(Rect, -Thickness * 0.5f);
-    Rr_UIBevelFrame(
-        &InnerRect,
-        &BevelFramePrimitive,
-        &ColorDark,
-        &ColorLight,
-        Thickness * 0.5f);
+    return Rr_UIReservePrimitive(
+        RR_UI_TRIPLE_BEVEL_FRAME_VERTEX_COUNT,
+        RR_UI_TRIPLE_BEVEL_FRAME_INDEX_COUNT);
 }
 
-#define RR_UI_TRIPLE_BEVEL_VERTEX_COUNT (16)
-#define RR_UI_TRIPLE_BEVEL_INDEX_COUNT  (48)
-
-static inline void Rr_UIDrawTripleBevel(
-    Rr_Rect *Rect,
-    Rr_Vec4 *Normal,
+static inline void Rr_UITripleBevelFrame(
+    Rr_UIPrimitive *Primitive,
+    Rr_Rect const *Rect,
+    Rr_Vec4 const *Normal,
     float Thickness)
 {
-    Rr_UIPrimitive Primitive = Rr_UIReservePrimitive(
-        RR_UI_TRIPLE_BEVEL_VERTEX_COUNT,
-        RR_UI_TRIPLE_BEVEL_INDEX_COUNT);
+    Rr_Vec4 Light = Rr_V4V(
+        Rr_LerpV3(Normal->RGB, gUI->Style.BevelIntensityLight, RR_UI_VEC3_ONE),
+        1.0f);
+    Rr_Vec4 Dark = Rr_V4V(
+        Rr_LerpV3(Normal->RGB, gUI->Style.BevelIntensityDark, RR_UI_VEC3_ZERO),
+        1.0f);
 
-    Rr_Vec4 ColorLight;
-    ColorLight.RGB =
-        Rr_LerpV3(Normal->RGB, gUI->Style.BevelIntensityLight, RR_UI_VEC3_ONE);
-    ColorLight.A = 1.0f;
-    Rr_Vec4 ColorDark;
-    ColorDark.RGB =
-        Rr_LerpV3(Normal->RGB, gUI->Style.BevelIntensityDark, RR_UI_VEC3_ZERO);
-    ColorDark.A = 1.0f;
-
-    Rr_Vec4 *Bright = &ColorLight;
-    Rr_Vec4 *Dark = &ColorDark;
-
-    Rr_UIVertex *Vertices = Primitive.Vertices;
-    Rr_UIIndex *Indices = Primitive.Indices;
+    Rr_UIVertex *Vertices = Primitive->Vertices;
+    Rr_UIIndex *Indices = Primitive->Indices;
 
     float HalfThickness = Thickness * 0.5f;
 
     Vertices[0] = (Rr_UIVertex){
         .Position = Rect->Offset,
-        .Color = *Bright,
+        .Color = Light,
     };
     Vertices[1] = (Rr_UIVertex){
         .Position = Rr_AddV2(Rect->Offset, Rr_V2(Rect->Extent.X, 0.0f)),
-        .Color = *Bright,
+        .Color = Light,
     };
     Vertices[2] = (Rr_UIVertex){
         .Position = Rr_AddV2(Rect->Offset, Rr_V2(Rect->Extent.X, 0.0f)),
-        .Color = *Dark,
+        .Color = Dark,
     };
     Vertices[3] = (Rr_UIVertex){
         .Position = Rr_AddV2F(Rect->Offset, HalfThickness),
@@ -1940,37 +1907,37 @@ static inline void Rr_UIDrawTripleBevel(
     };
     Vertices[5] = (Rr_UIVertex){
         .Position = Rr_AddV2F(Rect->Offset, Thickness),
-        .Color = *Dark,
+        .Color = Dark,
     };
     Vertices[6] = (Rr_UIVertex){
         .Position = Rr_AddV2(
             Rect->Offset,
             Rr_V2(Rect->Extent.X - Thickness, Thickness)),
-        .Color = *Dark,
+        .Color = Dark,
     };
     Vertices[7] = (Rr_UIVertex){
         .Position = Rr_AddV2(
             Rect->Offset,
             Rr_V2(Rect->Extent.X - Thickness, Thickness)),
-        .Color = *Bright,
+        .Color = Light,
     };
     Vertices[8] = (Rr_UIVertex){
         .Position = Rr_AddV2(
             Rect->Offset,
             Rr_V2(Thickness, Rect->Extent.Y - Thickness)),
-        .Color = *Dark,
+        .Color = Dark,
     };
     Vertices[9] = (Rr_UIVertex){
         .Position = Rr_AddV2(
             Rect->Offset,
             Rr_V2(Thickness, Rect->Extent.Y - Thickness)),
-        .Color = *Bright,
+        .Color = Light,
     };
     Vertices[10] = (Rr_UIVertex){
         .Position = Rr_AddV2(
             Rect->Offset,
             Rr_V2(Rect->Extent.X - Thickness, Rect->Extent.Y - Thickness)),
-        .Color = *Bright,
+        .Color = Light,
     };
     Vertices[11] = (Rr_UIVertex){
         .Position = Rr_AddV2(
@@ -1988,37 +1955,38 @@ static inline void Rr_UIDrawTripleBevel(
     };
     Vertices[13] = (Rr_UIVertex){
         .Position = Rr_AddV2(Rect->Offset, Rr_V2(0.0f, Rect->Extent.Y)),
-        .Color = *Bright,
+        .Color = Light,
     };
     Vertices[14] = (Rr_UIVertex){
         .Position = Rr_AddV2(Rect->Offset, Rr_V2(0.0f, Rect->Extent.Y)),
-        .Color = *Dark,
+        .Color = Dark,
     };
     Vertices[15] = (Rr_UIVertex){
         .Position = Rr_AddV2(Rect->Offset, Rect->Extent),
-        .Color = *Dark,
+        .Color = Dark,
     };
 
-    static Rr_UIIndex const TRIPLE_BEVEL_INDICES[] = {
+    static Rr_UIIndex const TRIPLE_BEVEL_FRAME_INDICES[] = {
         0,  1,  4, 0,  4,  3,  3,  4,  6,  3,  6,  5,  0,  3,  11, 0,
         11, 13, 3, 5,  11, 11, 5,  8,  7,  4,  10, 10, 4,  12, 4,  2,
         12, 12, 2, 15, 9,  10, 11, 11, 10, 12, 14, 11, 12, 14, 12, 15
     };
 
-    for (size_t Index = 0; Index < RR_UI_TRIPLE_BEVEL_INDEX_COUNT; ++Index)
+    for (size_t Index = 0; Index < RR_UI_TRIPLE_BEVEL_FRAME_INDEX_COUNT;
+         ++Index)
     {
-        Indices[Index] = Primitive.BaseVertex + TRIPLE_BEVEL_INDICES[Index];
+        Indices[Index] =
+            Primitive->BaseVertex + TRIPLE_BEVEL_FRAME_INDICES[Index];
     }
 }
 
-static inline void Rr_UIDrawDoubleBevelFilled(
-    Rr_Rect *Rect,
-    Rr_Vec4 *Color,
+static inline void Rr_UIDrawTripleBevelFrame(
+    Rr_Rect const *Rect,
+    Rr_Vec4 const *Normal,
     float Thickness)
 {
-    Rr_UIDrawDoubleBevel(Rect, Color, Thickness);
-    Rr_Rect InnerRect = Rr_ResizeRect(Rect, -Thickness);
-    Rr_UIDrawRect(&InnerRect, Color);
+    Rr_UIPrimitive Primitive = Rr_UIReserveTripleBevelFrame();
+    Rr_UITripleBevelFrame(&Primitive, Rect, Normal, Thickness);
 }
 
 #define RR_UI_BEVEL_VERTEX_COUNT (16)
@@ -2946,7 +2914,7 @@ static inline void Rr_UIRecalculateStyle(void)
     gUI->ButtonPadding =
         RR_UI_ROUND_V2(Rr_MulV2F(Style->ButtonPadding, LineHeight));
     gUI->BevelThickness = ceilf(LineHeight * Style->BevelThickness);
-    gUI->DoubleBevelThickness =
+    gUI->TripleBevelThickness =
         RR_UI_ROUND(LineHeight * Style->DoubleBevelThickness);
     gUI->InputFieldPadding =
         RR_UI_ROUND_V2(Rr_MulV2F(Style->InputFieldPadding, LineHeight));
@@ -3009,7 +2977,7 @@ static inline Rr_Vec2 Rr_UIGetMinWindowExtent(Rr_UIWindowFlags Flags)
     if (!(Flags & RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT))
     {
         Size =
-            Rr_AddV2(Size, Rr_MulV2F(Rr_V2F(gUI->DoubleBevelThickness), 2.0f));
+            Rr_AddV2(Size, Rr_MulV2F(Rr_V2F(gUI->TripleBevelThickness), 2.0f));
     }
 
     return Rr_FloorV2(Size);
@@ -3226,7 +3194,7 @@ static inline Rr_Vec2 Rr_UIGetWindowOffsetRelativeToTitle(
 {
     if (!Rr_UIWindowNoBorders(Window))
     {
-        Offset = Rr_SubV2(Offset, Rr_V2F(gUI->DoubleBevelThickness));
+        Offset = Rr_SubV2(Offset, Rr_V2F(gUI->TripleBevelThickness));
     }
     if (!Rr_UIWindowNoCollapse(Window))
     {
@@ -3404,7 +3372,7 @@ static inline Rr_UIClickResult Rr_UIAddResizeHandle(
     /* NOTE: Work with Window->Rect directly since Layout->Rect is transformed
      * to ignore the borders. */
 
-    float Thickness = gUI->DoubleBevelThickness;
+    float Thickness = gUI->TripleBevelThickness;
 
     Rr_Rect Rect;
     switch (ResizeType)
@@ -4125,7 +4093,7 @@ static inline bool Rr_UIPushWindowLayout(
 
         if (!Rr_UIWindowNoBorders(Window))
         {
-            Layout->Rect.Extent.Y += gUI->DoubleBevelThickness * 2.0f;
+            Layout->Rect.Extent.Y += gUI->TripleBevelThickness * 2.0f;
         }
     }
 
@@ -4133,7 +4101,7 @@ static inline bool Rr_UIPushWindowLayout(
 
     if (!Rr_UIWindowNoBorders(Window))
     {
-        Layout->Rect = Rr_ResizeRect(&Layout->Rect, -gUI->DoubleBevelThickness);
+        Layout->Rect = Rr_ResizeRect(&Layout->Rect, -gUI->TripleBevelThickness);
     }
 
     /* Set initial cursor offset. */
@@ -4669,7 +4637,7 @@ void Rr_UIEndWindow(void)
     Rr_Rect TotalClipRect = Layout->Rect;
     if (Borders)
     {
-        TotalClipRect = Rr_ResizeRect(&Layout->Rect, gUI->DoubleBevelThickness);
+        TotalClipRect = Rr_ResizeRect(&Layout->Rect, gUI->TripleBevelThickness);
     }
 
     /* Since window wasn't collapsed, current clip rect refers to
@@ -4709,11 +4677,11 @@ void Rr_UIEndWindow(void)
 
     if (Borders)
     {
-        Rr_UIDrawTripleBevel(
+        Rr_UIDrawTripleBevelFrame(
             &TotalClipRect,
             Rr_UIShouldHightlightWindow(Window) ? &gUI->Colors.SelectedOutline
                                                 : &gUI->Colors.Outline,
-            gUI->DoubleBevelThickness);
+            gUI->TripleBevelThickness);
     }
 
     /* NOTE: Forward scroll wheel behavior to the top-level parent. */
@@ -4745,7 +4713,7 @@ void Rr_UIEndWindow(void)
 
         if (Borders)
         {
-            Extent = Rr_AddV2F(Extent, gUI->DoubleBevelThickness * 2.0f);
+            Extent = Rr_AddV2F(Extent, gUI->TripleBevelThickness * 2.0f);
         }
 
         Rr_UISetWindowExtentChecked(Layout, Extent);
@@ -4835,7 +4803,7 @@ void Rr_UIEndWindow(void)
 
                 if (!Rr_UIWindowNoBorders(Window))
                 {
-                    ExtentThisFrame.Y += gUI->DoubleBevelThickness * 2.0f;
+                    ExtentThisFrame.Y += gUI->TripleBevelThickness * 2.0f;
                 }
             }
             Rr_UIAdvance(ExtentThisFrame);
@@ -5162,7 +5130,7 @@ void Rr_UISeparator(void)
     Rr_Rect Rect;
     Rect.Extent = (Rr_Vec2){
         AvailableWidth,
-        gUI->DoubleBevelThickness * 0.5f,
+        gUI->TripleBevelThickness * 0.5f,
     };
     Rect.Offset = (Rr_Vec2){
         Layout->Cursor.X + AvailableWidth * 0.5f - Rect.Extent.X * 0.5f,
@@ -7976,7 +7944,7 @@ static inline void Rr_UIColorPickerPopup(
 
     float SVSelectorSize = Rr_UICurrentLineHeight() * 15.0f;
     float SVSelectorActiveSize =
-        SVSelectorSize - gUI->DoubleBevelThickness * 2.0f;
+        SVSelectorSize - gUI->TripleBevelThickness * 2.0f;
 
     Rr_Vec2 WindowPadding = Rr_UICurrentWindowPadding();
 
@@ -7997,7 +7965,7 @@ static inline void Rr_UIColorPickerPopup(
     /* Draw saturation and value selector. */
 
     Rr_Vec2 SVCursor =
-        Rr_AddV2(Layout->Cursor, Rr_V2F(gUI->DoubleBevelThickness));
+        Rr_AddV2(Layout->Cursor, Rr_V2F(gUI->TripleBevelThickness));
 
     static Rr_Vec3 StaticHSV;
     if (Window->OpenedThisFrame)
@@ -8050,10 +8018,10 @@ static inline void Rr_UIColorPickerPopup(
         Rr_UIPopSubClipRect(Layout);
     }
 
-    Rr_UIDrawDoubleBevel(
+    Rr_UIDrawTripleBevelFrame(
         &(Rr_Rect){ Layout->Cursor, Rr_V2F(SVSelectorSize) },
         &gUI->Colors.SelectedOutline,
-        gUI->DoubleBevelThickness);
+        gUI->TripleBevelThickness);
 
     float SVSelectorCircleSize = SVSelectorSize * 0.035f;
 
@@ -8105,10 +8073,10 @@ static inline void Rr_UIColorPickerPopup(
     float HSelectorWidth = SVSelectorSize * 0.15f;
 
     Rr_Rect HSelectorRect = {
-        .Offset = Rr_AddV2F(Layout->Cursor, gUI->DoubleBevelThickness),
+        .Offset = Rr_AddV2F(Layout->Cursor, gUI->TripleBevelThickness),
         .Extent = Rr_SubV2F(
             Rr_V2(HSelectorWidth, SVSelectorSize),
-            gUI->DoubleBevelThickness * 2.0f),
+            gUI->TripleBevelThickness * 2.0f),
     };
 
     Rr_UIPushSubClipRect(Layout, &Layout->CurrentClipRect->Rect);
@@ -8131,11 +8099,11 @@ static inline void Rr_UIColorPickerPopup(
     Rr_UIPopSubClipRect(Layout);
 
     Rr_Rect HBevelRect =
-        Rr_ResizeRect(&HSelectorRect, gUI->DoubleBevelThickness);
-    Rr_UIDrawDoubleBevel(
+        Rr_ResizeRect(&HSelectorRect, gUI->TripleBevelThickness);
+    Rr_UIDrawTripleBevelFrame(
         &HBevelRect,
         &gUI->Colors.SelectedOutline,
-        gUI->DoubleBevelThickness);
+        gUI->TripleBevelThickness);
 
     /* Draw hue handles. */
 
@@ -8143,7 +8111,7 @@ static inline void Rr_UIColorPickerPopup(
     float TriangleSize = SVSelectorSize * 0.035f;
     Rr_Vec2 LeftTriangleOffset = Rr_V2(
         HSelectorRect.Offset.X + TriangleSize * 0.5f -
-            gUI->DoubleBevelThickness,
+            gUI->TripleBevelThickness,
         HSelectorRect.Offset.Y + StaticHSV.X * SVSelectorActiveSize);
     Rr_UIDrawFitTriangleFilled(
         LeftTriangleOffset,
@@ -8157,7 +8125,7 @@ static inline void Rr_UIColorPickerPopup(
         &gUI->Colors.Foreground);
     Rr_Vec2 RightTriangleOffset = Rr_V2(
         HSelectorRect.Offset.X + HSelectorWidth - TriangleSize * 0.5f -
-            gUI->DoubleBevelThickness,
+            gUI->TripleBevelThickness,
         HSelectorRect.Offset.Y + StaticHSV.X * SVSelectorActiveSize);
     Rr_UIDrawFitTriangleFilled(
         RightTriangleOffset,
@@ -8187,7 +8155,7 @@ static inline void Rr_UIColorPickerPopup(
     }
 
     Rr_UIAdvance(
-        Rr_AddV2F(HSelectorRect.Extent, gUI->DoubleBevelThickness * 2.0f));
+        Rr_AddV2F(HSelectorRect.Extent, gUI->TripleBevelThickness * 2.0f));
 
     Rr_UIEndHorizontal();
 
@@ -8506,7 +8474,7 @@ bool Rr_UICombobox(
         Rr_Vec2 PopupPosition = ButtonPosition;
         PopupPosition.Y += ButtonExtent.Height + gUI->FrameThickness;
         Rr_UIPushWindowPadding(
-            Rr_V2(gUI->InputFieldPadding.X - gUI->DoubleBevelThickness, 0.0f));
+            Rr_V2(gUI->InputFieldPadding.X - gUI->TripleBevelThickness, 0.0f));
         Rr_UIPushContentsMargin(Rr_V2F(0.0f));
         Rr_UISetNextWindowOffset(PopupPosition);
         Rr_UIBeginPopupWindow(TitleHash, COMBOBOX_POPUP_FLAGS);
