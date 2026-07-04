@@ -2443,7 +2443,7 @@ static inline Rr_Vec2 Rr_UIDrawText(
 
     Rr_EndFrameSection("Rr.UI.DrawText");
 
-    return (Rr_Vec2){ .Width = MaxX, .Height = CurrentY + LineHeight };
+    return Rr_CeilV2(Rr_V2(MaxX, CurrentY + LineHeight));
 }
 
 static inline Rr_Vec2 Rr_UICalculateTextSize(
@@ -2996,6 +2996,19 @@ void Rr_UIAdvance(Rr_Vec2 Size)
     }
 }
 
+static inline bool Rr_UIShouldHighlightWindow(Rr_UIWindow *Window)
+{
+    bool TopLevelClickParent =
+        gUI->ClickParent &&
+        gUI->ClickParent->TopLevelParent == Window->TopLevelParent;
+    bool TopLevelPopupParent =
+        gUI->PopupWindowOpen &&
+        gUI->PopupWindowParent->TopLevelParent == Window->TopLevelParent;
+    bool Popup = gUI->PopupWindowOpen && &gUI->PopupWindow == Window;
+
+    return TopLevelClickParent || TopLevelPopupParent || Popup;
+}
+
 static inline void Rr_UISetWindowOffsetChecked(
     Rr_UILayout *Layout,
     Rr_Vec2 Offset)
@@ -3078,7 +3091,9 @@ static inline bool Rr_UIAddCollapseButton(Rr_UILayout *Layout)
     Rr_UIDrawTripleBevel(
         &ButtonRect,
         gUI->TripleBevelThickness,
-        &gUI->Colors.TitleCollapseButtonBackground,
+        Rr_UIShouldHighlightWindow(Window)
+            ? &gUI->Colors.TitleBackground
+            : &gUI->Colors.TitleBackgroundInactive,
         ClickResult.Held && ClickResult.Hovered);
 
     Rr_Vec2 TriangleCenter = Rr_AddV2(
@@ -3134,7 +3149,9 @@ static inline void Rr_UIAddCloseButton(Rr_UILayout *Layout)
     Rr_UIDrawTripleBevel(
         &ButtonRect,
         gUI->TripleBevelThickness,
-        &gUI->Colors.TitleCloseButtonBackground,
+        Rr_UIShouldHighlightWindow(Layout->Window)
+            ? &gUI->Colors.TitleCloseButtonBackground
+            : &gUI->Colors.TitleBackgroundInactive2,
         ClickResult.Held && ClickResult.Hovered);
 
     Rr_UIDrawRotatedQuad(
@@ -3314,10 +3331,17 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UILayout *Layout, bool *Open)
         }
     }
 
-    Rr_Vec4 Colors[4] = { gUI->Colors.TitleBackground,
-                          gUI->Colors.TitleBackground2,
-                          gUI->Colors.TitleBackground,
-                          gUI->Colors.TitleBackground2 };
+    bool Highlight = Rr_UIShouldHighlightWindow(Window);
+    Rr_Vec4 Colors[4] = {
+        Highlight ? gUI->Colors.TitleBackground
+                  : gUI->Colors.TitleBackgroundInactive,
+        Highlight ? gUI->Colors.TitleBackground2
+                  : gUI->Colors.TitleBackgroundInactive2,
+        Highlight ? gUI->Colors.TitleBackground
+                  : gUI->Colors.TitleBackgroundInactive,
+        Highlight ? gUI->Colors.TitleBackground2
+                  : gUI->Colors.TitleBackgroundInactive2,
+    };
     Rr_UITripleBevelEx(
         &BevelPrimitive,
         &TitleBarRect,
@@ -3518,7 +3542,12 @@ static inline void Rr_UIAddResizeHandles(Rr_UILayout *Layout)
     Rr_UIClickResult ClickResult =
         Rr_UIAddResizeHandle(Layout, "Rr.UI.ResizeSE", RR_UI_RESIZE_TYPE_SE);
 
-    if (ClickResult.Held)
+    if (!Rr_UIShouldHighlightWindow(Window))
+    {
+        Layout->DeferredResizeHandleColor =
+            &gUI->Colors.TitleBackgroundInactive;
+    }
+    else if (ClickResult.Held)
     {
         Layout->DeferredResizeHandleColor = &gUI->Colors.ResizeHandleHeld;
     }
@@ -3888,17 +3917,6 @@ void Rr_UISetNextWindowMaxExtent(Rr_Vec2 Extent)
 void Rr_UISetNextWindowCreateCollapsed(bool Collapsed)
 {
     gUI->NextWindowFlags.CreateCollapsed = Collapsed ? 1 : -1;
-}
-
-static inline bool Rr_UIShouldHightlightWindow(Rr_UIWindow *Window)
-{
-    bool TopLevelClickParent = gUI->ClickParent && /* */
-                               gUI->ClickParent->TopLevelParent == Window;
-    bool TopLevelPopupParent = gUI->PopupWindowOpen &&
-                               gUI->PopupWindowParent->TopLevelParent == Window;
-    bool Popup = gUI->PopupWindowOpen && &gUI->PopupWindow == Window;
-
-    return TopLevelClickParent || TopLevelPopupParent || Popup;
 }
 
 static inline void Rr_UIPutWindowOnTop(Rr_UIWindow *Window)
@@ -4567,8 +4585,7 @@ static inline void Rr_UIDrawDarkeners(Rr_UILayout *Layout, int Component)
     float EndAlpha = RR_CLAMP(
         0.0f,
         (ContentsExtent - ContentsRect.Extent.Elements[Component] -
-         Scroll.Elements[Component] +
-         Layout->WindowPadding.Elements[Component]) /
+         Scroll.Elements[Component]) /
             DarkenSize,
         1.0f);
     if (EndAlpha > 0.0f)
@@ -4663,16 +4680,6 @@ void Rr_UIEndWindow(void)
                 Layout->DeferredResizeHandleColor);
         }
     }
-
-    // if (Borders)
-    // {
-    //     Rr_UIDrawTripleBevelFrame(
-    //         &TotalClipRect,
-    //         Rr_UIShouldHightlightWindow(Window) ?
-    //         &gUI->Colors.SelectedOutline
-    //                                             : &gUI->Colors.Outline,
-    //         gUI->TripleBevelThickness);
-    // }
 
     /* NOTE: Forward scroll wheel behavior to the top-level parent. */
 
@@ -5053,7 +5060,7 @@ void Rr_UIPopWidgetExtent(void)
 
 void Rr_UIPushWidgetWidth(float Width)
 {
-    *RR_PUSH_INTO_ARRAY(&gUI->WidgetWidthStack, gUI->FrameArena) = Width;
+    *RR_PUSH_INTO_ARRAY(&gUI->WidgetWidthStack, gUI->FrameArena) = ceilf(Width);
 }
 
 void Rr_UIPopWidgetWidth(void)
@@ -5063,7 +5070,8 @@ void Rr_UIPopWidgetWidth(void)
 
 void Rr_UIPushWidgetHeight(float Height)
 {
-    *RR_PUSH_INTO_ARRAY(&gUI->WidgetHeightStack, gUI->FrameArena) = Height;
+    *RR_PUSH_INTO_ARRAY(&gUI->WidgetHeightStack, gUI->FrameArena) =
+        ceilf(Height);
 }
 
 void Rr_UIPopWidgetHeight(void)
@@ -5114,7 +5122,6 @@ void Rr_UISeparator(void)
     Rr_UIAssertWindow();
     Rr_UILayout *Layout = Rr_UICurrentLayout();
     Rr_UIAssertNoHorizontal(Layout);
-    Rr_UIWindow *Window = Layout->Window;
 
     float AvailableWidth = Rr_UIGetAvailableContentsWidth(Layout);
 
@@ -5127,17 +5134,9 @@ void Rr_UISeparator(void)
         Layout->Cursor.X + AvailableWidth * 0.5f - Rect.Extent.X * 0.5f,
         Layout->Cursor.Y + gUI->SeparatorLineHeight * 0.5f - Rect.Extent.Y,
     };
-    Rr_Vec4 *Color = Rr_UIShouldHightlightWindow(Window)
-                         ? &gUI->Colors.SelectedOutline
-                         : &gUI->Colors.Outline;
-    Rr_Vec4 ColorLight;
-    ColorLight.RGB =
-        Rr_LerpV3(Color->RGB, gUI->Style.BevelIntensityLight, RR_UI_VEC3_ONE);
-    ColorLight.A = 1.0f;
-    Rr_Vec4 ColorDark;
-    ColorDark.RGB =
-        Rr_LerpV3(Color->RGB, gUI->Style.BevelIntensityDark, RR_UI_VEC3_ZERO);
-    ColorDark.A = 1.0f;
+    Rr_Vec4 *Color = &gUI->Colors.Outline;
+    Rr_Vec4 ColorLight = Rr_UIBevelShade(Color->RGB, true);
+    Rr_Vec4 ColorDark = Rr_UIBevelShade(Color->RGB, false);
     Rr_UIDrawSolidQuad(&Rect, &ColorLight);
     Rect.Offset.Y += Rect.Extent.Y;
     Rr_UIDrawSolidQuad(&Rect, &ColorDark);
@@ -8896,7 +8895,9 @@ void Rr_UISetDefaultTheme(void)
     Colors->TitleBackground2 =
         Rr_V4(0.034855f, 0.159902f, 0.243268f, 1.000000f);
     Colors->TitleBackgroundInactive =
-        Rr_V4(0.182623f, 0.277109f, 0.338889f, 1.000000f);
+        Rr_V4(0.347304f, 0.423222f, 0.473259f, 1.000000f);
+    Colors->TitleBackgroundInactive2 =
+        Rr_V4(0.117176f, 0.162259f, 0.193254f, 1.000000f);
     Colors->TitleCloseButtonBackground =
         Rr_V4(0.839551f, 0.250613f, 0.313724f, 1.000000f);
     Colors->TitleCollapseButtonBackground =

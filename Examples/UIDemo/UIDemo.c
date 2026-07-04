@@ -117,6 +117,7 @@ static void PrintTheme(void)
     PrintColor("TitleBackground", &Colors->TitleBackground);
     PrintColor("TitleBackground2", &Colors->TitleBackground2);
     PrintColor("TitleBackgroundInactive", &Colors->TitleBackgroundInactive);
+    PrintColor("TitleBackgroundInactive2", &Colors->TitleBackgroundInactive2);
     PrintColor("TitleBackgroundTabs", &Colors->TitleBackgroundTabs);
     PrintColor("TitleCloseButtonBackground", &Colors->TitleCloseButtonBackground);
     PrintColor("TitleCollapseButtonBackground", &Colors->TitleCollapseButtonBackground);
@@ -193,6 +194,7 @@ static void ThemeEditorWindow()
         Rr_UIInputColor4("Title Background", Colors->TitleBackground.Elements);
         Rr_UIInputColor4("Title Background 2", Colors->TitleBackground2.Elements);
         Rr_UIInputColor4("Title Background Inactive", Colors->TitleBackgroundInactive.Elements);
+        Rr_UIInputColor4("Title Background Inactive 2", Colors->TitleBackgroundInactive2.Elements);
         Rr_UIInputColor4("Title Background Tabs", Colors->TitleBackgroundTabs.Elements);
         Rr_UIInputColor4("Title Close Button", Colors->TitleCloseButtonBackground.Elements);
         Rr_UIInputColor4("Title Collapse Button", Colors->TitleCollapseButtonBackground.Elements);
