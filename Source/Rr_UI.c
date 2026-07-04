@@ -1855,8 +1855,8 @@ static inline void Rr_UIBevelFrame(
     }
 }
 
-#define RR_UI_TRIPLE_BEVEL_FRAME_VERTEX_COUNT (16)
-#define RR_UI_TRIPLE_BEVEL_FRAME_INDEX_COUNT  (48)
+#define RR_UI_TRIPLE_BEVEL_FRAME_VERTEX_COUNT (20)
+#define RR_UI_TRIPLE_BEVEL_FRAME_INDEX_COUNT  (72)
 
 static inline Rr_UIPrimitive Rr_UIReserveTripleBevelFrame(void)
 {
@@ -1881,95 +1881,102 @@ static inline void Rr_UITripleBevelFrame(
     Rr_UIVertex *Vertices = Primitive->Vertices;
     Rr_UIIndex *Indices = Primitive->Indices;
 
-    float HalfThickness = Thickness * 0.5f;
+    float Thickness35 = Thickness * 0.35f;
+    float Thickness65 = Thickness * 0.65f;
+    Rr_Vec2 Offset = Rect->Offset;
+    Rr_Vec2 Extent = Rect->Extent;
 
     Vertices[0] = (Rr_UIVertex){
-        .Position = Rect->Offset,
         .Color = Light,
     };
     Vertices[1] = (Rr_UIVertex){
-        .Position = Rr_AddV2(Rect->Offset, Rr_V2(Rect->Extent.X, 0.0f)),
+        .Position = Rr_V2(Extent.X, 0.0f),
         .Color = Light,
     };
     Vertices[2] = (Rr_UIVertex){
-        .Position = Rr_AddV2(Rect->Offset, Rr_V2(Rect->Extent.X, 0.0f)),
+        .Position = Rr_V2(Extent.X, 0.0f),
         .Color = Dark,
     };
     Vertices[3] = (Rr_UIVertex){
-        .Position = Rr_AddV2F(Rect->Offset, HalfThickness),
+        .Position = Rr_V2F(Thickness35),
         .Color = *Normal,
     };
     Vertices[4] = (Rr_UIVertex){
-        .Position = Rr_AddV2(
-            Rect->Offset,
-            Rr_V2(Rect->Extent.X - HalfThickness, HalfThickness)),
+        .Position = Rr_V2(Extent.X - Thickness35, Thickness35),
         .Color = *Normal,
     };
     Vertices[5] = (Rr_UIVertex){
-        .Position = Rr_AddV2F(Rect->Offset, Thickness),
-        .Color = Dark,
+        .Position = Rr_V2F(Thickness65),
+        .Color = *Normal,
     };
     Vertices[6] = (Rr_UIVertex){
-        .Position = Rr_AddV2(
-            Rect->Offset,
-            Rr_V2(Rect->Extent.X - Thickness, Thickness)),
-        .Color = Dark,
+        .Position = Rr_V2(Extent.X - Thickness65, Thickness65),
+        .Color = *Normal,
     };
     Vertices[7] = (Rr_UIVertex){
-        .Position = Rr_AddV2(
-            Rect->Offset,
-            Rr_V2(Rect->Extent.X - Thickness, Thickness)),
-        .Color = Light,
+        .Position = Rr_V2F(Thickness),
+        .Color = Dark,
     };
     Vertices[8] = (Rr_UIVertex){
-        .Position = Rr_AddV2(
-            Rect->Offset,
-            Rr_V2(Thickness, Rect->Extent.Y - Thickness)),
+        .Position = Rr_V2(Extent.X - Thickness, Thickness),
         .Color = Dark,
     };
     Vertices[9] = (Rr_UIVertex){
-        .Position = Rr_AddV2(
-            Rect->Offset,
-            Rr_V2(Thickness, Rect->Extent.Y - Thickness)),
+        .Position = Rr_V2(Extent.X - Thickness, Thickness),
         .Color = Light,
     };
     Vertices[10] = (Rr_UIVertex){
-        .Position = Rr_AddV2(
-            Rect->Offset,
-            Rr_V2(Rect->Extent.X - Thickness, Rect->Extent.Y - Thickness)),
-        .Color = Light,
-    };
-    Vertices[11] = (Rr_UIVertex){
-        .Position = Rr_AddV2(
-            Rect->Offset,
-            Rr_V2(HalfThickness, Rect->Extent.Y - HalfThickness)),
-        .Color = *Normal,
-    };
-    Vertices[12] = (Rr_UIVertex){
-        .Position = Rr_AddV2(
-            Rect->Offset,
-            Rr_V2(
-                Rect->Extent.X - HalfThickness,
-                Rect->Extent.Y - HalfThickness)),
-        .Color = *Normal,
-    };
-    Vertices[13] = (Rr_UIVertex){
-        .Position = Rr_AddV2(Rect->Offset, Rr_V2(0.0f, Rect->Extent.Y)),
-        .Color = Light,
-    };
-    Vertices[14] = (Rr_UIVertex){
-        .Position = Rr_AddV2(Rect->Offset, Rr_V2(0.0f, Rect->Extent.Y)),
+        .Position = Rr_V2(Thickness, Extent.Y - Thickness),
         .Color = Dark,
     };
+    Vertices[11] = (Rr_UIVertex){
+        .Position = Rr_V2(Thickness, Extent.Y - Thickness),
+        .Color = Light,
+    };
+    Vertices[12] = (Rr_UIVertex){
+        .Position = Rr_V2(Extent.X - Thickness, Extent.Y - Thickness),
+        .Color = Light,
+    };
+    Vertices[13] = (Rr_UIVertex){
+        .Position = Rr_V2(Thickness65, Extent.Y - Thickness65),
+        .Color = *Normal,
+    };
+    Vertices[14] = (Rr_UIVertex){
+        .Position = Rr_V2(Extent.X - Thickness65, Extent.Y - Thickness65),
+        .Color = *Normal,
+    };
     Vertices[15] = (Rr_UIVertex){
-        .Position = Rr_AddV2(Rect->Offset, Rect->Extent),
+        .Position = Rr_V2(Thickness35, Extent.Y - Thickness35),
+        .Color = *Normal,
+    };
+    Vertices[16] = (Rr_UIVertex){
+        .Position = Rr_V2(Extent.X - Thickness35, Extent.Y - Thickness35),
+        .Color = *Normal,
+    };
+    Vertices[17] = (Rr_UIVertex){
+        .Position = Rr_V2(0.0f, Extent.Y),
+        .Color = Light,
+    };
+    Vertices[18] = (Rr_UIVertex){
+        .Position = Rr_V2(0.0f, Extent.Y),
+        .Color = Dark,
+    };
+    Vertices[19] = (Rr_UIVertex){
+        .Position = Extent,
         .Color = Dark,
     };
 
+    for (size_t Index = 0; Index < RR_UI_TRIPLE_BEVEL_FRAME_VERTEX_COUNT;
+         ++Index)
+    {
+        Vertices[Index].Position = Rr_AddV2(Vertices[Index].Position, Offset);
+    }
+
     static Rr_UIIndex const TRIPLE_BEVEL_FRAME_INDICES[] = {
-        0,  1,  4, 0,  4,  3,  3,  4,  6,  3,  6,  5,  0,  3,  11, 0,
-        11, 13, 3, 5,  11, 11, 5,  8,  7,  4,  10, 10, 4,  12, 4,  2,
-        12, 12, 2, 15, 9,  10, 11, 11, 10, 12, 14, 11, 12, 14, 12, 15
+        0,  1,  4,  0,  4,  3,  3,  4,  6,  3,  6,  5,  5,  6,  8,  5,  8,  7,
+        0,  3,  15, 0,  15, 17, 3,  5,  13, 3,  13, 15, 5,  7,  10, 5,  10, 13,
+        9,  6,  14, 9,  14, 12, 6,  4,  16, 6,  16, 14, 4,  2,  19, 4,  19, 16,
+        11, 12, 14, 11, 14, 13, 13, 14, 16, 13, 16, 15, 15, 16, 19, 15, 19, 18
     };
 
     for (size_t Index = 0; Index < RR_UI_TRIPLE_BEVEL_FRAME_INDEX_COUNT;
@@ -2915,7 +2922,7 @@ static inline void Rr_UIRecalculateStyle(void)
         RR_UI_ROUND_V2(Rr_MulV2F(Style->ButtonPadding, LineHeight));
     gUI->BevelThickness = ceilf(LineHeight * Style->BevelThickness);
     gUI->TripleBevelThickness =
-        RR_UI_ROUND(LineHeight * Style->DoubleBevelThickness);
+        roundf(LineHeight * Style->TripleBevelThickness);
     gUI->InputFieldPadding =
         RR_UI_ROUND_V2(Rr_MulV2F(Style->InputFieldPadding, LineHeight));
 
@@ -8861,7 +8868,7 @@ void Rr_UISetDefaultTheme(void)
     Style->ComponentMargin = 0.200000f;
     Style->ScrollbarAreaWidth = 0.600000f;
     Style->BevelThickness = 0.050000f;
-    Style->DoubleBevelThickness = 0.100000f;
+    Style->TripleBevelThickness = 0.185000f;
     Style->BevelIntensityLight = 0.300000f;
     Style->BevelIntensityDark = 0.650000f;
     Style->AlignedWidgetTitleMargin = 0.250000f;

@@ -91,7 +91,7 @@ static void PrintTheme(void)
     PrintStyle("ComponentMargin", Style->ComponentMargin);
     PrintStyle("ScrollbarAreaWidth", Style->ScrollbarAreaWidth);
     PrintStyle("BevelThickness", Style->BevelThickness);
-    PrintStyle("DoubleBevelThickness", Style->DoubleBevelThickness);
+    PrintStyle("DoubleBevelThickness", Style->TripleBevelThickness);
     PrintStyle("BevelIntensityLight", Style->BevelIntensityLight);
     PrintStyle("BevelIntensityDark", Style->BevelIntensityDark);
     PrintStyle("AlignedWidgetTitleMargin", Style->AlignedWidgetTitleMargin);
@@ -164,7 +164,7 @@ static void ThemeEditorWindow()
         Rr_UIInputFloat2ZO("Contents Margin", Style->ContentsMargin.Elements);
         Rr_UIInputFloatZO("Component Margin", &Style->ComponentMargin);
         Rr_UIInputFloatZO("Bevel Thickness", &Style->BevelThickness);
-        Rr_UIInputFloatZO("Double Bevel Thickness", &Style->DoubleBevelThickness);
+        Rr_UIInputFloatZO("Double Bevel Thickness", &Style->TripleBevelThickness);
         Rr_UIInputFloatZO("Bevel Intensity Light", &Style->BevelIntensityLight);
         Rr_UIInputFloatZO("Bevel Intensity Dark", &Style->BevelIntensityDark);
         Rr_UIInputFloatZO("Flexible Title Margin", &Style->AlignedWidgetTitleMargin);
@@ -329,7 +329,7 @@ static void SetPinkTheme()
     Style->ComponentMargin = 0.200000f;
     Style->ScrollbarAreaWidth = 0.750000f;
     Style->BevelThickness = 0.050000f;
-    Style->DoubleBevelThickness = 0.100000f;
+    Style->TripleBevelThickness = 0.100000f;
     Style->BevelIntensityLight = 0.300000f;
     Style->BevelIntensityDark = 0.650000f;
     Style->AlignedWidgetTitleMargin = 0.250000f;
