@@ -4575,7 +4575,7 @@ static inline void Rr_UIDrawDarkeners(Rr_UILayout *Layout, int Component)
         RR_CLAMP(0.0f, Scroll.Elements[Component] / DarkenSize, 1.0f);
     if (BeginAlpha > 0.0f)
     {
-        ColorA.W = BeginAlpha;
+        ColorA.W = BeginAlpha * ScrolloffBackground->W;
         ColorB.W = 0.0f;
         DRAW_FUNCS[Component](&DarkenRect, &ColorA, &ColorB);
     }
@@ -4593,7 +4593,7 @@ static inline void Rr_UIDrawDarkeners(Rr_UILayout *Layout, int Component)
             ContentsRect.Extent.Elements[Component] - DarkenSize;
 
         ColorA.W = 0.0f;
-        ColorB.W = EndAlpha;
+        ColorB.W = EndAlpha * ScrolloffBackground->W;
         DRAW_FUNCS[Component](&DarkenRect, &ColorA, &ColorB);
     }
 }
