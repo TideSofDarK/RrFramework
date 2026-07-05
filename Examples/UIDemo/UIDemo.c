@@ -107,8 +107,6 @@ static void PrintTheme(void)
     PrintColor("Background", &Colors->Background);
     PrintColor("ChildBackground", &Colors->ChildBackground);
     PrintColor("ScrolloffBackground", &Colors->ScrolloffBackground);
-    PrintColor("Outline", &Colors->Outline);
-    PrintColor("SelectedOutline", &Colors->SelectedOutline);
     PrintColor("ListEntryBackgroundA", &Colors->ListEntryBackgroundA);
     PrintColor("ListEntryBackgroundB", &Colors->ListEntryBackgroundB);
     PrintColor("ListEntryHovered", &Colors->ListEntryHovered);
@@ -131,7 +129,6 @@ static void PrintTheme(void)
     PrintColor("ResizeHandleHeld", &Colors->ResizeHandleHeld);
 
     PrintColor("ButtonNormal", &Colors->ButtonNormal);
-    PrintColor("ButtonHovered", &Colors->ButtonHovered);
     PrintColor("ButtonHeld", &Colors->ButtonHeld);
     PrintColor("ButtonDisabled", &Colors->ButtonDisabled);
 
@@ -182,8 +179,6 @@ static void ThemeEditorWindow()
         Rr_UIInputColor4("Background", Colors->Background.Elements);
         Rr_UIInputColor4("Child Background", Colors->ChildBackground.Elements);
         Rr_UIInputColor4("Scrolloff Background", Colors->ScrolloffBackground.Elements);
-        Rr_UIInputColor4("Outline", Colors->Outline.Elements);
-        Rr_UIInputColor4("Selected Outline", Colors->SelectedOutline.Elements);
         Rr_UIInputColor4("List Entry Background A", Colors->ListEntryBackgroundA.Elements);
         Rr_UIInputColor4("List Entry Background B", Colors->ListEntryBackgroundB.Elements);
         Rr_UIInputColor4("List Entry Hovered", Colors->ListEntryHovered.Elements);
@@ -286,8 +281,6 @@ static void SetOliveTheme()
     Colors->Background = Rr_V4(0.666667f, 0.666667f, 0.666667f, 1.000000f);
     Colors->ChildBackground = Rr_V4(0.752941f, 0.752941f, 0.752941f, 1.000000f);
     Colors->ScrolloffBackground = Rr_V4(0.666667f, 0.666667f, 0.666667f, 1.000000f);
-    Colors->Outline = Rr_V4(0.627451f, 0.627451f, 0.627451f, 1.000000f);
-    Colors->SelectedOutline = Rr_V4(0.564706f, 0.592157f, 0.521569f, 1.000000f);
     Colors->ListEntryBackgroundA = Rr_V4(0.752941f, 0.752941f, 0.752941f, 1.000000f);
     Colors->ListEntryBackgroundB = Rr_V4(0.727996f, 0.727996f, 0.727996f, 1.000000f);
     Colors->ListEntryHovered = Rr_V4(0.776471f, 0.854902f, 0.486275f, 1.000000f);
@@ -304,7 +297,6 @@ static void SetOliveTheme()
     Colors->ResizeHandleHovered = Rr_V4(0.474510f, 0.505882f, 0.368627f, 1.000000f);
     Colors->ResizeHandleHeld = Rr_V4(0.568627f, 0.619608f, 0.376471f, 1.000000f);
     Colors->ButtonNormal = Rr_V4(0.777635f, 0.777635f, 0.777635f, 1.000000f);
-    Colors->ButtonHovered = Rr_V4(0.781696f, 0.781696f, 0.781696f, 1.000000f);
     Colors->ButtonHeld = Rr_V4(0.686275f, 0.686275f, 0.686275f, 1.000000f);
     Colors->ButtonDisabled = Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
     Colors->ComboboxButtonNormal = Rr_V4(0.666667f, 0.666667f, 0.666667f, 1.000000f);
@@ -346,8 +338,6 @@ static void SetPinkTheme()
     Colors->Background = Rr_V4(0.153051f, 0.142532f, 0.186284f, 1.000000f);
     Colors->ChildBackground = Rr_V4(0.152941f, 0.141176f, 0.184314f, 1.000000f);
     Colors->ScrolloffBackground = Rr_V4(0.152941f, 0.141176f, 0.184314f, 1.000000f);
-    Colors->Outline = Rr_V4(0.152941f, 0.141176f, 0.184314f, 1.000000f);
-    Colors->SelectedOutline = Rr_V4(0.314730f, 0.286137f, 0.390978f, 1.000000f);
     Colors->ListEntryBackgroundA = Rr_V4(0.334322f, 0.277384f, 0.413703f, 1.000000f);
     Colors->ListEntryBackgroundB = Rr_V4(0.284174f, 0.235776f, 0.351648f, 1.000000f);
     Colors->ListEntryHovered = Rr_V4(0.463433f, 0.343573f, 0.643222f, 1.000000f);
@@ -365,7 +355,6 @@ static void SetPinkTheme()
     Colors->ResizeHandleHovered = Rr_V4(0.717092f, 0.636152f, 0.781843f, 1.000000f);
     Colors->ResizeHandleHeld = Rr_V4(0.713726f, 0.635294f, 0.780392f, 1.000000f);
     Colors->ButtonNormal = Rr_V4(0.334322f, 0.277384f, 0.413703f, 1.000000f);
-    Colors->ButtonHovered = Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);
     Colors->ButtonHeld = Rr_V4(0.463433f, 0.343573f, 0.643222f, 1.000000f);
     Colors->ButtonDisabled = Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
     Colors->ComboboxButtonNormal = Rr_V4(0.196078f, 0.133333f, 0.231373f, 1.000000f);

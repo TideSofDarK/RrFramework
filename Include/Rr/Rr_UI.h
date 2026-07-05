@@ -90,8 +90,6 @@ struct Rr_UIColors
     Rr_Vec4 Background;
     Rr_Vec4 ChildBackground;
     Rr_Vec4 ScrolloffBackground;
-    Rr_Vec4 Outline;
-    Rr_Vec4 SelectedOutline;
     Rr_Vec4 ListEntryBackgroundA;
     Rr_Vec4 ListEntryBackgroundB;
     Rr_Vec4 ListEntryHovered;
@@ -114,7 +112,6 @@ struct Rr_UIColors
     Rr_Vec4 ResizeHandleHeld;
 
     Rr_Vec4 ButtonNormal;
-    Rr_Vec4 ButtonHovered;
     Rr_Vec4 ButtonHeld;
     Rr_Vec4 ButtonDisabled;
 
@@ -361,10 +358,25 @@ extern bool RR_CC
 Rr_UIInputIntRange(char const *Title, int32_t *Value, int32_t Min, int32_t Max);
 
 extern bool RR_CC Rr_UIInputInt2(char const *Title, int32_t *Values);
+extern bool RR_CC Rr_UIInputInt2Range(
+    char const *Title,
+    int32_t *Values,
+    int32_t const *MinValues,
+    int32_t const *MaxValues);
 
 extern bool RR_CC Rr_UIInputInt3(char const *Title, int32_t *Values);
+extern bool RR_CC Rr_UIInputInt3Range(
+    char const *Title,
+    int32_t *Values,
+    int32_t const *MinValues,
+    int32_t const *MaxValues);
 
 extern bool RR_CC Rr_UIInputInt4(char const *Title, int32_t *Values);
+extern bool RR_CC Rr_UIInputInt4Range(
+    char const *Title,
+    int32_t *Values,
+    int32_t const *MinValues,
+    int32_t const *MaxValues);
 
 extern bool RR_CC Rr_UIInputInt64(char const *Title, int64_t *Value);
 

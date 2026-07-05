@@ -59,12 +59,15 @@
 
 #define RR_UI_SCALAR_BUFFER_SIZE 32
 
+static Rr_Vec3 const RR_UI_VEC3_ZERO = { 0.0f, 0.0f, 0.0f };
+static Rr_Vec3 const RR_UI_VEC3_ONE = { 1.0f, 1.0f, 1.0f };
+
 static Rr_Vec4 const RR_UI_VEC4_NEG = { -1.0f, -1.0f, -1.0f, -1.0f };
 static Rr_Vec4 const RR_UI_VEC4_ZERO = { 0.0f, 0.0f, 0.0f, 0.0f };
 static Rr_Vec4 const RR_UI_VEC4_ONE = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-static Rr_Vec3 const RR_UI_VEC3_ZERO = { 0.0f, 0.0f, 0.0f };
-static Rr_Vec3 const RR_UI_VEC3_ONE = { 1.0f, 1.0f, 1.0f };
+static Rr_IntVec4 const RR_UI_INT_VEC4_ZERO = { 0, 0, 0, 0 };
+static Rr_IntVec4 const RR_UI_INT_VEC4_BYTE = { 255, 255, 255, 255 };
 
 #define RR_UI_ROUND(Value) (ceilf((Value) / 2.0f) * 2.0f)
 #define RR_UI_ROUND_V2(Value) \
@@ -5126,11 +5129,12 @@ void Rr_UISeparator(void)
     Rr_Rect Rect;
     Rect.Offset = Layout->Cursor;
     Rect.Extent = Rr_V2(AvailableWidth, gUI->TripleBevelThickness);
-    Rr_Vec4 *Color = &gUI->Colors.Outline;
+    Rr_Vec4 *Color = &gUI->Colors.Background;
     Rr_Vec4 ColorLight = Rr_UIBevelShade(Color->RGB, true);
     Rr_Vec4 ColorDark = Rr_UIBevelShade(Color->RGB, false);
     Rr_UIDrawVerticalGradientQuad(&Rect, &ColorLight, &ColorDark);
 
+    Rect.Extent.Width = Layout->DeferredContentsRect.Extent.X;
     Rr_UIAdvance(Rect.Extent);
 }
 
@@ -7741,6 +7745,22 @@ bool Rr_UIInputInt2(char const *Title, int32_t *Values)
         RR_UI_SCALAR_TYPE_INT);
 }
 
+bool Rr_UIInputInt2Range(
+    char const *Title,
+    int32_t *Values,
+    int32_t const *MinValues,
+    int32_t const *MaxValues)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        MinValues,
+        MaxValues,
+        2,
+        1,
+        RR_UI_SCALAR_TYPE_INT);
+}
+
 bool Rr_UIInputInt3(char const *Title, int32_t *Values)
 {
     return Rr_UIInputScalarMulti(
@@ -7753,6 +7773,22 @@ bool Rr_UIInputInt3(char const *Title, int32_t *Values)
         RR_UI_SCALAR_TYPE_INT);
 }
 
+bool Rr_UIInputInt3Range(
+    char const *Title,
+    int32_t *Values,
+    int32_t const *MinValues,
+    int32_t const *MaxValues)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        MinValues,
+        MaxValues,
+        3,
+        1,
+        RR_UI_SCALAR_TYPE_INT);
+}
+
 bool Rr_UIInputInt4(char const *Title, int32_t *Values)
 {
     return Rr_UIInputScalarMulti(
@@ -7760,6 +7796,22 @@ bool Rr_UIInputInt4(char const *Title, int32_t *Values)
         Values,
         NULL,
         NULL,
+        4,
+        1,
+        RR_UI_SCALAR_TYPE_INT);
+}
+
+bool Rr_UIInputInt4Range(
+    char const *Title,
+    int32_t *Values,
+    int32_t const *MinValues,
+    int32_t const *MaxValues)
+{
+    return Rr_UIInputScalarMulti(
+        Title,
+        Values,
+        MinValues,
+        MaxValues,
         4,
         1,
         RR_UI_SCALAR_TYPE_INT);
@@ -7950,7 +8002,7 @@ static inline void Rr_UIColorPickerPopup(
     Rr_UIDrawTripleBevel(
         &(Rr_Rect){ Layout->Cursor, Rr_V2F(SVSelectorSize) },
         gUI->TripleBevelThickness,
-        &gUI->Colors.Outline,
+        &gUI->Colors.Background,
         true);
 
     Rr_Vec2 SVCursor =
@@ -8054,7 +8106,7 @@ static inline void Rr_UIColorPickerPopup(
         Rr_V4(0.0f, 0.0f, 1.0f, 1.0f), Rr_V4(1.0f, 0.0f, 1.0f, 1.0f),
     };
 
-    float HSelectorWidth = SVSelectorSize * 0.15f;
+    float HSelectorWidth = SVSelectorSize * 0.175f;
 
     Rr_Rect HSelectorRect = {
         .Offset = Rr_AddV2F(Layout->Cursor, gUI->TripleBevelThickness),
@@ -8068,7 +8120,7 @@ static inline void Rr_UIColorPickerPopup(
     Rr_UIDrawTripleBevel(
         &HBevelRect,
         gUI->TripleBevelThickness,
-        &gUI->Colors.Outline,
+        &gUI->Colors.Background,
         true);
 
     Rr_UIPushSubClipRect(Layout, &Layout->CurrentClipRect->Rect);
@@ -8146,18 +8198,51 @@ static inline void Rr_UIColorPickerPopup(
 
     /* Input fields for different representations. */
 
-    bool RGBChanged = ChannelCount == 3 ? Rr_UIInputFloat3Range(
-                                              "RGB###RGB32",
-                                              Channels,
-                                              RR_UI_VEC4_ZERO.Elements,
-                                              RR_UI_VEC4_ONE.Elements)
-                                        : Rr_UIInputFloat4Range(
-                                              "RGBA###RGBA32",
-                                              Channels,
-                                              RR_UI_VEC4_ZERO.Elements,
-                                              RR_UI_VEC4_ONE.Elements);
+    Rr_UIPushWidgetWidth(SVSelectorSize);
 
-    if (RGBChanged)
+    int32_t RGBA8[4];
+    RGBA8[0] = (int32_t)(Channels[0] * 255.0f);
+    RGBA8[1] = (int32_t)(Channels[1] * 255.0f);
+    RGBA8[2] = (int32_t)(Channels[2] * 255.0f);
+    if (ChannelCount > 3)
+    {
+        RGBA8[3] = (int32_t)(Channels[3] * 255.0f);
+    }
+    bool RGBA8Changed = ChannelCount == 3 ? Rr_UIInputInt3Range(
+                                                "RGB8",
+                                                RGBA8,
+                                                RR_UI_INT_VEC4_ZERO.Elements,
+                                                RR_UI_INT_VEC4_BYTE.Elements)
+                                          : Rr_UIInputInt4Range(
+                                                "RGBA8",
+                                                RGBA8,
+                                                RR_UI_INT_VEC4_ZERO.Elements,
+                                                RR_UI_INT_VEC4_BYTE.Elements);
+    if (RGBA8Changed)
+    {
+        Channels[0] = (float)RGBA8[0] / 255.0f;
+        Channels[1] = (float)RGBA8[1] / 255.0f;
+        Channels[2] = (float)RGBA8[2] / 255.0f;
+        if (ChannelCount > 3)
+        {
+            Channels[3] = (float)RGBA8[3] / 255.0f;
+        }
+    }
+
+    Rr_UIPushFormatFloatDecimalPlaces(4);
+
+    bool RGBA32Changed = ChannelCount == 3 ? Rr_UIInputFloat3Range(
+                                                 "RGB32",
+                                                 Channels,
+                                                 RR_UI_VEC4_ZERO.Elements,
+                                                 RR_UI_VEC4_ONE.Elements)
+                                           : Rr_UIInputFloat4Range(
+                                                 "RGBA32",
+                                                 Channels,
+                                                 RR_UI_VEC4_ZERO.Elements,
+                                                 RR_UI_VEC4_ONE.Elements);
+
+    if (RGBA32Changed || RGBA8Changed)
     {
         HSVChanged = false;
         StaticHSV = Rr_UIRGBToHSV((Rr_Vec3 *)Channels);
@@ -8176,7 +8261,7 @@ static inline void Rr_UIColorPickerPopup(
     size_t HexBufferCapacity = (size_t)(ChannelCount * 2) + 1;
     Rr_UIRGBAToHexString(HexBuffer, ChannelCount, Channels);
     if (Rr_UIInputField(
-            "RGB (Hex)",
+            "Hex",
             HexBufferCapacity,
             HexBuffer,
             "",
@@ -8237,6 +8322,10 @@ static inline void Rr_UIColorPickerPopup(
         SVSelectorCircleSize,
         CircleOutlineThickness / 2.0f,
         &gUI->Colors.Foreground);
+
+    Rr_UIPopFormatFloatDecimalPlaces();
+
+    Rr_UIPopWidgetWidth();
 
     Rr_UIEndWindow();
 }
@@ -8872,8 +8961,6 @@ void Rr_UISetDefaultTheme(void)
     Colors->ChildBackground = Rr_V4(0.105882f, 0.145098f, 0.172549f, 1.000000f);
     Colors->ScrolloffBackground =
         Rr_V4(0.105882f, 0.145098f, 0.172549f, 1.000000f);
-    Colors->Outline = Rr_V4(0.105882f, 0.145098f, 0.172549f, 1.000000f);
-    Colors->SelectedOutline = Rr_V4(0.204012f, 0.283247f, 0.338711f, 1.000000f);
     Colors->ListEntryBackgroundA =
         Rr_V4(0.182623f, 0.277109f, 0.338889f, 1.000000f);
     Colors->ListEntryBackgroundB =
@@ -8905,7 +8992,6 @@ void Rr_UISetDefaultTheme(void)
     Colors->ResizeHandleHeld =
         Rr_V4(0.101961f, 0.364706f, 0.537255f, 1.000000f);
     Colors->ButtonNormal = Rr_V4(0.182623f, 0.277109f, 0.338889f, 1.000000f);
-    Colors->ButtonHovered = Rr_V4(0.408665f, 0.497836f, 0.557879f, 1.000000f);
     Colors->ButtonHeld = Rr_V4(0.168210f, 0.404396f, 0.555556f, 1.000000f);
     Colors->ButtonDisabled = Rr_V4(0.070520f, 0.093346f, 0.111383f, 1.000000f);
     Colors->ComboboxButtonNormal =
