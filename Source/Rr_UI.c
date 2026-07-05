@@ -334,7 +334,6 @@ struct Rr_UI
     Rr_Vec2 TitleBarPadding;
     float ResizeHandleSize;
     float FrameThickness;
-    float SeparatorLineHeight;
     float ScrollbarWidth;
     float ScrollbarHandleWidth;
     Rr_Vec2 ButtonPadding;
@@ -2868,7 +2867,6 @@ static inline void Rr_UIRecalculateStyle(void)
     gUI->ResizeHandleSize = RR_UI_ROUND(LineHeight * Style->ScrollbarAreaWidth);
     gUI->ScrollbarWidth = gUI->ResizeHandleSize;
     gUI->ScrollbarHandleWidth = RR_UI_ROUND(gUI->ResizeHandleSize * 0.75f);
-    gUI->SeparatorLineHeight = RR_UI_ROUND(LineHeight * 0.5f);
     gUI->ButtonPadding =
         RR_UI_ROUND_V2(Rr_MulV2F(Style->ButtonPadding, LineHeight));
     gUI->BevelThickness = ceilf(LineHeight * Style->BevelThickness);
@@ -5126,22 +5124,14 @@ void Rr_UISeparator(void)
     float AvailableWidth = Rr_UIGetAvailableContentsWidth(Layout);
 
     Rr_Rect Rect;
-    Rect.Extent = (Rr_Vec2){
-        AvailableWidth,
-        gUI->TripleBevelThickness * 0.5f,
-    };
-    Rect.Offset = (Rr_Vec2){
-        Layout->Cursor.X + AvailableWidth * 0.5f - Rect.Extent.X * 0.5f,
-        Layout->Cursor.Y + gUI->SeparatorLineHeight * 0.5f - Rect.Extent.Y,
-    };
+    Rect.Offset = Layout->Cursor;
+    Rect.Extent = Rr_V2(AvailableWidth, gUI->TripleBevelThickness);
     Rr_Vec4 *Color = &gUI->Colors.Outline;
     Rr_Vec4 ColorLight = Rr_UIBevelShade(Color->RGB, true);
     Rr_Vec4 ColorDark = Rr_UIBevelShade(Color->RGB, false);
-    Rr_UIDrawSolidQuad(&Rect, &ColorLight);
-    Rect.Offset.Y += Rect.Extent.Y;
-    Rr_UIDrawSolidQuad(&Rect, &ColorDark);
+    Rr_UIDrawVerticalGradientQuad(&Rect, &ColorLight, &ColorDark);
 
-    Rr_UIAdvance(Rr_V2(gUI->SeparatorLineHeight, gUI->SeparatorLineHeight));
+    Rr_UIAdvance(Rect.Extent);
 }
 
 void Rr_UIImageEx(Rr_Image *Image, Rr_Vec2 Extent, Rr_Vec2 UVMin, Rr_Vec2 UVMax)
@@ -6301,7 +6291,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         }
 
         Rr_Rect ClipRect =
-            Rr_ResizeRect(&FieldRect, gUI->TripleBevelThickness * -2.0f);
+            Rr_ResizeRect(&FieldRect, -gUI->TripleBevelThickness);
         Rr_UIPushSubClipRect(Layout, &ClipRect);
 
         if (AutoCenter)
@@ -6411,7 +6401,7 @@ static inline Rr_UIInputFieldResult Rr_UIGenericInputField(
         }
 
         Rr_Rect ClipRect =
-            Rr_ResizeRect(&FieldRect, gUI->TripleBevelThickness * -2.0f);
+            Rr_ResizeRect(&FieldRect, -gUI->TripleBevelThickness);
         Rr_UIPushSubClipRect(Layout, &ClipRect);
 
         if (AutoCenter)
