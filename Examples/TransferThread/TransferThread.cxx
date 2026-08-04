@@ -269,7 +269,7 @@ struct STransferThreadApp
     void Iterate()
     {
         Rr_UIBeginDebugOverlayTabs();
-        Rr_UIBeginWindowEx("TransferThread.cxx", nullptr, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+        Rr_UIBeginWindowEx("TransferThread.cxx", nullptr, RR_UI_WINDOW_FLAGS_AUTO_RESIZE);
         Rr_UIText(
             "This example shows loading images from another "
             "thread.\nDrop PNG images here and worker thread will parse and "

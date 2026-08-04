@@ -21,7 +21,8 @@
 #ifndef RR_RHI_H
 #define RR_RHI_H
 
-#include <Rr/Rr_App.h>
+#include <Rr/Rr_Arena.h>
+#include <Rr/Rr_Math.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -269,6 +270,10 @@ extern bool RR_CC Rr_IsDepthStencilFormat(Rr_ImageFormat Format);
 extern bool RR_CC Rr_IsDepthFormat(Rr_ImageFormat Format);
 
 extern bool RR_CC Rr_IsSRGBFormat(Rr_ImageFormat Format);
+
+extern char const *RR_CC Rr_GetImageFormatString(Rr_ImageFormat Format);
+
+extern char const *const *RR_CC Rr_GetImageFormatStrings(void);
 
 /*
  * Sampler
@@ -683,12 +688,15 @@ Rr_ReleaseGraphicsPipeline(Rr_GraphicsPipeline *GraphicsPipeline);
 
 extern Rr_ColorTargetBlend RR_CC Rr_AlphaBlend(void);
 
+extern Rr_ColorTargetBlend RR_CC Rr_PremultipliedAlphaBlend(void);
+
 /*
  * Swapchain and Presentation
  */
 
 typedef enum
 {
+    RR_PRESENT_MODE_UNDEFINED,
     RR_PRESENT_MODE_FIFO,
     RR_PRESENT_MODE_FIFO_RELAXED,
     RR_PRESENT_MODE_IMMEDIATE,
@@ -697,7 +705,13 @@ typedef enum
 
 extern struct Rr_Image *RR_CC Rr_GetSwapchainImage(void);
 
-extern Rr_PresentMode *RR_CC Rr_GetAvailablePresentModes(uint32_t *Count);
+extern void RR_CC
+Rr_GetAvailableSwapchainFormats(uint32_t *Count, Rr_ImageFormat *OutFormats);
+
+extern void RR_CC Rr_SetSwapchainFormat(Rr_ImageFormat Format);
+
+extern void RR_CC
+Rr_GetAvailablePresentModes(uint32_t *Count, Rr_PresentMode *OutPresentModes);
 
 extern Rr_PresentMode RR_CC Rr_GetPresentMode(void);
 
@@ -705,7 +719,7 @@ extern char const *RR_CC Rr_GetPresentModeString(Rr_PresentMode PresentMode);
 
 extern char const *const *RR_CC Rr_GetPresentModeStrings(void);
 
-extern bool RR_CC Rr_SetPresentMode(Rr_PresentMode PresentMode);
+extern void RR_CC Rr_SetPresentMode(Rr_PresentMode PresentMode);
 
 /*
  * Debug

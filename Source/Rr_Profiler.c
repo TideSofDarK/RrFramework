@@ -82,12 +82,15 @@ void Rr_EndSection(Rr_Profiler *Profiler, char const *SectionName)
 
 uint64_t Rr_GetSectionTicks(Rr_Profiler *Profiler, char const *SectionName)
 {
-    size_t NameLength = strlen(SectionName);
-    Rr_ProfilerSection **SectionRef =
-        Rr_FindSection(&Profiler->Section, NameLength, SectionName);
-    if (*SectionRef)
+    if (Profiler)
     {
-        return (*SectionRef)->TotalTicks;
+        size_t NameLength = strlen(SectionName);
+        Rr_ProfilerSection **SectionRef =
+            Rr_FindSection(&Profiler->Section, NameLength, SectionName);
+        if (*SectionRef)
+        {
+            return (*SectionRef)->TotalTicks;
+        }
     }
 
     return 0;

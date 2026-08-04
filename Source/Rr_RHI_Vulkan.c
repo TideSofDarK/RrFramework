@@ -1199,48 +1199,38 @@ static bool Rr_InitSwapchain(void)
 
     Rr_Scratch Scratch = Rr_GetScratch(NULL);
 
-    uint32_t VulkanPresentModeCount = 0;
+    uint32_t PresentModeCount = 0;
     Instance->GetPhysicalDeviceSurfacePresentModesKHR(
         gRHI->PhysicalDevice.Handle,
         gRHI->Surface,
-        &VulkanPresentModeCount,
+        &PresentModeCount,
         NULL);
-    assert(VulkanPresentModeCount > 0);
-
-    VkPresentModeKHR *VulkanPresentModes = Rr_Alloc(
-        sizeof(VkPresentModeKHR) * VulkanPresentModeCount,
-        Scratch.Arena);
+    VkPresentModeKHR *PresentModes =
+        Rr_Alloc(sizeof(VkPresentModeKHR) * PresentModeCount, Scratch.Arena);
     Instance->GetPhysicalDeviceSurfacePresentModesKHR(
         gRHI->PhysicalDevice.Handle,
         gRHI->Surface,
-        &VulkanPresentModeCount,
-        VulkanPresentModes);
+        &PresentModeCount,
+        PresentModes);
 
-    VkPresentModeKHR DesiredVulkanPresentMode =
-        Rr_ToVulkanPresentMode(gRHI->Swapchain.PresentMode);
-    bool VulkanPresentModeAvailable = false;
-    gRHI->Swapchain.PresentModeCount = 0;
-    for (uint32_t Index = 0; Index < VulkanPresentModeCount &&
-                             gRHI->Swapchain.PresentModeCount <
-                                 RR_ARRAY_COUNT(gRHI->Swapchain.PresentModes);
-         Index++)
+    VkPresentModeKHR PresentMode = PresentModes[0];
+    VkPresentModeKHR DesiredPresentMode =
+        Rr_ToVulkanPresentMode(gRHI->Swapchain.DesiredPresentMode);
+    for (uint32_t Index = 0; Index < PresentModeCount; Index++)
     {
-        if (VulkanPresentModes[Index] <= VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+        if (PresentModes[Index] == VK_PRESENT_MODE_FIFO_KHR)
         {
-            gRHI->Swapchain.PresentModes[gRHI->Swapchain.PresentModeCount++] =
-                Rr_ToPresentMode(VulkanPresentModes[Index]);
-            if (VulkanPresentModes[Index] == DesiredVulkanPresentMode)
-            {
-                VulkanPresentModeAvailable = true;
-            }
+            PresentMode = PresentModes[Index];
+        }
+
+        if (PresentModes[Index] == DesiredPresentMode)
+        {
+            PresentMode = PresentModes[Index];
+
+            break;
         }
     }
-    if (VulkanPresentModeAvailable == false)
-    {
-        DesiredVulkanPresentMode = VulkanPresentModes[0];
-        gRHI->Swapchain.PresentMode =
-            Rr_ToPresentMode(DesiredVulkanPresentMode);
-    }
+    gRHI->Swapchain.PresentMode = PresentMode;
 
     uint32_t DesiredNumberOfSwapchainImages =
         RR_MAX(SurfaceCapabilities.minImageCount, 3);
@@ -1268,8 +1258,6 @@ static bool Rr_InitSwapchain(void)
         gRHI->Surface,
         &FormatCount,
         NULL);
-    assert(FormatCount > 0);
-
     VkSurfaceFormatKHR *SurfaceFormats =
         Rr_Alloc(sizeof(VkSurfaceFormatKHR) * FormatCount, Scratch.Arena);
     Instance->GetPhysicalDeviceSurfaceFormatsKHR(
@@ -1278,28 +1266,27 @@ static bool Rr_InitSwapchain(void)
         &FormatCount,
         SurfaceFormats);
 
-    VkSurfaceFormatKHR *PreferredFormat = NULL;
-    VkSurfaceFormatKHR *FallbackFormat = SurfaceFormats;
+    VkSurfaceFormatKHR *SurfaceFormat = NULL;
+    VkFormat DesiredFormat =
+        Rr_ToVulkanImageFormat(gRHI->Swapchain.DesiredFormat);
     for (uint32_t Index = 0; Index < FormatCount; Index++)
     {
-        VkSurfaceFormatKHR *SurfaceFormat = &SurfaceFormats[Index];
+        /* TODO: Make fallback format configurable. */
 
-        if (SurfaceFormat->format == VK_FORMAT_B8G8R8A8_SRGB ||
-            SurfaceFormat->format == VK_FORMAT_R8G8B8A8_SRGB ||
-            SurfaceFormat->format == VK_FORMAT_A8B8G8R8_SRGB_PACK32)
+        if (Rr_IsSRGBFormat(Rr_ToImageFormat(SurfaceFormats[Index].format)) &&
+            !SurfaceFormat)
         {
-            PreferredFormat = SurfaceFormat;
+            SurfaceFormat = &SurfaceFormats[Index];
+        }
+
+        if (SurfaceFormats[Index].format == DesiredFormat)
+        {
+            SurfaceFormat = &SurfaceFormats[Index];
+
             break;
         }
     }
-    VkSurfaceFormatKHR *SelectedFormat =
-        PreferredFormat ? PreferredFormat : FallbackFormat;
-    if (!SelectedFormat)
-    {
-        RR_LOG_ABORT("No suitable surface format found!");
-    }
-    gRHI->Swapchain.Format = SelectedFormat->format;
-    gRHI->Swapchain.ColorSpace = SelectedFormat->colorSpace;
+    gRHI->Swapchain.Format = SurfaceFormat->format;
 
     VkCompositeAlphaFlagBitsKHR CompositeAlpha =
         VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
@@ -1325,8 +1312,8 @@ static bool Rr_InitSwapchain(void)
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = gRHI->Surface,
         .minImageCount = DesiredNumberOfSwapchainImages,
-        .imageFormat = gRHI->Swapchain.Format,
-        .imageColorSpace = gRHI->Swapchain.ColorSpace,
+        .imageFormat = SurfaceFormat->format,
+        .imageColorSpace = SurfaceFormat->colorSpace,
         .imageExtent = { gRHI->Swapchain.Extent.width,
                          gRHI->Swapchain.Extent.height },
         .imageArrayLayers = 1,
@@ -1334,7 +1321,7 @@ static bool Rr_InitSwapchain(void)
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .preTransform = PreTransform,
         .compositeAlpha = CompositeAlpha,
-        .presentMode = DesiredVulkanPresentMode,
+        .presentMode = PresentMode,
         .clipped = VK_TRUE,
         .oldSwapchain = OldSwapchain,
     };
@@ -3058,6 +3045,21 @@ Rr_ColorTargetBlend Rr_AlphaBlend(void)
     return Blend;
 }
 
+Rr_ColorTargetBlend Rr_PremultipliedAlphaBlend(void)
+{
+    Rr_ColorTargetBlend Blend;
+    Blend.BlendEnable = true;
+    Blend.SrcColorBlendFactor = RR_BLEND_FACTOR_ONE;
+    Blend.DstColorBlendFactor = RR_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    Blend.ColorBlendOp = RR_BLEND_OP_ADD;
+    Blend.SrcAlphaBlendFactor = RR_BLEND_FACTOR_ONE;
+    Blend.DstAlphaBlendFactor = RR_BLEND_FACTOR_ZERO;
+    Blend.AlphaBlendOp = RR_BLEND_OP_ADD;
+    Blend.ColorWriteMask = RR_COLOR_COMPONENT_DEFAULT;
+
+    return Blend;
+}
+
 Rr_GraphicsPipeline *Rr_CreateGraphicsPipeline(
     Rr_GraphicsPipelineCreateInfo const *CreateInfo)
 {
@@ -4430,8 +4432,10 @@ void Rr_FreeImageMemory(Rr_Allocator *Allocator, Rr_Image *Image)
     }
 }
 
-void Rr_InitRHI(const char *Title)
+void Rr_InitRHI(Rr_Config const *Config)
 {
+    char const *Title = Config->Title ? Config->Title : Config->WindowTitle;
+
     Rr_Arena *Arena = Rr_GetPermanent();
 
     gRHI = Rr_Alloc(sizeof(Rr_RHI), Arena);
@@ -4449,8 +4453,11 @@ void Rr_InitRHI(const char *Title)
 
     Rr_InitAllocator(&gRHI->Allocator, &gRHI->PhysicalDevice);
     Rr_InitFrames();
-    Rr_InitSwapchain();
     Rr_InitEmptyDescriptorSet();
+
+    gRHI->Swapchain.DesiredFormat = Config->SwapchainFormat;
+    gRHI->Swapchain.DesiredPresentMode = Config->PresentMode;
+    Rr_InitSwapchain();
 
     Rr_InitFramebufferMap(&gRHI->FramebufferMap, Arena);
     Rr_InitRenderPassMap(&gRHI->RenderPassMap, Arena);
@@ -5133,61 +5140,148 @@ size_t Rr_GetMaxComputeWorkgroupInvocations(void)
         .maxComputeWorkGroupInvocations;
 }
 
-Rr_ImageFormat Rr_GetSwapchainFormat(void)
-{
-    return Rr_ToImageFormat(gRHI->Swapchain.Format);
-}
-
-Rr_IntVec2 Rr_GetSwapchainSize(void)
-{
-    return (Rr_IntVec2){
-        (int32_t)gRHI->Swapchain.Extent.width,
-        (int32_t)gRHI->Swapchain.Extent.height,
-    };
-}
-
 Rr_Image2D *Rr_GetSwapchainImage(void)
 {
     return &Rr_GetCurrentFrame()->SwapchainImage->Container;
 }
 
-Rr_PresentMode *Rr_GetAvailablePresentModes(uint32_t *Count)
+void Rr_GetAvailableSwapchainFormats(
+    uint32_t *Count,
+    Rr_ImageFormat *OutFormats)
 {
-    if (Count)
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_Instance *Instance = &gRHI->Instance;
+
+    if (Count && *Count && OutFormats)
     {
-        *Count = gRHI->Swapchain.PresentModeCount;
+        VkSurfaceFormatKHR *SurfaceFormats =
+            Rr_AllocNoZero(sizeof(VkSurfaceFormatKHR) * *Count, Scratch.Arena);
+        Instance->GetPhysicalDeviceSurfaceFormatsKHR(
+            gRHI->PhysicalDevice.Handle,
+            gRHI->Surface,
+            Count,
+            SurfaceFormats);
+        uint32_t OutIndex = 0;
+        for (uint32_t Index = 0; Index < *Count; ++Index)
+        {
+            Rr_ImageFormat Format =
+                Rr_ToImageFormat(SurfaceFormats[Index].format);
+            if (Format != RR_IMAGE_FORMAT_UNDEFINED)
+            {
+                OutFormats[OutIndex++] = Format;
+            }
+        }
     }
-    return gRHI->Swapchain.PresentModes;
+    else if (Count)
+    {
+        uint32_t VulkanCount = 0;
+        Instance->GetPhysicalDeviceSurfaceFormatsKHR(
+            gRHI->PhysicalDevice.Handle,
+            gRHI->Surface,
+            &VulkanCount,
+            NULL);
+        VkSurfaceFormatKHR *SurfaceFormats = Rr_AllocNoZero(
+            sizeof(VkSurfaceFormatKHR) * VulkanCount,
+            Scratch.Arena);
+        Instance->GetPhysicalDeviceSurfaceFormatsKHR(
+            gRHI->PhysicalDevice.Handle,
+            gRHI->Surface,
+            &VulkanCount,
+            SurfaceFormats);
+
+        uint32_t OutIndex = 0;
+        for (uint32_t Index = 0; Index < VulkanCount; ++Index)
+        {
+            Rr_ImageFormat Format =
+                Rr_ToImageFormat(SurfaceFormats[Index].format);
+            if (Format != RR_IMAGE_FORMAT_UNDEFINED)
+            {
+                OutIndex++;
+            }
+        }
+
+        *Count = OutIndex;
+    }
+
+    Rr_DestroyScratch(Scratch);
+}
+
+void RR_CC Rr_SetSwapchainFormat(Rr_ImageFormat Format)
+{
+    gRHI->Swapchain.DesiredFormat = Format;
+    Rr_SetSwapchainDirty(true);
+}
+
+void Rr_GetAvailablePresentModes(
+    uint32_t *Count,
+    Rr_PresentMode *OutPresentModes)
+{
+    Rr_Scratch Scratch = Rr_GetScratch(NULL);
+
+    Rr_Instance *Instance = &gRHI->Instance;
+
+    if (Count && *Count && OutPresentModes)
+    {
+        VkPresentModeKHR *PresentModes =
+            Rr_AllocNoZero(sizeof(VkPresentModeKHR) * *Count, Scratch.Arena);
+        Instance->GetPhysicalDeviceSurfacePresentModesKHR(
+            gRHI->PhysicalDevice.Handle,
+            gRHI->Surface,
+            Count,
+            PresentModes);
+        uint32_t OutIndex = 0;
+        for (uint32_t Index = 0; Index < *Count; ++Index)
+        {
+            Rr_PresentMode PresentMode = Rr_ToPresentMode(PresentModes[Index]);
+            if (PresentMode != RR_PRESENT_MODE_UNDEFINED)
+            {
+                OutPresentModes[OutIndex++] = PresentMode;
+            }
+        }
+    }
+    else if (Count)
+    {
+        uint32_t VulkanCount = 0;
+        Instance->GetPhysicalDeviceSurfacePresentModesKHR(
+            gRHI->PhysicalDevice.Handle,
+            gRHI->Surface,
+            &VulkanCount,
+            NULL);
+        VkPresentModeKHR *PresentModes = Rr_AllocNoZero(
+            sizeof(VkPresentModeKHR) * VulkanCount,
+            Scratch.Arena);
+        Instance->GetPhysicalDeviceSurfacePresentModesKHR(
+            gRHI->PhysicalDevice.Handle,
+            gRHI->Surface,
+            &VulkanCount,
+            PresentModes);
+
+        uint32_t OutIndex = 0;
+        for (uint32_t Index = 0; Index < VulkanCount; ++Index)
+        {
+            Rr_PresentMode PresentMode = Rr_ToPresentMode(PresentModes[Index]);
+            if (PresentMode != RR_PRESENT_MODE_UNDEFINED)
+            {
+                OutIndex++;
+            }
+        }
+
+        *Count = OutIndex;
+    }
+
+    Rr_DestroyScratch(Scratch);
 }
 
 Rr_PresentMode Rr_GetPresentMode(void)
 {
-    return gRHI->Swapchain.PresentMode;
+    return Rr_ToPresentMode(gRHI->Swapchain.PresentMode);
 }
 
-char const *Rr_GetPresentModeString(Rr_PresentMode PresentMode)
+void Rr_SetPresentMode(Rr_PresentMode PresentMode)
 {
-    return Rr_GetPresentModeStrings()[(size_t)PresentMode];
-}
-
-char const *const *RR_CC Rr_GetPresentModeStrings(void)
-{
-    static char const *PRESENT_MODES[] = {
-        "FIFO",
-        "FIFO_RELAXED",
-        "IMMEDIATE",
-        "MAILBOX",
-    };
-
-    return PRESENT_MODES;
-}
-
-bool Rr_SetPresentMode(Rr_PresentMode PresentMode)
-{
-    gRHI->Swapchain.PresentMode = PresentMode;
+    gRHI->Swapchain.DesiredPresentMode = PresentMode;
     Rr_SetSwapchainDirty(true);
-
-    return true;
 }
 
 VkRenderPass Rr_GetRenderPass(Rr_RenderPassKey const *Key)

@@ -35,6 +35,7 @@ struct Rr_Image;
 typedef uint64_t Rr_UIHash;
 typedef uint16_t Rr_UIIndex;
 
+typedef struct Rr_UILayout Rr_UILayout;
 typedef struct Rr_UIFont Rr_UIFont;
 
 typedef struct Rr_UIRange Rr_UIRange;
@@ -63,15 +64,16 @@ struct Rr_UIPrimitive
 typedef struct Rr_UIStyle Rr_UIStyle;
 struct Rr_UIStyle
 {
-    float FrameThickness;
     Rr_Vec2 TitleBarPadding;
+    Rr_Vec2 TabBarPadding;
     Rr_Vec2 WindowPadding;
     Rr_Vec2 ContentsMargin;
     float ComponentMargin;
     float ScrollbarAreaWidth;
-    float BevelThickness;
+    Rr_Vec2 ScrollbarHandleMargin;
     float TripleBevelThickness;
     float BevelIntensityLight;
+    float BevelIntensityGray;
     float BevelIntensityDark;
     float AlignedWidgetTitleMargin;
     Rr_Vec2 ButtonPadding;
@@ -90,26 +92,24 @@ struct Rr_UIColors
     Rr_Vec4 Background;
     Rr_Vec4 ChildBackground;
     Rr_Vec4 ScrolloffBackground;
+
+    Rr_Vec4 ListEntryForeground;
     Rr_Vec4 ListEntryBackgroundA;
     Rr_Vec4 ListEntryBackgroundB;
-    Rr_Vec4 ListEntryHovered;
+    Rr_Vec4 ListEntryHoveredForeground;
+    Rr_Vec4 ListEntryHoveredBackground;
 
     Rr_Vec4 TitleForeground;
     Rr_Vec4 TitleBackground;
     Rr_Vec4 TitleBackground2;
     Rr_Vec4 TitleBackgroundInactive;
     Rr_Vec4 TitleBackgroundInactive2;
-    Rr_Vec4 TitleBackgroundTabs;
     Rr_Vec4 TitleCloseButtonBackground;
-    Rr_Vec4 TitleCollapseButtonBackground;
 
     Rr_Vec4 ScrollbarBackground;
     Rr_Vec4 ScrollbarNormal;
     Rr_Vec4 ScrollbarHovered;
     Rr_Vec4 ScrollbarHeld;
-    Rr_Vec4 ResizeHandleNormal;
-    Rr_Vec4 ResizeHandleHovered;
-    Rr_Vec4 ResizeHandleHeld;
 
     Rr_Vec4 ButtonNormal;
     Rr_Vec4 ButtonHeld;
@@ -138,13 +138,15 @@ typedef enum
     RR_UI_WINDOW_FLAGS_NO_VERTICAL_SCROLLBAR_BIT = 1U << 3,
     RR_UI_WINDOW_FLAGS_NO_MOVE_BIT = 1U << 4,
     RR_UI_WINDOW_FLAGS_NO_BORDERS_BIT = 1U << 5,
-    RR_UI_WINDOW_FLAGS_NO_COLLAPSE_BIT = 1U << 6,
-    RR_UI_WINDOW_FLAGS_NO_CLOSE_BIT = 1U << 7,
-    RR_UI_WINDOW_FLAGS_NO_BACKGROUND_BIT = 1U << 8,
-    RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT = 1U << 9,
-    RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT = 1U << 10,
-    RR_UI_WINDOW_FLAGS_UNDOCKABLE_BIT = 1U << 11,
-    RR_UI_WINDOW_FLAGS_TABS_BIT = 1U << 12,
+    RR_UI_WINDOW_FLAGS_NO_CLOSE_BIT = 1U << 6,
+    RR_UI_WINDOW_FLAGS_NO_BACKGROUND_BIT = 1U << 7,
+    RR_UI_WINDOW_FLAGS_AUTO_WIDTH_BIT = 1U << 8,
+    RR_UI_WINDOW_FLAGS_AUTO_HEIGHT_BIT = 1U << 9,
+    RR_UI_WINDOW_FLAGS_POPUP_BIT = 1U << 10,
+    RR_UI_WINDOW_FLAGS_MENU_BAR_BIT = 1U << 11,
+    RR_UI_WINDOW_FLAGS_ESCAPE_CLOSES_BIT = 1U << 12,
+    RR_UI_WINDOW_FLAGS_AUTO_RESIZE =
+        RR_UI_WINDOW_FLAGS_AUTO_WIDTH_BIT | RR_UI_WINDOW_FLAGS_AUTO_HEIGHT_BIT,
 } Rr_UIWindowFlagsBits;
 typedef uint32_t Rr_UIWindowFlags;
 
@@ -190,8 +192,10 @@ Rr_UIReservePrimitive(size_t VertexCount, size_t IndexCount);
 
 extern void RR_CC Rr_UIDrawTriangleVertices(Rr_UIVertex const *Vertices);
 
-extern void RR_CC
-Rr_UIDrawTriangleFilled(Rr_Vec2 const *Positions, Rr_Vec4 const *Color);
+extern void RR_CC Rr_UIDrawTriangleFilled(
+    Rr_Vec2 const *Positions,
+    Rr_Vec4 const *Color,
+    bool Feather);
 
 extern void RR_CC Rr_UIDrawFitTriangleFilled(
     Rr_Vec2 Offset,
@@ -246,8 +250,6 @@ extern void RR_CC Rr_UISetNextWindowMinExtent(Rr_Vec2 Extent);
 
 extern void RR_CC Rr_UISetNextWindowMaxExtent(Rr_Vec2 Extent);
 
-extern void RR_CC Rr_UISetNextWindowCreateCollapsed(bool Collapsed);
-
 extern bool RR_CC
 Rr_UIBeginWindowEx(char const *Title, bool *Open, Rr_UIWindowFlags Flags);
 
@@ -283,7 +285,7 @@ extern void RR_CC Rr_UIImageEx(
     Rr_Vec2 UVMin,
     Rr_Vec2 UVMax);
 
-extern void RR_CC Rr_UIText(char const *Text);
+// extern void RR_CC Rr_UIText(char const *Text);
 
 extern void RR_CC Rr_UITextF(char const *Format, ...);
 

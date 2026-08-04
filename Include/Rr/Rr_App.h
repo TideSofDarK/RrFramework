@@ -22,6 +22,7 @@
 #define RR_APP_H
 
 #include <Rr/Rr_Platform.h>
+#include <Rr/Rr_RHI.h>
 
 typedef void (*Rr_InitFunc)(void);
 typedef void (*Rr_EventFunc)(Rr_Event const *);
@@ -36,6 +37,9 @@ struct Rr_Config
     const char *WindowTitle;
     Rr_IntVec2 WindowSize; /* TODO */
     Rr_WindowFlags WindowFlags;
+
+    Rr_PresentMode PresentMode;
+    Rr_ImageFormat SwapchainFormat;
 
     Rr_InitFunc InitFunc;
     Rr_EventFunc EventFunc;

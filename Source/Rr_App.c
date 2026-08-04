@@ -27,7 +27,7 @@
 #include "Rr_RHI.h"
 #include "Rr_System.h"
 #include "Rr_Thread.h"
-#include "Rr_UI.h"
+#include "Rr_UI2.h"
 
 #include <Rr/Rr_System.h>
 
@@ -90,7 +90,7 @@ static inline void Rr_HandleEvent(Rr_Event const *Event)
         Rr_Quit();
     }
 
-    Rr_ProcessUIEvent(Event);
+    Rr_ProcessUI2Event(Event);
 
     if (gApp->EventFunc != NULL)
     {
@@ -151,7 +151,7 @@ void Rr_Run(Rr_Config *Config)
 
     Rr_InitFrameTime(&gApp->FrameTime);
 
-    Rr_InitRHI(Config->Title ? Config->Title : Config->WindowTitle);
+    Rr_InitRHI(Config);
 
     Rr_NewFrame();
 
@@ -161,9 +161,9 @@ void Rr_Run(Rr_Config *Config)
      * resources so it must have access to the graph.
      * User-provided 'InitFunc' also must have access. */
 
-    Rr_InitUI();
+    Rr_InitUI2();
 
-    Rr_NewUIFrame();
+    Rr_BeginUI2();
 
     if (gApp->InitFunc)
     {
@@ -181,7 +181,7 @@ void Rr_Run(Rr_Config *Config)
             break;
         }
 
-        Rr_BeginUI();
+        Rr_BeginUI2();
 
         Rr_BeginFrameSection("Rr.Iterate");
 
@@ -189,7 +189,7 @@ void Rr_Run(Rr_Config *Config)
 
         Rr_EndFrameSection("Rr.Iterate");
 
-        Rr_EndUI();
+        Rr_EndUI2();
 
         Rr_DrawFrame();
 
@@ -217,8 +217,6 @@ void Rr_Run(Rr_Config *Config)
         Rr_NewFrame();
 
         Rr_BeginFrameSection("Rr.MainLoop");
-
-        Rr_NewUIFrame();
     }
 
     Rr_WaitIdle();
@@ -228,7 +226,7 @@ void Rr_Run(Rr_Config *Config)
         gApp->CleanupFunc();
     }
 
-    Rr_CleanupUI();
+    Rr_CleanupUI2();
 
     Rr_CleanupRHI();
 

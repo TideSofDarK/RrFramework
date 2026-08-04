@@ -869,7 +869,7 @@ struct SQuadTreeApp
     void Iterate()
     {
         Rr_UIBeginDebugOverlayTabs();
-        Rr_UIBeginWindowEx("QuadTree.cxx", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE_BIT);
+        Rr_UIBeginWindowEx("QuadTree.cxx", NULL, RR_UI_WINDOW_FLAGS_AUTO_RESIZE);
         {
             Rr_UIText("This example shows using quad trees to\noptimize collision detection.");
             if (Rebuilding)

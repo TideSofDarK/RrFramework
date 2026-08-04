@@ -18,22 +18,19 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#ifndef RR_H
-#define RR_H
+#pragma once
 
-#include <Rr/Rr_App.h>
-#include <Rr/Rr_Arena.h>
-#include <Rr/Rr_Asset.h>
-#include <Rr/Rr_Common.h>
-#include <Rr/Rr_Graph.h>
-#include <Rr/Rr_Log.h>
-#include <Rr/Rr_Math.h>
+#include <Rr/Rr_UI2.h>
+
 #include <Rr/Rr_Platform.h>
 #include <Rr/Rr_RHI.h>
-#include <Rr/Rr_Serialization.h>
-#include <Rr/Rr_System.h>
-#include <Rr/Rr_Thread.h>
-#include <Rr/Rr_UI2.h>
-#include <Rr/Rr_Utility.h>
 
-#endif
+extern void Rr_InitUI2(void);
+
+extern void Rr_CleanupUI2(void);
+
+extern void Rr_ProcessUI2Event(Rr_Event const *Event);
+
+extern void Rr_BeginUI2(void);
+
+extern void Rr_EndUI2(void);

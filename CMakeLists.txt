@@ -143,7 +143,7 @@ target_sources(
     Source/Rr_Serialization.c
     Source/Rr_System.c
     Source/Rr_Thread.c
-    Source/Rr_UI.c
+    Source/Rr_UI2.c
     Vendor/xxHash/xxhash.c
     PUBLIC
     FILE_SET HEADERS
@@ -162,7 +162,7 @@ target_sources(
     Include/Rr/Rr_Serialization.h
     Include/Rr/Rr_System.h
     Include/Rr/Rr_Thread.h
-    Include/Rr/Rr_UI.h
+    Include/Rr/Rr_UI2.h
     Include/Rr/Rr_Utility.h
 )
 

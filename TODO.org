@@ -99,11 +99,16 @@
 - [X] Input field: CTRL+BACKSCAPE to remove words.
 - [X] Input field: DELETE key behavior.
 - [X] Closing popups doesn't restore window focus.
+- [X] Tried supporting appending contents to windows.
+  - Up to four frames of flicker in some contrived layouts.
+  - Interferes with auto resize.
 - [ ] Implicit window.
+- [ ] Menus.
 - [ ] Tables.
 - [ ] Make sure widgets don't look broken with extremely small window sizes.
 - [ ] Proper stack data structure.
 - [ ] Some options for horizontal child layouts + asserts.
+- [ ] Disabled widgets.
 - [ ] Flickering:
   - [ ] Uncollapsing a child window. Parent fails to adjust its size immediately.
   - [ ] Uncollapsing something for the first time. Flexible widgets have no idea how much width is available.

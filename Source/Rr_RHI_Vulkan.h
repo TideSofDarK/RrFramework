@@ -820,13 +820,13 @@ struct Rr_SwapchainImage
 typedef struct Rr_Swapchain Rr_Swapchain;
 struct Rr_Swapchain
 {
-    uint32_t PresentModeCount;
-    Rr_PresentMode PresentModes[8];
-    Rr_PresentMode PresentMode;
     VkSwapchainKHR Handle;
+    VkPresentModeKHR PresentMode;
     VkFormat Format;
-    VkColorSpaceKHR ColorSpace;
     VkExtent3D Extent;
+
+    Rr_ImageFormat DesiredFormat;
+    Rr_PresentMode DesiredPresentMode;
     bool RecreatePending;
     bool Recreated;
     bool Unavailable;
@@ -1310,8 +1310,6 @@ static inline Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
 {
     switch (ImageFormat)
     {
-        case VK_FORMAT_UNDEFINED:
-            return RR_IMAGE_FORMAT_UNDEFINED;
             /* R8 */
         case VK_FORMAT_R8_UNORM:
             return RR_IMAGE_FORMAT_R8_UNORM;
@@ -1419,19 +1417,16 @@ static inline Rr_ImageFormat Rr_ToImageFormat(VkFormat ImageFormat)
             return RR_IMAGE_FORMAT_D24_UNORM_S8_UINT;
         case VK_FORMAT_D32_SFLOAT_S8_UINT:
             return RR_IMAGE_FORMAT_D32_SFLOAT_S8_UINT;
+            /* */
         default:
-            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid image format!");
+            return RR_IMAGE_FORMAT_UNDEFINED;
     }
-
-    return 0;
 }
 
 static VkFormat Rr_ToVulkanImageFormat(Rr_ImageFormat ImageFormat)
 {
     switch (ImageFormat)
     {
-        case RR_IMAGE_FORMAT_UNDEFINED:
-            return VK_FORMAT_UNDEFINED;
             /* R8 */
         case RR_IMAGE_FORMAT_R8_UNORM:
             return VK_FORMAT_R8_UNORM;
@@ -1539,11 +1534,10 @@ static VkFormat Rr_ToVulkanImageFormat(Rr_ImageFormat ImageFormat)
             return VK_FORMAT_D24_UNORM_S8_UINT;
         case RR_IMAGE_FORMAT_D32_SFLOAT_S8_UINT:
             return VK_FORMAT_D32_SFLOAT_S8_UINT;
+            /* */
         default:
-            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid image format!");
+            return VK_FORMAT_UNDEFINED;
     }
-
-    return VK_FORMAT_MAX_ENUM;
 }
 
 static inline VkIndexType Rr_ToVulkanIndexType(Rr_IndexType IndexType)
@@ -1653,10 +1647,8 @@ static inline VkPresentModeKHR Rr_ToVulkanPresentMode(
         case RR_PRESENT_MODE_FIFO:
             return VK_PRESENT_MODE_FIFO_KHR;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid present mode!");
+            return VK_PRESENT_MODE_MAX_ENUM_KHR;
     }
-
-    return VK_PRESENT_MODE_MAX_ENUM_KHR;
 }
 
 static inline Rr_PresentMode Rr_ToPresentMode(
@@ -1673,10 +1665,8 @@ static inline Rr_PresentMode Rr_ToPresentMode(
         case VK_PRESENT_MODE_FIFO_KHR:
             return RR_PRESENT_MODE_FIFO;
         default:
-            Rr_LogError(RR_LOG_CATEGORY_RHI, "Invalid present mode!");
+            return RR_PRESENT_MODE_UNDEFINED;
     }
-
-    return 0;
 }
 
 static inline void Rr_ToVulkanBindings(

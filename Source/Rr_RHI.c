@@ -49,6 +49,97 @@ bool Rr_IsSRGBFormat(Rr_ImageFormat Format)
            Format == RR_IMAGE_FORMAT_B8G8R8A8_SRGB;
 }
 
+char const *RR_CC Rr_GetImageFormatString(Rr_ImageFormat Format)
+{
+    return Rr_GetImageFormatStrings()[Format];
+}
+
+char const *const *RR_CC Rr_GetImageFormatStrings(void)
+{
+    static char const *IMAGE_FORMATS[] = {
+        /* */
+        "RR_IMAGE_FORMAT_UNDEFINED",
+        /* R8 */
+        "RR_IMAGE_FORMAT_R8_UNORM",
+        "RR_IMAGE_FORMAT_R8_UNORM",
+        "RR_IMAGE_FORMAT_R8_UINT",
+        "RR_IMAGE_FORMAT_R8_SINT",
+        "RR_IMAGE_FORMAT_R8_SRGB",
+        /* R8G8 */
+        "RR_IMAGE_FORMAT_R8G8_UNORM",
+        "RR_IMAGE_FORMAT_R8G8_SNORM",
+        "RR_IMAGE_FORMAT_R8G8_UINT",
+        "RR_IMAGE_FORMAT_R8G8_SINT",
+        "RR_IMAGE_FORMAT_R8G8_SRGB",
+        /* R8G8B8A8 */
+        "RR_IMAGE_FORMAT_R8G8B8A8_UNORM",
+        "RR_IMAGE_FORMAT_R8G8B8A8_SNORM",
+        "RR_IMAGE_FORMAT_R8G8B8A8_SINT",
+        "RR_IMAGE_FORMAT_R8G8B8A8_UINT",
+        "RR_IMAGE_FORMAT_R8G8B8A8_SRGB",
+        /* B8G8R8A8 */
+        "RR_IMAGE_FORMAT_B8G8R8A8_UNORM",
+        "RR_IMAGE_FORMAT_B8G8R8A8_SNORM",
+        "RR_IMAGE_FORMAT_B8G8R8A8_UINT",
+        "RR_IMAGE_FORMAT_B8G8R8A8_SINT",
+        "RR_IMAGE_FORMAT_B8G8R8A8_SRGB",
+        /* R16 */
+        "RR_IMAGE_FORMAT_R16_UNORM",
+        "RR_IMAGE_FORMAT_R16_SNORM",
+        "RR_IMAGE_FORMAT_R16_UINT",
+        "RR_IMAGE_FORMAT_R16_SINT",
+        "RR_IMAGE_FORMAT_R16_SFLOAT",
+        /* R16G16 */
+        "RR_IMAGE_FORMAT_R16G16_UNORM",
+        "RR_IMAGE_FORMAT_R16G16_SNORM",
+        "RR_IMAGE_FORMAT_R16G16_UINT",
+        "RR_IMAGE_FORMAT_R16G16_SINT",
+        "RR_IMAGE_FORMAT_R16G16_SFLOAT",
+        /* R16G16B16A16 */
+        "RR_IMAGE_FORMAT_R16G16B16A16_UNORM",
+        "RR_IMAGE_FORMAT_R16G16B16A16_SNORM",
+        "RR_IMAGE_FORMAT_R16G16B16A16_SINT",
+        "RR_IMAGE_FORMAT_R16G16B16A16_UINT",
+        "RR_IMAGE_FORMAT_R16G16B16A16_SFLOAT",
+        /* R32 */
+        "RR_IMAGE_FORMAT_R32_UINT",
+        "RR_IMAGE_FORMAT_R32_SINT",
+        "RR_IMAGE_FORMAT_R32_SFLOAT",
+        /* R32G32 */
+        "RR_IMAGE_FORMAT_R32G32_UINT",
+        "RR_IMAGE_FORMAT_R32G32_SINT",
+        "RR_IMAGE_FORMAT_R32G32_SFLOAT",
+        /* R32G32B32A32 */
+        "RR_IMAGE_FORMAT_R32G32B32A32_SINT",
+        "RR_IMAGE_FORMAT_R32G32B32A32_UINT",
+        "RR_IMAGE_FORMAT_R32G32B32A32_SFLOAT",
+        /* */
+        "RR_IMAGE_FORMAT_D16_UNORM",
+        "RR_IMAGE_FORMAT_D32_SFLOAT",
+        "RR_IMAGE_FORMAT_D24_UNORM_S8_UINT",
+        "RR_IMAGE_FORMAT_D32_SFLOAT_S8_UINT",
+    };
+
+    return IMAGE_FORMATS;
+}
+
+char const *Rr_GetPresentModeString(Rr_PresentMode PresentMode)
+{
+    return Rr_GetPresentModeStrings()[(size_t)PresentMode];
+}
+
+char const *const *RR_CC Rr_GetPresentModeStrings(void)
+{
+    static char const *PRESENT_MODES[] = {
+        "FIFO",
+        "FIFO_RELAXED",
+        "IMMEDIATE",
+        "MAILBOX",
+    };
+
+    return PRESENT_MODES;
+}
+
 void Rr_SetNextObjectName(const char *Name)
 {
     if (!Name)

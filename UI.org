@@ -1,0 +1,9 @@
+struct Rr_UIWidget
+  - A rect that becomes usable after autolayout pass
+  - Has ID
+
+struct Rr_UIFlow
+  - Basically a widget
+  - Hiearchical
+  - Type (vertical, horizontal, grid, wrap)
+  - Pushes an ID

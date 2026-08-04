@@ -58,17 +58,14 @@ void Rr_GrowArray(void *Array, size_t Size, size_t MinCount, Rr_Arena *Arena)
 
 void **Rr_FindInHashTrie(Rr_HashTrie **Map, Rr_HashTrieKey Key, Rr_Arena *Arena)
 {
-    if (*Map != NULL)
+    for (Rr_HashTrieKey Hash = Key; *Map; Hash <<= 2)
     {
-        for (Rr_HashTrieKey Hash = Key; *Map; Hash <<= 2)
+        if (Key == (*Map)->Key)
         {
-            if (Key == (*Map)->Key)
-            {
-                return &(*Map)->Value;
-            }
-            static const int Shift = (sizeof(Rr_HashTrieKey) * CHAR_BIT) - 2;
-            Map = &(*Map)->Child[Hash >> Shift];
+            return &(*Map)->Value;
         }
+        static const int Shift = (sizeof(Rr_HashTrieKey) * CHAR_BIT) - 2;
+        Map = &(*Map)->Child[Hash >> Shift];
     }
     if (Arena == NULL)
     {
@@ -76,6 +73,7 @@ void **Rr_FindInHashTrie(Rr_HashTrie **Map, Rr_HashTrieKey Key, Rr_Arena *Arena)
     }
     *Map = (Rr_HashTrie *)Rr_Alloc(sizeof(Rr_HashTrie), Arena);
     (*Map)->Key = Key;
+
     return &(*Map)->Value;
 }
 

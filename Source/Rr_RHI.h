@@ -20,9 +20,9 @@
 
 #pragma once
 
-#include <Rr/Rr_RHI.h>
-
+#include <Rr/Rr_App.h>
 #include <Rr/Rr_Log.h>
+#include <Rr/Rr_RHI.h>
 
 typedef struct Rr_RHI Rr_RHI;
 typedef struct Rr_Frame Rr_Frame;
@@ -30,7 +30,7 @@ typedef struct Rr_CommandPools Rr_CommandPools;
 typedef struct Rr_Queue Rr_Queue;
 typedef struct Rr_Device Rr_Device;
 
-extern void Rr_InitRHI(const char *Title);
+extern void Rr_InitRHI(Rr_Config const *Config);
 
 extern void Rr_CleanupRHI(void);
 

@@ -79,7 +79,7 @@
 #endif
 
 #define RR_ALIGN_POW2(Num, Alignment) \
-    (((Num) + ((Alignment) - 1)) & ~((Alignment) - 1))
+    (((Num) + ((Alignment) - 1U)) & ~((Alignment) - 1U))
 #define RR_IS_POW2(Num) (((Num - 1) & Num) == 0)
 
 #endif

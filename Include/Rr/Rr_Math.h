@@ -3552,6 +3552,20 @@ static inline Rr_Vec3 Rr_RotateV3AxisAngle_RH(
  * Rect Operations
  */
 
+static inline Rr_Rect Rr_UIRectIntersection(
+    Rr_Rect const *RectA,
+    Rr_Rect const *RectB)
+{
+    Rr_Rect Result;
+    Result.Offset = Rr_MaxV2(RectA->Offset, RectB->Offset);
+    Rr_Vec2 BottomRightA = Rr_AddV2(RectA->Offset, RectA->Extent);
+    Rr_Vec2 BottomRightB = Rr_AddV2(RectB->Offset, RectB->Extent);
+    Rr_Vec2 Delta = Rr_MinV2(BottomRightA, BottomRightB);
+    Result.Extent = Rr_SubV2(Delta, Result.Offset);
+
+    return Result;
+}
+
 static inline bool Rr_RectContains(Rr_Rect const *Rect, Rr_Vec2 Point)
 {
     return Point.X >= Rect->Offset.X &&
@@ -3571,6 +3585,17 @@ static inline Rr_Rect Rr_ResizeRect(Rr_Rect const *Rect, float Amount)
 
     Result.Offset = Rr_SubV2(Rect->Offset, Rr_V2(Amount, Amount));
     Result.Extent = Rr_AddV2(Rect->Extent, Rr_V2(Amount * 2.0f, Amount * 2.0f));
+
+    return Result;
+}
+
+/* TODO: Rename. */
+static inline Rr_Rect Rr_ResizeRectV2(Rr_Rect const *Rect, Rr_Vec2 Amount)
+{
+    Rr_Rect Result = *Rect;
+
+    Result.Offset = Rr_SubV2(Rect->Offset, Amount);
+    Result.Extent = Rr_AddV2(Rect->Extent, Rr_MulV2F(Amount, 2.0f));
 
     return Result;
 }
