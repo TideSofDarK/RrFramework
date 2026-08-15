@@ -14,8 +14,8 @@ class CUI2DemoApp
 {
     bool SlowMo{};
 
-    Rr_UI2Window *Window0{};
-    Rr_UI2Window *Window1{};
+    Rr_UIWindow *Window0{};
+    Rr_UIWindow *Window1{};
 
 public:
     CUI2DemoApp()
@@ -68,7 +68,7 @@ public:
         Hori->Extents[RR_UI_AXIS_X].Type = RR_UI_EXTENT_TYPE_SUM;
         Hori->Extents[RR_UI_AXIS_Y].Type = RR_UI_EXTENT_TYPE_SUM;
         Hori->DrawFunc = Rr_UIDrawBevel;
-        Hori->DrawColor = RR_UI_COLOR_BG;
+        Hori->DrawData = 0xAAAAAAFF;
         Hori->Padding = Rr_V2(4.0f, 4.0f);
 
         return Hori;
@@ -81,7 +81,7 @@ public:
         Hori->Extents[RR_UI_AXIS_X].Type = RR_UI_EXTENT_TYPE_SUM;
         Hori->Extents[RR_UI_AXIS_Y].Type = RR_UI_EXTENT_TYPE_SUM;
         Hori->DrawFunc = Rr_UIDrawBevel;
-        Hori->DrawColor = RR_UI_COLOR_BG;
+        Hori->DrawData = 0xAAAAAAFF;
         Hori->Padding = Rr_V2(4.0f, 4.0f);
 
         return Hori;
@@ -90,6 +90,7 @@ public:
     void WindowlessStuff()
     {
         auto Hori = MakeHori("Hori");
+        Hori->DrawFunc = nullptr;
 
         Rr_UIPush(Hori);
         {
@@ -139,7 +140,7 @@ public:
             ScrollArea->Scrollable[RR_UI_AXIS_X] = true;
             ScrollArea->Scrollable[RR_UI_AXIS_Y] = true;
             ScrollArea->DrawFunc = Rr_UIDrawBevel;
-            ScrollArea->DrawColor = RR_UI_COLOR_BG;
+            ScrollArea->DrawData = 0xAAAAAAFF;
             ScrollArea->Padding = Rr_V2(4.0f, 4.0f);
 
             Rr_UIPush(ScrollArea);

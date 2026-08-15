@@ -27,7 +27,7 @@
 typedef uint64_t Rr_UIHash;
 typedef uint32_t Rr_UIIndex;
 typedef struct Rr_UIFont Rr_UIFont;
-typedef struct Rr_UI2Window Rr_UI2Window;
+typedef struct Rr_UIWindow Rr_UIWindow;
 
 typedef enum
 {
@@ -88,27 +88,10 @@ struct Rr_UIPrimitive
     Rr_UIIndex BaseVertex;
 };
 
-typedef void (*Rr_UIDrawFunc)(
-    Rr_Rect Rect,
-    uint32_t ClipRectIndex,
-    uint32_t Color);
+typedef void (
+    *Rr_UIDrawFunc)(Rr_Rect Rect, uint32_t ClipRectIndex, uintptr_t DrawData);
 
 typedef bool (*Rr_UIInputFieldFilterFunc)(size_t Length, char const *);
-
-typedef enum
-{
-    RR_UI_ITEM_FLAGS_FILL_BIT = 1U << 0,
-    RR_UI_ITEM_FLAGS_NO_MOUSE_BIT = 1U << 1,
-    RR_UI_ITEM_FLAGS_CLICKABLE_BIT = 1U << 2,
-    RR_UI_ITEM_FLAGS_DRAW_TEXT_BIT = 1U << 3,
-    RR_UI_ITEM_FLAGS_INPUT_TEXT_BIT = 1U << 4,
-    RR_UI_ITEM_FLAGS_CENTER_TEXT_BIT = 1U << 5,
-    RR_UI_ITEM_FLAGS_HAS_FOCUS_BIT = 1U << 6,
-    RR_UI_ITEM_FLAGS_HOVERING_BIT = 1U << 7,
-    RR_UI_ITEM_FLAGS_DRAGGING_BIT = 1U << 8,
-    RR_UI_ITEM_FLAGS_RELEASED_BIT = 1U << 9,
-    RR_UI_ITEM_FLAGS_DRAGGED_BIT = 1U << 10,
-} Rr_UIItemFlags;
 
 typedef struct Rr_UIItem Rr_UIItem;
 struct Rr_UIItem
@@ -121,13 +104,13 @@ struct Rr_UIItem
     Rr_Vec2 Padding; /* Space between the rect of this item and its children. */
     bool Fill; /* Whether to set non-flow axis extent to max among siblings. */
 
-    bool IgnoreMouse;
-    bool Clickable;
+    bool MouseIgnored;   /* Completely ignore mouse (including hovering). */
+    bool MouseClickable; /* Full press/click/drag/release support. */
     Rr_CursorType HoveringCursor;
     Rr_CursorType DraggingCursor;
 
     Rr_UIDrawFunc DrawFunc;
-    Rr_UIColor DrawColor;
+    uintptr_t DrawData; /* Interpretation is up to the draw function. */
     Rr_Vec2 DrawOffset;
 
     bool DrawText;
@@ -170,10 +153,10 @@ struct Rr_UIItem
     Rr_Vec2 Extent;         /* Used during layout calculations. */
     Rr_Vec2 TextExtent;     /* Used during layout calculations. */
     Rr_Vec2 ChildrenExtent; /* Used during layout calculations. */
-    uint64_t BuildIndex;
     uint32_t ClipIndex;
     uint32_t InnerClipIndex;
-    Rr_UI2Window *Window; /* TODO */
+    uint32_t StartBuildIndex;
+    uint32_t EndBuildIndex;
 };
 
 typedef enum
@@ -203,7 +186,7 @@ typedef enum
     RR_UI_RESIZE_TYPE_SE,
 } Rr_UIResizeType;
 
-struct Rr_UI2Window
+struct Rr_UIWindow
 {
     char const *Name;
 
@@ -222,39 +205,10 @@ struct Rr_UI2Window
 extern "C" {
 #endif
 
-extern void RR_CC Rr_UIDrawRect(
-    Rr_Rect Rect,
-    uint32_t ClipIndex,
-    uint32_t Color);
-
-extern void RR_CC Rr_UIDrawWindowBackground(
-    Rr_Rect Rect,
-    uint32_t ClipIndex,
-    uint32_t Color);
-
-extern void RR_CC Rr_UIDrawTri(
-    Rr_Rect Rect,
-    uint32_t ClipIndex,
-    uint32_t Color);
-
-extern void RR_CC Rr_UIDrawBevel(
-    Rr_Rect Rect,
-    uint32_t ClipIndex,
-    uint32_t Color);
-
-extern void RR_CC Rr_UIDrawInset(
-    Rr_Rect Rect,
-    uint32_t ClipIndex,
-    uint32_t Color);
-
-extern void RR_CC Rr_UIDrawCloseCross(
-    Rr_Rect Rect,
-    uint32_t ClipIndex,
-    uint32_t Color);
-
-extern void RR_CC Rr_UISetDefaultColors(void);
-
 /* Core */
+
+extern void RR_CC
+Rr_UIDrawRect(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
 
 extern Rr_UIExtent RR_CC Rr_UISum(float Rigid);
 
@@ -284,7 +238,24 @@ extern void RR_CC Rr_UIClosePopup(Rr_UIItem *Item);
 
 extern void RR_CC Rr_UIClosePopups(void);
 
-/* Widgets */
+/* Toolkit */
+
+extern void RR_CC Rr_UISetDefaultColors(void);
+
+extern void RR_CC
+Rr_UIDrawWindowBackground(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
+
+extern void RR_CC
+Rr_UIDrawTri(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
+
+extern void RR_CC
+Rr_UIDrawBevel(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
+
+extern void RR_CC
+Rr_UIDrawInset(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
+
+extern void RR_CC
+Rr_UIDrawCloseCross(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
 
 extern Rr_UIItem *RR_CC Rr_UISpacer(Rr_UIExtent Extent);
 
@@ -297,9 +268,9 @@ extern Rr_UIItem *RR_CC Rr_UIPushContextMenu(char const *Name);
 
 extern bool RR_CC Rr_UIContextMenuItem(char const *Name);
 
-extern Rr_UI2Window *RR_CC Rr_UI2CreateWindow(char const *Name);
+extern Rr_UIWindow *RR_CC Rr_UI2CreateWindow(char const *Name);
 
-extern Rr_UIItem *RR_CC Rr_UIGetWindowItem(Rr_UI2Window *Window);
+extern Rr_UIItem *RR_CC Rr_UIGetWindowItem(Rr_UIWindow *Window);
 
 extern Rr_UIItem *RR_CC Rr_UIInfo(void);
 

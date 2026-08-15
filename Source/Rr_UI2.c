@@ -64,7 +64,7 @@
 
 static float const RR_UI_BEVEL_THICKNESS = 2.0f;
 static float const RR_UI_WINDOW_BORDER = 1.0f;
-static float const RR_UI_WINDOW_RESIZE_WIDTH = 4.0f;
+static float const RR_UI_WINDOW_HANDLES = 4.0f;
 static float const RR_UI_WINDOW_CONTENTS_PADDING = 4.0f;
 
 typedef struct Rr_UIUniform Rr_UIUniform;
@@ -87,6 +87,14 @@ struct Rr_UIMouseButton
     bool Down;
     bool Held;
     bool Up;
+};
+
+typedef struct Rr_UIRootTrie Rr_UIRootTrie;
+struct Rr_UIRootTrie
+{
+    Rr_UIHash Hash;
+    Rr_UIItem Root;
+    Rr_UIRootTrie *Children[4];
 };
 
 typedef struct Rr_UI Rr_UI;
@@ -125,6 +133,7 @@ struct Rr_UI
     bool MouseMoved;
 
     Rr_UIItem *HoveredItem;
+    Rr_UIItem *FocusedNonPopupRoot;
     Rr_UIItem *FocusedItem;
     size_t TextInputCursorBegin;
     size_t TextInputCursorEnd;
@@ -134,19 +143,17 @@ struct Rr_UI
     RR_ARRAY(char const *) TextInputEvents;
     RR_ARRAY(Rr_KeyEvent) KeyboardInputEvents;
 
-    Rr_UIItem *Root; /* Only used as a hash trie (hash being some pointer) for
-                      * actual roots. */
+    Rr_UIRootTrie *Roots;
 
     Rr_UIItem *ImplicitItem;
 
-    Rr_UI2Window *FocusedWindow;
-    RR_ARRAY(Rr_UI2Window *) Windows;
+    RR_ARRAY(Rr_UIWindow *) Windows;
 
     RR_ARRAY(Rr_UIPopupInfo) PopupStack;
 
     RR_ARRAY(Rr_UIItem *) ParentStack;
 
-    uint64_t BuildIndex;
+    uint32_t BuildIndex;
 
     Rr_Arena *FrameArena;
     Rr_Arena *Arena;
@@ -708,7 +715,7 @@ static inline void Rr_UIUpdateMouseResponse(Rr_UIItem *Item)
 
     if (Item->Dragging)
     {
-        if (Button->Down && Item->Clickable)
+        if (Button->Down && Item->MouseClickable)
         {
             if (Button->Clicks > 1)
             {
@@ -726,12 +733,12 @@ static inline void Rr_UIUpdateMouseResponse(Rr_UIItem *Item)
 
 static inline Rr_UIItem *Rr_UIResetItem(Rr_UIItem *Item)
 {
-    if (Item->BuildIndex == gUI->BuildIndex)
+    if (Item->StartBuildIndex == gUI->BuildIndex)
     {
         return Item;
     }
 
-    Item->BuildIndex = gUI->BuildIndex;
+    Item->StartBuildIndex = gUI->BuildIndex;
     // Item->Parent = NULL;
     Item->First = NULL;
     Item->Last = NULL;
@@ -750,8 +757,8 @@ static inline Rr_UIItem *Rr_UILookupItem(Rr_UIItem **ItemRef, Rr_UIHash Hash)
         {
             return Rr_UIResetItem(*ItemRef);
         }
-        static const int Shift = (sizeof(Rr_UIHash) * CHAR_BIT) - 2;
-        ItemRef = &(*ItemRef)->HashChildren[Hash >> Shift];
+        static int const SHIFT = (sizeof(Rr_UIHash) * CHAR_BIT) - 2;
+        ItemRef = &(*ItemRef)->HashChildren[Hash >> SHIFT];
     }
 
     *ItemRef = Rr_Alloc(sizeof(Rr_UIItem), gUI->Arena);
@@ -760,9 +767,25 @@ static inline Rr_UIItem *Rr_UILookupItem(Rr_UIItem **ItemRef, Rr_UIHash Hash)
     return Rr_UIResetItem(*ItemRef);
 }
 
-static inline Rr_UIItem *Rr_UILookupRoot(void *Hash)
+static inline Rr_UIItem *Rr_UILookupRoot(void *Key)
 {
-    return Rr_UILookupItem(&gUI->Root, (Rr_UIHash)Hash);
+    Rr_UIRootTrie **Ref = &gUI->Roots;
+    uintptr_t Hash = (uintptr_t)Key;
+    for (; *Ref; Hash <<= 2)
+    {
+        if (Hash == (*Ref)->Hash)
+        {
+            return Rr_UIResetItem(&(*Ref)->Root);
+        }
+        static int const SHIFT = (sizeof(uintptr_t) * CHAR_BIT) - 2;
+        Ref = &(*Ref)->Children[Hash >> SHIFT];
+    }
+
+    *Ref = Rr_Alloc(sizeof(Rr_UIRootTrie), gUI->Arena);
+    (*Ref)->Hash = Hash;
+    (*Ref)->Root.Hash = Hash;
+
+    return Rr_UIResetItem(&(*Ref)->Root);
 }
 
 static inline void Rr_UIInitPipelines(void)
@@ -869,21 +892,6 @@ static inline void Rr_UIInitPipelines(void)
     gUI->DefaultPipeline = Rr_CreateGraphicsPipeline(&PipelineInfo);
 }
 
-void Rr_UISetDefaultColors(void)
-{
-    uint32_t *Colors = gUI->Colors;
-
-    Colors[RR_UI_COLOR_FG] = 0x000000FF;
-    Colors[RR_UI_COLOR_FG_DIMMED] = 0x010101FF;
-    Colors[RR_UI_COLOR_BG] = 0x808080FF;
-    Colors[RR_UI_COLOR_INPUT_FG] = 0x000000FF;
-    Colors[RR_UI_COLOR_INPUT_BG] = 0xFFFFFFFF;
-    Colors[RR_UI_COLOR_INPUT_SELECTION_FG] = 0xFFFFFFFF;
-    Colors[RR_UI_COLOR_INPUT_SELECTION_BG] = 0x0000FFFF;
-    Colors[RR_UI_COLOR_WHITE] = 0xFFFFFFFF;
-    Colors[RR_UI_COLOR_BLACK] = 0x000000FF;
-}
-
 void Rr_InitUI2(void)
 {
     Rr_Arena *Arena = Rr_CreateDefaultArena();
@@ -969,6 +977,21 @@ void Rr_CleanupUI2(void)
     gUI = NULL;
 }
 
+static inline Rr_UIWindow *Rr_UIIsWindowRoot(Rr_UIItem *Root)
+{
+    for (size_t Index = 0; Index < gUI->Windows.Count; ++Index)
+    {
+        Rr_UIWindow *Window = gUI->Windows.Data[Index];
+
+        if (Root == Rr_UILookupRoot(Window))
+        {
+            return Window;
+        }
+    }
+
+    return NULL;
+}
+
 static inline void Rr_UIHandleLeftMouseButtonDown(
     Rr_MouseButtonEvent const *Event)
 {
@@ -977,7 +1000,9 @@ static inline void Rr_UIHandleLeftMouseButtonDown(
     gUI->LeftMouseButton.Up = false;
     gUI->LeftMouseButton.Held = true;
 
-    if (gUI->HoveredItem && gUI->HoveredItem->Clickable)
+    /* Update focused/dragged item. */
+
+    if (gUI->HoveredItem && gUI->HoveredItem->MouseClickable)
     {
         gUI->LeftMouseButton.ItemDragStart = Event->Position;
         gUI->LeftMouseButton.Item = gUI->HoveredItem;
@@ -989,23 +1014,16 @@ static inline void Rr_UIHandleLeftMouseButtonDown(
         gUI->FocusedItem = NULL;
     }
 
-    Rr_UIItem *Root = Rr_UINonPopupRoot(gUI->HoveredItem);
-    if (Root && Root->Window)
-    {
-        gUI->FocusedWindow = Root->Window;
-        gUI->FocusedWindow->ZOrder = INT32_MIN;
-    }
-    else
-    {
-        gUI->FocusedWindow = NULL;
-    }
+    gUI->FocusedNonPopupRoot = Rr_UINonPopupRoot(gUI->HoveredItem);
+
+    /* Close popups if clicked outside. */
 
     if (gUI->PopupStack.Count)
     {
         bool ChildOfPopup = Rr_UIChildOfPopup(gUI->HoveredItem);
         if (!ChildOfPopup)
         {
-            gUI->PopupStack.Count = 0;
+            Rr_UIClosePopups();
         }
     }
 }
@@ -1097,7 +1115,7 @@ void Rr_ProcessUI2Event(Rr_Event const *Event)
 static bool Rr_UINullIfOutdated(Rr_UIItem **ItemRef)
 {
     Rr_UIItem *Item = *ItemRef;
-    if (Item && Item->BuildIndex != gUI->BuildIndex)
+    if (Item && Item->EndBuildIndex != gUI->BuildIndex)
     {
         *ItemRef = NULL;
 
@@ -1115,6 +1133,7 @@ void Rr_BeginUI2(void)
     gUI->DisplayScale = Rr_GetDisplayScale();
 
     Rr_UINullIfOutdated(&gUI->HoveredItem);
+    Rr_UINullIfOutdated(&gUI->FocusedNonPopupRoot);
     Rr_UINullIfOutdated(&gUI->FocusedItem);
     Rr_UINullIfOutdated(&gUI->LeftMouseButton.Item);
     for (size_t Index = 0; Index < gUI->PopupStack.Count; ++Index)
@@ -1421,6 +1440,7 @@ static inline void Rr_UICalculateRects(Rr_UIItem *Item, Rr_Vec2 Offset)
 
     Item->Rect.Offset = Offset;
     Item->Rect.Extent = Item->Extent;
+    Item->EndBuildIndex = gUI->BuildIndex;
 
     Rr_Vec4 RectSIMD;
     memcpy(&RectSIMD, &Item->Rect, sizeof(Rr_Rect));
@@ -1821,257 +1841,9 @@ static inline size_t Rr_UIDrawInputText(
     return NewCursorEnd;
 }
 
-void Rr_UIDrawRect(Rr_Rect Rect, uint32_t ClipIndex, uint32_t Color)
+void Rr_UIDrawRect(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData)
 {
-    Rr_UIDrawSolidRect(&Rect, ClipIndex, Color);
-}
-
-void Rr_UIDrawWindowBackground(Rr_Rect Rect, uint32_t ClipIndex, uint32_t Color)
-{
-    Rect =
-        Rr_ResizeRect(&Rect, -RR_UI_WINDOW_RESIZE_WIDTH + RR_UI_WINDOW_BORDER);
-    Rr_UIDrawSolidRect(&Rect, ClipIndex, gUI->Colors[RR_UI_COLOR_BLACK]);
-    Rect = Rr_ResizeRect(&Rect, -RR_UI_WINDOW_BORDER);
-    Rr_UIDrawSolidRect(&Rect, ClipIndex, gUI->Colors[RR_UI_COLOR_BG]);
-}
-
-void Rr_UIDrawTri(Rr_Rect Rect, uint32_t ClipIndex, uint32_t Color)
-{
-    Rr_UIPrimitive Primitive = Rr_UI2ReservePrimitive(3, 3);
-
-    float const FEATHER = 1.25f;
-
-    Rect = Rr_ResizeRect(&Rect, -FEATHER);
-
-    Primitive.Vertices[0] = (Rr_UIVertex){
-        .Offset = Rect.Offset,
-        .Color = Color,
-        .ClipIndex = ClipIndex,
-    };
-    Primitive.Vertices[1] = (Rr_UIVertex){
-        .Offset = Rr_V2(
-            Rect.Offset.X + Rect.Extent.X,
-            Rect.Offset.Y + Rect.Extent.Y * 0.5f),
-        .Color = Color,
-        .ClipIndex = ClipIndex,
-    };
-    Primitive.Vertices[2] = (Rr_UIVertex){
-        .Offset = Rr_V2(Rect.Offset.X, Rect.Offset.Y + Rect.Extent.Y),
-        .Color = Color,
-        .ClipIndex = ClipIndex,
-    };
-
-    Primitive.Indices[0] = Primitive.BaseVertex;
-    Primitive.Indices[1] = Primitive.BaseVertex + 1;
-    Primitive.Indices[2] = Primitive.BaseVertex + 2;
-
-    Rr_UIFeatherConvexPrimitive(&Primitive, 3, ClipIndex, FEATHER);
-}
-
-void Rr_UIDrawBevel(Rr_Rect Rect, uint32_t ClipIndex, uint32_t Color)
-{
-    static uint32_t const RR_UI_BEVEL_VERTEX_COUNT = 10;
-    static uint32_t const RR_UI_BEVEL_INDEX_COUNT = 30;
-
-    uint32_t BaseVertex = (uint32_t)gUI->VertexCount;
-    Rr_UIVertex *Vertices = &gUI->Vertices[gUI->VertexCount];
-    gUI->VertexCount += RR_UI_BEVEL_VERTEX_COUNT;
-    Rr_UIIndex *Indices = &gUI->Indices[gUI->IndexCount];
-    gUI->IndexCount += RR_UI_BEVEL_INDEX_COUNT;
-
-    float Thickness = RR_UI_BEVEL_THICKNESS;
-
-    uint32_t Light = 0xFFFFFFFF;
-    uint32_t Dark = 0x000000FF;
-
-    Rr_Vec2 Offset = Rect.Offset;
-    Rr_Vec2 Extent = Rect.Extent;
-
-    Vertices[0] = (Rr_UIVertex){
-        .Color = Light,
-    };
-    Vertices[1] = (Rr_UIVertex){
-        .Offset = Rr_V2(Extent.X, 0.0f),
-        .Color = Light,
-    };
-    Vertices[2] = (Rr_UIVertex){
-        .Offset = Rr_V2(Extent.X, 0.0f),
-        .Color = Dark,
-    };
-    Vertices[3] = (Rr_UIVertex){
-        .Offset = Rr_V2F(Thickness),
-        .Color = Color,
-    };
-    Vertices[4] = (Rr_UIVertex){
-        .Offset = Rr_V2(Extent.X - Thickness, Thickness),
-        .Color = Color,
-    };
-    Vertices[5] = (Rr_UIVertex){
-        .Offset = Rr_V2(Thickness, Extent.Y - Thickness),
-        .Color = Color,
-    };
-    Vertices[6] = (Rr_UIVertex){
-        .Offset = Rr_V2(Extent.X - Thickness, Extent.Y - Thickness),
-        .Color = Color,
-    };
-    Vertices[7] = (Rr_UIVertex){
-        .Offset = Rr_V2(0.0f, Extent.Y),
-        .Color = Light,
-    };
-    Vertices[8] = (Rr_UIVertex){
-        .Offset = Rr_V2(0.0f, Extent.Y),
-        .Color = Dark,
-    };
-    Vertices[9] = (Rr_UIVertex){
-        .Offset = Extent,
-        .Color = Dark,
-    };
-
-    for (size_t Index = 0; Index < RR_UI_BEVEL_VERTEX_COUNT; ++Index)
-    {
-        Vertices[Index].Offset = Rr_AddV2(Vertices[Index].Offset, Offset);
-        // Vertices[Index].Offset = Rr_FloorV2(Vertices[Index].Offset);
-        Vertices[Index].ClipIndex = ClipIndex;
-    }
-
-    static Rr_UIIndex const BEVEL_INDICES[] = { 0, 1, 4, 0, 4, 3, 0, 3, 5, 0,
-                                                5, 7, 4, 2, 9, 4, 9, 6, 5, 6,
-                                                9, 5, 9, 8, 3, 4, 6, 3, 6, 5 };
-
-    for (size_t Index = 0; Index < RR_UI_BEVEL_INDEX_COUNT; ++Index)
-    {
-        Indices[Index] = BaseVertex + BEVEL_INDICES[Index];
-    }
-}
-
-void Rr_UIDrawInset(Rr_Rect Rect, uint32_t ClipIndex, uint32_t Color)
-{
-    static uint32_t const RR_UI_INSET_VERTEX_COUNT = 16;
-    static uint32_t const RR_UI_INSET_INDEX_COUNT = 30;
-
-    Rr_UIIndex BaseVertex = (Rr_UIIndex)gUI->VertexCount;
-    Rr_UIVertex *Vertices = &gUI->Vertices[gUI->VertexCount];
-    gUI->VertexCount += RR_UI_INSET_VERTEX_COUNT;
-    Rr_UIIndex *Indices = &gUI->Indices[gUI->IndexCount];
-    gUI->IndexCount += RR_UI_INSET_INDEX_COUNT;
-
-    float Thickness = RR_UI_BEVEL_THICKNESS;
-
-    uint32_t Light = 0xFFFFFFFF;
-    uint32_t Dark = 0x000000FF;
-    uint32_t HalfLight = 0x808080FF;
-
-    Rr_Vec2 Offset = Rect.Offset;
-    Rr_Vec2 Extent = Rect.Extent;
-
-    Vertices[0] = (Rr_UIVertex){
-        .Color = gUI->Colors[RR_UI_COLOR_BG],
-    };
-    Vertices[1] = (Rr_UIVertex){
-        .Offset = Rr_V2(Extent.X, 0.0f),
-        .Color = gUI->Colors[RR_UI_COLOR_BG],
-    };
-    Vertices[2] = (Rr_UIVertex){
-        .Offset = Rr_V2(Extent.X, 0.0f),
-        .Color = Light,
-    };
-    Vertices[3] = (Rr_UIVertex){
-        .Offset = Rr_V2F(Thickness),
-        .Color = Dark,
-    };
-    Vertices[4] = (Rr_UIVertex){
-        .Offset = Rr_V2F(Thickness),
-        .Color = Color,
-    };
-    Vertices[5] = (Rr_UIVertex){
-        .Offset = Rr_V2(Extent.X - Thickness, Thickness),
-        .Color = Dark,
-    };
-    Vertices[6] = (Rr_UIVertex){
-        .Offset = Rr_V2(Extent.X - Thickness, Thickness),
-        .Color = HalfLight, //
-    };
-    Vertices[7] = (Rr_UIVertex){
-        .Offset = Rr_V2(Extent.X - Thickness, Thickness),
-        .Color = Color,
-    };
-    Vertices[8] = (Rr_UIVertex){
-        .Offset = Rr_V2(Thickness, Extent.Y - Thickness),
-        .Color = Dark,
-    };
-    Vertices[9] = (Rr_UIVertex){
-        .Offset = Rr_V2(Thickness, Extent.Y - Thickness),
-        .Color = HalfLight, //
-    };
-    Vertices[10] = (Rr_UIVertex){
-        .Offset = Rr_V2(Thickness, Extent.Y - Thickness),
-        .Color = Color,
-    };
-    Vertices[11] = (Rr_UIVertex){
-        .Offset = Rr_V2(Extent.X - Thickness, Extent.Y - Thickness),
-        .Color = HalfLight, //
-    };
-    Vertices[12] = (Rr_UIVertex){
-        .Offset = Rr_V2(Extent.X - Thickness, Extent.Y - Thickness),
-        .Color = Color,
-    };
-    Vertices[13] = (Rr_UIVertex){
-        .Offset = Rr_V2(0.0f, Extent.Y),
-        .Color = gUI->Colors[RR_UI_COLOR_BG],
-    };
-    Vertices[14] = (Rr_UIVertex){
-        .Offset = Rr_V2(0.0f, Extent.Y),
-        .Color = Light,
-    };
-    Vertices[15] = (Rr_UIVertex){
-        .Offset = Extent,
-        .Color = Light,
-    };
-
-    for (size_t Index = 0; Index < RR_UI_INSET_VERTEX_COUNT; ++Index)
-    {
-        Vertices[Index].Offset = Rr_AddV2(Vertices[Index].Offset, Offset);
-        // Vertices[Index].Offset = Rr_RoundV2(Vertices[Index].Offset);
-        Vertices[Index].ClipIndex = ClipIndex;
-    }
-
-    static Rr_UIIndex const INSET_INDICES[] = { 0,  1,  5,  0,  5,  3, 0,  3,
-                                                8,  0,  8,  13, 6,  2, 15, 6,
-                                                15, 11, 9,  11, 15, 9, 15, 14,
-                                                4,  7,  12, 4,  12, 10 };
-
-    for (size_t Index = 0; Index < RR_UI_INSET_INDEX_COUNT; ++Index)
-    {
-        Indices[Index] = BaseVertex + INSET_INDICES[Index];
-    }
-}
-
-void Rr_UIDrawCloseCross(Rr_Rect Rect, uint32_t ClipIndex, uint32_t Color)
-{
-    float Angle = RR_ANGLE_DEG(45.0f);
-    float Length = Rect.Extent.X * 0.5f;
-    float Thickness = 0.2f;
-    for (int Axis = 0; Axis < 2; ++Axis)
-    {
-        Rr_Rect BarRect;
-        BarRect.Offset.X = Length * -0.5f;
-        BarRect.Offset.Y = Thickness * -0.5f;
-        BarRect.Extent.X = Length;
-        BarRect.Extent.Y = Thickness;
-        Rr_UIPrimitive Primitive =
-            Rr_UIDrawSolidRect(&BarRect, ClipIndex, Color);
-        Rr_UIVertex *Vertices = Primitive.Vertices;
-        for (int Index = 0; Index < 4; ++Index)
-        {
-            Rr_Vec2 Offset = Vertices[Index].Offset;
-            Offset = Rr_RotateV2(Offset, Angle);
-            Offset = Rr_AddV2(Offset, Rect.Offset);
-            Offset = Rr_AddV2(Offset, Rr_MulV2F(Rect.Extent, 0.5f));
-            Vertices[Index].Offset = Offset;
-        }
-        Rr_UIFeatherConvexPrimitive(&Primitive, 4, ClipIndex, 1.5f);
-        Angle += RR_ANGLE_DEG(90.0f);
-    }
+    Rr_UIDrawSolidRect(&Rect, ClipIndex, (uint32_t)DrawData);
 }
 
 static inline Rr_Vec2 Rr_UIGetTextOffset(Rr_UIItem *Item)
@@ -2104,7 +1876,7 @@ static inline void Rr_UIDrawItem(Rr_UIItem *Item)
     /* Pre-order traversal. */
 
     bool Hovering = Rr_RectContains(&Item->Rect, gUI->MousePosition);
-    if (!Item->IgnoreMouse && Hovering)
+    if (!Item->MouseIgnored && Hovering)
     {
         gUI->HoveredItem = Item;
     }
@@ -2113,7 +1885,7 @@ static inline void Rr_UIDrawItem(Rr_UIItem *Item)
     {
         Rr_Rect DrawRect = Item->Rect;
         DrawRect.Offset = Rr_AddV2(DrawRect.Offset, Item->DrawOffset);
-        Item->DrawFunc(DrawRect, Item->ClipIndex, gUI->Colors[Item->DrawColor]);
+        Item->DrawFunc(DrawRect, Item->ClipIndex, Item->DrawData);
     }
 
     if (Item->InputText && Item->Text)
@@ -2190,8 +1962,8 @@ static inline void Rr_UIProcessRootItem(Rr_UIItem *Item, Rr_Rect Rect)
 
 static inline int Rr_UIWindowSort(void const *A, void const *B)
 {
-    Rr_UI2Window const *WindowA = *(Rr_UI2Window *const *)A;
-    Rr_UI2Window const *WindowB = *(Rr_UI2Window *const *)B;
+    Rr_UIWindow const *WindowA = *(Rr_UIWindow *const *)A;
+    Rr_UIWindow const *WindowB = *(Rr_UIWindow *const *)B;
 
     return WindowA->ZOrder - WindowB->ZOrder;
 }
@@ -2199,15 +1971,15 @@ static inline int Rr_UIWindowSort(void const *A, void const *B)
 static inline void Rr_UIProcessWindows(void)
 {
     size_t WindowCount = gUI->Windows.Count;
-    Rr_UI2Window **Windows = gUI->Windows.Data;
-    qsort(Windows, WindowCount, sizeof(Rr_UI2Window *), Rr_UIWindowSort);
+    Rr_UIWindow **Windows = gUI->Windows.Data;
+    qsort(Windows, WindowCount, sizeof(Rr_UIWindow *), Rr_UIWindowSort);
     for (size_t Index = 0; Index < WindowCount; ++Index)
     {
-        Rr_UI2Window *Window = Windows[Index];
+        Rr_UIWindow *Window = Windows[Index];
         Window->ZOrder = (int32_t)Index;
         Rr_UIItem *Item = Rr_UILookupRoot(Window);
         Rr_Rect Rect = Window->Rect;
-        Rect = Rr_ResizeRect(&Rect, RR_UI_WINDOW_RESIZE_WIDTH);
+        Rect = Rr_ResizeRect(&Rect, RR_UI_WINDOW_HANDLES);
         Rect = Rr_ResizeRect(&Rect, RR_UI_WINDOW_BORDER);
         Rr_UIProcessRootItem(Item, Rect);
     }
@@ -2525,7 +2297,10 @@ Rr_UIItem *Rr_UIGetHoverPopup(Rr_UIPopupInfo PopupInfo)
 
 Rr_UIItem *Rr_UIOpenPopup(Rr_UIPopupInfo PopupInfo)
 {
-    /* TODO: Filter out transient flows. */
+    if (!PopupInfo.Parent->Hash)
+    {
+        return NULL;
+    }
 
     size_t Count = gUI->PopupStack.Count;
     if (!Count)
@@ -2591,6 +2366,233 @@ void Rr_UIClosePopups(void)
     gUI->PopupStack.Count = 0;
 }
 
+/* Toolkit */
+
+void Rr_UISetDefaultColors(void)
+{
+    uint32_t *Colors = gUI->Colors;
+
+    Colors[RR_UI_COLOR_FG] = 0x000000FF;
+    Colors[RR_UI_COLOR_FG_DIMMED] = 0x010101FF;
+    Colors[RR_UI_COLOR_BG] = 0xAAAAAAFF;
+    Colors[RR_UI_COLOR_INPUT_FG] = 0x000000FF;
+    Colors[RR_UI_COLOR_INPUT_BG] = 0xFFFFFFFF;
+    Colors[RR_UI_COLOR_INPUT_SELECTION_FG] = 0xFFFFFFFF;
+    Colors[RR_UI_COLOR_INPUT_SELECTION_BG] = 0x0000FFFF;
+    Colors[RR_UI_COLOR_WHITE] = 0xFFFFFFFF;
+    Colors[RR_UI_COLOR_BLACK] = 0x000000FF;
+}
+
+void Rr_UIDrawBevelEx(
+    Rr_Rect Rect,
+    uint32_t ClipIndex,
+    float Border,
+    uint32_t LightColor,
+    uint32_t DarkColor,
+    uint32_t CenterColor,
+    uint32_t FillColor)
+{
+    static uint32_t const RR_UI_BEVEL_VERTEX_COUNT = 20;
+    static uint32_t const RR_UI_BEVEL_INDEX_COUNT = 54;
+
+    uint32_t BaseVertex = (uint32_t)gUI->VertexCount;
+    Rr_UIVertex *Vertices = &gUI->Vertices[gUI->VertexCount];
+    gUI->VertexCount += RR_UI_BEVEL_VERTEX_COUNT;
+    Rr_UIIndex *Indices = &gUI->Indices[gUI->IndexCount];
+    gUI->IndexCount += RR_UI_BEVEL_INDEX_COUNT;
+
+    float HalfBorder = Border * 0.5f;
+
+    Rr_Vec2 Offset = Rect.Offset;
+    Rr_Vec2 Extent = Rect.Extent;
+
+    Vertices[0] = (Rr_UIVertex){
+        .Color = LightColor,
+    };
+    Vertices[1] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X, 0.0f),
+        .Color = LightColor,
+    };
+    Vertices[2] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X, 0.0f),
+        .Color = DarkColor,
+    };
+    Vertices[3] = (Rr_UIVertex){
+        .Offset = Rr_V2F(1.0f),
+        .Color = LightColor,
+    };
+    Vertices[4] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X - 1.0f, 1.0f),
+        .Color = LightColor,
+    };
+    Vertices[5] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X - 1.0f, 1.0f),
+        .Color = DarkColor,
+    };
+    Vertices[6] = (Rr_UIVertex){
+        .Offset = Rr_V2F(HalfBorder),
+        .Color = CenterColor,
+    };
+    Vertices[7] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X - Border, HalfBorder),
+        .Color = CenterColor,
+    };
+    Vertices[8] = (Rr_UIVertex){
+        .Offset = Rr_V2(HalfBorder, Extent.Y - Border),
+        .Color = CenterColor,
+    };
+    Vertices[9] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X - Border, Extent.Y - Border),
+        .Color = CenterColor,
+    };
+    Vertices[10] = (Rr_UIVertex){
+        .Offset = Rr_V2(1.0f, Extent.Y - 1.0f),
+        .Color = LightColor,
+    };
+    Vertices[11] = (Rr_UIVertex){
+        .Offset = Rr_V2(1.0f, Extent.Y - 1.0f),
+        .Color = DarkColor,
+    };
+    Vertices[12] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X - 1.0f, Extent.Y - 1.0f),
+        .Color = DarkColor,
+    };
+    Vertices[13] = (Rr_UIVertex){
+        .Offset = Rr_V2(0.0f, Extent.Y),
+        .Color = LightColor,
+    };
+    Vertices[14] = (Rr_UIVertex){
+        .Offset = Rr_V2(0.0f, Extent.Y),
+        .Color = DarkColor,
+    };
+    Vertices[15] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X, Extent.Y),
+        .Color = DarkColor,
+    };
+    Vertices[16] = (Rr_UIVertex){
+        .Offset = Rr_V2F(HalfBorder),
+        .Color = FillColor,
+    };
+    Vertices[17] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X - Border, HalfBorder),
+        .Color = FillColor,
+    };
+    Vertices[18] = (Rr_UIVertex){
+        .Offset = Rr_V2(HalfBorder, Extent.Y - Border),
+        .Color = FillColor,
+    };
+    Vertices[19] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X - Border, Extent.Y - Border),
+        .Color = FillColor,
+    };
+
+    for (size_t Index = 0; Index < RR_UI_BEVEL_VERTEX_COUNT; ++Index)
+    {
+        /* Rounding bevel offsets helps with fractional scale values. */
+        Vertices[Index].Offset = Rr_RoundV2(Vertices[Index].Offset);
+        Vertices[Index].Offset = Rr_AddV2(Vertices[Index].Offset, Offset);
+        Vertices[Index].ClipIndex = ClipIndex;
+    }
+
+    static Rr_UIIndex const BEVEL_INDICES[] = {
+        0,  1,  4,  0,  4,  3,  5, 2, 15, 5, 15, 12, 0,  3,  10, 0,  10, 13,
+        14, 11, 12, 14, 12, 15, 3, 7, 6,  3, 4,  7,  7,  5,  12, 7,  12, 9,
+        8,  9,  12, 8,  12, 11, 3, 6, 8,  3, 8,  10, 16, 17, 19, 16, 19, 18
+    };
+
+    for (size_t Index = 0; Index < RR_UI_BEVEL_INDEX_COUNT; ++Index)
+    {
+        Indices[Index] = BaseVertex + BEVEL_INDICES[Index];
+    }
+}
+
+void Rr_UIDrawWindowBackground(
+    Rr_Rect Rect,
+    uint32_t ClipIndex,
+    uintptr_t DrawData)
+{
+    Rect = Rr_ResizeRect(&Rect, -RR_UI_WINDOW_HANDLES + RR_UI_WINDOW_BORDER);
+    Rr_UIDrawSolidRect(&Rect, ClipIndex, gUI->Colors[RR_UI_COLOR_BLACK]);
+    Rect = Rr_ResizeRect(&Rect, -RR_UI_WINDOW_BORDER);
+    Rr_UIDrawSolidRect(&Rect, ClipIndex, gUI->Colors[RR_UI_COLOR_BG]);
+}
+
+void Rr_UIDrawWindowTitleBar(
+    Rr_Rect Rect,
+    uint32_t ClipIndex,
+    uintptr_t DrawData)
+{
+    Rect.Extent.X += RR_UI_WINDOW_BORDER; /* Merge right border. */
+    uint32_t LightColor = 0xFFFFFFFF;
+    uint32_t DarkColor = 0x000000FF;
+    uint32_t CenterColor = 0xAAAAAAFF;
+    uint32_t FillColor = 0xAAAAAAFF;
+    if (DrawData) /* Has focus. */
+    {
+        LightColor = 0xAAAAAAFF;
+        DarkColor = 0x000000FF;
+        CenterColor = 0xAAAAAAFF;
+        FillColor = 0x000000FF;
+    }
+    Rr_UIDrawBevelEx(
+        Rect,
+        ClipIndex,
+        RR_UI_BEVEL_THICKNESS,
+        LightColor,
+        DarkColor,
+        CenterColor,
+        FillColor);
+}
+
+void Rr_UIDrawCloseCross(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData)
+{
+    uint32_t Color = (uint32_t)DrawData;
+    float Angle = RR_ANGLE_DEG(45.0f);
+    float Length = Rect.Extent.X * 0.5f;
+    float Thickness = 0.2f;
+    for (int Axis = 0; Axis < 2; ++Axis)
+    {
+        Rr_Rect BarRect;
+        BarRect.Offset.X = Length * -0.5f;
+        BarRect.Offset.Y = Thickness * -0.5f;
+        BarRect.Extent.X = Length;
+        BarRect.Extent.Y = Thickness;
+        Rr_UIPrimitive Primitive =
+            Rr_UIDrawSolidRect(&BarRect, ClipIndex, Color);
+        Rr_UIVertex *Vertices = Primitive.Vertices;
+        for (int Index = 0; Index < 4; ++Index)
+        {
+            Rr_Vec2 Offset = Vertices[Index].Offset;
+            Offset = Rr_RotateV2(Offset, Angle);
+            Offset = Rr_AddV2(Offset, Rect.Offset);
+            Offset = Rr_AddV2(Offset, Rr_MulV2F(Rect.Extent, 0.5f));
+            Vertices[Index].Offset = Offset;
+        }
+        Rr_UIFeatherConvexPrimitive(&Primitive, 4, ClipIndex, 1.5f);
+        Angle += RR_ANGLE_DEG(90.0f);
+    }
+}
+
+Rr_UIItem *Rr_UISpacer(Rr_UIExtent Extent)
+{
+    Rr_UIItem *Item = Rr_UIGetItem(NULL);
+    Rr_UIAxis ParentAxis = Item->Parent->Axis;
+    Rr_UIAxis NonAlignedAxis;
+    if (ParentAxis == RR_UI_AXIS_X)
+    {
+        NonAlignedAxis = RR_UI_AXIS_Y;
+    }
+    else
+    {
+        NonAlignedAxis = RR_UI_AXIS_X;
+    }
+    Item->Extents[NonAlignedAxis].Type = RR_UI_EXTENT_TYPE_SUM;
+    Item->Extents[ParentAxis] = Extent;
+    Item->MouseIgnored = true;
+
+    return Item;
+}
+
 Rr_UIItem *Rr_UIButton(char const *Name)
 {
     Rr_UIItem *Item = Rr_UIGetItem(Name);
@@ -2598,8 +2600,8 @@ Rr_UIItem *Rr_UIButton(char const *Name)
     Item->Extents[RR_UI_AXIS_Y] = Rr_UIText(1.0f);
     Item->DrawText = true;
     Item->CenterText = true;
-    Item->Clickable = true;
-    Item->DrawColor = RR_UI_COLOR_BG;
+    Item->MouseClickable = true;
+    Item->DrawData = gUI->Colors[RR_UI_COLOR_BG];
     if (Item->Hovering && (Item->Dragging || Item->Pressed))
     {
         Item->TextOffset = Rr_V2F(1.0f);
@@ -3299,11 +3301,11 @@ Rr_UIItem *Rr_UIInputFieldV2(
     Rr_UIItem *Item = Rr_UIGetItem(Name);
     Item->Extents[RR_UI_AXIS_X] = Rr_UIText(1.0f);
     Item->Extents[RR_UI_AXIS_Y] = Rr_UIText(1.0f);
-    Item->Clickable = true;
+    Item->MouseClickable = true;
     Item->HoveringCursor = RR_CURSOR_TYPE_TEXT;
     Item->DraggingCursor = RR_CURSOR_TYPE_TEXT;
     Item->DrawFunc = Rr_UIDrawInset;
-    Item->DrawColor = RR_UI_COLOR_INPUT_BG;
+    Item->DrawData = gUI->Colors[RR_UI_COLOR_INPUT_BG];
 
     Item->DrawText = true;
     Item->InputText = true;
@@ -3376,15 +3378,15 @@ Rr_UIItem *Rr_UIPushContextMenu(char const *Name)
     Item->Extents[RR_UI_AXIS_Y] = Rr_UISum(1.0f);
     Item->Padding = Rr_V2(4.0f, 1.0f);
     Item->Fill = true;
-    Item->Clickable = true;
+    Item->MouseClickable = true;
     Item->DrawFunc = Rr_UIDrawBevel;
     if (Item->Hovering)
     {
-        Item->DrawColor = RR_UI_COLOR_WHITE;
+        Item->DrawData = gUI->Colors[RR_UI_COLOR_WHITE];
     }
     else
     {
-        Item->DrawColor = RR_UI_COLOR_BG;
+        Item->DrawData = gUI->Colors[RR_UI_COLOR_BG];
     }
 
     Rr_UIPush(Item);
@@ -3392,7 +3394,7 @@ Rr_UIItem *Rr_UIPushContextMenu(char const *Name)
     Rr_UIItem *Text = Rr_UIGetItem(NULL);
     Text->Extents[RR_UI_AXIS_X] = Rr_UIText(1.0f);
     Text->Extents[RR_UI_AXIS_Y] = Rr_UIText(1.0f);
-    Text->IgnoreMouse = true;
+    Text->MouseIgnored = true;
     Text->DrawText = true;
     Text->TextColor = RR_UI_COLOR_FG;
     Text->TextOffset = Rr_V2F(0.0f);
@@ -3407,7 +3409,7 @@ Rr_UIItem *Rr_UIPushContextMenu(char const *Name)
     Vert->Extents[RR_UI_AXIS_Y] = Rr_UISum(1.0f);
     Vert->Axis = RR_UI_AXIS_Y;
     Vert->Fill = true;
-    Vert->IgnoreMouse = true;
+    Vert->MouseIgnored = true;
     Rr_UIPush(Vert);
 
     Rr_UISpacer(Rr_UIPercent(1.0f, 0.0f));
@@ -3415,9 +3417,9 @@ Rr_UIItem *Rr_UIPushContextMenu(char const *Name)
     Rr_UIItem *Tri = Rr_UIGetItem(NULL);
     Tri->Extents[RR_UI_AXIS_X] = Rr_UIEm(0.5f, 1.0f);
     Tri->Extents[RR_UI_AXIS_Y] = Rr_UIEm(0.5f, 1.0f);
-    Tri->IgnoreMouse = true;
+    Tri->MouseIgnored = true;
     Tri->DrawFunc = Rr_UIDrawTri;
-    Tri->DrawColor = RR_UI_COLOR_FG;
+    Tri->DrawData = gUI->Colors[RR_UI_COLOR_FG];
 
     Rr_UISpacer(Rr_UIPercent(1.0f, 0.0f));
 
@@ -3445,18 +3447,18 @@ bool Rr_UIContextMenuItem(char const *Name)
     Item->Extents[RR_UI_AXIS_Y] = Rr_UIText(1.0f);
     Item->Padding = Rr_V2(4.0f, 1.0f);
     Item->Fill = true;
-    Item->Clickable = true;
+    Item->MouseClickable = true;
     Item->DrawFunc = Rr_UIDrawBevel;
     Item->DrawText = true;
     Item->TextColor = RR_UI_COLOR_FG;
     Item->TextOffset = Rr_V2F(0.0f);
     if (Item->Hovering)
     {
-        Item->DrawColor = RR_UI_COLOR_WHITE;
+        Item->DrawData = gUI->Colors[RR_UI_COLOR_WHITE];
     }
     else
     {
-        Item->DrawColor = RR_UI_COLOR_BG;
+        Item->DrawData = gUI->Colors[RR_UI_COLOR_BG];
     }
     if (Item->Clicked)
     {
@@ -3466,10 +3468,10 @@ bool Rr_UIContextMenuItem(char const *Name)
     return Item->Clicked;
 }
 
-Rr_UI2Window *Rr_UI2CreateWindow(char const *Name)
+Rr_UIWindow *Rr_UI2CreateWindow(char const *Name)
 {
-    Rr_UI2Window *Window = Rr_Alloc(sizeof(Rr_UI2Window), gUI->Arena);
-    Window->Name = Name;
+    Rr_UIWindow *Window = Rr_Alloc(sizeof(Rr_UIWindow), gUI->Arena);
+    Window->Name = Rr_AllocCopy(Name, strlen(Name) + 1, gUI->Arena);
     Window->Rect.Offset = Rr_V2F(15.0f);
     Window->Rect.Extent = Rr_V2F(300.0f);
     *RR_PUSH_INTO_ARRAY(&gUI->Windows, gUI->Arena) = Window;
@@ -3477,24 +3479,154 @@ Rr_UI2Window *Rr_UI2CreateWindow(char const *Name)
     return Window;
 }
 
-Rr_UIItem *Rr_UISpacer(Rr_UIExtent Extent)
+void Rr_UIDrawTri(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData)
 {
-    Rr_UIItem *Item = Rr_UIGetItem(NULL);
-    Rr_UIAxis ParentAxis = Item->Parent->Axis;
-    Rr_UIAxis NonAlignedAxis;
-    if (ParentAxis == RR_UI_AXIS_X)
-    {
-        NonAlignedAxis = RR_UI_AXIS_Y;
-    }
-    else
-    {
-        NonAlignedAxis = RR_UI_AXIS_X;
-    }
-    Item->Extents[NonAlignedAxis].Type = RR_UI_EXTENT_TYPE_SUM;
-    Item->Extents[ParentAxis] = Extent;
-    Item->IgnoreMouse = true;
+    Rr_UIPrimitive Primitive = Rr_UI2ReservePrimitive(3, 3);
+    uint32_t Color = (uint32_t)DrawData;
 
-    return Item;
+    float const FEATHER = 1.25f;
+
+    Rect = Rr_ResizeRect(&Rect, -FEATHER);
+
+    Primitive.Vertices[0] = (Rr_UIVertex){
+        .Offset = Rect.Offset,
+        .Color = Color,
+        .ClipIndex = ClipIndex,
+    };
+    Primitive.Vertices[1] = (Rr_UIVertex){
+        .Offset = Rr_V2(
+            Rect.Offset.X + Rect.Extent.X,
+            Rect.Offset.Y + Rect.Extent.Y * 0.5f),
+        .Color = Color,
+        .ClipIndex = ClipIndex,
+    };
+    Primitive.Vertices[2] = (Rr_UIVertex){
+        .Offset = Rr_V2(Rect.Offset.X, Rect.Offset.Y + Rect.Extent.Y),
+        .Color = Color,
+        .ClipIndex = ClipIndex,
+    };
+
+    Primitive.Indices[0] = Primitive.BaseVertex;
+    Primitive.Indices[1] = Primitive.BaseVertex + 1;
+    Primitive.Indices[2] = Primitive.BaseVertex + 2;
+
+    Rr_UIFeatherConvexPrimitive(&Primitive, 3, ClipIndex, FEATHER);
+}
+
+void Rr_UIDrawBevel(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData)
+{
+    uint32_t FillColor = (uint32_t)DrawData;
+    Rr_UIDrawBevelEx(
+        Rect,
+        ClipIndex,
+        RR_UI_BEVEL_THICKNESS,
+        0xFFFFFFFF,
+        0x000000FF,
+        FillColor,
+        FillColor);
+}
+
+void Rr_UIDrawInset(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData)
+{
+    static uint32_t const RR_UI_INSET_VERTEX_COUNT = 16;
+    static uint32_t const RR_UI_INSET_INDEX_COUNT = 30;
+
+    Rr_UIIndex BaseVertex = (Rr_UIIndex)gUI->VertexCount;
+    Rr_UIVertex *Vertices = &gUI->Vertices[gUI->VertexCount];
+    gUI->VertexCount += RR_UI_INSET_VERTEX_COUNT;
+    Rr_UIIndex *Indices = &gUI->Indices[gUI->IndexCount];
+    gUI->IndexCount += RR_UI_INSET_INDEX_COUNT;
+
+    float Thickness = RR_UI_BEVEL_THICKNESS;
+
+    uint32_t FillColor = (uint32_t)DrawData;
+    uint32_t LightColor = 0xFFFFFFFF;
+    uint32_t DarkColor = 0x000000FF;
+    uint32_t HalfColor = 0x808080FF;
+
+    Rr_Vec2 Offset = Rect.Offset;
+    Rr_Vec2 Extent = Rect.Extent;
+
+    Vertices[0] = (Rr_UIVertex){
+        .Color = gUI->Colors[RR_UI_COLOR_BG],
+    };
+    Vertices[1] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X, 0.0f),
+        .Color = gUI->Colors[RR_UI_COLOR_BG],
+    };
+    Vertices[2] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X, 0.0f),
+        .Color = LightColor,
+    };
+    Vertices[3] = (Rr_UIVertex){
+        .Offset = Rr_V2F(Thickness),
+        .Color = DarkColor,
+    };
+    Vertices[4] = (Rr_UIVertex){
+        .Offset = Rr_V2F(Thickness),
+        .Color = FillColor,
+    };
+    Vertices[5] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X - Thickness, Thickness),
+        .Color = DarkColor,
+    };
+    Vertices[6] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X - Thickness, Thickness),
+        .Color = HalfColor, //
+    };
+    Vertices[7] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X - Thickness, Thickness),
+        .Color = FillColor,
+    };
+    Vertices[8] = (Rr_UIVertex){
+        .Offset = Rr_V2(Thickness, Extent.Y - Thickness),
+        .Color = DarkColor,
+    };
+    Vertices[9] = (Rr_UIVertex){
+        .Offset = Rr_V2(Thickness, Extent.Y - Thickness),
+        .Color = HalfColor, //
+    };
+    Vertices[10] = (Rr_UIVertex){
+        .Offset = Rr_V2(Thickness, Extent.Y - Thickness),
+        .Color = FillColor,
+    };
+    Vertices[11] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X - Thickness, Extent.Y - Thickness),
+        .Color = HalfColor, //
+    };
+    Vertices[12] = (Rr_UIVertex){
+        .Offset = Rr_V2(Extent.X - Thickness, Extent.Y - Thickness),
+        .Color = FillColor,
+    };
+    Vertices[13] = (Rr_UIVertex){
+        .Offset = Rr_V2(0.0f, Extent.Y),
+        .Color = gUI->Colors[RR_UI_COLOR_BG],
+    };
+    Vertices[14] = (Rr_UIVertex){
+        .Offset = Rr_V2(0.0f, Extent.Y),
+        .Color = LightColor,
+    };
+    Vertices[15] = (Rr_UIVertex){
+        .Offset = Extent,
+        .Color = LightColor,
+    };
+
+    for (size_t Index = 0; Index < RR_UI_INSET_VERTEX_COUNT; ++Index)
+    {
+        Vertices[Index].Offset = Rr_AddV2(Vertices[Index].Offset, Offset);
+        // Vertices[Index].Offset = Rr_RoundV2(Vertices[Index].Offset);
+        Vertices[Index].ClipIndex = ClipIndex;
+    }
+
+    static Rr_UIIndex const INSET_INDICES[] = { 0,  1,  5,  0,  5,  3, 0,  3,
+                                                8,  0,  8,  13, 6,  2, 15, 6,
+                                                15, 11, 9,  11, 15, 9, 15, 14,
+                                                4,  7,  12, 4,  12, 10 };
+
+    for (size_t Index = 0; Index < RR_UI_INSET_INDEX_COUNT; ++Index)
+    {
+        Indices[Index] = BaseVertex + INSET_INDICES[Index];
+    }
 }
 
 static inline Rr_UIItem *Rr_UITitleBarButton(char const *Name)
@@ -3504,7 +3636,7 @@ static inline Rr_UIItem *Rr_UITitleBarButton(char const *Name)
     ButtonRoot->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 1.0f);
     ButtonRoot->Axis = RR_UI_AXIS_Y;
     ButtonRoot->Fill = true;
-    ButtonRoot->IgnoreMouse = true;
+    ButtonRoot->MouseIgnored = true;
 
     Rr_UIPush(ButtonRoot);
 
@@ -3522,18 +3654,19 @@ static inline Rr_UIItem *Rr_UITitleBarButton(char const *Name)
     return Button;
 }
 
-static inline void Rr_UIAddWindowTitleBar(Rr_UI2Window *Window)
+static inline void Rr_UIAddWindowTitleBar(Rr_UIWindow *Window)
 {
-    bool HasFocus = gUI->FocusedWindow == Window;
+    /* Rr_UIItem *Root = Rr_UINonPopupRoot(gUI->FocusedItem); */
+    bool HasFocus = gUI->FocusedNonPopupRoot == Rr_UILookupRoot(Window);
 
     Rr_UIItem *Bar = Rr_UIGetItem("Rr.UI.TitleBar");
     Bar->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 1.0f);
     Bar->Extents[RR_UI_AXIS_Y] = Rr_UIEm(1.0f, 1.0f);
     Bar->Axis = RR_UI_AXIS_Y;
     Bar->Padding = Rr_V2F(RR_UI_BEVEL_THICKNESS);
-    Bar->Clickable = true;
-    Bar->DrawFunc = Rr_UIDrawBevel;
-    Bar->DrawColor = RR_UI_COLOR_BG;
+    Bar->MouseClickable = true;
+    Bar->DrawData = HasFocus;
+    Bar->DrawFunc = Rr_UIDrawWindowTitleBar;
 
     if (Bar->Pressed)
     {
@@ -3551,7 +3684,7 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UI2Window *Window)
     Buttons->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 1.0f);
     Buttons->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 1.0f);
     Buttons->Padding = Rr_V2F(0.0f);
-    Buttons->IgnoreMouse = true;
+    Buttons->MouseIgnored = true;
     Buttons->DrawText = true;
     Buttons->CenterText = true;
     Buttons->TextLength = strlen(Window->Name);
@@ -3560,13 +3693,10 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UI2Window *Window)
     Buttons->Text[Buttons->TextLength] = '\0';
     if (HasFocus)
     {
-        Buttons->DrawFunc = Rr_UIDrawRect;
-        Buttons->DrawColor = RR_UI_COLOR_BLACK;
         Buttons->TextColor = RR_UI_COLOR_WHITE;
     }
     else
     {
-        Buttons->DrawFunc = NULL;
         Buttons->TextColor = RR_UI_COLOR_FG;
     }
 
@@ -3582,9 +3712,9 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UI2Window *Window)
     Rr_UIItem *Cross = Rr_UIGetItemEx(Close, "CloseCross");
     Cross->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 1.0f);
     Cross->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 1.0f);
-    Cross->IgnoreMouse = true;
+    Cross->MouseIgnored = true;
     Cross->DrawFunc = Rr_UIDrawCloseCross;
-    Cross->DrawColor = RR_UI_COLOR_FG;
+    Cross->DrawData = gUI->Colors[RR_UI_COLOR_FG];
 
     Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
 
@@ -3675,12 +3805,10 @@ static inline Rr_CursorType Rr_UIGetResizeCursorType(Rr_UIResizeType ResizeType)
     }
 }
 
-static inline void Rr_UIHandleWindowResize(
-    Rr_UI2Window *Window,
-    Rr_UIItem *Root)
+static inline void Rr_UIHandleWindowResize(Rr_UIWindow *Window, Rr_UIItem *Root)
 {
-    Root->Padding = Rr_V2F(RR_UI_WINDOW_RESIZE_WIDTH);
-    Root->Clickable = true;
+    Root->Padding = Rr_V2F(RR_UI_WINDOW_HANDLES);
+    Root->MouseClickable = true;
 
     Rr_UIResizeType ResizeType = Rr_UIGetResizeType(Root->Rect);
 
@@ -3759,13 +3887,17 @@ static inline void Rr_UIHandleWindowResize(
     return;
 }
 
-Rr_UIItem *Rr_UIGetWindowItem(Rr_UI2Window *Window)
+Rr_UIItem *Rr_UIGetWindowItem(Rr_UIWindow *Window)
 {
     Rr_UIItem *Root = Rr_UILookupRoot(Window);
     Root->Axis = RR_UI_AXIS_Y;
-    Root->Padding = Rr_V2F(RR_UI_WINDOW_BORDER + RR_UI_WINDOW_RESIZE_WIDTH);
+    Root->Padding = Rr_V2F(RR_UI_WINDOW_BORDER + RR_UI_WINDOW_HANDLES);
     Root->DrawFunc = Rr_UIDrawWindowBackground;
-    Root->Window = Window;
+
+    if (gUI->FocusedNonPopupRoot == Root)
+    {
+        Window->ZOrder = INT32_MIN;
+    }
 
     if (!Window->AutoExtent)
     {
@@ -3773,14 +3905,6 @@ Rr_UIItem *Rr_UIGetWindowItem(Rr_UI2Window *Window)
     }
 
     Rr_UIPush(Root);
-
-    // Rr_UIItem *Border = Rr_UIGetItem("Rr.UI.Window.Border");
-    // Border->Axis = RR_UI_AXIS_Y;
-    // Border->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 0.0f);
-    // Border->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 0.0f);
-    // // Border->Padding = Rr_V2F(RR_UI_WINDOW_BORDER);
-    // Border->IgnoreMouse = true;
-    // Rr_UIPush(Border);
 
     Rr_UIAddWindowTitleBar(Window);
 
@@ -3792,7 +3916,6 @@ Rr_UIItem *Rr_UIGetWindowItem(Rr_UI2Window *Window)
     // Contents->Scrollable[RR_UI_AXIS_Y] = true;
     Contents->Padding = Rr_V2F(RR_UI_WINDOW_CONTENTS_PADDING);
 
-    // Rr_UIPop();
     Rr_UIPop();
 
     return Contents;
@@ -3828,7 +3951,7 @@ Rr_UIItem *Rr_UIInfo(void)
     Item->Text = Buffer;
     Item->TextLength = Length;
     Item->DrawFunc = Rr_UIDrawBevel;
-    Item->DrawColor = RR_UI_COLOR_BG;
+    Item->DrawData = gUI->Colors[RR_UI_COLOR_BG];
 
     return Item;
 }
