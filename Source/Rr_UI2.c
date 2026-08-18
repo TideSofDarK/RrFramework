@@ -617,6 +617,9 @@ static inline uint32_t Rr_UIPushClipRect(Rr_Rect Rect)
     uint32_t Index = gUI->ClipRectCount;
     gUI->ClipRects[Index] = Rect;
     gUI->ClipRectCount++;
+    assert(
+        gUI->ClipRectCount <
+        (Rr_GetBufferSize(gUI->ClipRectStagingBuffer) / sizeof(Rr_Vec4)));
 
     return Index;
 }
@@ -1514,9 +1517,8 @@ static inline void Rr_UICalculateRects(Rr_UIItem *Item, Rr_Vec2 Offset)
     {
         Rr_UICalculateRects(Child, Offset);
 
-        int Axis = (int)Item->Axis;
-        float ChildExtent = Child->Extent.Elements[Axis];
-        Offset.Elements[Axis] += ChildExtent;
+        float ChildExtent = Child->Extent.Elements[Item->Axis];
+        Offset.Elements[Item->Axis] += ChildExtent;
 
         Child = Child->Next;
     }
@@ -1526,6 +1528,9 @@ static inline Rr_UIVertex *Rr_UIGetVertices(uint32_t Count)
 {
     Rr_UIVertex *Vertices = &gUI->Vertices[gUI->VertexCount];
     gUI->VertexCount += Count;
+    assert(
+        gUI->VertexCount <
+        (Rr_GetBufferSize(gUI->VertexStagingBuffer) / sizeof(Rr_UIVertex)));
 
     return Vertices;
 }
@@ -1534,6 +1539,9 @@ static inline Rr_UIIndex *Rr_UIGetIndices(uint32_t Count)
 {
     Rr_UIIndex *Indices = &gUI->Indices[gUI->IndexCount];
     gUI->IndexCount += Count;
+    assert(
+        gUI->IndexCount <
+        (Rr_GetBufferSize(gUI->IndexStagingBuffer) / sizeof(Rr_UIIndex)));
 
     return Indices;
 }
@@ -3550,7 +3558,7 @@ Rr_UIItem *Rr_UIScrollbar(char const *Name, Rr_UIItem *Item, Rr_UIAxis Axis)
 
     Rr_UIPush(Bar);
 
-    Rr_UIItem *HandleBG = Rr_UIGetItem("HandleBG");
+    Rr_UIItem *HandleBG = Rr_UIGetItem("__HandleBG");
     HandleBG->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 0.0f);
     HandleBG->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 0.0f);
     HandleBG->DrawFunc = Rr_UIDrawCheckerRect;
@@ -3561,7 +3569,7 @@ Rr_UIItem *Rr_UIScrollbar(char const *Name, Rr_UIItem *Item, Rr_UIAxis Axis)
 
     Rr_UISpacer(Rr_UIPercent((1.0f - ItemRatio) * ScrollRatio, 1.0f));
 
-    Rr_UIItem *Handle = Rr_UIGetItem("Handle");
+    Rr_UIItem *Handle = Rr_UIGetItem("__Handle");
     Handle->Extents[Axis] = Rr_UIPercent(ItemRatio, 1.0f);
     Handle->Extents[NonAxis] = Rr_UIPercent(1.0f, 0.0f);
     Handle->DrawFunc = Rr_UIDrawBevel;
@@ -3572,7 +3580,7 @@ Rr_UIItem *Rr_UIScrollbar(char const *Name, Rr_UIItem *Item, Rr_UIAxis Axis)
 
     Rr_UISpacer(Rr_UIPixel(1.0f, 1.0f));
 
-    Rr_UIItem *DecButton = Rr_UIButton("DecButton");
+    Rr_UIItem *DecButton = Rr_UIButton("__DecButton");
     DecButton->Extents[RR_UI_AXIS_X] = Rr_UIEm(SIZE, 1.0f);
     DecButton->Extents[RR_UI_AXIS_Y] = Rr_UIEm(SIZE, 1.0f);
     DecButton->DrawText = false;
@@ -3581,7 +3589,7 @@ Rr_UIItem *Rr_UIScrollbar(char const *Name, Rr_UIItem *Item, Rr_UIAxis Axis)
 
     Rr_UISpacer(Rr_UIPixel(1.0f, 1.0f));
 
-    Rr_UIItem *IncButton = Rr_UIButton("IncButton");
+    Rr_UIItem *IncButton = Rr_UIButton("__IncButton");
     IncButton->Extents[RR_UI_AXIS_X] = Rr_UIEm(SIZE, 1.0f);
     IncButton->Extents[RR_UI_AXIS_Y] = Rr_UIEm(SIZE, 1.0f);
     IncButton->DrawText = false;

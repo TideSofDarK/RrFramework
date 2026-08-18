@@ -61,9 +61,9 @@ public:
         return Item;
     }
 
-    auto MakeHori(char const *Name)
+    auto MakeHori(std::string Name)
     {
-        auto Hori = Rr_UIGetItem(Name);
+        auto Hori = Rr_UIGetItem(Name.c_str());
         Hori->Axis = RR_UI_AXIS_X;
         Hori->Extents[RR_UI_AXIS_X].Type = RR_UI_EXTENT_TYPE_SUM;
         Hori->Extents[RR_UI_AXIS_Y].Type = RR_UI_EXTENT_TYPE_SUM;
@@ -74,9 +74,9 @@ public:
         return Hori;
     }
 
-    auto MakeVert(char const *Name)
+    auto MakeVert(std::string Name)
     {
-        auto Hori = Rr_UIGetItem(Name);
+        auto Hori = Rr_UIGetItem(Name.c_str());
         Hori->Axis = RR_UI_AXIS_Y;
         Hori->Extents[RR_UI_AXIS_X].Type = RR_UI_EXTENT_TYPE_SUM;
         Hori->Extents[RR_UI_AXIS_Y].Type = RR_UI_EXTENT_TYPE_SUM;
@@ -221,22 +221,31 @@ public:
         Rr_UIPush(Item);
         {
             auto Hori = MakeHori("HoriButs");
-            Hori->Padding = Rr_V2F(0.0f);
-            Hori->DrawFunc = nullptr;
+            Hori->Padding = {};
+            Hori->DrawFunc = {};
             Rr_UIPush(Hori);
             static auto ButtonCount = 30;
+            for (auto X = 0; X < ButtonCount; ++X)
             {
-                auto Button = MyButton("Add 7");
-                if(Button->Clicked)
+                auto Name = std::format("Vert#{}", X);
+                auto Vert = MakeVert(Name);
+                Vert->Padding = {};
+                Vert->DrawFunc = {};
+                Rr_UIPush(Vert);
+                for (auto Y = 0; Y < ButtonCount; ++Y)
                 {
-                    ButtonCount += 7;
+                    auto Name = std::format("Button #{}", Y);
+                    auto Button = MyButton(Name);
+                    Button->Fill = true;
+                    if (Button->Clicked)
+                    {
+                        ButtonCount += 7;
+                    }
+                    // Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
                 }
-            }
-            for (auto Index = 0; Index < ButtonCount; ++Index)
-            {
-                auto Name = std::format("Button #{}", Index);
-                auto Button = MyButton(Name);
-                Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
+                Rr_UIPop();
+
+                // Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
             }
             Rr_UIPop();
         }
