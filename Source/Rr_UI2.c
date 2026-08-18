@@ -66,6 +66,7 @@ static float const RR_UI_BEVEL_THICKNESS = 2.0f;
 static float const RR_UI_WINDOW_BORDER = 1.0f;
 static float const RR_UI_WINDOW_HANDLES = 4.0f;
 static float const RR_UI_WINDOW_CONTENTS_PADDING = 4.0f;
+static float const RR_UI_SCROLLBAR_SIZE = 0.85f;
 
 typedef struct Rr_UIUniform Rr_UIUniform;
 struct Rr_UIUniform
@@ -113,16 +114,13 @@ struct Rr_UI
     Rr_GraphicsPipeline *DefaultPipeline;
     // Rr_GraphicsPipeline *LinearPipeline;
     // Rr_GraphicsPipeline *SRGBPipeline;
+
+    RR_ARRAY(Rr_Rect) ClipRects;
+    RR_ARRAY(Rr_UIVertex) Vertices;
+    RR_ARRAY(Rr_UIIndex) Indices;
+
     Rr_Buffer *UniformBuffer;
-    Rr_Buffer *ClipRectStagingBuffer;
-    uint32_t ClipRectCount;
-    Rr_Rect *ClipRects;
-    Rr_Buffer *VertexStagingBuffer;
-    uint32_t VertexCount;
-    Rr_UIVertex *Vertices;
-    Rr_Buffer *IndexStagingBuffer;
-    uint32_t IndexCount;
-    Rr_UIIndex *Indices;
+    Rr_Buffer *StagingBuffer;
     Rr_Buffer *DeviceLocalBuffer;
     Rr_Sampler *NearestSampler;
     Rr_Sampler *LinearSampler;
@@ -614,12 +612,8 @@ static inline Rr_UIHash Rr_UIGetNameHash(
 
 static inline uint32_t Rr_UIPushClipRect(Rr_Rect Rect)
 {
-    uint32_t Index = gUI->ClipRectCount;
-    gUI->ClipRects[Index] = Rect;
-    gUI->ClipRectCount++;
-    assert(
-        gUI->ClipRectCount <
-        (Rr_GetBufferSize(gUI->ClipRectStagingBuffer) / sizeof(Rr_Vec4)));
+    uint32_t Index = (uint32_t)gUI->ClipRects.Count;
+    *RR_PUSH_INTO_ARRAY(&gUI->ClipRects, gUI->FrameArena) = Rect;
 
     return Index;
 }
@@ -931,23 +925,9 @@ void Rr_InitUI2(void)
         256,
         RR_BUFFER_FLAGS_UNIFORM_BIT | RR_BUFFER_FLAGS_DYNAMIC);
 
-    Rr_SetNextObjectName("Rr.UI.ClipRectStagingBuffer");
-    gUI->ClipRectStagingBuffer = Rr_CreateBuffer(
-        RR_MEBIBYTES(4),
-        RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
-            RR_BUFFER_FLAGS_MAPPED_BIT);
-
-    Rr_SetNextObjectName("Rr.UI.VertexStagingBuffer");
-    gUI->VertexStagingBuffer = Rr_CreateBuffer(
-        RR_MEBIBYTES(4),
-        RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
-            RR_BUFFER_FLAGS_MAPPED_BIT);
-
-    Rr_SetNextObjectName("Rr.UI.IndexStagingBuffer");
-    gUI->IndexStagingBuffer = Rr_CreateBuffer(
-        RR_MEBIBYTES(4),
-        RR_BUFFER_FLAGS_STAGING_INCOHERENT_BIT | RR_BUFFER_FLAGS_PER_FRAME_BIT |
-            RR_BUFFER_FLAGS_MAPPED_BIT);
+    Rr_SetNextObjectName("Rr.UI.StagingBuffer");
+    gUI->StagingBuffer =
+        Rr_CreateBuffer(RR_MEBIBYTES(4), RR_BUFFER_FLAGS_DYNAMIC);
 
     Rr_SetNextObjectName("Rr.UI.DeviceLocalBuffer");
     gUI->DeviceLocalBuffer = Rr_CreateBuffer(
@@ -975,9 +955,7 @@ void Rr_InitUI2(void)
 void Rr_CleanupUI2(void)
 {
     Rr_ReleaseBuffer(gUI->UniformBuffer);
-    Rr_ReleaseBuffer(gUI->ClipRectStagingBuffer);
-    Rr_ReleaseBuffer(gUI->VertexStagingBuffer);
-    Rr_ReleaseBuffer(gUI->IndexStagingBuffer);
+    Rr_ReleaseBuffer(gUI->StagingBuffer);
     Rr_ReleaseBuffer(gUI->DeviceLocalBuffer);
     Rr_ReleaseSampler(gUI->LinearSampler);
     Rr_ReleaseSampler(gUI->NearestSampler);
@@ -1489,7 +1467,8 @@ static inline void Rr_UICalculateRects(Rr_UIItem *Item, Rr_Vec2 Offset)
     Rr_Rect ClipRect = Item->Rect;
     if (Item->Parent)
     {
-        Rr_Rect *ParentRect = &gUI->ClipRects[Item->Parent->InnerClipIndex];
+        Rr_Rect *ParentRect =
+            &gUI->ClipRects.Data[Item->Parent->InnerClipIndex];
         ClipRect = Rr_UIRectIntersection(ParentRect, &ClipRect);
     }
     Item->ClipIndex = Rr_UIPushClipRect(ClipRect);
@@ -1526,22 +1505,16 @@ static inline void Rr_UICalculateRects(Rr_UIItem *Item, Rr_Vec2 Offset)
 
 static inline Rr_UIVertex *Rr_UIGetVertices(uint32_t Count)
 {
-    Rr_UIVertex *Vertices = &gUI->Vertices[gUI->VertexCount];
-    gUI->VertexCount += Count;
-    assert(
-        gUI->VertexCount <
-        (Rr_GetBufferSize(gUI->VertexStagingBuffer) / sizeof(Rr_UIVertex)));
+    Rr_UIVertex *Vertices =
+        RR_PUSH_INTO_ARRAY_MANY(&gUI->Vertices, Count, gUI->FrameArena);
 
     return Vertices;
 }
 
 static inline Rr_UIIndex *Rr_UIGetIndices(uint32_t Count)
 {
-    Rr_UIIndex *Indices = &gUI->Indices[gUI->IndexCount];
-    gUI->IndexCount += Count;
-    assert(
-        gUI->IndexCount <
-        (Rr_GetBufferSize(gUI->IndexStagingBuffer) / sizeof(Rr_UIIndex)));
+    Rr_UIIndex *Indices =
+        RR_PUSH_INTO_ARRAY_MANY(&gUI->Indices, Count, gUI->FrameArena);
 
     return Indices;
 }
@@ -1551,7 +1524,7 @@ static inline Rr_UIPrimitive Rr_UI2ReservePrimitive(
     uint32_t IndexCount)
 {
     Rr_UIPrimitive Primitive;
-    Primitive.BaseVertex = gUI->VertexCount;
+    Primitive.BaseVertex = (uint32_t)gUI->Vertices.Count;
     Primitive.Vertices = Rr_UIGetVertices(VertexCount);
     Primitive.Indices = Rr_UIGetIndices(IndexCount);
 
@@ -1618,7 +1591,7 @@ static inline Rr_UIPrimitive Rr_UIDrawQuadEx(Rr_UIVertex VerticesToCopy[4])
     static uint32_t const RR_UI_QUAD_VERTEX_COUNT = 4;
     static uint32_t const RR_UI_QUAD_INDEX_COUNT = 6;
 
-    Rr_UIIndex BaseVertex = gUI->VertexCount;
+    Rr_UIIndex BaseVertex = (uint32_t)gUI->Vertices.Count;
     Rr_UIVertex *Vertices = Rr_UIGetVertices(RR_UI_QUAD_VERTEX_COUNT);
     Rr_UIIndex *Indices = Rr_UIGetIndices(RR_UI_QUAD_INDEX_COUNT);
 
@@ -1919,7 +1892,8 @@ static inline void Rr_UIDrawItem(Rr_UIItem *Item)
 {
     /* Pre-order traversal. */
 
-    bool Hovering = Rr_RectContains(&Item->Rect, gUI->MousePosition);
+    Rr_Rect ClipRect = gUI->ClipRects.Data[Item->ClipIndex];
+    bool Hovering = Rr_RectContains(&ClipRect, gUI->MousePosition);
     if (!Item->MouseIgnored && Hovering)
     {
         gUI->HoveredItem = Item;
@@ -1964,7 +1938,12 @@ static inline void Rr_UIDrawItem(Rr_UIItem *Item)
     }
 
 #if 0
-    Rr_UIDrawSolidRect(&Item->Rect, Item->ClipIndex, (uint32_t)Item->Hash);
+    Rr_UIDrawSolidRect(
+        &Item->Rect,
+        Item->ClipIndex,
+        (uint32_t)Item->Hash,
+        1,
+        0);
 #endif
 
     Rr_UIItem *Child = Item->First;
@@ -2059,12 +2038,9 @@ void Rr_EndUI2(void)
 
     /* Cleanup. */
 
-    gUI->ClipRectCount = 0;
-    gUI->ClipRects = Rr_GetMappedBufferData(gUI->ClipRectStagingBuffer);
-    gUI->VertexCount = 0;
-    gUI->Vertices = Rr_GetMappedBufferData(gUI->VertexStagingBuffer);
-    gUI->IndexCount = 0;
-    gUI->Indices = Rr_GetMappedBufferData(gUI->IndexStagingBuffer);
+    RR_RESET_ARRAY(&gUI->ClipRects, gUI->FrameArena);
+    RR_RESET_ARRAY(&gUI->Vertices, gUI->FrameArena);
+    RR_RESET_ARRAY(&gUI->Indices, gUI->FrameArena);
     gUI->LeftMouseButton.Down = false;
     gUI->LeftMouseButton.Up = false;
     gUI->LeftMouseButton.ReleasedItem = NULL;
@@ -2098,18 +2074,28 @@ void Rr_EndUI2(void)
 
     Rr_UIUniform Uniform = {
         .CanvasExtent.XY = Rr_CastV2(SwapchainExtent),
-        .IndexCount = gUI->IndexCount,
+        .IndexCount = (uint32_t)gUI->Indices.Count,
     };
-    char *MappedUniformData = Rr_GetMappedBufferData(gUI->UniformBuffer);
-    memcpy(MappedUniformData, &Uniform, sizeof(Uniform));
+    char *UniformData = Rr_GetMappedBufferData(gUI->UniformBuffer);
+    memcpy(UniformData, &Uniform, sizeof(Uniform));
 
-    size_t ClipRectsSize = sizeof(Rr_Rect) * gUI->ClipRectCount;
-    size_t VerticesSize = sizeof(Rr_UIVertex) * gUI->VertexCount;
-    size_t IndicesSize = sizeof(Rr_UIIndex) * gUI->IndexCount;
+    size_t ClipRectsSize = sizeof(Rr_Rect) * gUI->ClipRects.Count;
+    size_t VerticesSize = sizeof(Rr_UIVertex) * gUI->Vertices.Count;
+    size_t IndicesSize = sizeof(Rr_UIIndex) * gUI->Indices.Count;
 
     size_t ClipRectsOffset = 0;
     size_t VerticesOffset = RR_ALIGN_POW2(ClipRectsSize, 256);
     size_t IndicesOffset = VerticesOffset + RR_ALIGN_POW2(VerticesSize, 256);
+
+    size_t TotalSize = IndicesOffset + IndicesSize;
+
+    assert(TotalSize <= Rr_GetBufferSize(gUI->StagingBuffer));
+    assert(TotalSize <= Rr_GetBufferSize(gUI->DeviceLocalBuffer));
+
+    char *StagingData = Rr_GetMappedBufferData(gUI->StagingBuffer);
+    memcpy(StagingData, gUI->ClipRects.Data, ClipRectsSize);
+    memcpy(StagingData + VerticesOffset, gUI->Vertices.Data, VerticesSize);
+    memcpy(StagingData + IndicesOffset, gUI->Indices.Data, IndicesSize);
 
     // Rr_FlushBufferRange(gUI->ClipRectStagingBuffer, 0, ClipRectsSize);
     // Rr_FlushBufferRange(gUI->VertexStagingBuffer, 0, VerticesSize);
@@ -2119,22 +2105,22 @@ void Rr_EndUI2(void)
     Rr_TransferBufferData(
         TransferNode,
         ClipRectsSize,
-        gUI->ClipRectStagingBuffer,
-        0,
+        gUI->StagingBuffer,
+        ClipRectsOffset,
         gUI->DeviceLocalBuffer,
         ClipRectsOffset);
     Rr_TransferBufferData(
         TransferNode,
         VerticesSize,
-        gUI->VertexStagingBuffer,
-        0,
+        gUI->StagingBuffer,
+        VerticesOffset,
         gUI->DeviceLocalBuffer,
         VerticesOffset);
     Rr_TransferBufferData(
         TransferNode,
         IndicesSize,
-        gUI->IndexStagingBuffer,
-        0,
+        gUI->StagingBuffer,
+        IndicesOffset,
         gUI->DeviceLocalBuffer,
         IndicesOffset);
 
@@ -2192,7 +2178,7 @@ void Rr_EndUI2(void)
         1,
         0);
     // Rr_DrawIndexed(GraphicsNode, (uint32_t)gUI->IndexCount, 1, 0, 0, 0);
-    Rr_Draw(GraphicsNode, (uint32_t)gUI->IndexCount, 1, 0, 0);
+    Rr_Draw(GraphicsNode, (uint32_t)gUI->Indices.Count, 1, 0, 0);
 }
 
 Rr_UIExtent Rr_UISum(float Rigid)
@@ -2236,6 +2222,34 @@ Rr_UIExtent Rr_UIPercent(float Value, float Rigid)
         .Value = Value,
         .Rigid = Rigid,
     };
+}
+
+void Rr_UIReparentFirst(Rr_UIItem *Item)
+{
+    Rr_UIItem *Parent = Item->Parent;
+    Rr_UIItem *OldFirst = Parent->First;
+    Rr_UIItem *OldNext = Item->Next;
+
+    Parent->First = Item;
+    Item->Next = OldFirst;
+
+    for (Rr_UIItem *Child = Parent->First; Child; Child = Child->Next)
+    {
+        if (Child->Next == Item)
+        {
+            Child->Next = OldNext;
+
+            break;
+        }
+    }
+
+    for (Rr_UIItem *Child = Parent->First; Child; Child = Child->Next)
+    {
+        if (!Child->Next)
+        {
+            Parent->Last = Child;
+        }
+    }
 }
 
 void Rr_UIPush(Rr_UIItem *Item)
@@ -2437,11 +2451,12 @@ void Rr_UIDrawBevelEx(
     static uint32_t const RR_UI_BEVEL_VERTEX_COUNT = 20;
     static uint32_t const RR_UI_BEVEL_INDEX_COUNT = 54;
 
-    uint32_t BaseVertex = (uint32_t)gUI->VertexCount;
-    Rr_UIVertex *Vertices = &gUI->Vertices[gUI->VertexCount];
-    gUI->VertexCount += RR_UI_BEVEL_VERTEX_COUNT;
-    Rr_UIIndex *Indices = &gUI->Indices[gUI->IndexCount];
-    gUI->IndexCount += RR_UI_BEVEL_INDEX_COUNT;
+    Rr_UIPrimitive Primitive = Rr_UI2ReservePrimitive(
+        RR_UI_BEVEL_VERTEX_COUNT,
+        RR_UI_BEVEL_INDEX_COUNT);
+    Rr_UIVertex *Vertices = Primitive.Vertices;
+    Rr_UIIndex *Indices = Primitive.Indices;
+    uint32_t BaseVertex = Primitive.BaseVertex;
 
     float HalfBorder = Border * 0.5f;
 
@@ -3534,11 +3549,39 @@ bool Rr_UIContextMenuItem(char const *Name)
     return Item->Clicked;
 }
 
-Rr_UIItem *Rr_UIScrollbar(char const *Name, Rr_UIItem *Item, Rr_UIAxis Axis)
+static inline void Rr_UIAddScrollbarButtons(
+    float TriangleAngle,
+    bool *OutDecClicked,
+    bool *OutIncClicked)
 {
-    float const SIZE = 0.85f;
+    Rr_UIExtent Extent = Rr_UIEm(RR_UI_SCROLLBAR_SIZE, 1.0f);
 
+    Rr_UIItem *DecButton = Rr_UIButton("__DecButton");
+    DecButton->Extents[RR_UI_AXIS_X] = Extent;
+    DecButton->Extents[RR_UI_AXIS_Y] = Extent;
+    DecButton->DrawText = false;
+
+    Rr_UITriangle(DecButton, Rr_UIPercent(1.0f, 1.0f), TriangleAngle);
+
+    Rr_UISpacer(Rr_UIPixel(1.0f, 1.0f));
+
+    Rr_UIItem *IncButton = Rr_UIButton("__IncButton");
+    IncButton->Extents[RR_UI_AXIS_X] = Extent;
+    IncButton->Extents[RR_UI_AXIS_Y] = Extent;
+    IncButton->DrawText = false;
+
+    Rr_UITriangle(IncButton, Rr_UIPercent(1.0f, 1.0f), TriangleAngle - 180.0f);
+
+    *OutDecClicked = DecButton->Clicked;
+    *OutIncClicked = IncButton->Clicked;
+}
+
+Rr_UIItem *Rr_UIScrollbar(Rr_UIItem *Item, Rr_UIAxis Axis)
+{
     Rr_UIAxis NonAxis = Axis == RR_UI_AXIS_X ? RR_UI_AXIS_Y : RR_UI_AXIS_X;
+    bool DecClicked = false;
+    bool IncClicked = false;
+    float TriangleAngle = Axis == RR_UI_AXIS_X ? 180.0f : -90.0f;
     float MaxScroll = Rr_UIMaxScroll(Item, Axis);
     float ScrollRatio = 1.0f;
     float ItemRatio = 1.0f;
@@ -3546,21 +3589,32 @@ Rr_UIItem *Rr_UIScrollbar(char const *Name, Rr_UIItem *Item, Rr_UIAxis Axis)
     {
         ScrollRatio = Item->Scroll.Elements[Axis] / MaxScroll;
         ScrollRatio = RR_CLAMP(0.0f, ScrollRatio, 1.0f);
-        ItemRatio = Item->Extent.Elements[Axis] / MaxScroll;
+        float ItemSize = Item->Rect.Extent.Elements[Axis];
+        ItemRatio = (ItemSize / (ItemSize + MaxScroll));
         ItemRatio = RR_CLAMP(0.0f, ItemRatio, 1.0f);
     }
 
+    char Name[32] = { 0 };
+    snprintf(Name, sizeof(Name), "__Scrollbar%d", Axis);
+
     Rr_UIItem *Bar = Rr_UIGetItem(Name);
     Bar->Extents[Axis] = Rr_UIPercent(1.0f, 0.0f);
-    Bar->Extents[NonAxis] = Rr_UIEm(SIZE, 1.0f);
+    Bar->Extents[NonAxis] = Rr_UIEm(RR_UI_SCROLLBAR_SIZE, 1.0f);
     Bar->Axis = Axis;
     Bar->Padding = Rr_V2F(1.0f);
 
     Rr_UIPush(Bar);
 
+    if (Axis == RR_UI_AXIS_X)
+    {
+        Rr_UIAddScrollbarButtons(TriangleAngle, &DecClicked, &IncClicked);
+        Rr_UISpacer(Rr_UIPixel(1.0f, 1.0f));
+    }
+
     Rr_UIItem *HandleBG = Rr_UIGetItem("__HandleBG");
     HandleBG->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 0.0f);
     HandleBG->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 0.0f);
+    HandleBG->Axis = Axis;
     HandleBG->DrawFunc = Rr_UIDrawCheckerRect;
     HandleBG->DrawData = 0x555555FF;
     HandleBG->MouseClickable = true;
@@ -3578,23 +3632,11 @@ Rr_UIItem *Rr_UIScrollbar(char const *Name, Rr_UIItem *Item, Rr_UIAxis Axis)
 
     Rr_UIPop();
 
-    Rr_UISpacer(Rr_UIPixel(1.0f, 1.0f));
-
-    Rr_UIItem *DecButton = Rr_UIButton("__DecButton");
-    DecButton->Extents[RR_UI_AXIS_X] = Rr_UIEm(SIZE, 1.0f);
-    DecButton->Extents[RR_UI_AXIS_Y] = Rr_UIEm(SIZE, 1.0f);
-    DecButton->DrawText = false;
-
-    Rr_UITriangle(DecButton, Rr_UIPercent(1.0f, 1.0f), 180.0f);
-
-    Rr_UISpacer(Rr_UIPixel(1.0f, 1.0f));
-
-    Rr_UIItem *IncButton = Rr_UIButton("__IncButton");
-    IncButton->Extents[RR_UI_AXIS_X] = Rr_UIEm(SIZE, 1.0f);
-    IncButton->Extents[RR_UI_AXIS_Y] = Rr_UIEm(SIZE, 1.0f);
-    IncButton->DrawText = false;
-
-    Rr_UITriangle(IncButton, Rr_UIPercent(1.0f, 1.0f), 0.0f);
+    if (Axis == RR_UI_AXIS_Y)
+    {
+        Rr_UISpacer(Rr_UIPixel(1.0f, 1.0f));
+        Rr_UIAddScrollbarButtons(TriangleAngle, &DecClicked, &IncClicked);
+    }
 
     Rr_UIPop();
 
@@ -3650,7 +3692,7 @@ Rr_UIItem *Rr_UIScrollbar(char const *Name, Rr_UIItem *Item, Rr_UIAxis Axis)
 
     /* NOTE: Technically, using bar size as page size base is not correct. */
 
-    if (DecButton->Clicked)
+    if (DecClicked)
     {
         float HalfPage = Bar->Extent.Elements[Axis] * 0.5f;
         float Scroll = Item->Scroll.Elements[Axis] - HalfPage;
@@ -3658,7 +3700,7 @@ Rr_UIItem *Rr_UIScrollbar(char const *Name, Rr_UIItem *Item, Rr_UIAxis Axis)
         Item->Scroll.Elements[Axis] = Scroll;
     }
 
-    if (IncButton->Clicked)
+    if (IncClicked)
     {
         float HalfPage = Bar->Extent.Elements[Axis] * 0.5f;
         float Scroll = Item->Scroll.Elements[Axis] + HalfPage;
@@ -3667,6 +3709,45 @@ Rr_UIItem *Rr_UIScrollbar(char const *Name, Rr_UIItem *Item, Rr_UIAxis Axis)
     }
 
     return Bar;
+}
+
+Rr_UIItem *Rr_UIScrollView(bool ScrollableX, bool ScrollableY)
+{
+    Rr_UIItem *Outer = Rr_UIGetItem("__Outer");
+    Outer->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 0.0f);
+    Outer->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 0.0f);
+
+    Rr_UIPush(Outer);
+
+    Rr_UIItem *Outer2 = Rr_UIGetItem("__Outer2");
+    Outer2->Axis = RR_UI_AXIS_Y;
+    Outer2->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 0.0f);
+    Outer2->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 0.0f);
+
+    Rr_UIPush(Outer2);
+
+    Rr_UIItem *Contents = Rr_UIGetItem("__Contents");
+    Contents->Axis = RR_UI_AXIS_Y;
+    Contents->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 0.0f);
+    Contents->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 0.0f);
+    Contents->Scrollable[RR_UI_AXIS_X] = ScrollableX;
+    Contents->Scrollable[RR_UI_AXIS_Y] = ScrollableY;
+
+    if (Contents->Scrollable[RR_UI_AXIS_X])
+    {
+        Rr_UIScrollbar(Contents, RR_UI_AXIS_X);
+    }
+
+    Rr_UIPop();
+
+    if (Contents->Scrollable[RR_UI_AXIS_Y])
+    {
+        Rr_UIReparentFirst(Rr_UIScrollbar(Contents, RR_UI_AXIS_Y));
+    }
+
+    Rr_UIPop();
+
+    return Contents;
 }
 
 Rr_UIWindow *Rr_UI2CreateWindow(char const *Name)
@@ -3762,11 +3843,12 @@ void Rr_UIDrawInset(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData)
     static uint32_t const RR_UI_INSET_VERTEX_COUNT = 16;
     static uint32_t const RR_UI_INSET_INDEX_COUNT = 30;
 
-    Rr_UIIndex BaseVertex = (Rr_UIIndex)gUI->VertexCount;
-    Rr_UIVertex *Vertices = &gUI->Vertices[gUI->VertexCount];
-    gUI->VertexCount += RR_UI_INSET_VERTEX_COUNT;
-    Rr_UIIndex *Indices = &gUI->Indices[gUI->IndexCount];
-    gUI->IndexCount += RR_UI_INSET_INDEX_COUNT;
+    Rr_UIPrimitive Primitive = Rr_UI2ReservePrimitive(
+        RR_UI_INSET_VERTEX_COUNT,
+        RR_UI_INSET_INDEX_COUNT);
+    Rr_UIVertex *Vertices = Primitive.Vertices;
+    Rr_UIIndex *Indices = Primitive.Indices;
+    uint32_t BaseVertex = Primitive.BaseVertex;
 
     float Thickness = RR_UI_BEVEL_THICKNESS;
 
@@ -4131,15 +4213,8 @@ Rr_UIItem *Rr_UIGetWindowItem(Rr_UIWindow *Window)
 
     Rr_UIAddWindowTitleBar(Window);
 
-    Rr_UIItem *Contents = Rr_UIGetItem("Rr.UI.Window.Contents");
-    Contents->Axis = RR_UI_AXIS_Y;
-    Contents->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 0.0f);
-    Contents->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 0.0f);
-    Contents->Scrollable[RR_UI_AXIS_X] = true;
-    Contents->Scrollable[RR_UI_AXIS_Y] = true;
+    Rr_UIItem *Contents = Rr_UIScrollView(true, true);
     Contents->Padding = Rr_V2F(RR_UI_WINDOW_CONTENTS_PADDING);
-
-    Rr_UIScrollbar("Rr.UI.Window.XScrollbar", Contents, RR_UI_AXIS_X);
 
     Rr_UIPop();
 
@@ -4161,9 +4236,9 @@ Rr_UIItem *Rr_UIInfo(void)
         "Dragging item: %s",
         gUI->Arena->Commited,
         gUI->Arena->Reserved,
-        gUI->ClipRectCount,
-        gUI->VertexCount,
-        gUI->IndexCount,
+        (uint32_t)gUI->ClipRects.Capacity,
+        (uint32_t)gUI->Vertices.Capacity,
+        (uint32_t)gUI->Indices.Capacity,
         gUI->FocusedItem ? gUI->FocusedItem->Name : NULL,
         gUI->HoveredItem ? gUI->HoveredItem->Name : NULL,
         gUI->LeftMouseButton.Item ? gUI->LeftMouseButton.Item->Name : NULL);

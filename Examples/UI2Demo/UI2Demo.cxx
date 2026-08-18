@@ -14,13 +14,13 @@ class CUI2DemoApp
 {
     bool SlowMo{};
 
-    Rr_UIWindow *Window0{};
+    // Rr_UIWindow *Window0{};
     Rr_UIWindow *Window1{};
 
 public:
     CUI2DemoApp()
     {
-        Window0 = Rr_UI2CreateWindow("Window0");
+        // Window0 = Rr_UI2CreateWindow("Window0");
         Window1 = Rr_UI2CreateWindow("Window1");
     }
 
@@ -172,46 +172,46 @@ public:
 
     void Window0Contents()
     {
-        auto Item = Rr_UIGetWindowItem(Window0);
+        // auto Item = Rr_UIGetWindowItem(Window0);
 
-        Rr_UIPush(Item);
-        {
-            auto MenuButton = MyButton("Menu");
-            if (MenuButton->Clicked)
-            {
-                Rr_UIOpenPopup(Rr_UIPopupInfo{ .Parent = MenuButton, .Anchor = RR_UI_POPUP_ANCHOR_BOTTOM });
-            }
-            auto MenuRoot = Rr_UIGetPopup(MenuButton);
-            if (MenuRoot)
-            {
-                Rr_UIPush(MenuRoot);
-                if (Rr_UIPushContextMenu("Menu Entry 0"))
-                {
-                    if (Rr_UIPushContextMenu("Menu Entry 00"))
-                    {
-                        Rr_UIContextMenuItem("SubMenu Entry 00");
-                        Rr_UIContextMenuItem("SubMenu Entry 01");
-                        Rr_UIPop();
-                    }
-                    Rr_UIContextMenuItem("Menu Entry 01");
-                    if (Rr_UIPushContextMenu("Menu Entry Long String 02"))
-                    {
-                        Rr_UIContextMenuItem("SubMenu Entry 20");
-                        Rr_UIContextMenuItem("SubMenu Entry 21");
-                        Rr_UIPop();
-                    }
-                    // Rr_UISpacer(Rr_UIEm(0.1f));
-                    if (Rr_UIContextMenuItem("Menu Entry 03a"))
-                    {
-                        std::println("sdf");
-                    }
-                    Rr_UIPop();
-                }
-                Rr_UIContextMenuItem("Menu Entry 1");
-                Rr_UIPop();
-            }
-        }
-        Rr_UIPop();
+        // Rr_UIPush(Item);
+        // {
+        //     auto MenuButton = MyButton("Menu");
+        //     if (MenuButton->Clicked)
+        //     {
+        //         Rr_UIOpenPopup(Rr_UIPopupInfo{ .Parent = MenuButton, .Anchor = RR_UI_POPUP_ANCHOR_BOTTOM });
+        //     }
+        //     auto MenuRoot = Rr_UIGetPopup(MenuButton);
+        //     if (MenuRoot)
+        //     {
+        //         Rr_UIPush(MenuRoot);
+        //         if (Rr_UIPushContextMenu("Menu Entry 0"))
+        //         {
+        //             if (Rr_UIPushContextMenu("Menu Entry 00"))
+        //             {
+        //                 Rr_UIContextMenuItem("SubMenu Entry 00");
+        //                 Rr_UIContextMenuItem("SubMenu Entry 01");
+        //                 Rr_UIPop();
+        //             }
+        //             Rr_UIContextMenuItem("Menu Entry 01");
+        //             if (Rr_UIPushContextMenu("Menu Entry Long String 02"))
+        //             {
+        //                 Rr_UIContextMenuItem("SubMenu Entry 20");
+        //                 Rr_UIContextMenuItem("SubMenu Entry 21");
+        //                 Rr_UIPop();
+        //             }
+        //             // Rr_UISpacer(Rr_UIEm(0.1f));
+        //             if (Rr_UIContextMenuItem("Menu Entry 03a"))
+        //             {
+        //                 std::println("sdf");
+        //             }
+        //             Rr_UIPop();
+        //         }
+        //         Rr_UIContextMenuItem("Menu Entry 1");
+        //         Rr_UIPop();
+        //     }
+        // }
+        // Rr_UIPop();
     }
 
     void Window1Contents()
@@ -224,7 +224,7 @@ public:
             Hori->Padding = {};
             Hori->DrawFunc = {};
             Rr_UIPush(Hori);
-            static auto ButtonCount = 30;
+            static auto ButtonCount = 15;
             for (auto X = 0; X < ButtonCount; ++X)
             {
                 auto Name = std::format("Vert#{}", X);
@@ -239,7 +239,8 @@ public:
                     Button->Fill = true;
                     if (Button->Clicked)
                     {
-                        ButtonCount += 7;
+                        std::println("sdfsdf");
+                        ButtonCount += 1;
                     }
                     // Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
                 }

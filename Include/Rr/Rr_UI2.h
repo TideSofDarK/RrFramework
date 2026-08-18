@@ -217,6 +217,8 @@ extern Rr_UIExtent RR_CC Rr_UIText(float Rigid);
 
 extern Rr_UIExtent RR_CC Rr_UIPercent(float Value, float Rigid);
 
+extern void RR_CC Rr_UIReparentFirst(Rr_UIItem *Item);
+
 extern void RR_CC Rr_UIPush(Rr_UIItem *Item);
 
 extern void RR_CC Rr_UIPop(void);
@@ -271,8 +273,9 @@ extern Rr_UIItem *RR_CC Rr_UIPushContextMenu(char const *Name);
 
 extern bool RR_CC Rr_UIContextMenuItem(char const *Name);
 
-extern Rr_UIItem *RR_CC
-Rr_UIScrollbar(char const *Name, Rr_UIItem *Item, Rr_UIAxis Axis);
+extern Rr_UIItem *RR_CC Rr_UIScrollbar(Rr_UIItem *Item, Rr_UIAxis Axis);
+
+extern Rr_UIItem *RR_CC Rr_UIScrollView(bool ScrollableX, bool ScrollableY);
 
 extern Rr_UIWindow *RR_CC Rr_UI2CreateWindow(char const *Name);
 

@@ -18,5 +18,5 @@
 # add_subdirectory(SmoothGrid)
 # add_subdirectory(TransferThread)
 # add_subdirectory(Triangle)
-add_subdirectory(UIDemo)
+# add_subdirectory(UIDemo)
 add_subdirectory(UI2Demo)
