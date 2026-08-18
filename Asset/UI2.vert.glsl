@@ -16,7 +16,7 @@ struct Rr_UI2Vertex
     uint Color;
     uint ClipIndex;
     uint NoFloor;
-    uint Reserved0;
+    uint Flags;
 };
 
 layout(set = 0, binding = 2) readonly buffer BVertices
@@ -33,6 +33,7 @@ layout(location = 0) out vec2 OutPosition;
 layout(location = 1) out vec2 OutUV;
 layout(location = 2) out vec4 OutColor;
 layout(location = 3) out flat uint OutClipIndex;
+layout(location = 4) out flat uint OutFlags;
 
 void main()
 {
@@ -52,4 +53,5 @@ void main()
     OutColor.b = float((0x0000FF00 & Vertex.Color) >> 8) / 255.0;
     OutColor.a = float((0x000000FF & Vertex.Color) >> 0) / 255.0;
     OutClipIndex = Vertex.ClipIndex;
+    OutFlags = Vertex.Flags;
 }

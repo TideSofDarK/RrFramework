@@ -44,7 +44,7 @@ public:
     {
         auto Item = Rr_UIButton(Name.c_str());
         Item->Padding = Rr_V2(5.0f, 3.0f);
-        Item->Extents[RR_UI_AXIS_X].Rigid = 0.0f;
+        Item->Extents[RR_UI_AXIS_X].Rigid = 1.0f;
         Item->Extents[RR_UI_AXIS_Y].Rigid = 1.0f;
 
         return Item;
@@ -176,26 +176,6 @@ public:
 
         Rr_UIPush(Item);
         {
-            auto Hori = MakeHori("HoriButs");
-            Hori->Extents[RR_UI_AXIS_X].Type = RR_UI_EXTENT_TYPE_PERCENT;
-            Hori->Extents[RR_UI_AXIS_X].Value = 1.0f;
-            Hori->Padding = Rr_V2F(0.0f);
-            Hori->DrawFunc = nullptr;
-            Rr_UIPush(Hori);
-            auto Button0 = MyButton("Button###0");
-            Button0->Extents[RR_UI_AXIS_X].Type = RR_UI_EXTENT_TYPE_PERCENT;
-            Button0->Extents[RR_UI_AXIS_X].Value = 0.3333f;
-            Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
-            auto Button1 = MyButton("Button###1");
-            Button1->Extents[RR_UI_AXIS_X].Type = RR_UI_EXTENT_TYPE_PERCENT;
-            Button1->Extents[RR_UI_AXIS_X].Value = 0.3333f;
-            Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
-            auto Button2 = MyButton("Button###2");
-            Button2->Extents[RR_UI_AXIS_X].Type = RR_UI_EXTENT_TYPE_PERCENT;
-            Button2->Extents[RR_UI_AXIS_X].Value = 0.3333f;
-            Rr_UIPop();
-
-            Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
             auto MenuButton = MyButton("Menu");
             if (MenuButton->Clicked)
             {
@@ -230,12 +210,6 @@ public:
                 Rr_UIContextMenuItem("Menu Entry 1");
                 Rr_UIPop();
             }
-            Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
-            MyButton("Button###3");
-            Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
-            MyButton("Button###4");
-            Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
-            MyButton("Button###5");
         }
         Rr_UIPop();
     }
@@ -247,31 +221,24 @@ public:
         Rr_UIPush(Item);
         {
             auto Hori = MakeHori("HoriButs");
-            Hori->Extents[RR_UI_AXIS_X].Type = RR_UI_EXTENT_TYPE_PERCENT;
-            Hori->Extents[RR_UI_AXIS_X].Value = 1.0f;
             Hori->Padding = Rr_V2F(0.0f);
             Hori->DrawFunc = nullptr;
             Rr_UIPush(Hori);
-            auto Button0 = MyButton("Button###0");
-            Button0->Extents[RR_UI_AXIS_X].Type = RR_UI_EXTENT_TYPE_PERCENT;
-            Button0->Extents[RR_UI_AXIS_X].Value = 0.3333f;
-            Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
-            auto Button1 = MyButton("Button###1");
-            Button1->Extents[RR_UI_AXIS_X].Type = RR_UI_EXTENT_TYPE_PERCENT;
-            Button1->Extents[RR_UI_AXIS_X].Value = 0.3333f;
-            Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
-            auto Button2 = MyButton("Button###2");
-            Button2->Extents[RR_UI_AXIS_X].Type = RR_UI_EXTENT_TYPE_PERCENT;
-            Button2->Extents[RR_UI_AXIS_X].Value = 0.3333f;
+            static auto ButtonCount = 30;
+            {
+                auto Button = MyButton("Add 7");
+                if(Button->Clicked)
+                {
+                    ButtonCount += 7;
+                }
+            }
+            for (auto Index = 0; Index < ButtonCount; ++Index)
+            {
+                auto Name = std::format("Button #{}", Index);
+                auto Button = MyButton(Name);
+                Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
+            }
             Rr_UIPop();
-
-            Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
-
-            MyButton("Button###3");
-            Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
-            MyButton("Button###4");
-            Rr_UISpacer(Rr_UIEm(0.1f, 1.0f));
-            MyButton("Button###5");
         }
         Rr_UIPop();
     }

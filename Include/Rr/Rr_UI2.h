@@ -77,7 +77,7 @@ struct Rr_UIVertex
     uint32_t Color;
     uint32_t ClipIndex;
     uint32_t NoFloor;
-    uint32_t Reserved0;
+    uint32_t Flags;
 };
 
 typedef struct Rr_UIPrimitive Rr_UIPrimitive;
@@ -207,9 +207,6 @@ extern "C" {
 
 /* Core */
 
-extern void RR_CC
-Rr_UIDrawRect(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
-
 extern Rr_UIExtent RR_CC Rr_UISum(float Rigid);
 
 extern Rr_UIExtent RR_CC Rr_UIEm(float Value, float Rigid);
@@ -243,10 +240,16 @@ extern void RR_CC Rr_UIClosePopups(void);
 extern void RR_CC Rr_UISetDefaultColors(void);
 
 extern void RR_CC
+Rr_UIDrawRect(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
+
+extern void RR_CC
+Rr_UIDrawCheckerRect(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
+
+extern void RR_CC
 Rr_UIDrawWindowBackground(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
 
 extern void RR_CC
-Rr_UIDrawTri(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
+Rr_UIDrawTriangle(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
 
 extern void RR_CC
 Rr_UIDrawBevel(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
@@ -267,6 +270,9 @@ Rr_UIInputFieldV2(char const *Name, size_t BufferLength, char *Buffer);
 extern Rr_UIItem *RR_CC Rr_UIPushContextMenu(char const *Name);
 
 extern bool RR_CC Rr_UIContextMenuItem(char const *Name);
+
+extern Rr_UIItem *RR_CC
+Rr_UIScrollbar(char const *Name, Rr_UIItem *Item, Rr_UIAxis Axis);
 
 extern Rr_UIWindow *RR_CC Rr_UI2CreateWindow(char const *Name);
 
