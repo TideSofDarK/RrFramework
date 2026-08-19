@@ -661,7 +661,7 @@ static inline float Rr_UIMaxScroll(Rr_UIItem *Item, Rr_UIAxis Axis)
     float ChildrenExtent = Item->ChildrenExtent.Elements[Axis];
     float TextExtent = Item->TextExtent.Elements[Axis];
     float MaxExtent = RR_MAX(ChildrenExtent, TextExtent);
-    float MaxScroll = MaxExtent - Item->Extent.Elements[Axis];
+    float MaxScroll = MaxExtent - Item->Rect.Extent.Elements[Axis];
     MaxScroll += Item->Padding.Elements[Axis] * 2.0f;
     MaxScroll = RR_MAX(0.0f, MaxScroll);
 
@@ -1145,7 +1145,7 @@ static inline void Rr_UICalculateFixedItems(Rr_UIItem *Item)
 {
     /* Traversal order doesn't matter. */
 
-    Item->Extent = Rr_V2F(0.0f);
+    RR_ZERO(Item->Rect);
 
     bool NeedTextExtent =
         Item->Extents[RR_UI_AXIS_X].Type == RR_UI_EXTENT_TYPE_TEXT ||
@@ -1202,20 +1202,20 @@ static inline void Rr_UICalculateFixedItems(Rr_UIItem *Item)
         if (Extent->Type == RR_UI_EXTENT_TYPE_EM)
         {
             float LineHeight = gUI->DefaultFont->LineHeight;
-            Item->Extent.Elements[Axis] = LineHeight * Extent->Value;
-            Item->Extent.Elements[Axis] += Padding.Elements[Axis];
+            Item->Rect.Extent.Elements[Axis] = LineHeight * Extent->Value;
+            Item->Rect.Extent.Elements[Axis] += Padding.Elements[Axis];
         }
 
         if (Extent->Type == RR_UI_EXTENT_TYPE_PIXEL)
         {
-            Item->Extent.Elements[Axis] = Extent->Value;
-            Item->Extent.Elements[Axis] += Padding.Elements[Axis];
+            Item->Rect.Extent.Elements[Axis] = Extent->Value;
+            Item->Rect.Extent.Elements[Axis] += Padding.Elements[Axis];
         }
 
         if (Extent->Type == RR_UI_EXTENT_TYPE_TEXT)
         {
-            Item->Extent.Elements[Axis] = Item->TextExtent.Elements[Axis];
-            Item->Extent.Elements[Axis] += Padding.Elements[Axis];
+            Item->Rect.Extent.Elements[Axis] = Item->TextExtent.Elements[Axis];
+            Item->Rect.Extent.Elements[Axis] += Padding.Elements[Axis];
         }
     }
 
@@ -1259,11 +1259,11 @@ static inline void Rr_UICalculatePercentItems(Rr_UIItem *Item)
         /* Percent = RR_MAX(0.0f, Percent); */
         /* Item->Extent.Elements[Axis] = Percent; */
 
-        float Percent = Item->Parent->Extent.Elements[Axis];
+        float Percent = Item->Parent->Rect.Extent.Elements[Axis];
         Percent -= Item->Parent->Padding.Elements[Axis] * 2.0f;
         Percent *= Extent->Value;
         Percent = RR_MAX(0.0f, Percent);
-        Item->Extent.Elements[Axis] = Percent;
+        Item->Rect.Extent.Elements[Axis] = Percent;
     }
 
     Rr_UIItem *Child = Item->First;
@@ -1286,7 +1286,7 @@ static inline float Rr_UICalculateChildrenExtent(
     Rr_UIItem *Child = Item->First;
     while (Child)
     {
-        float Extent = Child->Extent.Elements[Axis];
+        float Extent = Child->Rect.Extent.Elements[Axis];
         if (AxisMatch)
         {
             Total += Extent;
@@ -1332,8 +1332,8 @@ static inline void Rr_UICalculateSumItems(Rr_UIItem *Item)
 
         float ChildrenExtent = Rr_UICalculateChildrenExtent(Item, Axis, NULL);
         float Padding = Item->Padding.Elements[Axis] * 2.0f;
-        Item->Extent.Elements[Axis] = ChildrenExtent;
-        Item->Extent.Elements[Axis] += Padding;
+        Item->Rect.Extent.Elements[Axis] = ChildrenExtent;
+        Item->Rect.Extent.Elements[Axis] += Padding;
     }
 }
 
@@ -1348,7 +1348,7 @@ static inline void Rr_UICalculateViolations(Rr_UIItem *Item)
         float Dispensable = 0.0f;
         float ChildrenExtent =
             Rr_UICalculateChildrenExtent(Item, Axis, &Dispensable);
-        float Available = Item->Extent.Elements[Axis];
+        float Available = Item->Rect.Extent.Elements[Axis];
         Available -= Item->Padding.Elements[Axis] * 2.0f;
         if (Item->Scrollable[Axis])
         {
@@ -1381,7 +1381,7 @@ static inline void Rr_UICalculateViolations(Rr_UIItem *Item)
             {
                 continue;
             }
-            float ChildExtent = Child->Extent.Elements[Axis];
+            float ChildExtent = Child->Rect.Extent.Elements[Axis];
             if (Item->Axis == Axis)
             {
                 float Dispense = 1.0f - Child->Extents[Axis].Rigid;
@@ -1398,7 +1398,7 @@ static inline void Rr_UICalculateViolations(Rr_UIItem *Item)
                 ChildExtent = RR_MIN(ChildExtent, NonFlowMax);
             }
             ChildExtent = RR_MAX(0.0f, ChildExtent);
-            Child->Extent.Elements[Axis] = ChildExtent;
+            Child->Rect.Extent.Elements[Axis] = ChildExtent;
         }
 
         /* if (Child->Fill) */
@@ -1454,7 +1454,6 @@ static inline void Rr_UICalculateRects(Rr_UIItem *Item, Rr_Vec2 Offset)
     /* Pre-order traversal. */
 
     Item->Rect.Offset = Offset;
-    Item->Rect.Extent = Item->Extent;
     Item->EndBuildIndex = gUI->BuildIndex;
 
     /* Rr_Vec4 RectSIMD; */
@@ -1496,7 +1495,7 @@ static inline void Rr_UICalculateRects(Rr_UIItem *Item, Rr_Vec2 Offset)
     {
         Rr_UICalculateRects(Child, Offset);
 
-        float ChildExtent = Child->Extent.Elements[Item->Axis];
+        float ChildExtent = Child->Rect.Extent.Elements[Item->Axis];
         Offset.Elements[Item->Axis] += ChildExtent;
 
         Child = Child->Next;
@@ -3694,7 +3693,7 @@ Rr_UIItem *Rr_UIScrollbar(Rr_UIItem *Item, Rr_UIAxis Axis)
 
     if (DecClicked)
     {
-        float HalfPage = Bar->Extent.Elements[Axis] * 0.5f;
+        float HalfPage = Bar->Rect.Extent.Elements[Axis] * 0.5f;
         float Scroll = Item->Scroll.Elements[Axis] - HalfPage;
         Scroll = RR_CLAMP(0.0f, Scroll, MaxScroll);
         Item->Scroll.Elements[Axis] = Scroll;
@@ -3702,7 +3701,7 @@ Rr_UIItem *Rr_UIScrollbar(Rr_UIItem *Item, Rr_UIAxis Axis)
 
     if (IncClicked)
     {
-        float HalfPage = Bar->Extent.Elements[Axis] * 0.5f;
+        float HalfPage = Bar->Rect.Extent.Elements[Axis] * 0.5f;
         float Scroll = Item->Scroll.Elements[Axis] + HalfPage;
         Scroll = RR_CLAMP(0.0f, Scroll, MaxScroll);
         Item->Scroll.Elements[Axis] = Scroll;

@@ -150,7 +150,6 @@ struct Rr_UIItem
     Rr_UIItem *Next;  /* Next sibling. */
     size_t NameLength;
     char *Name;
-    Rr_Vec2 Extent;         /* Used during layout calculations. */
     Rr_Vec2 TextExtent;     /* Used during layout calculations. */
     Rr_Vec2 ChildrenExtent; /* Used during layout calculations. */
     uint32_t ClipIndex;
