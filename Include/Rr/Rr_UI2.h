@@ -98,11 +98,12 @@ struct Rr_UIItem
 {
     /* Inputs to the layout engine.  */
 
-    Rr_UIExtent Extents[RR_UI_AXIS_COUNT]; /* Extent rules for both axes. */
+    Rr_UIExtent Extents[RR_UI_AXIS_COUNT]; /* Desirable extents for both axes. */
     bool Scrollable[RR_UI_AXIS_COUNT];     /* Scrolling rules for both axes. */
-    Rr_UIAxis Axis;  /* Align children along X or Y axis. */
+    Rr_UIAxis Flow;  /* Align children along X or Y axis. */
     Rr_Vec2 Padding; /* Space between the rect of this item and its children. */
     bool Fill; /* Whether to set non-flow axis extent to max among siblings. */
+    bool Grow; /* Whether to grow along flow axis given there is unused space.*/
 
     bool MouseIgnored;   /* Completely ignore mouse (including hovering). */
     bool MouseClickable; /* Full press/click/drag/release support. */
@@ -120,7 +121,7 @@ struct Rr_UIItem
     Rr_UIColor TextColor;
     Rr_UIFont *Font;
     size_t TextLength; /* Can be left zero (strlen will be used). */
-    char *Text;        /* Can be left NULL (item name will be used). */
+    char const *Text;  /* Can be left NULL (item name will be used). */
 
     /* Response to the previous frame input. */
 
@@ -263,10 +264,12 @@ Rr_UIDrawCloseCross(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData);
 
 extern Rr_UIItem *RR_CC Rr_UISpacer(Rr_UIExtent Extent);
 
+extern Rr_UIItem *RR_CC Rr_UILabel(char const *Text);
+
 extern Rr_UIItem *RR_CC Rr_UIButton(char const *Name);
 
 extern Rr_UIItem *RR_CC
-Rr_UIInputFieldV2(char const *Name, size_t BufferLength, char *Buffer);
+Rr_UIInputField(char const *Name, size_t BufferLength, char *Buffer);
 
 extern Rr_UIItem *RR_CC Rr_UIPushContextMenu(char const *Name);
 
@@ -276,11 +279,26 @@ extern Rr_UIItem *RR_CC Rr_UIScrollbar(Rr_UIItem *Item, Rr_UIAxis Axis);
 
 extern Rr_UIItem *RR_CC Rr_UIScrollView(bool ScrollableX, bool ScrollableY);
 
+extern Rr_UIItem *RR_CC Rr_UITable(
+    char const *Name,
+    uint32_t ColumnCount,
+    char const *const *ColumnNames,
+    float *ColumnRatios);
+
+extern void RR_CC Rr_UITableColumns(
+    Rr_UIItem *Table,
+    uint32_t ColumnCount,
+    Rr_UIItem **OutColumns);
+
 extern Rr_UIWindow *RR_CC Rr_UI2CreateWindow(char const *Name);
 
 extern Rr_UIItem *RR_CC Rr_UIGetWindowItem(Rr_UIWindow *Window);
 
+/* Tools */
+
 extern Rr_UIItem *RR_CC Rr_UIInfo(void);
+
+extern Rr_UIItem *RR_CC Rr_UIInspectorItem(char const *Name);
 
 #ifdef __cplusplus
 }

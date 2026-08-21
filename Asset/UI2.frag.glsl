@@ -33,8 +33,10 @@ void main() {
 
     if((InFlags & FLAGS_CHECKER) != 0)
     {
-        int ModX = int(ClipRect.x + InPosition.x) % 2;
-        int ModY = int(ClipRect.y + InPosition.y) % 2;
+        // int ModX = int(ClipRect.x + InPosition.x) % 2;
+        // int ModY = int(ClipRect.y + InPosition.y) % 2;
+        int ModX = int(InPosition.x) % 2;
+        int ModY = int(InPosition.y) % 2;
         if (ModX != ModY)
         {
             discard;

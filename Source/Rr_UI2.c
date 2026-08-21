@@ -65,7 +65,9 @@
 static float const RR_UI_BEVEL_THICKNESS = 2.0f;
 static float const RR_UI_WINDOW_BORDER = 1.0f;
 static float const RR_UI_WINDOW_HANDLES = 4.0f;
-static float const RR_UI_WINDOW_CONTENTS_PADDING = 4.0f;
+static Rr_Vec2 const RR_UI_TEXT_PADDING = { 5.0f, 3.0f };
+static float const RR_UI_WINDOW_TITLE_HEIGHT = 1.25f;
+static float const RR_UI_WINDOW_CONTENTS_PADDING = 6.0f;
 static float const RR_UI_SCROLLBAR_SIZE = 0.85f;
 
 typedef struct Rr_UIUniform Rr_UIUniform;
@@ -152,6 +154,7 @@ struct Rr_UI
     /* Toolkit */
 
     RR_ARRAY(Rr_UIWindow *) Windows;
+    Rr_UIWindow *Inspector;
     Rr_Rect DragValueStart;
 
     uint32_t BuildIndex;
@@ -738,6 +741,21 @@ static inline void Rr_UIUpdateMouseResponse(Rr_UIItem *Item)
     }
 }
 
+static inline Rr_UIItem *Rr_UIDefaultParent(void)
+{
+    Rr_UIItem *Parent;
+    if (!gUI->ParentStack.Count)
+    {
+        Parent = gUI->ImplicitItem;
+    }
+    else
+    {
+        Parent = RR_LAST_ARRAY_ELEMENT(&gUI->ParentStack);
+    }
+
+    return Parent;
+}
+
 static inline Rr_UIItem *Rr_UIResetItem(Rr_UIItem *Item)
 {
     if (Item->StartBuildIndex == gUI->BuildIndex)
@@ -772,6 +790,14 @@ static inline Rr_UIItem *Rr_UILookupItem(Rr_UIItem **ItemRef, Rr_UIHash Hash)
     (*ItemRef)->Hash = Hash;
 
     return Rr_UIResetItem(*ItemRef);
+}
+
+static inline Rr_UIItem *Rr_UILookupItemV2(char const *Name)
+{
+    Rr_UIItem *Parent = Rr_UIDefaultParent();
+    Rr_UIHash NameHash = Rr_UIGetNameHash(Name, Parent->Hash, NULL);
+
+    return Rr_UILookupItem(&Parent, NameHash);
 }
 
 static inline Rr_UIItem *Rr_UILookupRoot(void *Key)
@@ -950,6 +976,10 @@ void Rr_InitUI2(void)
         .AddressModeU = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .AddressModeV = RR_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
     });
+
+    /* Toolkit */
+
+    gUI->Inspector = Rr_UI2CreateWindow("Inspector");
 }
 
 void Rr_CleanupUI2(void)
@@ -1275,16 +1305,15 @@ static inline void Rr_UICalculatePercentItems(Rr_UIItem *Item)
     }
 }
 
-static inline float Rr_UICalculateChildrenExtent(
+static inline float Rr_UIChildrenExtent(
     Rr_UIItem *Item,
     Rr_UIAxis Axis,
     float *OutDispensable)
 {
-    bool AxisMatch = Axis == Item->Axis;
+    bool AxisMatch = Axis == Item->Flow;
     float Total = 0.0f;
     float Dispensable = 0.0f;
-    Rr_UIItem *Child = Item->First;
-    while (Child)
+    for (Rr_UIItem *Child = Item->First; Child; Child = Child->Next)
     {
         float Extent = Child->Rect.Extent.Elements[Axis];
         if (AxisMatch)
@@ -1298,8 +1327,6 @@ static inline float Rr_UICalculateChildrenExtent(
         {
             Total = RR_MAX(Total, Extent);
         }
-
-        Child = Child->Next;
     }
 
     if (OutDispensable)
@@ -1330,7 +1357,7 @@ static inline void Rr_UICalculateSumItems(Rr_UIItem *Item)
             continue;
         }
 
-        float ChildrenExtent = Rr_UICalculateChildrenExtent(Item, Axis, NULL);
+        float ChildrenExtent = Rr_UIChildrenExtent(Item, Axis, NULL);
         float Padding = Item->Padding.Elements[Axis] * 2.0f;
         Item->Rect.Extent.Elements[Axis] = ChildrenExtent;
         Item->Rect.Extent.Elements[Axis] += Padding;
@@ -1341,20 +1368,44 @@ static inline void Rr_UICalculateViolations(Rr_UIItem *Item)
 {
     /* Pre-order traversal. */
 
+    uint32_t GrowCount = 0;
+
+    for (Rr_UIItem *Child = Item->First; Child; Child = Child->Next)
+    {
+        /* NOTE: I'm not entirely sure about this but it seems we need
+         * another percent pass here. It started as an attempt to support
+         * 100% spacers within Fill == true items and it (sort of) works
+         * with context menus but more testing required. */
+
+        /* NOTE: While working on a scrollbar item I figured it would be
+         * useful to recalculate these unconditionally because a hierarchy
+         * of percent items inconveniently used the same large base size. */
+
+        Rr_UICalculatePercentItems(Child);
+        Rr_UICalculateSumItems(Child);
+
+        if (Child->Grow)
+        {
+            GrowCount++;
+        }
+    }
+
+    /* TODO: Optimize children extent calculation. */
+
     float DispenseRatio = 0.0f;
     float NonFlowMax = 0.0f;
+    float Grow[2] = { 0 };
     for (Rr_UIAxis Axis = 0; Axis < RR_UI_AXIS_COUNT; ++Axis)
     {
         float Dispensable = 0.0f;
-        float ChildrenExtent =
-            Rr_UICalculateChildrenExtent(Item, Axis, &Dispensable);
+        float ChildrenExtent = Rr_UIChildrenExtent(Item, Axis, &Dispensable);
         float Available = Item->Rect.Extent.Elements[Axis];
         Available -= Item->Padding.Elements[Axis] * 2.0f;
         if (Item->Scrollable[Axis])
         {
             /* Do nothing. */
         }
-        else if (Item->Axis == Axis)
+        else if (Item->Flow == Axis)
         {
             float Error = ChildrenExtent - Available;
             if (Error > 0.0f)
@@ -1370,19 +1421,28 @@ static inline void Rr_UICalculateViolations(Rr_UIItem *Item)
             ChildrenExtent = RR_MIN(ChildrenExtent, NonFlowMax);
         }
         Item->ChildrenExtent.Elements[Axis] = ChildrenExtent;
+        Grow[Axis] = Item->Rect.Extent.Elements[Axis];
+        Grow[Axis] -= Item->ChildrenExtent.Elements[Axis];
+        Grow[Axis] /= (float)GrowCount;
     }
 
-    Rr_UIItem *Child = Item->First;
-    while (Child)
+    for (Rr_UIItem *Child = Item->First; Child; Child = Child->Next)
     {
         for (Rr_UIAxis Axis = 0; Axis < RR_UI_AXIS_COUNT; ++Axis)
         {
+            if (Item->Flow == Axis && Child->Grow && Grow[Axis] > 0.0f)
+            {
+                Child->Rect.Extent.Elements[Axis] += Grow[Axis];
+                Item->ChildrenExtent.Elements[Axis] += Grow[Axis];
+            }
+
             if (Item->Scrollable[Axis])
             {
                 continue;
             }
+
             float ChildExtent = Child->Rect.Extent.Elements[Axis];
-            if (Item->Axis == Axis)
+            if (Item->Flow == Axis)
             {
                 float Dispense = 1.0f - Child->Extents[Axis].Rigid;
                 Dispense *= DispenseRatio;
@@ -1401,30 +1461,7 @@ static inline void Rr_UICalculateViolations(Rr_UIItem *Item)
             Child->Rect.Extent.Elements[Axis] = ChildExtent;
         }
 
-        /* if (Child->Fill) */
-        {
-            /* NOTE: I'm not entirely sure about this but it seems we need
-             * another percent pass here. It started as an attempt to support
-             * 100% spacers within Fill == true items and it (sort of) works
-             * with context menus but more testing required. */
-
-            /* NOTE: While working on a scrollbar item I figured it would be
-             * useful to recalculate these unconditionally because a hierarchy
-             * of percent items inconveniently used the same large base size. */
-
-            Rr_UIItem *Child2 = Child->First;
-            while (Child2)
-            {
-                Rr_UICalculatePercentItems(Child2);
-                Rr_UICalculateSumItems(Child2);
-
-                Child2 = Child2->Next;
-            }
-        }
-
         Rr_UICalculateViolations(Child);
-
-        Child = Child->Next;
     }
 }
 
@@ -1495,8 +1532,8 @@ static inline void Rr_UICalculateRects(Rr_UIItem *Item, Rr_Vec2 Offset)
     {
         Rr_UICalculateRects(Child, Offset);
 
-        float ChildExtent = Child->Rect.Extent.Elements[Item->Axis];
-        Offset.Elements[Item->Axis] += ChildExtent;
+        float ChildExtent = Child->Rect.Extent.Elements[Item->Flow];
+        Offset.Elements[Item->Flow] += ChildExtent;
 
         Child = Child->Next;
     }
@@ -1756,7 +1793,7 @@ static inline void Rr_UIDrawInputTextCursor(
     {
         Rr_Rect CursorRect = {
             .Offset = Offset,
-            .Extent = Rr_V2(2.0f, LineHeight),
+            .Extent = Rr_V2(RR_UI_WINDOW_BORDER, LineHeight),
         };
         Rr_UIDrawSolidRect(&CursorRect, ClipIndex, Color, 0, 0);
     }
@@ -1767,7 +1804,7 @@ static inline size_t Rr_UIDrawInputText(
     uint32_t ClipIndex,
     bool HasFocus,
     size_t BufferLength,
-    char *Buffer)
+    char const *Buffer)
 {
     Rr_UIFont *Font = gUI->DefaultFont;
     Rr_Vec2 OffsetStart = Offset;
@@ -1892,58 +1929,61 @@ static inline void Rr_UIDrawItem(Rr_UIItem *Item)
     /* Pre-order traversal. */
 
     Rr_Rect ClipRect = gUI->ClipRects.Data[Item->ClipIndex];
-    bool Hovering = Rr_RectContains(&ClipRect, gUI->MousePosition);
-    if (!Item->MouseIgnored && Hovering)
+    if (ClipRect.Extent.X > 0.0f && ClipRect.Extent.Y > 0.0f)
     {
-        gUI->HoveredItem = Item;
-    }
-
-    if (Item->DrawFunc)
-    {
-        Rr_Rect DrawRect = Item->Rect;
-        DrawRect.Offset = Rr_AddV2(DrawRect.Offset, Item->DrawOffset);
-        Item->DrawFunc(DrawRect, Item->ClipIndex, Item->DrawData);
-    }
-
-    if (Item->InputText && Item->Text)
-    {
-        Rr_Vec2 TextOffset = Rr_UIGetTextOffset(Item);
-        Item->TextCursor = Rr_UIDrawInputText(
-            TextOffset,
-            Item->InnerClipIndex,
-            gUI->FocusedItem == Item,
-            Item->TextLength,
-            Item->Text);
-    }
-    else if (Item->DrawText)
-    {
-        size_t TextLength;
-        char const *Text;
-        if (Item->Text)
+        bool Hovering = Rr_RectContains(&ClipRect, gUI->MousePosition);
+        if (!Item->MouseIgnored && Hovering)
         {
-            TextLength = Item->TextLength;
-            Text = Item->Text;
-        }
-        else
-        {
-            TextLength = Item->NameLength;
-            Text = Item->Name;
+            gUI->HoveredItem = Item;
         }
 
-        Rr_Vec2 TextOffset = Rr_UIGetTextOffset(Item);
-        uint32_t ClipIndex = Item->InnerClipIndex;
-        uint32_t Color = gUI->Colors[Item->TextColor];
-        Rr_UIDrawText(TextOffset, ClipIndex, Color, TextLength, Text);
-    }
+        if (Item->DrawFunc)
+        {
+            Rr_Rect DrawRect = Item->Rect;
+            DrawRect.Offset = Rr_AddV2(DrawRect.Offset, Item->DrawOffset);
+            Item->DrawFunc(DrawRect, Item->ClipIndex, Item->DrawData);
+        }
+
+        if (Item->InputText && Item->Text)
+        {
+            Rr_Vec2 TextOffset = Rr_UIGetTextOffset(Item);
+            Item->TextCursor = Rr_UIDrawInputText(
+                TextOffset,
+                Item->InnerClipIndex,
+                gUI->FocusedItem == Item,
+                Item->TextLength,
+                Item->Text);
+        }
+        else if (Item->DrawText)
+        {
+            size_t TextLength;
+            char const *Text;
+            if (Item->Text)
+            {
+                TextLength = Item->TextLength;
+                Text = Item->Text;
+            }
+            else
+            {
+                TextLength = Item->NameLength;
+                Text = Item->Name;
+            }
+
+            Rr_Vec2 TextOffset = Rr_UIGetTextOffset(Item);
+            uint32_t ClipIndex = Item->InnerClipIndex;
+            uint32_t Color = gUI->Colors[Item->TextColor];
+            Rr_UIDrawText(TextOffset, ClipIndex, Color, TextLength, Text);
+        }
 
 #if 0
-    Rr_UIDrawSolidRect(
-        &Item->Rect,
-        Item->ClipIndex,
-        (uint32_t)Item->Hash,
-        1,
-        0);
+        Rr_UIDrawSolidRect(
+            &Item->Rect,
+            Item->ClipIndex,
+            (uint32_t)Item->Hash,
+            1,
+            0);
 #endif
+    }
 
     Rr_UIItem *Child = Item->First;
     while (Child)
@@ -1956,7 +1996,7 @@ static inline void Rr_UIDrawItem(Rr_UIItem *Item)
 
 static inline void Rr_UIProcessRootItem(Rr_UIItem *Item, Rr_Rect Rect)
 {
-    Item->Axis = RR_UI_AXIS_Y;
+    Item->Flow = RR_UI_AXIS_Y;
     for (Rr_UIAxis Axis = 0; Axis < 2; ++Axis)
     {
         float Extent = Rect.Extent.Elements[Axis];
@@ -1998,6 +2038,10 @@ static inline void Rr_UIProcessWindows(void)
         Rr_UIWindow *Window = Windows[Index];
         Window->ZOrder = (int32_t)Index;
         Rr_UIItem *Item = Rr_UILookupRoot(Window);
+        if (Item->StartBuildIndex != gUI->BuildIndex)
+        {
+            continue;
+        }
         Rr_Rect Rect = Window->Rect;
         Rect = Rr_ResizeRect(&Rect, RR_UI_WINDOW_HANDLES);
         Rect = Rr_ResizeRect(&Rect, RR_UI_WINDOW_BORDER);
@@ -2029,8 +2073,100 @@ static inline void Rr_UIProcessPopups(void)
     }
 }
 
+static void Rr_UIInspector(void)
+{
+    Rr_UIItem *WindowContents = Rr_UIGetWindowItem(gUI->Inspector);
+
+    Rr_UIPush(WindowContents);
+
+    Rr_UIItem *FindBG = Rr_UIGetItem("__FindBG");
+    FindBG->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 0.0f);
+    FindBG->Extents[RR_UI_AXIS_Y] = Rr_UISum(1.0f);
+
+    Rr_UIPush(FindBG);
+
+    Rr_UIItem *FindLabel = Rr_UIGetItem(NULL);
+    FindLabel->Extents[RR_UI_AXIS_X] = Rr_UIText(1.0f);
+    FindLabel->Extents[RR_UI_AXIS_Y] = Rr_UIText(1.0f);
+    FindLabel->Padding = RR_UI_TEXT_PADDING;
+    FindLabel->Padding.X = 0.0f;
+    FindLabel->DrawText = true;
+    FindLabel->Text = "Find";
+
+    Rr_UISpacer(Rr_UIEm(0.25f, 1.0f));
+
+    static char FindBuffer[128] = { 0 };
+    Rr_UIItem *Find = Rr_UIInputField("__Find", sizeof(FindBuffer), FindBuffer);
+    Find->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 0.0f);
+    Find->Padding = RR_UI_TEXT_PADDING;
+
+    Rr_UIPop();
+
+    Rr_UISpacer(Rr_UIEm(0.25f, 1.0f));
+
+    Rr_UIItem *Contents = Rr_UIScrollView(true, true);
+    Contents->Flow = RR_UI_AXIS_X;
+    Rr_UIItem *ContentsBG = Contents->Parent->Parent;
+    ContentsBG->Padding = Rr_V2F(RR_UI_BEVEL_THICKNESS);
+    ContentsBG->DrawFunc = Rr_UIDrawInset;
+    ContentsBG->DrawData = gUI->Colors[RR_UI_COLOR_INPUT_BG];
+
+    Rr_UIPush(Contents);
+
+    static char const *ColumnNames[3] = { "Name", "Data", "Actions" };
+    static float ColumnRatios[3] = { 0 };
+
+    Rr_UIItem *Table = Rr_UITable("__Table", 3, ColumnNames, ColumnRatios);
+    Table->Extents[RR_UI_AXIS_X] = Rr_UISum(1.0f);
+    Table->Extents[RR_UI_AXIS_Y] = Rr_UISum(1.0f);
+    Table->Grow = true;
+
+    Rr_UIItem *Columns[3] = { 0 };
+    Rr_UITableColumns(Table, 3, Columns);
+
+    Rr_UIPush(Columns[0]);
+    for (uint32_t Index = 0; Index < 20; ++Index)
+    {
+        char *Name = Rr_AllocNoZero(32, gUI->FrameArena);
+        snprintf(Name, 32, "Entry #%d", Index);
+
+        Rr_UILabel(Name);
+    }
+    Rr_UIPop();
+
+    Rr_UIPush(Columns[1]);
+    for (uint32_t Index = 0; Index < 20; ++Index)
+    {
+        char *Name = Rr_AllocNoZero(32, gUI->FrameArena);
+        snprintf(Name, 32, "Button #%d", Index);
+
+        Rr_UIButton(Name);
+    }
+    Rr_UIPop();
+
+    Rr_UIPush(Columns[2]);
+    for (uint32_t Index = 0; Index < 20; ++Index)
+    {
+        char *Name = Rr_AllocNoZero(32, gUI->FrameArena);
+        snprintf(Name, 32, "Button #%d", Index);
+
+        Rr_UIButton(Name);
+    }
+    Rr_UIPop();
+
+    Rr_UIPop();
+
+    Rr_UIPop();
+}
+
 void Rr_EndUI2(void)
 {
+    /* Toolkit */
+
+    Rr_UIInspector();
+
+    /* */
+
     Rr_Image2D *SwapchainImage = Rr_GetSwapchainImage();
     Rr_IntVec2 SwapchainExtent = Rr_GetImage2DExtent(SwapchainImage);
     Rr_Rect SwapchainRect = { Rr_V2F(0.0f), Rr_CastV2(SwapchainExtent) };
@@ -2301,17 +2437,7 @@ Rr_UIItem *Rr_UIGetItemEx(Rr_UIItem *Parent, char const *Name)
 
 Rr_UIItem *Rr_UIGetItem(char const *Name)
 {
-    Rr_UIItem *Parent;
-    if (!gUI->ParentStack.Count)
-    {
-        Parent = gUI->ImplicitItem;
-    }
-    else
-    {
-        Parent = RR_LAST_ARRAY_ELEMENT(&gUI->ParentStack);
-    }
-
-    return Rr_UIGetItemEx(Parent, Name);
+    return Rr_UIGetItemEx(Rr_UIDefaultParent(), Name);
 }
 
 Rr_UIItem *Rr_UIGetPopup(Rr_UIItem *Item)
@@ -2432,8 +2558,8 @@ void Rr_UISetDefaultColors(void)
     Colors[RR_UI_COLOR_BG] = 0xAAAAAAFF;
     Colors[RR_UI_COLOR_INPUT_FG] = 0x000000FF;
     Colors[RR_UI_COLOR_INPUT_BG] = 0xFFFFFFFF;
-    Colors[RR_UI_COLOR_INPUT_SELECTION_FG] = 0xFFFFFFFF;
-    Colors[RR_UI_COLOR_INPUT_SELECTION_BG] = 0x0000FFFF;
+    Colors[RR_UI_COLOR_INPUT_SELECTION_FG] = 0x000000FF;
+    Colors[RR_UI_COLOR_INPUT_SELECTION_BG] = 0xA9A8A8FF;
     Colors[RR_UI_COLOR_WHITE] = 0xFFFFFFFF;
     Colors[RR_UI_COLOR_BLACK] = 0x000000FF;
 }
@@ -2642,7 +2768,7 @@ void Rr_UIDrawCloseCross(Rr_Rect Rect, uint32_t ClipIndex, uintptr_t DrawData)
 Rr_UIItem *Rr_UISpacer(Rr_UIExtent Extent)
 {
     Rr_UIItem *Item = Rr_UIGetItem(NULL);
-    Rr_UIAxis ParentAxis = Item->Parent->Axis;
+    Rr_UIAxis ParentAxis = Item->Parent->Flow;
     Rr_UIAxis NonAlignedAxis;
     if (ParentAxis == RR_UI_AXIS_X)
     {
@@ -2659,11 +2785,24 @@ Rr_UIItem *Rr_UISpacer(Rr_UIExtent Extent)
     return Item;
 }
 
+Rr_UIItem *Rr_UILabel(char const *Text)
+{
+    Rr_UIItem *Label = Rr_UIGetItem(NULL);
+    Label->Extents[RR_UI_AXIS_X] = Rr_UIText(1.0f);
+    Label->Extents[RR_UI_AXIS_Y] = Rr_UIText(1.0f);
+    Label->Padding = RR_UI_TEXT_PADDING;
+    Label->DrawText = true;
+    Label->Text = Text;
+
+    return Label;
+}
+
 Rr_UIItem *Rr_UIButton(char const *Name)
 {
     Rr_UIItem *Item = Rr_UIGetItem(Name);
     Item->Extents[RR_UI_AXIS_X] = Rr_UIText(1.0f);
     Item->Extents[RR_UI_AXIS_Y] = Rr_UIText(1.0f);
+    Item->Padding = RR_UI_TEXT_PADDING;
     Item->DrawText = true;
     Item->CenterText = true;
     Item->MouseClickable = true;
@@ -3359,10 +3498,7 @@ static Rr_UIEditResult Rr_UIEditUTF8Buffer(
     return Result;
 }
 
-Rr_UIItem *Rr_UIInputFieldV2(
-    char const *Name,
-    size_t BufferLength,
-    char *Buffer)
+Rr_UIItem *Rr_UIInputField(char const *Name, size_t BufferLength, char *Buffer)
 {
     Rr_UIItem *Item = Rr_UIGetItem(Name);
     Item->Extents[RR_UI_AXIS_X] = Rr_UIText(1.0f);
@@ -3559,6 +3695,7 @@ static inline void Rr_UIAddScrollbarButtons(
     DecButton->Extents[RR_UI_AXIS_X] = Extent;
     DecButton->Extents[RR_UI_AXIS_Y] = Extent;
     DecButton->DrawText = false;
+    DecButton->Padding = Rr_V2F(0.0f);
 
     Rr_UITriangle(DecButton, Rr_UIPercent(1.0f, 1.0f), TriangleAngle);
 
@@ -3568,6 +3705,7 @@ static inline void Rr_UIAddScrollbarButtons(
     IncButton->Extents[RR_UI_AXIS_X] = Extent;
     IncButton->Extents[RR_UI_AXIS_Y] = Extent;
     IncButton->DrawText = false;
+    IncButton->Padding = Rr_V2F(0.0f);
 
     Rr_UITriangle(IncButton, Rr_UIPercent(1.0f, 1.0f), TriangleAngle - 180.0f);
 
@@ -3599,7 +3737,7 @@ Rr_UIItem *Rr_UIScrollbar(Rr_UIItem *Item, Rr_UIAxis Axis)
     Rr_UIItem *Bar = Rr_UIGetItem(Name);
     Bar->Extents[Axis] = Rr_UIPercent(1.0f, 0.0f);
     Bar->Extents[NonAxis] = Rr_UIEm(RR_UI_SCROLLBAR_SIZE, 1.0f);
-    Bar->Axis = Axis;
+    Bar->Flow = Axis;
     Bar->Padding = Rr_V2F(1.0f);
 
     Rr_UIPush(Bar);
@@ -3613,7 +3751,7 @@ Rr_UIItem *Rr_UIScrollbar(Rr_UIItem *Item, Rr_UIAxis Axis)
     Rr_UIItem *HandleBG = Rr_UIGetItem("__HandleBG");
     HandleBG->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 0.0f);
     HandleBG->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 0.0f);
-    HandleBG->Axis = Axis;
+    HandleBG->Flow = Axis;
     HandleBG->DrawFunc = Rr_UIDrawCheckerRect;
     HandleBG->DrawData = 0x555555FF;
     HandleBG->MouseClickable = true;
@@ -3719,14 +3857,14 @@ Rr_UIItem *Rr_UIScrollView(bool ScrollableX, bool ScrollableY)
     Rr_UIPush(Outer);
 
     Rr_UIItem *Outer2 = Rr_UIGetItem("__Outer2");
-    Outer2->Axis = RR_UI_AXIS_Y;
+    Outer2->Flow = RR_UI_AXIS_Y;
     Outer2->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 0.0f);
     Outer2->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 0.0f);
 
     Rr_UIPush(Outer2);
 
     Rr_UIItem *Contents = Rr_UIGetItem("__Contents");
-    Contents->Axis = RR_UI_AXIS_Y;
+    Contents->Flow = RR_UI_AXIS_Y;
     Contents->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 0.0f);
     Contents->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 0.0f);
     Contents->Scrollable[RR_UI_AXIS_X] = ScrollableX;
@@ -3747,6 +3885,76 @@ Rr_UIItem *Rr_UIScrollView(bool ScrollableX, bool ScrollableY)
     Rr_UIPop();
 
     return Contents;
+}
+
+Rr_UIItem *Rr_UITable(
+    char const *Name,
+    uint32_t ColumnCount,
+    char const *const *ColumnNames,
+    float *ColumnRatios)
+{
+    float TotalRatios = 0.0f;
+    for (uint32_t Index = 0; Index < ColumnCount; ++Index)
+    {
+        if (ColumnRatios[Index] == 0.0f)
+        {
+            ColumnRatios[Index] = 1.0f;
+        }
+        TotalRatios += ColumnRatios[Index];
+    }
+    for (uint32_t Index = 0; Index < ColumnCount; ++Index)
+    {
+        ColumnRatios[Index] /= TotalRatios;
+    }
+
+    Rr_UIItem *Table = Rr_UIGetItem(Name);
+
+    Rr_UIPush(Table);
+
+    for (uint32_t Index = 0; Index < ColumnCount; ++Index)
+    {
+        char ColumnName[64];
+        snprintf(ColumnName, sizeof(ColumnName), "__Column%d", Index);
+        float ColumnRatio = ColumnRatios[Index];
+
+        Rr_UIItem *Column = Rr_UIGetItemEx(Table, ColumnName);
+        Column->Flow = RR_UI_AXIS_Y;
+        Column->Extents[RR_UI_AXIS_X] = Rr_UISum(1.0f);
+        if (Index == ColumnCount - 1)
+        {
+            Column->Grow = true;
+        }
+
+        Rr_UIPush(Column);
+
+        Rr_UIItem *Title = Rr_UIButton("__Title");
+        Title->Text = ColumnNames[Index];
+        Title->Fill = true;
+
+        Rr_UIPop();
+    }
+
+    Rr_UIPop();
+
+    return Table;
+}
+
+void Rr_UITableColumns(
+    Rr_UIItem *Table,
+    uint32_t ColumnCount,
+    Rr_UIItem **OutColumns)
+{
+    Rr_UIPush(Table);
+
+    for (uint32_t Index = 0; Index < ColumnCount; ++Index)
+    {
+        char ColumnName[64];
+        snprintf(ColumnName, sizeof(ColumnName), "__Column%d", Index);
+
+        OutColumns[Index] = Rr_UILookupItemV2(ColumnName);
+    }
+
+    Rr_UIPop();
 }
 
 Rr_UIWindow *Rr_UI2CreateWindow(char const *Name)
@@ -3946,7 +4154,7 @@ static inline Rr_UIItem *Rr_UITitleBarButton(char const *Name)
     Rr_UIItem *ButtonRoot = Rr_UIGetItem(Name);
     ButtonRoot->Extents[RR_UI_AXIS_X] = Rr_UIEm(1.0f, 1.0f);
     ButtonRoot->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 1.0f);
-    ButtonRoot->Axis = RR_UI_AXIS_Y;
+    ButtonRoot->Flow = RR_UI_AXIS_Y;
     ButtonRoot->Fill = true;
     ButtonRoot->MouseIgnored = true;
 
@@ -3958,6 +4166,7 @@ static inline Rr_UIItem *Rr_UITitleBarButton(char const *Name)
     Button->Extents[RR_UI_AXIS_X] = Rr_UIEm(0.85f, 1.0f);
     Button->Extents[RR_UI_AXIS_Y] = Rr_UIEm(0.85f, 1.0f);
     Button->DrawText = false;
+    Button->Padding = Rr_V2F(0.0f);
 
     Rr_UISpacer(Rr_UIPercent(1.0f, 0.0f));
 
@@ -3972,8 +4181,8 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UIWindow *Window)
 
     Rr_UIItem *Bar = Rr_UIGetItem("Rr.UI.TitleBar");
     Bar->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 1.0f);
-    Bar->Extents[RR_UI_AXIS_Y] = Rr_UIEm(1.2f, 1.0f);
-    Bar->Axis = RR_UI_AXIS_Y;
+    Bar->Extents[RR_UI_AXIS_Y] = Rr_UIEm(RR_UI_WINDOW_TITLE_HEIGHT, 1.0f);
+    Bar->Flow = RR_UI_AXIS_Y;
     Bar->MouseClickable = true;
     Bar->DrawData = HasFocus;
     Bar->DrawFunc = Rr_UIDrawWindowTitleBar;
@@ -3998,9 +4207,10 @@ static inline void Rr_UIAddWindowTitleBar(Rr_UIWindow *Window)
     Buttons->DrawText = true;
     Buttons->CenterText = true;
     Buttons->TextLength = strlen(Window->Name);
-    Buttons->Text =
+    char *Text =
         Rr_AllocCopy(Window->Name, Buttons->TextLength + 1, gUI->FrameArena);
-    Buttons->Text[Buttons->TextLength] = '\0';
+    Text[Buttons->TextLength] = '\0';
+    Buttons->Text = Text;
     if (HasFocus)
     {
         Buttons->TextColor = RR_UI_COLOR_WHITE;
@@ -4194,7 +4404,7 @@ static inline void Rr_UIHandleWindowResize(Rr_UIWindow *Window, Rr_UIItem *Root)
 Rr_UIItem *Rr_UIGetWindowItem(Rr_UIWindow *Window)
 {
     Rr_UIItem *Root = Rr_UILookupRoot(Window);
-    Root->Axis = RR_UI_AXIS_Y;
+    Root->Flow = RR_UI_AXIS_Y;
     Root->Padding = Rr_V2F(RR_UI_WINDOW_BORDER + RR_UI_WINDOW_HANDLES);
     Root->DrawFunc = Rr_UIDrawWindowBackground;
 
@@ -4212,7 +4422,10 @@ Rr_UIItem *Rr_UIGetWindowItem(Rr_UIWindow *Window)
 
     Rr_UIAddWindowTitleBar(Window);
 
-    Rr_UIItem *Contents = Rr_UIScrollView(true, true);
+    Rr_UIItem *Contents = Rr_UIGetItem("__Contents");
+    Contents->Flow = RR_UI_AXIS_Y;
+    Contents->Extents[RR_UI_AXIS_X] = Rr_UIPercent(1.0f, 0.0f);
+    Contents->Extents[RR_UI_AXIS_Y] = Rr_UIPercent(1.0f, 0.0f);
     Contents->Padding = Rr_V2F(RR_UI_WINDOW_CONTENTS_PADDING);
 
     Rr_UIPop();
@@ -4222,21 +4435,24 @@ Rr_UIItem *Rr_UIGetWindowItem(Rr_UIWindow *Window)
 
 Rr_UIItem *Rr_UIInfo(void)
 {
-    char *Buffer = Rr_AllocNoZero(256, gUI->FrameArena);
+    char *Buffer = Rr_AllocNoZero(512, gUI->FrameArena);
     size_t Length = (size_t)snprintf(
         Buffer,
         256,
         "Arena: %zu/%zu\n"
-        "ClipRects: %d\n"
-        "Vertices: %d\n"
-        "Indices: %d\n"
+        "ClipRects: %d/%d\n"
+        "Vertices: %d/%d\n"
+        "Indices: %d/%d\n"
         "Focused item: %s\n"
         "Hovered item: %s\n"
         "Dragging item: %s",
         gUI->Arena->Commited,
         gUI->Arena->Reserved,
+        (uint32_t)gUI->ClipRects.Count,
         (uint32_t)gUI->ClipRects.Capacity,
+        (uint32_t)gUI->Vertices.Count,
         (uint32_t)gUI->Vertices.Capacity,
+        (uint32_t)gUI->Indices.Count,
         (uint32_t)gUI->Indices.Capacity,
         gUI->FocusedItem ? gUI->FocusedItem->Name : NULL,
         gUI->HoveredItem ? gUI->HoveredItem->Name : NULL,
